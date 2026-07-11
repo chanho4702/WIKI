@@ -429,3 +429,54 @@ body {
   font-size: var(--chanho-font-size-400);
   line-height: var(--chanho-font-lineHeight-400);
 }
+
+/* ── 코멘트 (W3) ──────────────────────────────────────── */
+
+.comment-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+  max-width: 880px;
+  margin-top: var(--chanho-space-500);
+  padding-top: var(--chanho-space-300);
+  border-top: 1px solid var(--chanho-color-border-default);
+}
+
+.comment-section-title {
+  margin: 0;
+  font-size: var(--chanho-font-size-400);
+  line-height: var(--chanho-font-lineHeight-400);
+}
+
+.comment-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--chanho-space-100);
+}
+
+.comment-meta {
+  margin: 0 0 var(--chanho-space-25);
+  font-size: var(--chanho-font-size-200);
+  color: var(--chanho-color-text-subtle);
+}
+
+.comment-meta strong {
+  color: var(--chanho-color-text-default);
+}
+
+.comment-body {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.comment-empty {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+}
+
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--chanho-space-100);
+}

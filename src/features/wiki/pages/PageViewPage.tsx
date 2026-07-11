@@ -6,6 +6,7 @@ import { deletePage, getPage, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/WikiLayout";
 import { MarkdownView } from "../components/MarkdownView";
 import { HistoryModal } from "../components/HistoryModal";
+import { CommentSection } from "../components/CommentSection";
 
 /** 수정일 표기: 2026-07-10T10:00:00.000Z → "2026년 7월 10일" */
 function formatDate(iso: string): string {
@@ -127,6 +128,7 @@ export function PageViewPage() {
         <span>{formatDate(page.updatedAt)} 수정</span>
       </div>
       <MarkdownView markdown={page.body} />
+      <CommentSection pageId={page.id} users={users} />
     </article>
   );
 }
