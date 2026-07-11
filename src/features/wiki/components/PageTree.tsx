@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import type { Page } from "../store/types";
 
 export interface PageTreeProps {
@@ -28,9 +28,10 @@ function buildTree(pages: Page[]): TreeNode[] {
   return toNodes(null);
 }
 
-/** 접이식 페이지 트리 — 기본 전부 펼침, 조회/탐색 전용 (생성·정렬은 W2) */
+/** 접이식 페이지 트리 — 기본 전부 펼침. 항목마다 하위 페이지 추가 액션(상시 노출). */
 export function PageTree({ spaceId, pages }: PageTreeProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const navigate = useNavigate();
   const roots = buildTree(pages);
 
   const toggle = (id: string) => {
@@ -65,6 +66,15 @@ export function PageTree({ spaceId, pages }: PageTreeProps) {
                 <span className="page-tree-toggle-spacer" aria-hidden="true" />
               )}
               <NavLink to={`/spaces/${spaceId}/pages/${page.id}`}>{page.title}</NavLink>
+              {/* NavLink의 형제 — 링크 안에 버튼 중첩 금지 */}
+              <button
+                type="button"
+                className="page-tree-add"
+                aria-label={`${page.title} 하위 페이지 추가`}
+                onClick={() => navigate(`/spaces/${spaceId}/pages/new?parent=${page.id}`)}
+              >
+                ＋
+              </button>
             </div>
             {children.length > 0 && !isCollapsed ? renderNodes(children) : null}
           </li>

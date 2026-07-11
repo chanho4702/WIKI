@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate, Outlet, useNavigate, useParams } from "react-router";
-import { Avatar, Select, Spinner } from "@chanho/react";
+import { Avatar, Button, Select, Spinner } from "@chanho/react";
 import type { Page, Space, User } from "../store/types";
 import { getCurrentUser, listPages } from "../store/wikiStore";
 import { PageTree } from "./PageTree";
@@ -65,6 +65,9 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
         ) : (
           <PageTree spaceId={current.id} pages={pages} />
         )}
+        <Button variant="subtle" onClick={() => navigate(`/spaces/${current.id}/pages/new`)}>
+          새 페이지
+        </Button>
         <SpaceCreateModal
           onCreated={async (space) => {
             await onSpacesChanged();

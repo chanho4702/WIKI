@@ -160,6 +160,25 @@ body {
   font-size: var(--chanho-font-size-200);
 }
 
+.page-tree-add {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--chanho-radius-medium);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.page-tree-add:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+  color: var(--chanho-color-text-default);
+}
+
 /* ── 페이지 보기 (W2) ─────────────────────────────────── */
 
 .page-view h1 {

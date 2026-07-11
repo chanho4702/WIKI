@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
+import { MOCK_USERS } from "../mock/users";
 
 beforeEach(() => {
   localStorage.clear();
@@ -84,5 +85,60 @@ describe("W2 페이지 편집·생성", () => {
     expect(within(tree).getByRole("link", { name: "새 하위 문서" })).toBeInTheDocument();
     await user.click(within(tree).getByRole("button", { name: "시작하기 하위 접기" }));
     expect(within(tree).queryByRole("link", { name: "새 하위 문서" })).not.toBeInTheDocument();
+  });
+
+  it("사이드바 '새 페이지'는 루트 생성으로 이동하고, 취소하면 스페이스 인덱스를 거쳐 첫 페이지로 돌아간다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1");
+    await screen.findByRole("heading", { level: 1, name: "시작하기" });
+    await user.click(screen.getByRole("button", { name: "새 페이지" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/new");
+    });
+    await user.click(screen.getByRole("button", { name: "취소" }));
+    // 루트 생성 취소 → /spaces/sp1 → SpaceIndexPage가 첫 루트 페이지로 이어서 redirect
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg1");
+    });
+  });
+
+  it("트리 항목의 '하위 페이지 추가' 버튼은 parent 쿼리를 담은 생성 화면으로 이동한다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1");
+    const tree = await screen.findByRole("navigation", { name: "페이지 트리" });
+    await user.click(within(tree).getByRole("button", { name: "팀 규칙 하위 페이지 추가" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/new");
+    });
+    // parent=pg2가 실제로 적용되는지 — 저장 후 pg2를 접으면 새 항목이 사라진다
+    await user.type(screen.getByLabelText("제목"), "회의록 규칙");
+    await user.click(screen.getByRole("button", { name: "저장" }));
+    await screen.findByRole("heading", { level: 1, name: "회의록 규칙" });
+    await user.click(within(tree).getByRole("button", { name: "팀 규칙 하위 접기" }));
+    expect(within(tree).queryByRole("link", { name: "회의록 규칙" })).not.toBeInTheDocument();
+  });
+
+  it("페이지 0개 스페이스의 '첫 페이지 만들기'로 루트 페이지를 만든다", async () => {
+    localStorage.setItem(
+      "wiki.v1",
+      JSON.stringify({
+        users: MOCK_USERS,
+        spaces: [{ id: "sp9", key: "NEW", name: "새 위키", createdAt: "2026-07-01T00:00:00.000Z" }],
+        pages: [],
+        versions: [],
+        comments: [],
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp("/spaces/sp9");
+    await user.click(await screen.findByRole("button", { name: "첫 페이지 만들기" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp9/pages/new");
+    });
+    await user.type(screen.getByLabelText("제목"), "홈");
+    await user.click(screen.getByRole("button", { name: "저장" })); // 본문 없이 저장 가능 (body="")
+    expect(await screen.findByRole("heading", { level: 1, name: "홈" })).toBeInTheDocument();
+    const tree = screen.getByRole("navigation", { name: "페이지 트리" });
+    expect(within(tree).getByRole("link", { name: "홈" })).toBeInTheDocument();
   });
 });
