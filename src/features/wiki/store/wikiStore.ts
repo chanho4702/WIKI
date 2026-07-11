@@ -6,12 +6,23 @@ const STORAGE_KEY = "wiki.v1";
 
 let cache: WikiData | null = null;
 
+/** localStorage에서 읽은 값이 WikiData 형태인지 검증 — 5개 배열 필드가 전부 있어야 한다 */
+function isWikiData(value: unknown): value is WikiData {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return (["users", "spaces", "pages", "versions", "comments"] as const).every((key) =>
+    Array.isArray(record[key]),
+  );
+}
+
 function load(): WikiData {
   if (cache) return cache;
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
     try {
-      cache = JSON.parse(raw) as WikiData;
+      const parsed: unknown = JSON.parse(raw);
+      if (isWikiData(parsed)) cache = parsed;
+      // 형태가 다르면 cache가 null로 남아 아래에서 시드로 재생성된다
     } catch {
       // 손상된 JSON — 시드로 재생성
     }

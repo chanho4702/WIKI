@@ -69,4 +69,22 @@ describe("spaces", () => {
     expect(spaces[0].key).toBe("DEV");
     expect(localStorage.getItem("wiki.v1")).not.toContain("corrupted");
   });
+
+  it("localStorage가 올바른 JSON이지만 객체가 아니면(배열 등) 시드로 재생성한다", async () => {
+    localStorage.setItem("wiki.v1", JSON.stringify([1, 2, 3]));
+    __resetForTest();
+    const spaces = await listSpaces();
+    expect(spaces).toHaveLength(1);
+    expect(spaces[0].key).toBe("DEV");
+  });
+
+  it("필수 배열 필드가 빠지거나 배열이 아니면 시드로 재생성한다", async () => {
+    // versions/comments 누락 + spaces가 문자열 — 지라 클론 교훈: 부분 손상도 방어
+    localStorage.setItem("wiki.v1", JSON.stringify({ users: [], spaces: "oops", pages: [] }));
+    __resetForTest();
+    const spaces = await listSpaces();
+    expect(spaces[0]).toMatchObject({ id: "sp1", key: "DEV", name: "개발 위키" });
+    // 저장소도 시드로 덮어써진다 (시드 페이지 pg1이 다시 존재)
+    expect(localStorage.getItem("wiki.v1")).toContain('"pg1"');
+  });
 });
