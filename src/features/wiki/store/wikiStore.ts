@@ -1,4 +1,4 @@
-import type { Page, PageVersion, Space, User, WikiData } from "./types";
+import type { Comment, Page, PageVersion, Space, User, WikiData } from "./types";
 import { CURRENT_USER_ID } from "../../../mock/users";
 import { createSeedData } from "../../../mock/seed";
 
@@ -156,4 +156,77 @@ export async function listVersions(pageId: string): Promise<PageVersion[]> {
       .versions.filter((v) => v.pageId === pageId)
       .sort((a, b) => b.version - a.version), // 최신 먼저
   );
+}
+
+export async function updatePage(
+  id: string,
+  patch: { title?: string; body?: string },
+): Promise<Page> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === id);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  const nextTitle = patch.title !== undefined ? patch.title.trim() : page.title;
+  if (!nextTitle) throw new Error("페이지 제목을 입력하세요");
+  const nextBody = patch.body !== undefined ? patch.body : page.body;
+  // 둘 다 무변경이면 no-op — 버전·updatedBy/updatedAt 불변
+  if (nextTitle === page.title && nextBody === page.body) {
+    return clone(page);
+  }
+  page.title = nextTitle;
+  page.body = nextBody;
+  page.updatedBy = CURRENT_USER_ID;
+  page.updatedAt = new Date().toISOString();
+  snapshotVersion(data, page, page.updatedAt); // 적용 후 내용을 새 버전(max+1)으로
+  persist();
+  return clone(page);
+}
+
+export async function deletePage(id: string): Promise<void> {
+  const data = load();
+  const index = data.pages.findIndex((p) => p.id === id);
+  if (index === -1) throw new Error("페이지를 찾을 수 없습니다");
+  if (data.pages.some((p) => p.parentId === id)) {
+    throw new Error("하위 페이지가 있어 삭제할 수 없습니다");
+  }
+  data.pages.splice(index, 1);
+  data.versions = data.versions.filter((v) => v.pageId !== id); // 버전 연쇄 삭제
+  data.comments = data.comments.filter((c) => c.pageId !== id); // 코멘트 연쇄 삭제
+  persist();
+}
+
+export async function restoreVersion(pageId: string, versionId: string): Promise<Page> {
+  const data = load();
+  const version = data.versions.find((v) => v.id === versionId && v.pageId === pageId);
+  if (!version) throw new Error("버전을 찾을 수 없습니다");
+  // updatePage 경로 재사용 → 복원도 새 버전으로 쌓인다 (히스토리 안 끊김)
+  return updatePage(pageId, { title: version.title, body: version.body });
+}
+
+// ── comments ─────────────────────────────────────────────────
+
+export async function listComments(pageId: string): Promise<Comment[]> {
+  return clone(
+    load()
+      .comments.filter((c) => c.pageId === pageId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+  );
+}
+
+export async function addComment(pageId: string, body: string): Promise<Comment> {
+  const data = load();
+  if (!data.pages.some((p) => p.id === pageId)) {
+    throw new Error("페이지를 찾을 수 없습니다");
+  }
+  const trimmed = body.trim();
+  if (!trimmed) throw new Error("코멘트 내용을 입력하세요");
+  const comment: Comment = {
+    id: nextId(),
+    pageId,
+    authorId: CURRENT_USER_ID,
+    body: trimmed,
+    createdAt: new Date().toISOString(),
+  };
+  data.comments.push(comment);
+  persist();
+  return clone(comment);
 }
