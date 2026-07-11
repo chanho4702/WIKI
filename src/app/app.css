@@ -5,46 +5,43 @@ body {
   background: var(--chanho-color-background-default);
 }
 
+/* ── 레이아웃 ─────────────────────────────────────────── */
+
+/* TopBar(상단) + 본문(사이드바 | 콘텐츠) 수직 배치 */
 .wiki-layout {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
+}
+
+.wiki-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
 }
 
 .wiki-sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--chanho-space-300);
+  gap: var(--chanho-space-250);
   width: 260px;
   flex-shrink: 0;
   padding: var(--chanho-space-300) var(--chanho-space-200);
-  background: var(--chanho-color-background-subtle);
+  background: var(--chanho-color-background-surface);
   border-right: 1px solid var(--chanho-color-border-default);
 }
 
-.wiki-sidebar-brand {
-  font-size: var(--chanho-font-size-400);
+.wiki-content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--chanho-space-300) var(--chanho-space-400);
+}
+
+.wiki-brand {
+  font-size: var(--chanho-font-size-200);
   font-weight: var(--chanho-font-weight-bold);
   color: var(--chanho-color-text-brand);
-}
-
-.wiki-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.wiki-header {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  min-height: 48px;
-  padding: var(--chanho-space-100) var(--chanho-space-300);
-  border-bottom: 1px solid var(--chanho-color-border-default);
-}
-
-.wiki-content {
-  padding: var(--chanho-space-300);
+  letter-spacing: 0.02em;
 }
 
 .app-loading,
@@ -54,26 +51,16 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--chanho-space-200);
 }
 
 .app-loading,
 .empty-spaces {
   min-height: 100vh;
+  gap: var(--chanho-space-300);
 }
 
 .empty-pages {
-  padding: var(--chanho-space-600) 0;
-}
-
-.empty-spaces p,
-.empty-pages p {
-  margin: 0;
-  color: var(--chanho-color-text-subtle);
-}
-
-.empty-pages h2 {
-  margin: 0;
+  padding: var(--chanho-space-800) 0;
 }
 
 .space-create-form {
@@ -104,31 +91,42 @@ body {
 .page-tree-row {
   display: flex;
   align-items: center;
-  gap: var(--chanho-space-50);
+  gap: var(--chanho-space-25);
 }
 
 .page-tree-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   border-radius: var(--chanho-radius-medium);
   background: transparent;
   color: var(--chanho-color-text-subtle);
-  font-size: var(--chanho-font-size-100);
-  line-height: 1;
   cursor: pointer;
 }
 
 .page-tree-toggle:hover {
   background: var(--chanho-color-background-neutral-hovered);
+  color: var(--chanho-color-text-default);
+}
+
+/* CSS 회전 트랜지션 — 접힘(오른쪽) → 펼침(아래) */
+.page-tree-toggle-icon {
+  transition: transform 0.15s ease;
+}
+
+.page-tree-toggle[aria-expanded="true"] .page-tree-toggle-icon {
+  transform: rotate(90deg);
 }
 
 .page-tree-toggle-spacer {
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
 .page-tree-row a {
@@ -137,11 +135,11 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: var(--chanho-space-50) var(--chanho-space-100);
+  padding: var(--chanho-space-75) var(--chanho-space-100);
   border-radius: var(--chanho-radius-medium);
   color: var(--chanho-color-text-default);
   text-decoration: none;
-  font-size: var(--chanho-font-size-200);
+  font-size: var(--chanho-font-size-100);
 }
 
 .page-tree-row a:hover {
@@ -149,29 +147,32 @@ body {
 }
 
 .page-tree-row a.active {
-  background: var(--chanho-color-background-brand-subtle);
-  color: var(--chanho-color-text-brand);
+  background: var(--chanho-color-background-selected);
+  color: var(--chanho-color-text-selected);
   font-weight: var(--chanho-font-weight-semibold);
 }
 
-.page-tree-empty {
-  margin: 0;
-  color: var(--chanho-color-text-subtle);
-  font-size: var(--chanho-font-size-200);
-}
-
+/* hover-reveal — 행 위에 올리거나 키보드 포커스 시에만 노출 (히트 타깃은 유지) */
 .page-tree-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   border-radius: var(--chanho-radius-medium);
   background: transparent;
   color: var(--chanho-color-text-subtle);
-  font-size: var(--chanho-font-size-100);
-  line-height: 1;
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+
+.page-tree-row:hover .page-tree-add,
+.page-tree-add:focus-visible {
+  opacity: 1;
 }
 
 .page-tree-add:hover {
@@ -179,68 +180,26 @@ body {
   color: var(--chanho-color-text-default);
 }
 
+.page-tree-empty {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+}
+
+/* 사이드바 커스텀 인터랙션에 DS 포커스 링 적용 */
+.page-tree-row a:focus-visible,
+.page-tree-toggle:focus-visible,
+.page-tree-add:focus-visible,
+.history-item:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
 /* ── 페이지 보기 (W2) ─────────────────────────────────── */
 
-.page-view h1 {
-  margin: 0 0 var(--chanho-space-100);
-  font-size: var(--chanho-font-size-600);
-  line-height: var(--chanho-font-lineHeight-600);
-}
-
-.page-view-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--chanho-space-200);
+/* PageHeader와 본문 사이 간격 */
+.page-view-header {
   margin-bottom: var(--chanho-space-200);
-}
-
-.page-breadcrumbs ol {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--chanho-space-50);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--chanho-font-size-200);
-  color: var(--chanho-color-text-subtle);
-}
-
-.page-breadcrumbs li + li::before {
-  content: "/";
-  margin-right: var(--chanho-space-50);
-  color: var(--chanho-color-text-subtle);
-}
-
-.page-breadcrumbs a {
-  color: var(--chanho-color-text-subtle);
-  text-decoration: none;
-}
-
-.page-breadcrumbs a:hover {
-  color: var(--chanho-color-text-brand);
-  text-decoration: underline;
-}
-
-.page-view-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--chanho-space-100);
-  flex-shrink: 0;
-}
-
-.page-view-edit-link {
-  padding: var(--chanho-space-50) var(--chanho-space-150);
-  border-radius: var(--chanho-radius-medium);
-  font-size: var(--chanho-font-size-200);
-  color: var(--chanho-color-text-default);
-  text-decoration: none;
-  background: var(--chanho-color-background-neutral);
-}
-
-.page-view-edit-link:hover {
-  background: var(--chanho-color-background-neutral-hovered);
 }
 
 .page-view-meta {
@@ -249,32 +208,32 @@ body {
   gap: var(--chanho-space-100);
   margin-bottom: var(--chanho-space-300);
   color: var(--chanho-color-text-subtle);
-  font-size: var(--chanho-font-size-200);
+  font-size: var(--chanho-font-size-100);
 }
 
 /* ── 마크다운 본문 (.markdown-body — MarkdownView 전용 스코프) ── */
 
 .markdown-body {
-  font-size: var(--chanho-font-size-300);
-  line-height: var(--chanho-font-lineHeight-400);
+  font-size: var(--chanho-font-size-200);
+  line-height: var(--chanho-font-lineHeight-300);
   color: var(--chanho-color-text-default);
 }
 
 .markdown-body h1 {
   margin: var(--chanho-space-400) 0 var(--chanho-space-200);
-  font-size: var(--chanho-font-size-500);
-  line-height: var(--chanho-font-lineHeight-500);
-}
-
-.markdown-body h2 {
-  margin: var(--chanho-space-300) 0 var(--chanho-space-150);
   font-size: var(--chanho-font-size-400);
   line-height: var(--chanho-font-lineHeight-400);
 }
 
+.markdown-body h2 {
+  margin: var(--chanho-space-300) 0 var(--chanho-space-150);
+  font-size: var(--chanho-font-size-300);
+  line-height: var(--chanho-font-lineHeight-300);
+}
+
 .markdown-body h3 {
   margin: var(--chanho-space-300) 0 var(--chanho-space-100);
-  font-size: var(--chanho-font-size-300);
+  font-size: var(--chanho-font-size-200);
 }
 
 .markdown-body h1:first-child,
@@ -298,12 +257,11 @@ body {
 }
 
 .markdown-body code {
-  /* mono 폰트 토큰이 디자인 시스템에 없어 표준 스택 사용 (Global Constraints 예외) */
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Courier New", monospace;
-  font-size: var(--chanho-font-size-200);
+  font-family: var(--chanho-font-family-mono);
+  font-size: var(--chanho-font-size-100);
   padding: var(--chanho-space-25) var(--chanho-space-50);
   border-radius: var(--chanho-radius-small);
-  background: var(--chanho-color-background-neutral);
+  background: var(--chanho-color-background-subtle);
 }
 
 .markdown-body pre {
@@ -345,7 +303,11 @@ body {
 }
 
 .markdown-body a {
-  color: var(--chanho-color-text-brand);
+  color: var(--chanho-color-text-link);
+}
+
+.markdown-body a:hover {
+  color: var(--chanho-color-text-link-hovered);
 }
 
 /* ── 페이지 편집 (W2) ─────────────────────────────────── */
@@ -396,23 +358,28 @@ body {
   border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-medium);
   background: transparent;
-  font-size: var(--chanho-font-size-200);
+  font-size: var(--chanho-font-size-100);
   color: var(--chanho-color-text-default);
   text-align: left;
   cursor: pointer;
 }
 
 .history-item:hover {
-  background: var(--chanho-color-background-neutral);
+  background: var(--chanho-color-background-neutral-hovered);
 }
 
 .history-item[aria-pressed="true"] {
-  border-color: var(--chanho-color-border-focused);
-  background: var(--chanho-color-background-brand-subtle);
+  border-color: var(--chanho-color-border-brand);
+  background: var(--chanho-color-background-selected);
+  color: var(--chanho-color-text-selected);
 }
 
 .history-item-meta {
   color: var(--chanho-color-text-subtle);
+}
+
+.history-item[aria-pressed="true"] .history-item-meta {
+  color: var(--chanho-color-text-selected);
 }
 
 .history-preview {
@@ -426,8 +393,8 @@ body {
 
 .history-preview h2 {
   margin: 0;
-  font-size: var(--chanho-font-size-400);
-  line-height: var(--chanho-font-lineHeight-400);
+  font-size: var(--chanho-font-size-300);
+  line-height: var(--chanho-font-lineHeight-300);
 }
 
 /* ── 코멘트 (W3) ──────────────────────────────────────── */
@@ -444,29 +411,8 @@ body {
 
 .comment-section-title {
   margin: 0;
-  font-size: var(--chanho-font-size-400);
-  line-height: var(--chanho-font-lineHeight-400);
-}
-
-.comment-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--chanho-space-100);
-}
-
-.comment-meta {
-  margin: 0 0 var(--chanho-space-25);
-  font-size: var(--chanho-font-size-200);
-  color: var(--chanho-color-text-subtle);
-}
-
-.comment-meta strong {
-  color: var(--chanho-color-text-default);
-}
-
-.comment-body {
-  margin: 0;
-  white-space: pre-wrap;
+  font-size: var(--chanho-font-size-300);
+  line-height: var(--chanho-font-lineHeight-300);
 }
 
 .comment-empty {
