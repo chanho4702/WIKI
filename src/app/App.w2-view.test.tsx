@@ -28,7 +28,7 @@ describe("W2 페이지 보기", () => {
     // 메타: 수정자(u2 이서연) + 수정일 (T_UPDATE=2026-07-10T10:00:00Z — KST/UTC 모두 7월 10일)
     // W3에서 추가된 CommentSection의 시드 코멘트 c1도 작성자가 이서연이라 이름이 페이지에 두 번 나타난다.
     // 코멘트 영역(role=region "코멘트") 밖에서 찾아 페이지 메타 표기임을 명확히 한다.
-    const commentRegion = screen.getByRole("region", { name: "코멘트" });
+    const commentRegion = await screen.findByRole("region", { name: "코멘트" });
     const metaEditorName = screen.getAllByText("이서연").find((el) => !commentRegion.contains(el));
     expect(metaEditorName).toBeInTheDocument();
     expect(screen.getByText(/2026년 7월 10일 수정/)).toBeInTheDocument();
