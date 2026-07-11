@@ -15,14 +15,17 @@ function formatDate(iso: string): string {
   });
 }
 
-/** parentId 체인을 따라 조상 페이지를 루트→직계 부모 순서로 반환 */
+/** parentId 체인을 따라 조상 페이지를 루트→직계 부모 순서로 반환. 순환 데이터 방어(방문 집합). */
 function ancestorsOf(page: Page, pages: Page[]): Page[] {
   const byId = new Map(pages.map((p) => [p.id, p]));
   const chain: Page[] = [];
+  const visited = new Set<string>([page.id]);
   let parentId = page.parentId;
   while (parentId !== null) {
+    if (visited.has(parentId)) break; // 순환 — 무한 루프 방지
     const parent = byId.get(parentId);
     if (!parent) break;
+    visited.add(parentId);
     chain.unshift(parent);
     parentId = parent.parentId;
   }

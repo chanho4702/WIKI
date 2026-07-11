@@ -23,6 +23,8 @@ export function PageEditPage() {
   // 수정 모드는 기존 내용을 불러온 뒤에 입력 가능
   const [ready, setReady] = useState(!isEdit);
   const [notFound, setNotFound] = useState(false);
+  // 수정 모드에서 로드한 페이지의 실제 spaceId (URL 불일치 가드용)
+  const [pageSpaceId, setPageSpaceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isEdit || !pageId) return;
@@ -32,6 +34,7 @@ export function PageEditPage() {
       } else {
         setTitle(page.title);
         setBody(page.body);
+        setPageSpaceId(page.spaceId);
       }
       setReady(true);
     });
@@ -46,6 +49,10 @@ export function PageEditPage() {
   }
   if (notFound) {
     return <p>페이지를 찾을 수 없습니다</p>;
+  }
+  if (isEdit && pageId && pageSpaceId !== null && pageSpaceId !== spaceId) {
+    // 잘못된 스페이스 URL — 페이지가 속한 스페이스의 편집 URL로 redirect (PageViewPage와 동일 패턴)
+    return <Navigate to={`/spaces/${pageSpaceId}/pages/${pageId}/edit`} replace />;
   }
 
   const handleSave = async () => {
