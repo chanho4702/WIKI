@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Navigate, Outlet, useNavigate, useParams } from "react-router";
 import { Avatar, Select, Spinner } from "@chanho/react";
 import type { Page, Space, User } from "../store/types";
@@ -12,9 +12,13 @@ export interface WikiLayoutProps {
   onSpacesChanged: () => void | Promise<void>;
 }
 
-/** Outlet으로 하위 라우트에 전달하는 컨텍스트 (SpaceIndexPage가 사용) */
+/** Outlet으로 하위 라우트에 전달하는 컨텍스트 */
 export interface WikiOutletContext {
   pages: Page[] | null;
+  /** 현재 스페이스 (Breadcrumbs의 스페이스 이름 등) */
+  space: Space;
+  /** 페이지 생성/수정/삭제 후 사이드바 트리를 다시 로드한다 */
+  reloadPages: () => Promise<void>;
 }
 
 export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
@@ -34,6 +38,11 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
     if (!currentId) return;
     setPages(null);
     void listPages(currentId).then(setPages);
+  }, [currentId]);
+
+  const reloadPages = useCallback(async () => {
+    if (!currentId) return;
+    setPages(await listPages(currentId));
   }, [currentId]);
 
   if (!current) {
@@ -66,7 +75,7 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
       <div className="wiki-main">
         <header className="wiki-header">{me ? <Avatar name={me.name} size="small" /> : null}</header>
         <main className="wiki-content">
-          <Outlet context={{ pages } satisfies WikiOutletContext} />
+          <Outlet context={{ pages, space: current, reloadPages } satisfies WikiOutletContext} />
         </main>
       </div>
     </div>

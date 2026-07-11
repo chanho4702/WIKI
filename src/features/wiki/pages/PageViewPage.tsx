@@ -1,13 +1,46 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
-import { Spinner } from "@chanho/react";
-import type { Page } from "../store/types";
-import { getPage } from "../store/wikiStore";
+import { Link, Navigate, useNavigate, useOutletContext, useParams } from "react-router";
+import { Avatar, Button, Spinner, useToast } from "@chanho/react";
+import type { Page, User } from "../store/types";
+import { deletePage, getPage, listUsers } from "../store/wikiStore";
+import type { WikiOutletContext } from "../components/WikiLayout";
+import { MarkdownView } from "../components/MarkdownView";
+
+/** 수정일 표기: 2026-07-10T10:00:00.000Z → "2026년 7월 10일" */
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+/** parentId 체인을 따라 조상 페이지를 루트→직계 부모 순서로 반환 */
+function ancestorsOf(page: Page, pages: Page[]): Page[] {
+  const byId = new Map(pages.map((p) => [p.id, p]));
+  const chain: Page[] = [];
+  let parentId = page.parentId;
+  while (parentId !== null) {
+    const parent = byId.get(parentId);
+    if (!parent) break;
+    chain.unshift(parent);
+    parentId = parent.parentId;
+  }
+  return chain;
+}
 
 export function PageViewPage() {
-  const { pageId } = useParams();
+  const { spaceId, pageId } = useParams();
+  const { pages, space, reloadPages } = useOutletContext<WikiOutletContext>();
+  const navigate = useNavigate();
+  const toast = useToast();
   // undefined = 로딩 중, null = 없음
   const [page, setPage] = useState<Page | null | undefined>(undefined);
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    void listUsers().then(setUsers);
+  }, []);
 
   useEffect(() => {
     if (!pageId) return;
@@ -15,16 +48,73 @@ export function PageViewPage() {
     void getPage(pageId).then(setPage);
   }, [pageId]);
 
-  if (page === undefined) {
+  if (page === undefined || pages === null) {
     return <Spinner label="페이지 로딩 중" />;
   }
   if (page === null) {
     return <p>페이지를 찾을 수 없습니다</p>;
   }
+  if (page.spaceId !== spaceId) {
+    // 잘못된 스페이스 URL — 페이지가 속한 스페이스로 redirect (W1 최종리뷰 인계 ①)
+    return <Navigate to={`/spaces/${page.spaceId}/pages/${page.id}`} replace />;
+  }
+
+  const ancestors = ancestorsOf(page, pages);
+  const editor = users.find((u) => u.id === page.updatedBy);
+
+  const handleDelete = async () => {
+    try {
+      await deletePage(page.id);
+      toast({ title: `"${page.title}" 페이지를 삭제했습니다`, appearance: "success" });
+      await reloadPages();
+      navigate(
+        page.parentId ? `/spaces/${space.id}/pages/${page.parentId}` : `/spaces/${space.id}`,
+      );
+    } catch (error) {
+      toast({
+        title: "삭제 실패",
+        description: error instanceof Error ? error.message : String(error),
+        appearance: "danger",
+      });
+    }
+  };
+
   return (
     <article className="page-view">
+      <div className="page-view-top">
+        <nav className="page-breadcrumbs" aria-label="브레드크럼">
+          <ol>
+            <li>
+              <Link to={`/spaces/${space.id}`}>{space.name}</Link>
+            </li>
+            {ancestors.map((ancestor) => (
+              <li key={ancestor.id}>
+                <Link to={`/spaces/${space.id}/pages/${ancestor.id}`}>{ancestor.title}</Link>
+              </li>
+            ))}
+            <li aria-current="page">{page.title}</li>
+          </ol>
+        </nav>
+        <div className="page-view-actions">
+          <Link className="page-view-edit-link" to={`/spaces/${space.id}/pages/${page.id}/edit`}>
+            편집
+          </Link>
+          <Button variant="danger" size="small" onClick={handleDelete}>
+            삭제
+          </Button>
+        </div>
+      </div>
       <h1>{page.title}</h1>
-      <p className="page-view-stub">본문 렌더링은 W2에서 구현됩니다.</p>
+      <div className="page-view-meta">
+        {editor ? (
+          <>
+            <Avatar name={editor.name} size="small" />
+            <span>{editor.name}</span>
+          </>
+        ) : null}
+        <span>{formatDate(page.updatedAt)} 수정</span>
+      </div>
+      <MarkdownView markdown={page.body} />
     </article>
   );
 }

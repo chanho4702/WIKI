@@ -160,16 +160,77 @@ body {
   font-size: var(--chanho-font-size-200);
 }
 
-/* ── 페이지 보기 스텁 (W1 — 본문 렌더는 W2) ────────────── */
+/* ── 페이지 보기 (W2) ─────────────────────────────────── */
 
 .page-view h1 {
-  margin: 0 0 var(--chanho-space-200);
-  font-size: var(--chanho-font-size-400);
+  margin: 0 0 var(--chanho-space-100);
+  font-size: var(--chanho-font-size-600);
+  line-height: var(--chanho-font-lineHeight-600);
 }
 
-.page-view-stub {
+.page-view-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-200);
+  margin-bottom: var(--chanho-space-200);
+}
+
+.page-breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--chanho-space-50);
   margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--chanho-font-size-200);
   color: var(--chanho-color-text-subtle);
+}
+
+.page-breadcrumbs li + li::before {
+  content: "/";
+  margin-right: var(--chanho-space-50);
+  color: var(--chanho-color-text-subtle);
+}
+
+.page-breadcrumbs a {
+  color: var(--chanho-color-text-subtle);
+  text-decoration: none;
+}
+
+.page-breadcrumbs a:hover {
+  color: var(--chanho-color-text-brand);
+  text-decoration: underline;
+}
+
+.page-view-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  flex-shrink: 0;
+}
+
+.page-view-edit-link {
+  padding: var(--chanho-space-50) var(--chanho-space-150);
+  border-radius: var(--chanho-radius-medium);
+  font-size: var(--chanho-font-size-200);
+  color: var(--chanho-color-text-default);
+  text-decoration: none;
+  background: var(--chanho-color-background-neutral);
+}
+
+.page-view-edit-link:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.page-view-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  margin-bottom: var(--chanho-space-300);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-200);
 }
 
 /* ── 마크다운 본문 (.markdown-body — MarkdownView 전용 스코프) ── */

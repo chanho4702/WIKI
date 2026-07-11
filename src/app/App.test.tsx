@@ -1,28 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router";
-import { ToastProvider } from "@chanho/react";
-import { App } from "./App";
+import { renderApp } from "./testUtils";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
 import { MOCK_USERS } from "../mock/users";
-
-/** 현재 pathname을 노출하는 테스트 프로브 */
-function LocationProbe() {
-  const location = useLocation();
-  return <div data-testid="location">{location.pathname}</div>;
-}
-
-function renderApp(initialPath = "/") {
-  return render(
-    <ToastProvider>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <App />
-        <LocationProbe />
-      </MemoryRouter>
-    </ToastProvider>,
-  );
-}
 
 beforeEach(() => {
   localStorage.clear();
