@@ -5,6 +5,8 @@ import type { Page } from "../store/types";
 export interface PageTreeProps {
   spaceId: string;
   pages: Page[];
+  /** true면 접힘 상태를 무시하고 전부 펼친다(검색 중) — 접기 토글도 숨긴다 */
+  forceExpand?: boolean;
 }
 
 interface TreeNode {
@@ -29,7 +31,7 @@ function buildTree(pages: Page[]): TreeNode[] {
 }
 
 /** 접이식 페이지 트리 — 기본 전부 펼침. 항목마다 하위 페이지 추가 액션(상시 노출). */
-export function PageTree({ spaceId, pages }: PageTreeProps) {
+export function PageTree({ spaceId, pages, forceExpand = false }: PageTreeProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const roots = buildTree(pages);
@@ -46,11 +48,11 @@ export function PageTree({ spaceId, pages }: PageTreeProps) {
   const renderNodes = (nodes: TreeNode[]) => (
     <ul className="page-tree-list">
       {nodes.map(({ page, children }) => {
-        const isCollapsed = collapsed.has(page.id);
+        const isCollapsed = !forceExpand && collapsed.has(page.id);
         return (
           <li key={page.id}>
             <div className="page-tree-row">
-              {children.length > 0 ? (
+              {children.length > 0 && !forceExpand ? (
                 <button
                   type="button"
                   className="page-tree-toggle"

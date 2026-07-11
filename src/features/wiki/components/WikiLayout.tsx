@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate, Outlet, useNavigate, useParams } from "react-router";
-import { Avatar, Button, Select, Spinner } from "@chanho/react";
+import { Avatar, Button, Select, Spinner, TextField } from "@chanho/react";
 import type { Page, Space, User } from "../store/types";
 import { getCurrentUser, listPages } from "../store/wikiStore";
 import { PageTree } from "./PageTree";
 import { SpaceCreateModal } from "./SpaceCreateModal";
+import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
 
 export interface WikiLayoutProps {
   spaces: Space[];
@@ -26,6 +27,7 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   const navigate = useNavigate();
   const [me, setMe] = useState<User | null>(null);
   const [pages, setPages] = useState<Page[] | null>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     void getCurrentUser().then(setMe);
@@ -37,6 +39,7 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   useEffect(() => {
     if (!currentId) return;
     setPages(null);
+    setQuery(""); // 스페이스 전환 시 검색 초기화
     void listPages(currentId).then(setPages);
   }, [currentId]);
 
@@ -50,6 +53,10 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
     return <Navigate to={`/spaces/${spaces[0].id}`} replace />;
   }
 
+  const searching = query.trim().length > 0;
+  // 검색어가 비어 있으면 원본 배열 그대로 (원상복귀). Outlet context에는 항상 전체 pages를 준다
+  const visiblePages = pages === null ? null : filterPagesWithAncestors(pages, query);
+
   return (
     <div className="wiki-layout">
       <aside className="wiki-sidebar">
@@ -60,10 +67,18 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
           value={current.id}
           onValueChange={(id) => navigate(`/spaces/${id}`)}
         />
-        {pages === null ? (
+        <TextField
+          label="페이지 검색"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="제목으로 검색"
+        />
+        {visiblePages === null ? (
           <Spinner size="small" label="페이지 트리 로딩 중" />
+        ) : searching && visiblePages.length === 0 ? (
+          <p className="page-tree-empty">검색 결과 없음</p>
         ) : (
-          <PageTree spaceId={current.id} pages={pages} />
+          <PageTree spaceId={current.id} pages={visiblePages} forceExpand={searching} />
         )}
         <Button variant="subtle" onClick={() => navigate(`/spaces/${current.id}/pages/new`)}>
           새 페이지
