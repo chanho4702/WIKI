@@ -171,3 +171,99 @@ body {
   margin: 0;
   color: var(--chanho-color-text-subtle);
 }
+
+/* ── 마크다운 본문 (.markdown-body — MarkdownView 전용 스코프) ── */
+
+.markdown-body {
+  font-size: var(--chanho-font-size-300);
+  line-height: var(--chanho-font-lineHeight-400);
+  color: var(--chanho-color-text-default);
+}
+
+.markdown-body h1 {
+  margin: var(--chanho-space-400) 0 var(--chanho-space-200);
+  font-size: var(--chanho-font-size-500);
+  line-height: var(--chanho-font-lineHeight-500);
+}
+
+.markdown-body h2 {
+  margin: var(--chanho-space-300) 0 var(--chanho-space-150);
+  font-size: var(--chanho-font-size-400);
+  line-height: var(--chanho-font-lineHeight-400);
+}
+
+.markdown-body h3 {
+  margin: var(--chanho-space-300) 0 var(--chanho-space-100);
+  font-size: var(--chanho-font-size-300);
+}
+
+.markdown-body h1:first-child,
+.markdown-body h2:first-child,
+.markdown-body h3:first-child {
+  margin-top: 0;
+}
+
+.markdown-body p {
+  margin: 0 0 var(--chanho-space-200);
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0 0 var(--chanho-space-200);
+  padding-left: var(--chanho-space-400);
+}
+
+.markdown-body li {
+  margin-bottom: var(--chanho-space-50);
+}
+
+.markdown-body code {
+  /* mono 폰트 토큰이 디자인 시스템에 없어 표준 스택 사용 (Global Constraints 예외) */
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Courier New", monospace;
+  font-size: var(--chanho-font-size-200);
+  padding: var(--chanho-space-25) var(--chanho-space-50);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-neutral);
+}
+
+.markdown-body pre {
+  margin: 0 0 var(--chanho-space-200);
+  padding: var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-subtle);
+  overflow-x: auto;
+}
+
+.markdown-body pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.markdown-body table {
+  margin: 0 0 var(--chanho-space-200);
+  border-collapse: collapse;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: var(--chanho-space-100) var(--chanho-space-150);
+  border: 1px solid var(--chanho-color-border-default);
+  text-align: left;
+}
+
+.markdown-body th {
+  background: var(--chanho-color-background-subtle);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.markdown-body blockquote {
+  margin: 0 0 var(--chanho-space-200);
+  padding: var(--chanho-space-100) var(--chanho-space-200);
+  border-left: 3px solid var(--chanho-color-border-default);
+  color: var(--chanho-color-text-subtle);
+}
+
+.markdown-body a {
+  color: var(--chanho-color-text-brand);
+}

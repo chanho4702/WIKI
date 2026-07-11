@@ -14,7 +14,9 @@
     "@chanho/tokens": "file:../design-system/artifacts/chanho-tokens-0.1.0.tgz",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router": "^7.0.0"
+    "react-markdown": "^10.1.0",
+    "react-router": "^7.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.0",
