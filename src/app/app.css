@@ -4,3 +4,170 @@ body {
   color: var(--chanho-color-text-default);
   background: var(--chanho-color-background-default);
 }
+
+.wiki-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.wiki-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-300);
+  width: 260px;
+  flex-shrink: 0;
+  padding: var(--chanho-space-300) var(--chanho-space-200);
+  background: var(--chanho-color-background-subtle);
+  border-right: 1px solid var(--chanho-color-border-default);
+}
+
+.wiki-sidebar-brand {
+  font-size: var(--chanho-font-size-400);
+  font-weight: var(--chanho-font-weight-bold);
+  color: var(--chanho-color-text-brand);
+}
+
+.wiki-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wiki-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 48px;
+  padding: var(--chanho-space-100) var(--chanho-space-300);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
+
+.wiki-content {
+  padding: var(--chanho-space-300);
+}
+
+.app-loading,
+.empty-spaces,
+.empty-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--chanho-space-200);
+}
+
+.app-loading,
+.empty-spaces {
+  min-height: 100vh;
+}
+
+.empty-pages {
+  padding: var(--chanho-space-600) 0;
+}
+
+.empty-spaces p,
+.empty-pages p {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+}
+
+.empty-pages h2 {
+  margin: 0;
+}
+
+.space-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+
+/* ── 페이지 트리 ────────────────────────────────────────── */
+
+.page-tree {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.page-tree-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 중첩 목록은 들여쓰기 */
+.page-tree-list .page-tree-list {
+  padding-left: var(--chanho-space-200);
+}
+
+.page-tree-row {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-50);
+}
+
+.page-tree-toggle {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--chanho-radius-medium);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.page-tree-toggle:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.page-tree-toggle-spacer {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.page-tree-row a {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: var(--chanho-space-50) var(--chanho-space-100);
+  border-radius: var(--chanho-radius-medium);
+  color: var(--chanho-color-text-default);
+  text-decoration: none;
+  font-size: var(--chanho-font-size-200);
+}
+
+.page-tree-row a:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.page-tree-row a.active {
+  background: var(--chanho-color-background-brand-subtle);
+  color: var(--chanho-color-text-brand);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.page-tree-empty {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-200);
+}
+
+/* ── 페이지 보기 스텁 (W1 — 본문 렌더는 W2) ────────────── */
+
+.page-view h1 {
+  margin: 0 0 var(--chanho-space-200);
+  font-size: var(--chanho-font-size-400);
+}
+
+.page-view-stub {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+}
