@@ -60,8 +60,8 @@ describe("W3 이월 정리", () => {
     renderApp("/spaces/sp1/pages/pgA");
     // 가드가 없으면 ancestorsOf가 무한 루프에 빠져 이 시점에 도달하지 못한다
     expect(await screen.findByRole("heading", { level: 1, name: "순환 A" })).toBeInTheDocument();
-    // 조상 체인은 순환을 만나기 전(pgB)까지만 브레드크럼에 나타난다
-    const crumbs = screen.getByRole("navigation", { name: "브레드크럼" });
+    // 조상 체인은 순환을 만나기 전(pgB)까지만 브레드크럼(현재 위치)에 나타난다
+    const crumbs = screen.getByRole("navigation", { name: "현재 위치" });
     expect(within(crumbs).getByRole("link", { name: "순환 B" })).toBeInTheDocument();
   });
 });

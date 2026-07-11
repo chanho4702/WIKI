@@ -1,5 +1,5 @@
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
-import { Button, Spinner } from "@chanho/react";
+import { EmptyState, Spinner } from "@chanho/react";
 import type { WikiOutletContext } from "../components/WikiLayout";
 
 /** /spaces/:spaceId index — 첫 루트 페이지로 redirect, 페이지 0개면 첫 페이지 만들기 EmptyState */
@@ -17,9 +17,14 @@ export function SpaceIndexPage() {
   if (roots.length === 0) {
     return (
       <div className="empty-pages">
-        <h2>아직 페이지가 없습니다</h2>
-        <p>첫 페이지를 만들어 위키를 시작하세요.</p>
-        <Button onClick={() => navigate(`/spaces/${spaceId}/pages/new`)}>첫 페이지 만들기</Button>
+        <EmptyState
+          title="아직 페이지가 없습니다"
+          description="첫 페이지를 만들어 위키를 시작하세요."
+          primaryAction={{
+            label: "첫 페이지 만들기",
+            onClick: () => navigate(`/spaces/${spaceId}/pages/new`),
+          }}
+        />
       </div>
     );
   }

@@ -14,6 +14,42 @@ interface TreeNode {
   children: TreeNode[];
 }
 
+/** 접기/펼치기 토글 글리프 — 접힘 시 오른쪽, 펼침 시 CSS로 90도 회전. */
+function ChevronIcon() {
+  return (
+    <svg
+      className="page-tree-toggle-icon"
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M4.5 2.5L8 6l-3.5 3.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** 하위 페이지 추가 글리프. */
+function PlusIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path
+        d="M6 2.5v7M2.5 6h7"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 /** parentId 인접 리스트 → 트리. 형제는 position 오름차순. */
 function buildTree(pages: Page[]): TreeNode[] {
   const byParent = new Map<string | null, Page[]>();
@@ -30,7 +66,7 @@ function buildTree(pages: Page[]): TreeNode[] {
   return toNodes(null);
 }
 
-/** 접이식 페이지 트리 — 기본 전부 펼침. 항목마다 하위 페이지 추가 액션(상시 노출). */
+/** 접이식 페이지 트리 — 기본 전부 펼침. 항목마다 하위 페이지 추가 액션(hover/focus 시 노출). */
 export function PageTree({ spaceId, pages, forceExpand = false }: PageTreeProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
@@ -62,7 +98,7 @@ export function PageTree({ spaceId, pages, forceExpand = false }: PageTreeProps)
                   }
                   onClick={() => toggle(page.id)}
                 >
-                  {isCollapsed ? "▸" : "▾"}
+                  <ChevronIcon />
                 </button>
               ) : (
                 <span className="page-tree-toggle-spacer" aria-hidden="true" />
@@ -75,7 +111,7 @@ export function PageTree({ spaceId, pages, forceExpand = false }: PageTreeProps)
                 aria-label={`${page.title} 하위 페이지 추가`}
                 onClick={() => navigate(`/spaces/${spaceId}/pages/new?parent=${page.id}`)}
               >
-                ＋
+                <PlusIcon />
               </button>
             </div>
             {children.length > 0 && !isCollapsed ? renderNodes(children) : null}

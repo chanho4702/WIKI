@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate, useOutletContext, useParams } from "react-router";
-import { Avatar, Button, Spinner, useToast } from "@chanho/react";
+import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
+import { Avatar, Button, PageHeader, Spinner, useToast } from "@chanho/react";
+import type { BreadcrumbItem } from "@chanho/react";
 import type { Page, User } from "../store/types";
 import { deletePage, getPage, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/WikiLayout";
@@ -67,6 +68,13 @@ export function PageViewPage() {
   const ancestors = ancestorsOf(page, pages);
   const editor = users.find((u) => u.id === page.updatedBy);
 
+  // 경로: 스페이스 → 조상들 → 현재 페이지(href 없음 = 현재 위치)
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: space.name, href: `/spaces/${space.id}` },
+    ...ancestors.map((a) => ({ label: a.title, href: `/spaces/${space.id}/pages/${a.id}` })),
+    { label: page.title },
+  ];
+
   const handleDelete = async () => {
     try {
       await deletePage(page.id);
@@ -86,38 +94,32 @@ export function PageViewPage() {
 
   return (
     <article className="page-view">
-      <div className="page-view-top">
-        <nav className="page-breadcrumbs" aria-label="브레드크럼">
-          <ol>
-            <li>
-              <Link to={`/spaces/${space.id}`}>{space.name}</Link>
-            </li>
-            {ancestors.map((ancestor) => (
-              <li key={ancestor.id}>
-                <Link to={`/spaces/${space.id}/pages/${ancestor.id}`}>{ancestor.title}</Link>
-              </li>
-            ))}
-            <li aria-current="page">{page.title}</li>
-          </ol>
-        </nav>
-        <div className="page-view-actions">
-          <Link className="page-view-edit-link" to={`/spaces/${space.id}/pages/${page.id}/edit`}>
-            편집
-          </Link>
-          <HistoryModal
-            page={page}
-            users={users}
-            onRestored={async (restored) => {
-              setPage(restored); // 재조회 없이 반환 Page로 즉시 갱신
-              await reloadPages(); // 제목이 복원된 경우 사이드바 트리 반영
-            }}
-          />
-          <Button variant="danger" size="small" onClick={handleDelete}>
-            삭제
-          </Button>
-        </div>
-      </div>
-      <h1>{page.title}</h1>
+      <PageHeader
+        className="page-view-header"
+        breadcrumbs={breadcrumbs}
+        title={page.title}
+        actions={
+          <>
+            <Button
+              size="small"
+              onClick={() => navigate(`/spaces/${space.id}/pages/${page.id}/edit`)}
+            >
+              편집
+            </Button>
+            <HistoryModal
+              page={page}
+              users={users}
+              onRestored={async (restored) => {
+                setPage(restored); // 재조회 없이 반환 Page로 즉시 갱신
+                await reloadPages(); // 제목이 복원된 경우 사이드바 트리 반영
+              }}
+            />
+            <Button variant="danger" size="small" onClick={handleDelete}>
+              삭제
+            </Button>
+          </>
+        }
+      />
       <div className="page-view-meta">
         {editor ? (
           <>

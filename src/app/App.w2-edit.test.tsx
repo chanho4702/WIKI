@@ -15,7 +15,7 @@ describe("W2 페이지 편집·생성", () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg2");
     await screen.findByRole("heading", { level: 1, name: "팀 규칙" });
-    await user.click(screen.getByRole("link", { name: "편집" }));
+    await user.click(screen.getByRole("button", { name: "편집" }));
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg2/edit");
     });

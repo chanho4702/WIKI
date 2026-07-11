@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Avatar, Button, Spinner, TextArea, useToast } from "@chanho/react";
+import { Avatar, Button, Comment as CommentBlock, Spinner, TextArea, useToast } from "@chanho/react";
 import type { Comment, User } from "../store/types";
 import { addComment, listComments } from "../store/wikiStore";
 
@@ -53,17 +53,14 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
     <section className="comment-section" aria-label="코멘트">
       <h2 className="comment-section-title">코멘트 ({comments.length})</h2>
       {comments.map((comment) => (
-        <div key={comment.id} className="comment-item">
-          <Avatar name={userName(comment.authorId)} size="small" />
-          <div>
-            <p className="comment-meta">
-              <strong>{userName(comment.authorId)}</strong> · {formatDateTime(comment.createdAt)}
-            </p>
-            <p className="comment-body" data-testid="comment-body">
-              {comment.body}
-            </p>
-          </div>
-        </div>
+        <CommentBlock
+          key={comment.id}
+          author={userName(comment.authorId)}
+          avatar={<Avatar name={userName(comment.authorId)} size="small" />}
+          time={formatDateTime(comment.createdAt)}
+        >
+          <span data-testid="comment-body">{comment.body}</span>
+        </CommentBlock>
       ))}
       {comments.length === 0 ? <p className="comment-empty">아직 코멘트가 없습니다</p> : null}
       <form className="comment-form" onSubmit={handleSubmit}>

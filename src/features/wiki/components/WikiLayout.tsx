@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate, Outlet, useNavigate, useParams } from "react-router";
-import { Avatar, Button, Select, Spinner, TextField } from "@chanho/react";
+import { Avatar, Button, EmptyState, Select, Spinner, Switch, TextField, TopBar } from "@chanho/react";
 import type { Page, Space, User } from "../store/types";
 import { getCurrentUser, listPages } from "../store/wikiStore";
+import { useTheme } from "../../../app/theme";
 import { PageTree } from "./PageTree";
 import { SpaceCreateModal } from "./SpaceCreateModal";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
@@ -25,6 +26,7 @@ export interface WikiOutletContext {
 export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   const { spaceId } = useParams();
   const navigate = useNavigate();
+  const { theme, toggle } = useTheme();
   const [me, setMe] = useState<User | null>(null);
   const [pages, setPages] = useState<Page[] | null>(null);
   const [query, setQuery] = useState("");
@@ -59,39 +61,50 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
 
   return (
     <div className="wiki-layout">
-      <aside className="wiki-sidebar">
-        <div className="wiki-sidebar-brand">WIKI</div>
-        <Select
-          label="스페이스"
-          options={spaces.map((s) => ({ value: s.id, label: `${s.name} (${s.key})` }))}
-          value={current.id}
-          onValueChange={(id) => navigate(`/spaces/${id}`)}
-        />
-        <TextField
-          label="페이지 검색"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="제목으로 검색"
-        />
-        {visiblePages === null ? (
-          <Spinner size="small" label="페이지 트리 로딩 중" />
-        ) : searching && visiblePages.length === 0 ? (
-          <p className="page-tree-empty">검색 결과 없음</p>
-        ) : (
-          <PageTree spaceId={current.id} pages={visiblePages} forceExpand={searching} />
-        )}
-        <Button variant="subtle" onClick={() => navigate(`/spaces/${current.id}/pages/new`)}>
-          새 페이지
-        </Button>
-        <SpaceCreateModal
-          onCreated={async (space) => {
-            await onSpacesChanged();
-            navigate(`/spaces/${space.id}`);
-          }}
-        />
-      </aside>
-      <div className="wiki-main">
-        <header className="wiki-header">{me ? <Avatar name={me.name} size="small" /> : null}</header>
+      <TopBar
+        brand={<span className="wiki-brand">WIKI</span>}
+        actions={
+          <>
+            <Switch
+              label="다크 모드"
+              checked={theme === "dark"}
+              onCheckedChange={toggle}
+            />
+            {me ? <Avatar name={me.name} size="small" /> : null}
+          </>
+        }
+      />
+      <div className="wiki-body">
+        <aside className="wiki-sidebar">
+          <Select
+            label="스페이스"
+            options={spaces.map((s) => ({ value: s.id, label: `${s.name} (${s.key})` }))}
+            value={current.id}
+            onValueChange={(id) => navigate(`/spaces/${id}`)}
+          />
+          <TextField
+            label="페이지 검색"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="제목으로 검색"
+          />
+          {visiblePages === null ? (
+            <Spinner size="small" label="페이지 트리 로딩 중" />
+          ) : searching && visiblePages.length === 0 ? (
+            <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
+          ) : (
+            <PageTree spaceId={current.id} pages={visiblePages} forceExpand={searching} />
+          )}
+          <Button variant="subtle" onClick={() => navigate(`/spaces/${current.id}/pages/new`)}>
+            새 페이지
+          </Button>
+          <SpaceCreateModal
+            onCreated={async (space) => {
+              await onSpacesChanged();
+              navigate(`/spaces/${space.id}`);
+            }}
+          />
+        </aside>
         <main className="wiki-content">
           <Outlet context={{ pages, space: current, reloadPages } satisfies WikiOutletContext} />
         </main>

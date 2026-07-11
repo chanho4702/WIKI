@@ -32,29 +32,32 @@ describe("W2 페이지 보기", () => {
     const metaEditorName = screen.getAllByText("이서연").find((el) => !commentRegion.contains(el));
     expect(metaEditorName).toBeInTheDocument();
     expect(screen.getByText(/2026년 7월 10일 수정/)).toBeInTheDocument();
-    // 편집 링크 존재 (라우트 연결은 Task 3)
-    expect(screen.getByRole("link", { name: "편집" })).toHaveAttribute(
-      "href",
-      "/spaces/sp1/pages/pg1/edit",
-    );
+    // 편집은 DS PageHeader actions의 primary Button (라우팅은 useNavigate onClick — App.w2-edit에서 검증)
+    expect(screen.getByRole("button", { name: "편집" })).toBeInTheDocument();
     // 우상단 액션 — 히스토리 버튼 (W3에서 추가됨)
     expect(screen.getByRole("button", { name: "히스토리" })).toBeInTheDocument();
   });
 
-  it("깊이 3 페이지의 Breadcrumbs가 스페이스/조상 경로를 보여주고 조상 클릭 시 이동한다", async () => {
-    const user = userEvent.setup();
+  it("깊이 3 페이지의 Breadcrumbs가 스페이스/조상 경로를 링크로 보여주고 현재 페이지는 링크가 아니다", async () => {
     renderApp("/spaces/sp1/pages/pg5"); // pg5(로컬 DB 설정) ← pg3(개발 환경 설정) ← pg1(시작하기)
-    const crumbs = await screen.findByRole("navigation", { name: "브레드크럼" });
-    expect(within(crumbs).getByRole("link", { name: "개발 위키" })).toBeInTheDocument();
-    expect(within(crumbs).getByRole("link", { name: "시작하기" })).toBeInTheDocument();
-    expect(within(crumbs).getByRole("link", { name: "개발 환경 설정" })).toBeInTheDocument();
+    // DS PageHeader breadcrumbs — nav aria-label "현재 위치", 항목은 href를 가진 앵커
+    const crumbs = await screen.findByRole("navigation", { name: "현재 위치" });
+    expect(within(crumbs).getByRole("link", { name: "개발 위키" })).toHaveAttribute(
+      "href",
+      "/spaces/sp1",
+    );
+    expect(within(crumbs).getByRole("link", { name: "시작하기" })).toHaveAttribute(
+      "href",
+      "/spaces/sp1/pages/pg1",
+    );
+    // 조상 링크는 해당 조상 페이지로 연결된다
+    expect(within(crumbs).getByRole("link", { name: "개발 환경 설정" })).toHaveAttribute(
+      "href",
+      "/spaces/sp1/pages/pg3",
+    );
     // 현재 페이지는 링크가 아니다
     expect(within(crumbs).queryByRole("link", { name: "로컬 DB 설정" })).not.toBeInTheDocument();
     expect(within(crumbs).getByText("로컬 DB 설정")).toBeInTheDocument();
-    await user.click(within(crumbs).getByRole("link", { name: "개발 환경 설정" }));
-    await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg3");
-    });
   });
 
   it("페이지의 spaceId와 URL의 spaceId가 다르면 올바른 스페이스 URL로 redirect한다", async () => {
