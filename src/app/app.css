@@ -361,3 +361,71 @@ body {
   display: flex;
   gap: var(--chanho-space-100);
 }
+
+/* ── 버전 히스토리 모달 (W3) ──────────────────────────── */
+
+/* Modal 기본 패널 폭(480px)을 넓힌다 — 속성 선택자로 특이도를 올려 로드 순서와 무관하게 이긴다 */
+.history-modal[role="dialog"] {
+  width: min(880px, calc(100vw - 32px));
+}
+
+.history-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--chanho-space-300);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-50);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--chanho-space-25);
+  width: 100%;
+  padding: var(--chanho-space-100) var(--chanho-space-150);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: transparent;
+  font-size: var(--chanho-font-size-200);
+  color: var(--chanho-color-text-default);
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-item:hover {
+  background: var(--chanho-color-background-neutral);
+}
+
+.history-item[aria-pressed="true"] {
+  border-color: var(--chanho-color-border-focused);
+  background: var(--chanho-color-background-brand-subtle);
+}
+
+.history-item-meta {
+  color: var(--chanho-color-text-subtle);
+}
+
+.history-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--chanho-space-200);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.history-preview h2 {
+  margin: 0;
+  font-size: var(--chanho-font-size-400);
+  line-height: var(--chanho-font-lineHeight-400);
+}

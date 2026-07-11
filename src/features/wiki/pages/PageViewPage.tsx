@@ -5,6 +5,7 @@ import type { Page, User } from "../store/types";
 import { deletePage, getPage, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/WikiLayout";
 import { MarkdownView } from "../components/MarkdownView";
+import { HistoryModal } from "../components/HistoryModal";
 
 /** 수정일 표기: 2026-07-10T10:00:00.000Z → "2026년 7월 10일" */
 function formatDate(iso: string): string {
@@ -102,6 +103,14 @@ export function PageViewPage() {
           <Link className="page-view-edit-link" to={`/spaces/${space.id}/pages/${page.id}/edit`}>
             편집
           </Link>
+          <HistoryModal
+            page={page}
+            users={users}
+            onRestored={async (restored) => {
+              setPage(restored); // 재조회 없이 반환 Page로 즉시 갱신
+              await reloadPages(); // 제목이 복원된 경우 사이드바 트리 반영
+            }}
+          />
           <Button variant="danger" size="small" onClick={handleDelete}>
             삭제
           </Button>

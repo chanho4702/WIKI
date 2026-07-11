@@ -33,8 +33,8 @@ describe("W2 페이지 보기", () => {
       "href",
       "/spaces/sp1/pages/pg1/edit",
     );
-    // W3 범위가 섞이지 않았는지 — 히스토리/코멘트 UI 없음
-    expect(screen.queryByRole("button", { name: "히스토리" })).not.toBeInTheDocument();
+    // 우상단 액션 — 히스토리 버튼 (W3에서 추가됨)
+    expect(screen.getByRole("button", { name: "히스토리" })).toBeInTheDocument();
   });
 
   it("깊이 3 페이지의 Breadcrumbs가 스페이스/조상 경로를 보여주고 조상 클릭 시 이동한다", async () => {
