@@ -328,3 +328,17 @@ body {
 .markdown-body a {
   color: var(--chanho-color-text-brand);
 }
+
+/* ── 페이지 편집 (W2) ─────────────────────────────────── */
+
+.page-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+  max-width: 880px;
+}
+
+.page-edit-actions {
+  display: flex;
+  gap: var(--chanho-space-100);
+}

@@ -7,6 +7,7 @@ import { WikiLayout } from "../features/wiki/components/WikiLayout";
 import { EmptySpaces } from "../features/wiki/components/EmptySpaces";
 import { SpaceIndexPage } from "../features/wiki/pages/SpaceIndexPage";
 import { PageViewPage } from "../features/wiki/pages/PageViewPage";
+import { PageEditPage } from "../features/wiki/pages/PageEditPage";
 
 export function App() {
   const [spaces, setSpaces] = useState<Space[] | null>(null);
@@ -38,7 +39,9 @@ export function App() {
         element={<WikiLayout spaces={spaces} onSpacesChanged={reload} />}
       >
         <Route index element={<SpaceIndexPage />} />
+        <Route path="pages/new" element={<PageEditPage />} />
         <Route path="pages/:pageId" element={<PageViewPage />} />
+        <Route path="pages/:pageId/edit" element={<PageEditPage />} />
       </Route>
       {/* "/" 포함 그 외 전부 → 첫 스페이스 (index가 첫 루트 페이지로 이어서 redirect) */}
       <Route path="*" element={<Navigate to={`/spaces/${spaces[0].id}`} replace />} />
