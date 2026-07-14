@@ -29,6 +29,10 @@ export interface AuthGateProps {
   enabled?: boolean;
 }
 
+// 모듈 레벨 상수 — 렌더마다 새 함수가 되면 아래 effect 의존성이 계속 바뀌어
+// 로그인 성공 후 refresh/me 무한 재호출 루프가 된다 (Task 3 리뷰에서 실증).
+const defaultRedirect = (url: string) => window.location.assign(url);
+
 /**
  * 로그인 게이트: 마운트 시 RT 쿠키로 silent refresh 를 시도하고,
  * 실패하면 returnTo 쿠키를 심은 뒤 Keycloak 로그인으로 보낸다(SSO 세션이
@@ -37,7 +41,7 @@ export interface AuthGateProps {
 export function AuthGate({
   children,
   client = defaultClient,
-  redirect = (url) => window.location.assign(url),
+  redirect = defaultRedirect,
   enabled = import.meta.env.PROD,
 }: AuthGateProps) {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -53,6 +57,7 @@ export function AuthGate({
         setUser(me);
         setStatus("authed");
       } else {
+        if (!active) return;
         rememberReturnTo(window.location.pathname + window.location.search);
         redirect(client.loginUrl());
       }

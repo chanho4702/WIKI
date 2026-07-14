@@ -51,6 +51,19 @@ describe("AuthGate", () => {
     expect(await screen.findByText("Alice Kim")).toBeInTheDocument();
   });
 
+  it("인증 성공 후 refresh를 반복 호출하지 않는다 (effect 재실행 루프 회귀 가드)", async () => {
+    const tryRefresh = vi.fn(async () => true);
+    render(
+      <AuthGate enabled client={stubClient({ tryRefresh })}>
+        <UserProbe />
+      </AuthGate>,
+    );
+
+    expect(await screen.findByText("Alice Kim")).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 0)); // 후속 effect 재실행 여지를 흘려보냄
+    expect(tryRefresh).toHaveBeenCalledTimes(1);
+  });
+
   it("enabled=false(dev/test)면 인증 없이 즉시 children을 렌더한다", () => {
     const redirect = vi.fn();
     render(
