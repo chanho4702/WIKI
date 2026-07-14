@@ -4,6 +4,7 @@ import { Avatar, Button, EmptyState, Select, Spinner, Switch, TextField, TopBar 
 import type { Page, Space, User } from "../store/types";
 import { getCurrentUser, listPages } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
+import { useAuth } from "../../../auth/AuthGate";
 import { PageTree } from "./PageTree";
 import { SpaceCreateModal } from "./SpaceCreateModal";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
@@ -27,6 +28,7 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   const { spaceId } = useParams();
   const navigate = useNavigate();
   const { theme, toggle } = useTheme();
+  const { user: authUser, logout } = useAuth();
   const [me, setMe] = useState<User | null>(null);
   const [pages, setPages] = useState<Page[] | null>(null);
   const [query, setQuery] = useState("");
@@ -70,6 +72,14 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
               checked={theme === "dark"}
               onCheckedChange={toggle}
             />
+            {authUser ? (
+              <>
+                <span className="wiki-auth-user">{authUser.name ?? authUser.email}</span>
+                <Button size="small" variant="ghost" onClick={() => void logout()}>
+                  로그아웃
+                </Button>
+              </>
+            ) : null}
             {me ? <Avatar name={me.name} size="small" /> : null}
           </>
         }
