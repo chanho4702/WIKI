@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
-import { Button, Spinner, Tabs, TextArea, TextField, useToast } from "@chanho/react";
+import { Button, Spinner, Tabs, TextField, useToast } from "@chanho/react";
 import { createPage, getPage, updatePage } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/WikiLayout";
 import { MarkdownView } from "../components/MarkdownView";
+import { WikiLinkTextArea } from "../components/WikiLinkTextArea";
 
 /**
  * 페이지 편집 화면 — 생성(/pages/new?parent=<id|없음>)과 수정(/pages/:pageId/edit) 공용.
@@ -102,12 +103,13 @@ export function PageEditPage() {
             value: "write",
             label: "작성",
             content: (
-              <TextArea
+              <WikiLinkTextArea
                 label="본문"
                 rows={16}
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
+                onValueChange={setBody}
                 placeholder="마크다운으로 작성하세요"
+                pages={pages ?? []}
               />
             ),
           },

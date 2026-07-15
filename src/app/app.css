@@ -480,3 +480,37 @@ body {
 .markdown-body .wiki-link-missing {
   color: var(--chanho-color-text-danger);
 }
+
+/* W4: [[ 자동완성 */
+.wiki-autocomplete {
+  position: relative;
+}
+
+.wiki-autocomplete-list {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: var(--chanho-space-50, 4px) 0;
+  list-style: none;
+  background: var(--chanho-color-background-surface);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+}
+
+.wiki-autocomplete-item {
+  display: block;
+  width: 100%;
+  padding: var(--chanho-space-100) var(--chanho-space-200);
+  border: 0;
+  background: none;
+  text-align: left;
+  color: var(--chanho-color-text-default);
+  cursor: pointer;
+}
+
+.wiki-autocomplete-item:hover,
+.wiki-autocomplete-item[aria-selected="true"] {
+  background: var(--chanho-color-background-neutral-hovered);
+}
