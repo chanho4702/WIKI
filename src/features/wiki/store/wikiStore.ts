@@ -214,6 +214,51 @@ export async function deletePage(id: string): Promise<void> {
   persist();
 }
 
+export async function movePage(
+  id: string,
+  target: { parentId: string | null; beforeId?: string | null },
+): Promise<Page> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === id);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  const parentId = target.parentId;
+  if (parentId !== null) {
+    const parent = data.pages.find((p) => p.id === parentId);
+    if (!parent) throw new Error("부모 페이지를 찾을 수 없습니다");
+    if (parent.spaceId !== page.spaceId) {
+      throw new Error("부모 페이지가 같은 스페이스에 없습니다");
+    }
+    // 순환 금지: 새 부모에서 루트까지 올라가는 경로에 자신이 있으면 자손 밑 이동이다
+    let cursor: Page | undefined = parent;
+    while (cursor) {
+      if (cursor.id === page.id) {
+        throw new Error("페이지를 자신의 하위로 이동할 수 없습니다");
+      }
+      const nextId: string | null = cursor.parentId;
+      cursor = nextId === null ? undefined : data.pages.find((p) => p.id === nextId);
+    }
+  }
+  // 대상 형제 집합(자신 제외)에 삽입 위치를 정하고 position을 1..n으로 재부여
+  const siblings = data.pages
+    .filter((p) => p.spaceId === page.spaceId && p.parentId === parentId && p.id !== page.id)
+    .sort((a, b) => a.position - b.position);
+  const beforeId = target.beforeId ?? null;
+  let insertAt = siblings.length;
+  if (beforeId !== null) {
+    const index = siblings.findIndex((p) => p.id === beforeId);
+    if (index === -1) throw new Error("기준 페이지가 대상 위치에 없습니다");
+    insertAt = index;
+  }
+  siblings.splice(insertAt, 0, page);
+  page.parentId = parentId;
+  siblings.forEach((p, i) => {
+    p.position = i + 1;
+  });
+  // 이동은 내용 변경이 아니다 — 버전 스냅샷 없음, updatedBy/updatedAt 불변
+  persist();
+  return clone(page);
+}
+
 export async function restoreVersion(pageId: string, versionId: string): Promise<Page> {
   const data = load();
   const version = data.versions.find((v) => v.id === versionId && v.pageId === pageId);
