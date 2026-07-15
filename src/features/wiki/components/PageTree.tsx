@@ -1,12 +1,28 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useToast } from "@chanho/react";
+import type { ReactNode } from "react";
 import type { Page } from "../store/types";
+import { movePage } from "../store/wikiStore";
+import { projectDrop, type FlatDropNode } from "./pageTreeDnd";
 
 export interface PageTreeProps {
   spaceId: string;
   pages: Page[];
   /** true면 접힘 상태를 무시하고 전부 펼친다(검색 중) — 접기 토글도 숨긴다 */
   forceExpand?: boolean;
+  /** 드래그로 페이지를 이동한 뒤 호출 — 주어지지 않으면 드래그 비활성 */
+  onMoved?: () => void | Promise<void>;
 }
 
 interface TreeNode {
@@ -66,11 +82,63 @@ function buildTree(pages: Page[]): TreeNode[] {
   return toNodes(null);
 }
 
-/** 접이식 페이지 트리 — 기본 전부 펼침. 항목마다 하위 페이지 추가 액션(hover/focus 시 노출). */
-export function PageTree({ spaceId, pages, forceExpand = false }: PageTreeProps) {
+/** 한 깊이당 들여쓰기 픽셀 — projectDrop의 offsetX 환산 기준 */
+const INDENT_PX = 24;
+
+interface FlatNode {
+  page: Page;
+  depth: number;
+}
+
+/** 화면에 보이는 순서대로 평탄화 — activeId의 자손은 제외(드래그 중 함께 이동하므로) */
+function flattenVisible(
+  roots: TreeNode[],
+  collapsed: Set<string>,
+  forceExpand: boolean,
+  activeId: string | null,
+): FlatNode[] {
+  const out: FlatNode[] = [];
+  const walk = (nodes: TreeNode[], depth: number) => {
+    for (const node of nodes) {
+      out.push({ page: node.page, depth });
+      const hideChildren =
+        node.page.id === activeId || (!forceExpand && collapsed.has(node.page.id));
+      if (!hideChildren) walk(node.children, depth + 1);
+    }
+  };
+  walk(roots, 0);
+  return out;
+}
+
+/**
+ * 드래그 가능한 트리 항목(li). useSortable의 attributes는 li에 role="button"을 붙여
+ * 링크/트리 시맨틱을 해치므로 listeners만 스프레드한다(포인터 드래그 전용 — 스펙 4.1).
+ */
+function SortableRow({ id, children }: { id: string; children: ReactNode }) {
+  const { setNodeRef, listeners, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? "page-tree-dragging" : undefined}
+      {...listeners}
+    >
+      {children}
+    </li>
+  );
+}
+
+export function PageTree({ spaceId, pages, forceExpand = false, onMoved }: PageTreeProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [activeId, setActiveId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const toast = useToast();
   const roots = buildTree(pages);
+  // 검색 필터 중에는 부분 트리라 위치 계산이 모호하므로 드래그를 끈다 (스펙 4.1)
+  const dragEnabled = !forceExpand && onMoved !== undefined;
+  const flat = flattenVisible(roots, collapsed, forceExpand, activeId);
+  // 클릭(네비게이션)과 드래그 구분 — 6px 이상 움직여야 드래그 시작
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const toggle = (id: string) => {
     setCollapsed((prev) => {
@@ -81,12 +149,39 @@ export function PageTree({ spaceId, pages, forceExpand = false }: PageTreeProps)
     });
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over, delta } = event;
+    setActiveId(null);
+    if (!over) return;
+    const dropNodes: FlatDropNode[] = flat.map((f) => ({
+      id: f.page.id,
+      parentId: f.page.parentId,
+      depth: f.depth,
+    }));
+    const drop = projectDrop(dropNodes, String(active.id), String(over.id), delta.x, INDENT_PX);
+    if (!drop) return;
+    try {
+      await movePage(String(active.id), drop);
+      await onMoved?.();
+    } catch (error) {
+      toast({
+        title: "페이지 이동 실패",
+        description: error instanceof Error ? error.message : String(error),
+        appearance: "danger",
+      });
+    }
+  };
+
   const renderNodes = (nodes: TreeNode[]) => (
     <ul className="page-tree-list">
       {nodes.map(({ page, children }) => {
         const isCollapsed = !forceExpand && collapsed.has(page.id);
-        return (
-          <li key={page.id}>
+        const row = (
+          <>
             <div className="page-tree-row">
               {children.length > 0 && !forceExpand ? (
                 <button
@@ -115,7 +210,14 @@ export function PageTree({ spaceId, pages, forceExpand = false }: PageTreeProps)
               </button>
             </div>
             {children.length > 0 && !isCollapsed ? renderNodes(children) : null}
-          </li>
+          </>
+        );
+        return dragEnabled ? (
+          <SortableRow key={page.id} id={page.id}>
+            {row}
+          </SortableRow>
+        ) : (
+          <li key={page.id}>{row}</li>
         );
       })}
     </ul>
@@ -126,7 +228,18 @@ export function PageTree({ spaceId, pages, forceExpand = false }: PageTreeProps)
   }
   return (
     <nav className="page-tree" aria-label="페이지 트리">
-      {renderNodes(roots)}
+      {dragEnabled ? (
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={flat.map((f) => f.page.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {renderNodes(roots)}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        renderNodes(roots)
+      )}
     </nav>
   );
 }

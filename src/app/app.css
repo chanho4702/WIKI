@@ -514,3 +514,8 @@ body {
 .wiki-autocomplete-item[aria-selected="true"] {
   background: var(--chanho-color-background-neutral-hovered);
 }
+
+/* W4: 트리 드래그 */
+.page-tree-dragging {
+  opacity: 0.5;
+}

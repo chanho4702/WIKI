@@ -103,7 +103,12 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
           ) : searching && visiblePages.length === 0 ? (
             <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
           ) : (
-            <PageTree spaceId={current.id} pages={visiblePages} forceExpand={searching} />
+            <PageTree
+              spaceId={current.id}
+              pages={visiblePages}
+              forceExpand={searching}
+              onMoved={reloadPages}
+            />
           )}
           <Button variant="subtle" onClick={() => navigate(`/spaces/${current.id}/pages/new`)}>
             새 페이지
