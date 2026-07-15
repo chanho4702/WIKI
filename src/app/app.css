@@ -427,18 +427,11 @@ body {
   gap: var(--chanho-space-100);
 }
 
-/* W4: 코멘트 답글/수정 */
+/* W4: 코멘트 수정/답글 폼 버튼 행 — 답글/수정/삭제 액션과 들여쓰기는 DS Comment의 actions/nested가 담당 */
 .comment-actions {
   display: flex;
   gap: var(--chanho-space-100);
   margin-top: var(--chanho-space-100);
-}
-
-.comment-replies {
-  margin-top: var(--chanho-space-200);
-  margin-left: var(--chanho-space-400);
-  padding-left: var(--chanho-space-200);
-  border-left: 2px solid var(--chanho-color-border-default);
 }
 
 .comment-edit {

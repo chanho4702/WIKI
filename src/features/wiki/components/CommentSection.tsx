@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Avatar, Button, Comment as CommentBlock, Spinner, TextArea, useToast } from "@chanho/react";
+import type { CommentAction } from "@chanho/react";
 import type { Comment, User } from "../store/types";
 import { addComment, deleteComment, getCurrentUser, listComments, updateComment } from "../store/wikiStore";
 
@@ -108,97 +109,99 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
   const topLevel = comments.filter((c) => c.parentId === null);
   const repliesOf = (id: string) => comments.filter((c) => c.parentId === id);
 
-  /** replies가 null이면 답글(들여쓰기 항목) — 답글 버튼과 하위 목록을 렌더하지 않는다 */
-  const renderComment = (comment: Comment, replies: Comment[] | null) => (
-    <CommentBlock
-      key={comment.id}
-      author={userName(comment.authorId)}
-      avatar={<Avatar name={userName(comment.authorId)} size="small" />}
-      time={formatDateTime(comment.createdAt) + (comment.updatedAt ? " (수정됨)" : "")}
-    >
-      {editingId === comment.id ? (
-        <div className="comment-edit">
-          <TextArea
-            label="코멘트 수정"
-            rows={2}
-            value={editDraft}
-            onChange={(e) => setEditDraft(e.target.value)}
-          />
-          <div className="comment-actions">
-            <Button size="small" onClick={handleEditSave}>
-              저장
-            </Button>
-            <Button size="small" variant="subtle" onClick={() => setEditingId(null)}>
-              취소
-            </Button>
+  /**
+   * DS Comment의 actions prop으로 하단 액션을 구성한다.
+   * replies가 null이면 답글(들여쓰기 항목) — 답글 액션을 넣지 않는다.
+   * 수정/삭제는 본인 코멘트에만, 삭제는 danger로 강조된다.
+   */
+  const actionsFor = (comment: Comment, replies: Comment[] | null): CommentAction[] => {
+    const actions: CommentAction[] = [];
+    if (replies !== null) {
+      actions.push({
+        label: "답글",
+        onClick: () => {
+          setReplyTo(comment.id);
+          setReplyDraft("");
+        },
+      });
+    }
+    if (comment.authorId === meId) {
+      actions.push({
+        label: "수정",
+        onClick: () => {
+          setEditingId(comment.id);
+          setEditDraft(comment.body);
+        },
+      });
+      actions.push({
+        label: "삭제",
+        danger: true,
+        onClick: () => void handleDelete(comment, replies?.length ?? 0),
+      });
+    }
+    return actions;
+  };
+
+  /** replies가 null이면 답글 — nested 들여쓰기로 렌더하고 하위 목록/답글 폼을 붙이지 않는다 */
+  const renderComment = (comment: Comment, replies: Comment[] | null) => {
+    const editing = editingId === comment.id;
+    return (
+      <Fragment key={comment.id}>
+        <CommentBlock
+          author={userName(comment.authorId)}
+          avatar={<Avatar name={userName(comment.authorId)} size="small" />}
+          time={formatDateTime(comment.createdAt) + (comment.updatedAt ? " (수정됨)" : "")}
+          nested={replies === null}
+          actions={editing ? undefined : actionsFor(comment, replies)}
+        >
+          {editing ? (
+            <div className="comment-edit">
+              <TextArea
+                label="코멘트 수정"
+                rows={2}
+                value={editDraft}
+                onChange={(e) => setEditDraft(e.target.value)}
+              />
+              <div className="comment-actions">
+                <Button size="small" onClick={handleEditSave}>
+                  저장
+                </Button>
+                <Button size="small" variant="subtle" onClick={() => setEditingId(null)}>
+                  취소
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <span data-testid="comment-body">{comment.body}</span>
+          )}
+        </CommentBlock>
+        {replies !== null && replies.length > 0 ? (
+          <div data-testid="comment-replies">
+            {replies.map((reply) => renderComment(reply, null))}
           </div>
-        </div>
-      ) : (
-        <>
-          <span data-testid="comment-body">{comment.body}</span>
-          <div className="comment-actions">
-            {replies !== null ? (
-              <Button
-                size="small"
-                variant="ghost"
-                onClick={() => {
-                  setReplyTo(comment.id);
-                  setReplyDraft("");
-                }}
-              >
-                답글
+        ) : null}
+        {replies !== null && replyTo === comment.id ? (
+          <form className="comment-form" onSubmit={handleReplySubmit}>
+            <TextArea
+              label="답글 작성"
+              rows={2}
+              placeholder="답글을 입력하세요"
+              value={replyDraft}
+              onChange={(e) => setReplyDraft(e.target.value)}
+            />
+            <div className="comment-actions">
+              <Button type="submit" size="small">
+                답글 남기기
               </Button>
-            ) : null}
-            {comment.authorId === meId ? (
-              <>
-                <Button
-                  size="small"
-                  variant="ghost"
-                  onClick={() => {
-                    setEditingId(comment.id);
-                    setEditDraft(comment.body);
-                  }}
-                >
-                  수정
-                </Button>
-                <Button
-                  size="small"
-                  variant="ghost"
-                  onClick={() => void handleDelete(comment, replies?.length ?? 0)}
-                >
-                  삭제
-                </Button>
-              </>
-            ) : null}
-          </div>
-        </>
-      )}
-      {replies !== null && replies.length > 0 ? (
-        <div className="comment-replies" data-testid="comment-replies">
-          {replies.map((reply) => renderComment(reply, null))}
-        </div>
-      ) : null}
-      {replies !== null && replyTo === comment.id ? (
-        <form className="comment-form" onSubmit={handleReplySubmit}>
-          <TextArea
-            label="답글 작성"
-            rows={2}
-            placeholder="답글을 입력하세요"
-            value={replyDraft}
-            onChange={(e) => setReplyDraft(e.target.value)}
-          />
-          <div className="comment-actions">
-            <Button type="submit" size="small">
-              답글 남기기
-            </Button>
-            <Button size="small" variant="subtle" onClick={() => setReplyTo(null)}>
-              취소
-            </Button>
-          </div>
-        </form>
-      ) : null}
-    </CommentBlock>
-  );
+              <Button size="small" variant="subtle" onClick={() => setReplyTo(null)}>
+                취소
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Fragment>
+    );
+  };
 
   return (
     <section className="comment-section" aria-label="코멘트">
