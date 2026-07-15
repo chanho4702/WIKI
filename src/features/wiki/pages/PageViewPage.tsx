@@ -129,7 +129,7 @@ export function PageViewPage() {
         ) : null}
         <span>{formatDate(page.updatedAt)} 수정</span>
       </div>
-      <MarkdownView markdown={page.body} />
+      <MarkdownView markdown={page.body} pages={pages} spaceId={space.id} />
       <CommentSection pageId={page.id} users={users} />
     </article>
   );

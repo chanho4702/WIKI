@@ -15,10 +15,10 @@ export function PageEditPage() {
   const parentId = searchParams.get("parent"); // 생성 모드 전용 — 없으면 루트에 생성
   const navigate = useNavigate();
   const toast = useToast();
-  const { reloadPages } = useOutletContext<WikiOutletContext>();
+  const { pages, reloadPages } = useOutletContext<WikiOutletContext>();
   const isEdit = pageId !== undefined;
 
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(() => (isEdit ? "" : (searchParams.get("title") ?? "")));
   const [body, setBody] = useState("");
   // 수정 모드는 기존 내용을 불러온 뒤에 입력 가능
   const [ready, setReady] = useState(!isEdit);
@@ -114,7 +114,7 @@ export function PageEditPage() {
           {
             value: "preview",
             label: "미리보기",
-            content: <MarkdownView markdown={body} />,
+            content: <MarkdownView markdown={body} pages={pages ?? undefined} spaceId={pages ? spaceId : undefined} />,
           },
         ]}
       />

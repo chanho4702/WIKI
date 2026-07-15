@@ -475,3 +475,8 @@ body {
 .diff-title-change {
   font-weight: var(--chanho-font-weight-semibold);
 }
+
+/* W4: 페이지 간 링크 */
+.markdown-body .wiki-link-missing {
+  color: var(--chanho-color-text-danger);
+}
