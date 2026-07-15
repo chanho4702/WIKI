@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Button, Modal, Spinner, useToast } from "@chanho/react";
+import { Button, Modal, Spinner, Tabs, useToast } from "@chanho/react";
 import type { Page, PageVersion, User } from "../store/types";
 import { listVersions, restoreVersion } from "../store/wikiStore";
+import { DiffView } from "./DiffView";
 import { MarkdownView } from "./MarkdownView";
 
 export interface HistoryModalProps {
@@ -100,7 +101,36 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
           {selected ? (
             <div className="history-preview">
               <h2>{selected.title}</h2>
-              <MarkdownView markdown={selected.body} />
+              {(() => {
+                // 직전 버전 — v1이면 없음(전체 added)
+                const previous = versions?.find((v) => v.version === selected.version - 1) ?? null;
+                return (
+                  <Tabs
+                    label="버전 미리보기"
+                    items={[
+                      {
+                        value: "content",
+                        label: "내용",
+                        content: <MarkdownView markdown={selected.body} />,
+                      },
+                      {
+                        value: "diff",
+                        label: "변경사항",
+                        content: (
+                          <>
+                            {previous && previous.title !== selected.title ? (
+                              <p className="diff-title-change">
+                                제목: {previous.title} → {selected.title}
+                              </p>
+                            ) : null}
+                            <DiffView oldText={previous?.body ?? ""} newText={selected.body} />
+                          </>
+                        ),
+                      },
+                    ]}
+                  />
+                );
+              })()}
               <Button onClick={handleRestore}>이 버전으로 복원</Button>
             </div>
           ) : null}

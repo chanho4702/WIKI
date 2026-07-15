@@ -439,3 +439,39 @@ body {
   flex-direction: column;
   gap: var(--chanho-space-100);
 }
+
+/* W4: 버전 diff */
+.diff-view {
+  margin: 0;
+  padding: var(--chanho-space-200);
+  overflow-x: auto;
+  font-size: var(--chanho-font-size-100);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+}
+
+.diff-line::before {
+  content: " ";
+  display: inline-block;
+  width: 1.2em;
+}
+
+.diff-added {
+  background: var(--chanho-color-background-success-subtle);
+}
+
+.diff-added::before {
+  content: "+";
+}
+
+.diff-removed {
+  background: var(--chanho-color-background-danger-subtle);
+}
+
+.diff-removed::before {
+  content: "-";
+}
+
+.diff-title-change {
+  font-weight: var(--chanho-font-weight-semibold);
+}
