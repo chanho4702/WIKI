@@ -426,3 +426,23 @@ body {
   align-items: flex-start;
   gap: var(--chanho-space-100);
 }
+
+/* W4: 코멘트 답글/수정 */
+.comment-actions {
+  display: flex;
+  gap: var(--chanho-space-100);
+  margin-top: var(--chanho-space-100);
+}
+
+.comment-replies {
+  margin-top: var(--chanho-space-200);
+  margin-left: var(--chanho-space-400);
+  padding-left: var(--chanho-space-200);
+  border-left: 2px solid var(--chanho-color-border-default);
+}
+
+.comment-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+}
