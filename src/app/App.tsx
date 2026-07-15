@@ -39,9 +39,9 @@ export function App() {
         element={<WikiLayout spaces={spaces} onSpacesChanged={reload} />}
       >
         <Route index element={<SpaceIndexPage />} />
-        <Route path="pages/new" element={<PageEditPage />} />
+        <Route path="pages/new" element={<PageEditPage key="new" />} />
         <Route path="pages/:pageId" element={<PageViewPage />} />
-        <Route path="pages/:pageId/edit" element={<PageEditPage />} />
+        <Route path="pages/:pageId/edit" element={<PageEditPage key="edit" />} />
       </Route>
       {/* "/" 포함 그 외 전부 → 첫 스페이스 (index가 첫 루트 페이지로 이어서 redirect) */}
       <Route path="*" element={<Navigate to={`/spaces/${spaces[0].id}`} replace />} />

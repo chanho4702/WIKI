@@ -34,4 +34,23 @@ describe("W4 [[제목]] 페이지 링크", () => {
     await user.click(link);
     expect(await screen.findByLabelText("제목")).toHaveValue("운영 런북");
   });
+
+  it("편집 화면 미리보기에서 없는 링크를 클릭하면 생성 화면으로 리마운트되어 프리필된다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg2/edit");
+    expect(await screen.findByLabelText("제목")).toHaveValue("팀 규칙");
+    const body = screen.getByLabelText("본문");
+    await user.click(body);
+    await user.type(body, "[[[[운영 런북]]");
+    expect((body as HTMLTextAreaElement).value).toContain("[[운영 런북]]");
+
+    await user.click(screen.getByRole("tab", { name: "미리보기" }));
+    const link = screen.getByRole("link", { name: "운영 런북" });
+    expect(link).toHaveClass("wiki-link-missing");
+    await user.click(link);
+
+    await user.click(screen.getByRole("tab", { name: "작성" }));
+    expect(await screen.findByLabelText("제목")).toHaveValue("운영 런북");
+    expect(screen.getByLabelText("본문")).toHaveValue("");
+  });
 });

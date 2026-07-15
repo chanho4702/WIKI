@@ -41,6 +41,16 @@ export function PageEditPage() {
     });
   }, [isEdit, pageId]);
 
+  // 같은 create 라우트 안에서 ?title=만 바뀌는 네비게이션(미리보기의 빨간 링크 클릭)도 프리필 반영
+  useEffect(() => {
+    if (isEdit) return;
+    const prefill = searchParams.get("title");
+    if (prefill !== null) {
+      setTitle(prefill);
+      setBody("");
+    }
+  }, [isEdit, searchParams]);
+
   if (!spaceId) {
     // 라우팅상 도달 불가 — 타입 좁히기용 가드
     return <Navigate to="/" replace />;
