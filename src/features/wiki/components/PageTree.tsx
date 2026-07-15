@@ -166,10 +166,20 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved }: PageT
     if (!drop) return;
     try {
       await movePage(String(active.id), drop);
-      await onMoved?.();
     } catch (error) {
       toast({
         title: "페이지 이동 실패",
+        description: error instanceof Error ? error.message : String(error),
+        appearance: "danger",
+      });
+      return;
+    }
+    // 이동은 이미 성공했으므로 리로드 실패를 이동 실패로 오표시하지 않는다
+    try {
+      await onMoved?.();
+    } catch (error) {
+      toast({
+        title: "트리 새로고침 실패",
         description: error instanceof Error ? error.message : String(error),
         appearance: "danger",
       });
