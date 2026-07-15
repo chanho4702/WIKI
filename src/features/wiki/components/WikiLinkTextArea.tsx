@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { ChangeEvent, KeyboardEvent } from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { TextArea } from "@chanho/react";
 import type { Page } from "../store/types";
 
@@ -23,10 +23,13 @@ interface ActiveQuery {
   caret: number;
 }
 
-/** 커서 앞 텍스트에서 아직 닫히지 않은 [[쿼리 를 찾는다 — 없으면 null */
+/**
+ * 커서 앞 텍스트에서 아직 닫히지 않은 가장 가까운 [[쿼리 를 찾는다 — 없으면 null.
+ * 쿼리에 [ 를 허용하지 않아 최근접 "[[" 런에 매치한다 (wikiLinks.ts의 WIKI_LINK 클래스와 일치).
+ */
 function activeLinkQuery(text: string, caret: number): ActiveQuery | null {
   const before = text.slice(0, caret);
-  const match = /\[\[([^\]\n]*)$/.exec(before);
+  const match = /\[\[([^[\]\n]*)$/.exec(before);
   if (!match) return null;
   return { start: match.index, query: match[1], caret };
 }
@@ -76,6 +79,14 @@ export function WikiLinkTextArea({
     });
   };
 
+  // 포커스가 래퍼 밖으로 완전히 나가면 드롭다운을 닫는다 — 옵션 클릭은
+  // mousedown preventDefault로 포커스가 textarea에 유지되므로 영향받지 않는다
+  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.relatedTarget === null || !wrapperRef.current?.contains(event.relatedTarget)) {
+      setActive(null);
+    }
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!open) return;
     if (event.key === "ArrowDown") {
@@ -94,7 +105,7 @@ export function WikiLinkTextArea({
   };
 
   return (
-    <div ref={wrapperRef} className="wiki-autocomplete" onKeyDown={handleKeyDown}>
+    <div ref={wrapperRef} className="wiki-autocomplete" onKeyDown={handleKeyDown} onBlur={handleBlur}>
       <TextArea
         label={label}
         rows={rows}
@@ -110,6 +121,8 @@ export function WikiLinkTextArea({
                 type="button"
                 role="option"
                 aria-selected={index === highlight}
+                // 키보드 조작은 textarea의 화살표/Enter로 하므로 Tab 순서에서 제외
+                tabIndex={-1}
                 className="wiki-autocomplete-item"
                 // mousedown에서 preventDefault — textarea 포커스를 유지한 채 삽입
                 onMouseDown={(event) => {

@@ -41,6 +41,27 @@ describe("W4 [[ 자동완성", () => {
     expect(body).toHaveValue("[[");
   });
 
+  it("포커스가 밖으로 나가면(blur) 드롭다운이 닫힌다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/new");
+    const body = await screen.findByLabelText("본문");
+    await user.type(body, "[[[[개");
+    await screen.findByRole("listbox", { name: "페이지 링크 자동완성" });
+    await user.click(screen.getByLabelText("제목"));
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("닫히지 않은 [[가 여러 개면 가장 가까운 것만 쿼리로 쓴다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/new");
+    const body = await screen.findByLabelText("본문");
+    // "[[a [[개" — 최근접 [[의 쿼리는 "개" (leftmost로 잡으면 "a [[개"가 되어 매치 없음)
+    await user.type(body, "[[[[a [[[[개");
+    await screen.findByRole("option", { name: "개발 환경 설정" });
+    await user.keyboard("{Enter}");
+    expect(body).toHaveValue("[[a [[개발 환경 설정]]");
+  });
+
   it("클릭으로도 선택할 수 있다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/new");
