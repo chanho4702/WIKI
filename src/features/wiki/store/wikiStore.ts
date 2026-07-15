@@ -15,13 +15,22 @@ function isWikiData(value: unknown): value is WikiData {
   );
 }
 
+/** 구버전 데이터 호환: W4에서 추가된 코멘트 필드(parentId/updatedAt)를 null로 채운다 */
+function normalize(data: WikiData): WikiData {
+  for (const comment of data.comments) {
+    comment.parentId ??= null;
+    comment.updatedAt ??= null;
+  }
+  return data;
+}
+
 function load(): WikiData {
   if (cache) return cache;
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
     try {
       const parsed: unknown = JSON.parse(raw);
-      if (isWikiData(parsed)) cache = parsed;
+      if (isWikiData(parsed)) cache = normalize(parsed);
       // 형태가 다르면 cache가 null로 남아 아래에서 시드로 재생성된다
     } catch {
       // 손상된 JSON — 시드로 재생성
@@ -235,7 +244,9 @@ export async function addComment(pageId: string, body: string): Promise<Comment>
     pageId,
     authorId: CURRENT_USER_ID,
     body: trimmed,
+    parentId: null,
     createdAt: new Date().toISOString(),
+    updatedAt: null,
   };
   data.comments.push(comment);
   persist();

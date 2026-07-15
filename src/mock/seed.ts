@@ -74,8 +74,8 @@ export function createSeedData(): WikiData {
   ];
 
   const comments: Comment[] = [
-    { id: "c1", pageId: "pg1", authorId: "u2", body: "온보딩에 딱 필요한 내용이네요.", createdAt: T_COMMENT_1 },
-    { id: "c2", pageId: "pg1", authorId: "u3", body: "배포 가이드 링크도 추가하면 좋겠습니다.", createdAt: T_COMMENT_2 },
+    { id: "c1", pageId: "pg1", authorId: "u2", body: "온보딩에 딱 필요한 내용이네요.", parentId: null, createdAt: T_COMMENT_1, updatedAt: null },
+    { id: "c2", pageId: "pg1", authorId: "u3", body: "배포 가이드 링크도 추가하면 좋겠습니다.", parentId: null, createdAt: T_COMMENT_2, updatedAt: null },
   ];
 
   return {

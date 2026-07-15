@@ -38,7 +38,9 @@ export interface Comment {
   pageId: string;
   authorId: string;
   body: string;
+  parentId: string | null; // null = 최상위, 값 있으면 답글 (중첩 1단 제한)
   createdAt: string;
+  updatedAt: string | null; // 수정된 적 없으면 null — "(수정됨)" 표시 근거
 }
 
 /** localStorage `wiki.v1`에 저장되는 루트 구조 */

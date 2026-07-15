@@ -31,4 +31,21 @@ describe("comments", () => {
   it("없는 페이지면 거부한다", async () => {
     await expect(addComment("없는id", "본문")).rejects.toThrow("페이지를 찾을 수 없습니다");
   });
+
+  it("구버전 데이터(parentId/updatedAt 없는 코멘트)를 load 시 null로 정규화한다", async () => {
+    localStorage.setItem(
+      "wiki.v1",
+      JSON.stringify({
+        users: [{ id: "u1", name: "김찬호" }],
+        spaces: [{ id: "sp1", key: "DEV", name: "개발 위키", createdAt: "2026-07-10T09:00:00.000Z" }],
+        pages: [{ id: "pg1", spaceId: "sp1", parentId: null, title: "시작하기", body: "", position: 1, createdBy: "u1", updatedBy: "u1", createdAt: "2026-07-10T09:00:00.000Z", updatedAt: "2026-07-10T09:00:00.000Z" }],
+        versions: [],
+        comments: [{ id: "c1", pageId: "pg1", authorId: "u1", body: "구버전 코멘트", createdAt: "2026-07-10T11:00:00.000Z" }],
+      }),
+    );
+    const comments = await listComments("pg1");
+    expect(comments).toHaveLength(1);
+    expect(comments[0].parentId).toBeNull();
+    expect(comments[0].updatedAt).toBeNull();
+  });
 });
