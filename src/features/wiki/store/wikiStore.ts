@@ -277,10 +277,21 @@ export async function listComments(pageId: string): Promise<Comment[]> {
   );
 }
 
-export async function addComment(pageId: string, body: string): Promise<Comment> {
+export async function addComment(
+  pageId: string,
+  body: string,
+  parentId?: string | null,
+): Promise<Comment> {
   const data = load();
   if (!data.pages.some((p) => p.id === pageId)) {
     throw new Error("페이지를 찾을 수 없습니다");
+  }
+  const resolvedParentId = parentId ?? null;
+  if (resolvedParentId !== null) {
+    const parent = data.comments.find((c) => c.id === resolvedParentId);
+    if (!parent) throw new Error("부모 코멘트를 찾을 수 없습니다");
+    if (parent.pageId !== pageId) throw new Error("부모 코멘트가 같은 페이지에 없습니다");
+    if (parent.parentId !== null) throw new Error("답글에는 답글을 달 수 없습니다");
   }
   const trimmed = body.trim();
   if (!trimmed) throw new Error("코멘트 내용을 입력하세요");
@@ -289,11 +300,39 @@ export async function addComment(pageId: string, body: string): Promise<Comment>
     pageId,
     authorId: CURRENT_USER_ID,
     body: trimmed,
-    parentId: null,
+    parentId: resolvedParentId,
     createdAt: new Date().toISOString(),
     updatedAt: null,
   };
   data.comments.push(comment);
   persist();
   return clone(comment);
+}
+
+export async function updateComment(id: string, body: string): Promise<Comment> {
+  const data = load();
+  const comment = data.comments.find((c) => c.id === id);
+  if (!comment) throw new Error("코멘트를 찾을 수 없습니다");
+  if (comment.authorId !== CURRENT_USER_ID) {
+    throw new Error("본인의 코멘트만 수정할 수 있습니다");
+  }
+  const trimmed = body.trim();
+  if (!trimmed) throw new Error("코멘트 내용을 입력하세요");
+  if (trimmed === comment.body) return clone(comment); // 무변경 no-op
+  comment.body = trimmed;
+  comment.updatedAt = new Date().toISOString();
+  persist();
+  return clone(comment);
+}
+
+export async function deleteComment(id: string): Promise<void> {
+  const data = load();
+  const comment = data.comments.find((c) => c.id === id);
+  if (!comment) throw new Error("코멘트를 찾을 수 없습니다");
+  if (comment.authorId !== CURRENT_USER_ID) {
+    throw new Error("본인의 코멘트만 삭제할 수 있습니다");
+  }
+  // 최상위 코멘트면 그 답글도 연쇄 삭제
+  data.comments = data.comments.filter((c) => c.id !== id && c.parentId !== id);
+  persist();
 }
