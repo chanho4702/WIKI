@@ -189,7 +189,10 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved }: PageT
   const renderNodes = (nodes: TreeNode[]) => (
     <ul className="page-tree-list">
       {nodes.map(({ page, children }) => {
-        const isCollapsed = !forceExpand && collapsed.has(page.id);
+        // 드래그 중인 노드의 자손은 임시로 접는다 (스펙 4.1) — flattenVisible의 제외와 일치,
+        // 자손 위 드롭(무효)을 시각적으로도 차단한다
+        const isCollapsed =
+          page.id === activeId || (!forceExpand && collapsed.has(page.id));
         const row = (
           <>
             <div className="page-tree-row">

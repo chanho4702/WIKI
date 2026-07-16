@@ -50,4 +50,19 @@ describe("projectDrop", () => {
   it("모르는 id면 null을 반환한다", () => {
     expect(projectDrop(NODES, "없는id", "pg1", 0, INDENT)).toBeNull();
   });
+
+  it("앞 항목이 더 깊으면 위로 스캔해 같은 깊이의 형제를 찾는다", () => {
+    // A(d0) > B(d1) > C(d2), D(d0) — D를 제자리에서 +1 들여쓰기: 앞 항목 C(d2)보다 얕은
+    // 목표 깊이 1 → 위로 스캔해 B(d1)를 만나 그 부모(A)의 자식이 된다
+    const deep: FlatDropNode[] = [
+      { id: "A", parentId: null, depth: 0 },
+      { id: "B", parentId: "A", depth: 1 },
+      { id: "C", parentId: "B", depth: 2 },
+      { id: "D", parentId: null, depth: 0 },
+    ];
+    expect(projectDrop(deep, "D", "D", INDENT, INDENT)).toEqual({
+      parentId: "A",
+      beforeId: null,
+    });
+  });
 });

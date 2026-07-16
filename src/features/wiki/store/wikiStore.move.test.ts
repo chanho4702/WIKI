@@ -69,4 +69,26 @@ describe("movePage", () => {
     expect(after?.updatedAt).toBe(before?.updatedAt);
     expect(await listVersions("pg3")).toHaveLength(1); // 시드 v1 그대로
   });
+
+  it("손상된 데이터(parentId 순환)에서도 무한 루프 없이 이동한다", async () => {
+    // pa <-> pb 순환은 앱 경로로는 못 만들지만 localStorage 직접 수정으로 가능하다
+    const now = "2026-07-10T09:00:00.000Z";
+    const pageBase = { spaceId: "sp1", body: "", createdBy: "u1", updatedBy: "u1", createdAt: now, updatedAt: now };
+    localStorage.setItem(
+      "wiki.v1",
+      JSON.stringify({
+        users: [{ id: "u1", name: "김찬호" }],
+        spaces: [{ id: "sp1", key: "DEV", name: "개발 위키", createdAt: now }],
+        pages: [
+          { ...pageBase, id: "pa", parentId: "pb", title: "순환A", position: 1 },
+          { ...pageBase, id: "pb", parentId: "pa", title: "순환B", position: 1 },
+          { ...pageBase, id: "pc", parentId: null, title: "정상", position: 1 },
+        ],
+        versions: [],
+        comments: [],
+      }),
+    );
+    const moved = await movePage("pc", { parentId: "pa" }); // 순환 조상 체인 위 — visited 가드로 종료
+    expect(moved.parentId).toBe("pa");
+  });
 });

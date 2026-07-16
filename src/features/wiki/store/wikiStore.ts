@@ -229,11 +229,15 @@ export async function movePage(
       throw new Error("부모 페이지가 같은 스페이스에 없습니다");
     }
     // 순환 금지: 새 부모에서 루트까지 올라가는 경로에 자신이 있으면 자손 밑 이동이다
+    // visited: 손상된 데이터(parentId 순환)에서도 무한 루프하지 않는다 (PageViewPage ancestorsOf와 동일 방어)
     let cursor: Page | undefined = parent;
+    const visited = new Set<string>();
     while (cursor) {
       if (cursor.id === page.id) {
         throw new Error("페이지를 자신의 하위로 이동할 수 없습니다");
       }
+      if (visited.has(cursor.id)) break;
+      visited.add(cursor.id);
       const nextId: string | null = cursor.parentId;
       cursor = nextId === null ? undefined : data.pages.find((p) => p.id === nextId);
     }
