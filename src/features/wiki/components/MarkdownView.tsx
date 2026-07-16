@@ -21,7 +21,8 @@ function WikiAnchor({
   ...rest
 }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) {
   if (href.startsWith("/")) {
-    const missing = href.includes("/pages/new?");
+    // pathname이 생성 화면일 때만 부재 링크로 표시 — 본문 중간의 우연한 substring 매치 방지
+    const missing = href.split("?")[0].endsWith("/pages/new");
     return (
       <Link to={href} className={missing ? "wiki-link-missing" : "wiki-link"}>
         {children}

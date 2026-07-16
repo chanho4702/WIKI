@@ -15,6 +15,11 @@ export interface WikiLinkTextAreaProps {
 
 const MAX_SUGGESTIONS = 8;
 
+/** [[제목]] 문법이 표현할 수 없는 제목([, ], 개행 포함)은 제안에서 제외한다 */
+function isLinkableTitle(title: string): boolean {
+  return !/[[\]\n]/.test(title);
+}
+
 interface ActiveQuery {
   /** 값 문자열에서 "[[" 가 시작하는 인덱스 */
   start: number;
@@ -55,7 +60,11 @@ export function WikiLinkTextArea({
     active === null
       ? []
       : pages
-          .filter((p) => p.title.toLowerCase().includes(active.query.trim().toLowerCase()))
+          .filter(
+            (p) =>
+              isLinkableTitle(p.title) &&
+              p.title.toLowerCase().includes(active.query.trim().toLowerCase()),
+          )
           .slice(0, MAX_SUGGESTIONS);
   const open = active !== null && suggestions.length > 0;
 

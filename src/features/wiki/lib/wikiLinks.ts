@@ -5,6 +5,14 @@ const CODE_SPLIT = /(```[\s\S]*?```|`[^`\n]*`)/;
 const WIKI_LINK = /\[\[([^[\]\n]+)\]\]/g;
 
 /**
+ * 생성 링크의 title 쿼리 인코딩 — encodeURIComponent가 남기는 괄호까지 이스케이프한다.
+ * 짝이 안 맞는 괄호가 마크다운 링크 목적지를 조기 종료시키는 것을 방지 (CommonMark).
+ */
+function encodeTitleParam(title: string): string {
+  return encodeURIComponent(title).replace(/\(/g, "%28").replace(/\)/g, "%29");
+}
+
+/**
  * [[제목]] → 마크다운 링크 치환.
  * 같은 스페이스에서 제목 정확 일치(대소문자·양끝 공백 무시, 중복이면 첫 페이지).
  * 없는 제목은 생성 화면 경로(new?title=) — MarkdownView가 danger 스타일을 입힌다.
@@ -24,7 +32,7 @@ export function resolveWikiLinks(markdown: string, pages: Page[], spaceId: strin
         const target = byTitle.get(title.toLowerCase());
         return target
           ? `[${title}](/spaces/${spaceId}/pages/${target.id})`
-          : `[${title}](/spaces/${spaceId}/pages/new?title=${encodeURIComponent(title)})`;
+          : `[${title}](/spaces/${spaceId}/pages/new?title=${encodeTitleParam(title)})`;
       });
     })
     .join("");

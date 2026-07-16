@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
-import { __resetForTest } from "../features/wiki/store/wikiStore";
+import { __resetForTest, createPage } from "../features/wiki/store/wikiStore";
 
 beforeEach(() => {
   localStorage.clear();
@@ -69,5 +69,16 @@ describe("W4 [[ 자동완성", () => {
     await user.type(body, "메모: [[[[팀");
     await user.click(await screen.findByRole("option", { name: "팀 규칙" }));
     expect(body).toHaveValue("메모: [[팀 규칙]]");
+  });
+
+  it("[[제목]] 문법이 표현할 수 없는 제목([ ] 포함)은 제안하지 않는다", async () => {
+    const user = userEvent.setup();
+    await createPage({ spaceId: "sp1", title: "[초안] 계획" });
+    renderApp("/spaces/sp1/pages/new");
+    const body = await screen.findByLabelText("본문");
+    await user.type(body, "[[[[");
+    await screen.findByRole("listbox", { name: "페이지 링크 자동완성" });
+    expect(screen.queryByRole("option", { name: "[초안] 계획" })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "시작하기" })).toBeInTheDocument();
   });
 });

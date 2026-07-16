@@ -51,4 +51,10 @@ describe("resolveWikiLinks", () => {
     ];
     expect(resolveWikiLinks("[[중복]]", pages, "sp1")).toBe("[중복](/spaces/sp1/pages/pgA)");
   });
+
+  it("괄호가 든 없는 제목은 괄호까지 인코딩한다 — 마크다운 링크 조기 종료 방지", () => {
+    expect(resolveWikiLinks("[[7월 회의)]]", PAGES, "sp1")).toBe(
+      "[7월 회의)](/spaces/sp1/pages/new?title=7%EC%9B%94%20%ED%9A%8C%EC%9D%98%29)",
+    );
+  });
 });
