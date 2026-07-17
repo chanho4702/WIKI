@@ -1,0 +1,87 @@
+import { Node, nodeInputRule } from "@tiptap/core";
+import { Plugin } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import type { Page } from "../../store/types";
+
+export interface WikiLinkOptions {
+  /** 존재/부재 판별용 — WikiEditor가 최신 pages를 ref로 공급한다 */
+  getPages: () => Page[];
+}
+
+/**
+ * [[제목]] 인라인 원자 노드.
+ * - 에디터 안에서는 칩으로 렌더 (부재 페이지는 데코레이션으로 .wiki-chip-missing 부여)
+ * - 마크다운 직렬화는 tiptap-markdown 확장 스토리지 규약(storage.markdown.serialize) 사용
+ * - 타이핑 "[[제목]]" 완성 시 inputRule로 노드 승격
+ */
+export const WikiLink = Node.create<WikiLinkOptions>({
+  name: "wikiLink",
+  group: "inline",
+  inline: true,
+  atom: true,
+
+  addOptions() {
+    return { getPages: () => [] };
+  },
+
+  addAttributes() {
+    return { title: { default: "" } };
+  },
+
+  parseHTML() {
+    return [{ tag: "span[data-wiki-link]", getAttrs: (el) => ({ title: (el as HTMLElement).dataset.title ?? "" }) }];
+  },
+
+  renderHTML({ node }) {
+    return [
+      "span",
+      { "data-wiki-link": "", "data-title": node.attrs.title, class: "wiki-chip" },
+      node.attrs.title,
+    ];
+  },
+
+  renderText({ node }) {
+    return `[[${node.attrs.title}]]`;
+  },
+
+  addStorage() {
+    return {
+      markdown: {
+        serialize(state: { write: (s: string) => void }, node: { attrs: { title: string } }) {
+          state.write(`[[${node.attrs.title}]]`);
+        },
+      },
+    };
+  },
+
+  addInputRules() {
+    return [
+      nodeInputRule({
+        // wikiLinks.ts의 WIKI_LINK와 같은 문자 클래스 — [, ], 개행 미포함 제목만
+        find: /\[\[([^[\]\n]+)\]\]$/,
+        type: this.type,
+        getAttributes: (match) => ({ title: match[1] }),
+      }),
+    ];
+  },
+
+  addProseMirrorPlugins() {
+    const { getPages } = this.options;
+    return [
+      new Plugin({
+        props: {
+          decorations(state) {
+            const titles = new Set(getPages().map((p) => p.title));
+            const decos: Decoration[] = [];
+            state.doc.descendants((node, pos) => {
+              if (node.type.name === "wikiLink" && !titles.has(node.attrs.title)) {
+                decos.push(Decoration.node(pos, pos + node.nodeSize, { class: "wiki-chip-missing" }));
+              }
+            });
+            return DecorationSet.create(state.doc, decos);
+          },
+        },
+      }),
+    ];
+  },
+});
