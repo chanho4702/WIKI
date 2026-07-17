@@ -519,3 +519,27 @@ body {
 .page-tree-dragging {
   opacity: 0.5;
 }
+
+/* ── 블록 에디터 ───────────────────────────── */
+.wiki-editor .ProseMirror {
+  outline: none;
+  min-height: 320px;
+  line-height: 1.7;
+}
+.wiki-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-subtlest, #8993a4);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.wiki-chip {
+  border-radius: 4px;
+  padding: 0 4px;
+  background: var(--color-background-accent-blue-subtlest, #e9f2ff);
+  color: var(--color-text-accent-blue, #0c66e4);
+}
+.wiki-chip-missing {
+  background: var(--color-background-accent-red-subtlest, #ffedeb);
+  color: var(--color-text-accent-red, #c9372c);
+}
