@@ -18,6 +18,12 @@ describe("슬래시 메뉴", () => {
     expect(filterSlashItems("표").map((i) => i.id)).toEqual(["table"]);
   });
 
+  it("전 항목이 비어 있지 않은 설명을 갖는다 — 요소 브라우저(InsertMenu)에 노출", () => {
+    for (const item of SLASH_ITEMS) {
+      expect(item.description.length).toBeGreaterThan(0);
+    }
+  });
+
   it("run(h1)은 현재 블록을 제목1로 바꾼다", () => {
     const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
     SLASH_ITEMS.find((i) => i.id === "h1")!.run(editor);

@@ -1,5 +1,11 @@
 import { useEffect, useReducer } from "react";
 import type { Editor } from "@tiptap/core";
+import { SLASH_ITEMS } from "../extensions/slashMenu";
+import { promptSetLink } from "../lib/linkCommand";
+import { InsertMenu } from "./InsertMenu";
+
+/** 슬래시 메뉴 이미지 항목의 run을 그대로 재사용 — URL 프롬프트/삽입 로직을 이중 정의하지 않는다 */
+const insertImage = SLASH_ITEMS.find((i) => i.id === "image")!.run;
 
 const BLOCK_OPTIONS = [
   { value: "paragraph", label: "본문" },
@@ -75,6 +81,11 @@ export function TopToolbar({ editor }: { editor: Editor }) {
       {btn("코드 블록", "{}", () => editor.chain().focus().toggleCodeBlock().run(), editor.isActive("codeBlock"))}
       {btn("구분선", "—", () => editor.chain().focus().setHorizontalRule().run())}
       {btn("표", "⊞", () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
+      <span className="top-toolbar-divider" />
+      {btn("링크", "🔗", () => promptSetLink(editor), editor.isActive("link"))}
+      {btn("이미지", "🖼", () => insertImage(editor))}
+      <span className="top-toolbar-divider" />
+      <InsertMenu editor={editor} />
     </div>
   );
 }

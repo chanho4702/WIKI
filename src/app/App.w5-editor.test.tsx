@@ -88,6 +88,8 @@ describe("W5 블록 에디터 — 편집 화면", () => {
     // getByRole("option", ...)를 전역으로 쓰면 W5 TopToolbar의 블록 타입 <select><option>과
     // 이름이 겹친다(둘 다 "제목 1") — 리스트박스 안으로 스코프를 좁혀 슬래시 메뉴 항목만 조회한다.
     expect(within(listbox).getByRole("option", { name: "제목 1" })).toBeInTheDocument();
+    // W6: 요소 브라우저 스타일 — 라벨 아래 한 줄 설명도 함께 렌더된다(SLASH_ITEMS.description)
+    expect(within(listbox).getByText("큰 섹션 제목을 추가합니다")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });

@@ -7,18 +7,55 @@ const slashMenuPluginKey = new PluginKey("slashMenu");
 export interface SlashItem {
   id: string;
   label: string;
+  /** 요소 브라우저(InsertMenu)·슬래시 메뉴 팝업에 라벨 아래 한 줄로 노출하는 설명 */
+  description: string;
   run: (editor: Editor) => void;
 }
 
 /** 화이트리스트 15개 블록 — 순서가 곧 기본 노출 순서다 */
 export const SLASH_ITEMS: SlashItem[] = [
-  { id: "h1", label: "제목 1", run: (e) => e.chain().focus().setHeading({ level: 1 }).run() },
-  { id: "h2", label: "제목 2", run: (e) => e.chain().focus().setHeading({ level: 2 }).run() },
-  { id: "h3", label: "제목 3", run: (e) => e.chain().focus().setHeading({ level: 3 }).run() },
-  { id: "bullet", label: "글머리 목록", run: (e) => e.chain().focus().toggleBulletList().run() },
-  { id: "ordered", label: "번호 목록", run: (e) => e.chain().focus().toggleOrderedList().run() },
-  { id: "task", label: "체크박스 목록", run: (e) => e.chain().focus().toggleTaskList().run() },
-  { id: "quote", label: "인용", run: (e) => e.chain().focus().toggleBlockquote().run() },
+  {
+    id: "h1",
+    label: "제목 1",
+    description: "큰 섹션 제목을 추가합니다",
+    run: (e) => e.chain().focus().setHeading({ level: 1 }).run(),
+  },
+  {
+    id: "h2",
+    label: "제목 2",
+    description: "중간 섹션 제목을 추가합니다",
+    run: (e) => e.chain().focus().setHeading({ level: 2 }).run(),
+  },
+  {
+    id: "h3",
+    label: "제목 3",
+    description: "작은 섹션 제목을 추가합니다",
+    run: (e) => e.chain().focus().setHeading({ level: 3 }).run(),
+  },
+  {
+    id: "bullet",
+    label: "글머리 목록",
+    description: "글머리 기호로 목록을 만듭니다",
+    run: (e) => e.chain().focus().toggleBulletList().run(),
+  },
+  {
+    id: "ordered",
+    label: "번호 목록",
+    description: "번호를 매겨 목록을 만듭니다",
+    run: (e) => e.chain().focus().toggleOrderedList().run(),
+  },
+  {
+    id: "task",
+    label: "체크박스 목록",
+    description: "체크박스가 있는 할 일 목록을 만듭니다",
+    run: (e) => e.chain().focus().toggleTaskList().run(),
+  },
+  {
+    id: "quote",
+    label: "인용",
+    description: "인용구 블록을 추가합니다",
+    run: (e) => e.chain().focus().toggleBlockquote().run(),
+  },
   // GitHub-style alerts — 저장 문법은 순수 blockquote(`> [!TYPE] `)뿐이라 신규 노드 타입이 필요 없다.
   // insertContent("> [!NOTE] ")는 TipTap에서 마크다운으로 재해석되지 않으므로
   // toggleBlockquote()로 blockquote를 먼저 만들고 그 안에 마커 텍스트만 삽입한다.
@@ -26,33 +63,49 @@ export const SLASH_ITEMS: SlashItem[] = [
   {
     id: "note",
     label: "노트 패널",
+    description: "파란색 정보 패널을 추가합니다",
     run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!NOTE] ").run(),
   },
   {
     id: "tip",
     label: "팁 패널",
+    description: "초록색 팁 패널을 추가합니다",
     run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!TIP] ").run(),
   },
   {
     id: "warning",
     label: "경고 패널",
+    description: "노란색 경고 패널을 추가합니다",
     run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!WARNING] ").run(),
   },
   {
     id: "caution",
     label: "주의 패널",
+    description: "빨간색 주의 패널을 추가합니다",
     run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!CAUTION] ").run(),
   },
-  { id: "code", label: "코드 블록", run: (e) => e.chain().focus().toggleCodeBlock().run() },
-  { id: "divider", label: "구분선", run: (e) => e.chain().focus().setHorizontalRule().run() },
+  {
+    id: "code",
+    label: "코드 블록",
+    description: "구문 강조가 있는 코드 블록을 추가합니다",
+    run: (e) => e.chain().focus().toggleCodeBlock().run(),
+  },
+  {
+    id: "divider",
+    label: "구분선",
+    description: "가로 구분선을 추가합니다",
+    run: (e) => e.chain().focus().setHorizontalRule().run(),
+  },
   {
     id: "table",
     label: "표",
+    description: "행과 열로 콘텐츠를 구성합니다",
     run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
   {
     id: "image",
     label: "이미지 (URL)",
+    description: "URL로 이미지를 삽입합니다",
     run: (e) => {
       const src = window.prompt("이미지 URL을 입력하세요");
       if (src) e.chain().focus().setImage({ src }).run();

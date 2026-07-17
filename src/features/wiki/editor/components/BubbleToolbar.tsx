@@ -1,18 +1,10 @@
 import { useEffect, useState } from "react";
 import { posToDOMRect } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
+import { promptSetLink } from "../lib/linkCommand";
 
 /** 버튼 행 — 위치 계산과 분리해 jsdom에서 단독 테스트 가능하게 한다(좌표 계산 없이 버튼 동작만 검증) */
 export function ToolbarButtons({ editor }: { editor: Editor }) {
-  const setLink = () => {
-    const url = window.prompt("링크 URL을 입력하세요", editor.getAttributes("link").href ?? "");
-    if (url === null) return;
-    if (url === "") {
-      editor.chain().focus().unsetLink().run();
-    } else {
-      editor.chain().focus().setLink({ href: url }).run();
-    }
-  };
   const btn = (label: string, glyph: string, active: boolean, onClick: () => void) => (
     <button
       key={label}
@@ -35,7 +27,7 @@ export function ToolbarButtons({ editor }: { editor: Editor }) {
       {btn("기울임", "I", editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run())}
       {btn("취소선", "S", editor.isActive("strike"), () => editor.chain().focus().toggleStrike().run())}
       {btn("코드", "<>", editor.isActive("code"), () => editor.chain().focus().toggleCode().run())}
-      {btn("링크", "🔗", editor.isActive("link"), setLink)}
+      {btn("링크", "🔗", editor.isActive("link"), () => promptSetLink(editor))}
     </div>
   );
 }

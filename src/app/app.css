@@ -893,6 +893,16 @@ body {
   color: var(--chanho-color-text-default);
 }
 
+/* W6: 슬래시 메뉴 항목의 설명 줄(요소 브라우저 스타일) — wikiLink 자동완성은 description이 없어 렌더되지 않는다 */
+.editor-suggestion-label {
+  display: block;
+}
+.editor-suggestion-description {
+  display: block;
+  font-size: var(--chanho-font-size-75, 12px);
+  color: var(--chanho-color-text-subtle, #626f86);
+}
+
 /* W4: 트리 드래그 */
 .page-tree-dragging {
   opacity: 0.5;
@@ -1003,6 +1013,81 @@ body {
 .bubble-toolbar button.is-active {
   background: var(--color-background-accent-blue-subtlest, #e9f2ff);
   color: var(--color-text-accent-blue, #0c66e4);
+}
+
+/* W6: 요소 브라우저(InsertMenu) — TopToolbar 끝의 + 버튼과 팝오버 */
+.insert-menu {
+  position: relative;
+  display: inline-flex;
+}
+.insert-menu-trigger {
+  border: none;
+  background: none;
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100, 8px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  color: var(--chanho-color-text-default);
+  min-width: 30px;
+}
+.insert-menu-trigger:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+.insert-menu-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  width: 260px;
+  padding: var(--chanho-space-100, 8px);
+  background: var(--chanho-color-background-surface, #fff);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.insert-menu-filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-100, 8px);
+  margin-bottom: var(--chanho-space-100, 8px);
+  border: 1px solid var(--chanho-color-border-default, #dcdfe4);
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: var(--chanho-color-text-default);
+}
+.insert-menu-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.insert-menu-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-200, 8px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  color: var(--chanho-color-text-default);
+}
+.insert-menu-list button:hover,
+.insert-menu-list button.is-highlighted {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+.insert-menu-item-label {
+  display: block;
+}
+.insert-menu-item-description {
+  display: block;
+  font-size: var(--chanho-font-size-75, 12px);
+  color: var(--chanho-color-text-subtle, #626f86);
+}
+.insert-menu-empty {
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-200, 8px);
+  color: var(--chanho-color-text-subtle, #626f86);
 }
 
 /* W5: 코드 블록 NodeView — 언어 셀렉트 + 복사 버튼 */
