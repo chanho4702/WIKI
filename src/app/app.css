@@ -529,6 +529,36 @@ body {
   background: var(--chanho-color-background-neutral-hovered);
 }
 
+/* W5: 에디터 서제스천 팝업(공용) — [[ 자동완성·슬래시 메뉴 */
+.editor-suggestions {
+  position: fixed;
+  z-index: 30;
+  margin: 0;
+  padding: var(--chanho-space-50, 4px);
+  list-style: none;
+  background: var(--chanho-color-background-surface);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 220px;
+}
+
+.editor-suggestions [aria-selected="true"] button {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.editor-suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-200, 8px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  color: var(--chanho-color-text-default);
+}
+
 /* W4: 트리 드래그 */
 .page-tree-dragging {
   opacity: 0.5;

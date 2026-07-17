@@ -1,9 +1,11 @@
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/core";
 import type { Page } from "../store/types";
 import { buildBaseExtensions } from "./extensions/base";
+import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
+import { SuggestionPopup } from "./components/SuggestionPopup";
 import { parseMarkdown, serializeMarkdown } from "./markdown";
 import { editorRegistry } from "./editorTestRegistry";
 
@@ -44,12 +46,23 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     // 이 컴포넌트 인스턴스가 만든 에디터 식별용 — onDestroy가 다른(더 최신) 인스턴스의
     // 레지스트리 등록을 잘못 지우지 않도록 신원을 대조한다 (비동기 create/destroy 경합 방지)
     const selfEditorRef = useRef<Editor | null>(null);
+    // [[ 자동완성 팝업 상태 — WikiLinkSuggestion이 onStateChange로 밀어넣는다
+    const [linkMenu, setLinkMenu] = useState<{
+      items: Page[];
+      highlight: number;
+      clientRect: DOMRect | null;
+      command: (item: Page) => void;
+    } | null>(null);
 
     const editor = useEditor({
       immediatelyRender: true,
       extensions: [
         ...buildBaseExtensions({ getPages: () => pagesRef.current }),
         Placeholder.configure({ placeholder: "내용을 입력하세요. '/'로 블록을 추가합니다." }),
+        WikiLinkSuggestion.configure({
+          getPages: () => pagesRef.current,
+          onStateChange: setLinkMenu,
+        }),
       ],
       content: safeParse(initialMarkdown),
       onCreate({ editor }) {
@@ -74,6 +87,16 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     return (
       <div className="wiki-editor">
         <EditorContent editor={editor} />
+        {linkMenu && linkMenu.clientRect && (
+          <SuggestionPopup
+            ariaLabel="페이지 링크 자동완성"
+            items={linkMenu.items.map((p) => ({ id: p.id, label: p.title }))}
+            highlight={linkMenu.highlight}
+            left={linkMenu.clientRect.left}
+            top={linkMenu.clientRect.bottom + 4}
+            onPick={(i) => linkMenu.command(linkMenu.items[i])}
+          />
+        )}
       </div>
     );
   },
