@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useNavigate, useParams } from "react-router";
-import { Avatar, Button, EmptyState, Select, Spinner, Switch, TextField, TopBar } from "@chanho/react";
+import { Avatar, Button, EmptyState, Spinner, Switch, TextField, TopBar } from "@chanho/react";
 import type { Page, Space, User } from "../store/types";
 import { getCurrentUser, listPages } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
@@ -8,6 +8,7 @@ import { useAuth } from "../../../auth/AuthGate";
 import { PageTree } from "./PageTree";
 import { SidebarResizer } from "./SidebarResizer";
 import { SpaceCreateModal } from "./SpaceCreateModal";
+import { SpaceFlyout } from "./SpaceFlyout";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
 
@@ -72,6 +73,31 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
     void getCurrentUser().then(setMe);
   }, []);
 
+  // 스페이스 플라이아웃(W6 T3) — 사이드바 헤더의 Select를 대체하는 "현재 스페이스" 버튼 +
+  // 옆에 뜨는 필터/전환 패널. 모달 open 상태는 여기(WikiLayout)로 끌어올려, 플라이아웃의
+  // "스페이스 만들기" 버튼과 사이드바 푸터의 기존 SpaceCreateModal 트리거가 같은 모달 인스턴스를
+  // 공유한다(기존 사용처·테스트는 그대로 유지 — SpaceCreateModal은 open/onOpenChange 미지정 시
+  // 내부 상태로 동작하므로 EmptySpaces.tsx 등은 영향 없음).
+  const [spaceFlyoutOpen, setSpaceFlyoutOpen] = useState(false);
+  const [spaceModalOpen, setSpaceModalOpen] = useState(false);
+  const spaceSwitcherRef = useRef<HTMLDivElement>(null);
+  const spaceTriggerRef = useRef<HTMLButtonElement>(null);
+
+  // 외부 클릭 닫기 — InsertMenu.tsx 패턴 준수: 트리거 버튼도 포함하는 영역(spaceSwitcherRef)
+  // 바깥의 mousedown이면 닫기만 하고 포커스는 건드리지 않는다(preventDefault 없음). 트리거 버튼이
+  // 이 영역 "안"에 있으므로, 트리거를 다시 눌러 닫는 경우는 여기서 무시되고 트리거의 onClick
+  // 토글로만 처리된다(닫힘→토글로 즉시 재열림되는 경합을 피함).
+  useEffect(() => {
+    if (!spaceFlyoutOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (spaceSwitcherRef.current && !spaceSwitcherRef.current.contains(e.target as Node)) {
+        setSpaceFlyoutOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [spaceFlyoutOpen]);
+
   const current = spaces.find((s) => s.id === spaceId);
   const currentId = current?.id ?? null;
 
@@ -135,12 +161,37 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
         ) : (
           <aside className="wiki-sidebar" style={{ width: displayWidth }}>
             <div className="wiki-sidebar-header">
-              <Select
-                label="스페이스"
-                options={spaces.map((s) => ({ value: s.id, label: `${s.name} (${s.key})` }))}
-                value={current.id}
-                onValueChange={(id) => navigate(`/spaces/${id}`)}
-              />
+              <div className="space-switcher" ref={spaceSwitcherRef}>
+                <button
+                  ref={spaceTriggerRef}
+                  type="button"
+                  className="space-switcher-trigger"
+                  aria-haspopup="dialog"
+                  aria-expanded={spaceFlyoutOpen}
+                  onClick={() => setSpaceFlyoutOpen((prev) => !prev)}
+                >
+                  {current.name} ({current.key})
+                </button>
+                {spaceFlyoutOpen && (
+                  <SpaceFlyout
+                    spaces={spaces}
+                    currentSpaceId={current.id}
+                    onNavigate={(id) => {
+                      setSpaceFlyoutOpen(false);
+                      navigate(`/spaces/${id}`);
+                    }}
+                    onCreateClick={() => {
+                      setSpaceFlyoutOpen(false);
+                      setSpaceModalOpen(true);
+                    }}
+                    onClose={() => {
+                      // Escape로 닫힘 — 트리거 버튼으로 포커스를 되돌린다(InsertMenu.tsx 패턴).
+                      setSpaceFlyoutOpen(false);
+                      spaceTriggerRef.current?.focus();
+                    }}
+                  />
+                )}
+              </div>
               <Button
                 ref={closeButtonRef}
                 variant="ghost"
@@ -177,6 +228,8 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
                 새 페이지
               </Button>
               <SpaceCreateModal
+                open={spaceModalOpen}
+                onOpenChange={setSpaceModalOpen}
                 onCreated={async (space) => {
                   await onSpacesChanged();
                   navigate(`/spaces/${space.id}`);

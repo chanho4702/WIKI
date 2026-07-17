@@ -57,6 +57,25 @@ body {
   min-width: 0;
 }
 
+/* W6: 스페이스 플라이아웃 트리거 — 사이드바 헤더의 기존 Select를 대체하는 "현재 스페이스" 버튼.
+ * .space-flyout은 이 래퍼가 아니라 position: relative인 .wiki-sidebar를 기준으로 절대 위치하여
+ * 사이드바 "옆"(전체 폭 오른쪽)에 뜬다 — 그래서 .space-switcher 자체에는 position을 주지 않는다. */
+.space-switcher-trigger {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  border: 1px solid transparent;
+  background: none;
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-100, 8px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  color: var(--chanho-color-text-default);
+}
+.space-switcher-trigger:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
 .wiki-sidebar-body {
   flex: 1;
   min-height: 0;
@@ -1088,6 +1107,89 @@ body {
 .insert-menu-empty {
   padding: var(--chanho-space-100, 6px) var(--chanho-space-200, 8px);
   color: var(--chanho-color-text-subtle, #626f86);
+}
+
+/* W6: 스페이스 플라이아웃 패널 — 사이드바 옆(전체 폭 기준 오른쪽)에 뜨는 필터+전환 패널.
+ * 가장 가까운 position: relative 조상은 .wiki-sidebar이므로 그 오른쪽 바깥으로 붙는다. */
+.space-flyout {
+  position: absolute;
+  top: var(--chanho-space-200, 8px);
+  left: 100%;
+  margin-left: var(--chanho-space-100, 8px);
+  z-index: 30;
+  width: 280px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: var(--chanho-space-150, 8px);
+  background: var(--chanho-color-background-surface, #fff);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-150, 8px);
+}
+.space-flyout-filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-100, 8px);
+  border: 1px solid var(--chanho-color-border-default, #dcdfe4);
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: var(--chanho-color-text-default);
+}
+.space-flyout-section-title {
+  margin: 0 0 var(--chanho-space-50, 4px);
+  font-size: var(--chanho-font-size-75, 12px);
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  color: var(--chanho-color-text-subtle, #626f86);
+  text-transform: uppercase;
+}
+.space-flyout-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.space-flyout-item {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100, 8px);
+}
+.space-flyout-item-name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-100, 8px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  color: var(--chanho-color-text-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.space-flyout-item-name:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+.space-flyout-star {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: var(--chanho-space-50, 4px);
+  color: var(--chanho-color-text-subtle, #626f86);
+}
+.space-flyout-star[aria-pressed="true"] {
+  color: var(--chanho-color-text-warning, #b38600);
+}
+.space-flyout-empty {
+  margin: 0;
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-200, 8px);
+  color: var(--chanho-color-text-subtle, #626f86);
+}
+.space-flyout-create {
+  width: 100%;
 }
 
 /* W5: 코드 블록 NodeView — 언어 셀렉트 + 복사 버튼 */

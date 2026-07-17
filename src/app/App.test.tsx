@@ -73,11 +73,11 @@ describe("App 라우팅과 위키 W1 흐름", () => {
     await user.type(screen.getByLabelText("키"), "arch");
     expect(screen.getByLabelText("키")).toHaveValue("ARCH"); // 자동 대문자
     await user.click(screen.getByRole("button", { name: "만들기" }));
-    // 스위처가 새 스페이스로 바뀌고 그 스페이스로 이동
+    // 스위처(현재 스페이스 버튼)가 새 스페이스로 바뀌고 그 스페이스로 이동
     await waitFor(() => {
-      expect(screen.getByRole("combobox", { name: "스페이스" })).toHaveTextContent(
-        "설계 위키 (ARCH)",
-      );
+      expect(
+        screen.getByRole("button", { name: "설계 위키 (ARCH)" }),
+      ).toBeInTheDocument();
     });
     expect(screen.getByTestId("location").textContent).toMatch(/^\/spaces\/[^/]+$/);
     // 새 스페이스는 페이지 0개 → 안내문 EmptyState (만들기 버튼은 W2)

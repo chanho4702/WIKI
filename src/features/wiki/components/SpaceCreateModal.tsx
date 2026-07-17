@@ -8,16 +8,33 @@ export interface SpaceCreateModalProps {
   /** 트리거 버튼 문구 */
   triggerLabel?: string;
   onCreated: (space: Space) => void | Promise<void>;
+  /**
+   * 열림 상태를 외부에서 제어하고 싶을 때(W6: 스페이스 플라이아웃의 "스페이스 만들기" 버튼이
+   * 이 모달을 열기 위함) 지정한다. 미지정 시 기존과 동일하게 내부 상태로 관리한다
+   * (EmptySpaces.tsx 등 기존 사용처는 변경 없이 그대로 동작).
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function SpaceCreateModal({ triggerLabel = "새 스페이스", onCreated }: SpaceCreateModalProps) {
-  const [open, setOpen] = useState(false);
+export function SpaceCreateModal({
+  triggerLabel = "새 스페이스",
+  onCreated,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
+}: SpaceCreateModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
   const [name, setName] = useState("");
   const [key, setKey] = useState("");
   const toast = useToast();
 
   const handleOpenChange = (next: boolean) => {
-    setOpen(next);
+    if (onOpenChangeProp) {
+      onOpenChangeProp(next);
+    } else {
+      setInternalOpen(next);
+    }
     if (!next) {
       setName("");
       setKey("");
