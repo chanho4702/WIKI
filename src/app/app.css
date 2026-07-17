@@ -588,6 +588,55 @@ body {
   color: var(--color-text-accent-red, #c9372c);
 }
 
+/* W5: 상단 고정 툴바 (컨플식) — wiki-editor 내부, EditorContent 위에 sticky로 배치 */
+.top-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: var(--chanho-space-100, 8px) 0;
+  border-bottom: 1px solid var(--chanho-color-border-default, #dcdfe4);
+  margin-bottom: var(--chanho-space-150, 12px);
+  position: sticky;
+  top: 0;
+  background: var(--chanho-color-background-surface, #fff);
+  z-index: 10;
+}
+.top-toolbar button {
+  border: none;
+  background: none;
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100, 8px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  color: var(--chanho-color-text-default);
+  min-width: 30px;
+}
+.top-toolbar button:hover:not(:disabled) {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+.top-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.top-toolbar button.is-active {
+  background: var(--color-background-accent-blue-subtlest, #e9f2ff);
+  color: var(--color-text-accent-blue, #0c66e4);
+}
+.top-toolbar select {
+  border: 1px solid var(--chanho-color-border-default, #dcdfe4);
+  border-radius: var(--chanho-radius-small, 4px);
+  padding: 2px 4px;
+  background: transparent;
+  color: var(--chanho-color-text-default);
+}
+.top-toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--chanho-color-border-default, #dcdfe4);
+  margin: 0 4px;
+}
+
 /* W5: 선택 시 플로팅 서식 툴바 — 선택 DOMRect 기준 고정 위치, 툴바 자체 높이만큼 위로 띄운다 */
 .bubble-toolbar-anchor {
   position: fixed;

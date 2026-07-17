@@ -9,6 +9,7 @@ import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
 import { SlashMenu, type SlashItem } from "./extensions/slashMenu";
 import { SuggestionPopup } from "./components/SuggestionPopup";
 import { BubbleToolbar } from "./components/BubbleToolbar";
+import { TopToolbar } from "./components/TopToolbar";
 import { parseMarkdown, serializeMarkdown } from "./markdown";
 import { editorRegistry } from "./editorTestRegistry";
 
@@ -117,6 +118,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
 
     return (
       <div className="wiki-editor">
+        {editor && <TopToolbar editor={editor} />}
         <EditorContent editor={editor} />
         {editor && <BubbleToolbar editor={editor} />}
         {linkMenu && linkMenu.clientRect && (

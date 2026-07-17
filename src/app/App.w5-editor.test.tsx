@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
 import { __resetForTest, createPage, getPage } from "../features/wiki/store/wikiStore";
@@ -85,7 +85,9 @@ describe("W5 블록 에디터 — 편집 화면", () => {
     editorRegistry.current!.chain().focus().insertContent("/제목").run();
     const listbox = await screen.findByRole("listbox", { name: "블록 삽입 메뉴" });
     expect(listbox).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "제목 1" })).toBeInTheDocument();
+    // getByRole("option", ...)를 전역으로 쓰면 W5 TopToolbar의 블록 타입 <select><option>과
+    // 이름이 겹친다(둘 다 "제목 1") — 리스트박스 안으로 스코프를 좁혀 슬래시 메뉴 항목만 조회한다.
+    expect(within(listbox).getByRole("option", { name: "제목 1" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
