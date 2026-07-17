@@ -328,7 +328,7 @@ body {
 }
 
 .markdown-body .hljs-string {
-  color: #2f8b2f; /* 문자열 — 초록색 */
+  color: #256e25; /* 문자열 — 초록색 (대비 5.2:1 WCAG AA) */
 }
 
 .markdown-body .hljs-number {
@@ -336,7 +336,7 @@ body {
 }
 
 .markdown-body .hljs-comment {
-  color: #8993a4; /* 주석 — 회색 */
+  color: #5b6472; /* 주석 — 회색 (대비 4.77:1 WCAG AA) */
 }
 
 .markdown-body .hljs-title {
@@ -361,7 +361,7 @@ body {
 }
 
 .markdown-body .hljs-variable {
-  color: #2f8b2f; /* 변수명 — 초록색 */
+  color: #256e25; /* 변수명 — 초록색 (대비 5.2:1 WCAG AA) */
 }
 
 .markdown-body table {
