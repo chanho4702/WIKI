@@ -2029,6 +2029,58 @@ git commit -m "feat(editor): 상단 고정 툴바 — 블록 타입·서식·목
 
 ---
 
+### 매크로 웨이브 (Task 14~17) — 2026-07-17 사용자 확정
+
+> 근거 조사: `.superpowers/sdd/macro-research.md` (아틀라시안 공식 문서 12개 기반).
+> 실행 순서: Task 9~11, 13 완료 후 → 14~17 → 마지막에 Task 12(최종 스윕).
+> **Global Constraints 완화(이 웨이브 한정)**: `MarkdownView.tsx` 수정 **허용** (매크로 렌더가 뷰 확장이므로).
+> `wikiStore.ts`·`types.ts`·`resolveWikiLinks`·`lineDiff`·`Page.body` 마크다운 저장은 계속 동결.
+
+### Task 14: 정보/팁/노트/경고 패널 (GitHub-style alerts)
+
+**Files:**
+- Create: `src/features/wiki/lib/remarkAlerts.ts` — blockquote 첫 텍스트가 `[!NOTE]`/`[!TIP]`/`[!IMPORTANT]`/`[!WARNING]`/`[!CAUTION]`이면 `data.hName="div"`, `data.hProperties.className=["md-alert","md-alert-note",...]`로 변환하고 마커 텍스트 제거하는 remark 플러그인 (한국어 라벨 매핑: 노트/팁/중요/경고/주의)
+- Modify: `src/features/wiki/components/MarkdownView.tsx` — remarkPlugins에 추가
+- Modify: `src/features/wiki/editor/extensions/slashMenu.ts` — SLASH_ITEMS에 패널 4종 추가 (`insertContent`로 `> [!NOTE] ` 패턴 삽입: blockquote+마커 텍스트)
+- Modify: `src/app/app.css` — `.md-alert-*` 4색 스타일 + 에디터 내 근사 스타일
+- Test: `src/features/wiki/lib/remarkAlerts.test.ts` (플러그인 유닛 — 5타입 변환, 마커 없는 인용구 무변환, 중첩 콘텐츠 보존), `MarkdownView.test.tsx`에 렌더 케이스 추가, slashMenu.test.ts 항목 수 갱신
+
+**Interfaces:** Produces `remarkAlerts` (unified 플러그인). 저장 문자열은 순수 blockquote — 골든 왕복 테스트에 `> [!NOTE]` 케이스 추가 (tiptap-markdown이 blockquote로 왕복하는지 확인).
+
+TDD 사이클: 플러그인 유닛 → MarkdownView 통합 → 슬래시 항목 → 골든 케이스 → full suite → 커밋 `feat(macros): 정보/팁/노트/경고 패널 — GitHub alerts 문법 + remark 플러그인`.
+
+### Task 15: 목차(TOC) + 앵커
+
+**Files:**
+- Modify: `src/features/wiki/components/MarkdownView.tsx` — `rehype-slug` 추가(heading id 자동 부여)
+- Create: `src/features/wiki/components/TableOfContents.tsx` — `markdown` prop에서 heading(1~3) 추출(코드 펜스 내부 제외), 3개 이상일 때만 렌더, `#slug` 링크 목록(레벨 들여쓰기). slug 생성은 rehype-slug(github-slugger)와 동일 라이브러리 사용해 일치 보장
+- Modify: `src/features/wiki/pages/PageViewPage.tsx` — 본문 위(메타 아래)에 `<TableOfContents markdown={page.body} />`
+- Modify: `src/app/app.css`
+- Test: `TableOfContents.test.tsx` (추출/제외/최소개수/slug 일치), 의존성: `rehype-slug`, `github-slugger` (pnpm)
+
+TDD 사이클 후 커밋 `feat(macros): 목차 + heading 앵커 — rehype-slug/github-slugger`.
+
+### Task 16: 코드 하이라이팅
+
+**Files:**
+- Modify: `src/features/wiki/components/MarkdownView.tsx` — `rehype-highlight` 추가 (보기 화면)
+- Modify: `src/app/app.css` — highlight.js 테마 변수(라이트 기준, `.markdown-body` 스코프)
+- Test: `MarkdownView.test.tsx` — ```ts 블록이 `hljs` 토큰 span을 포함하는지
+
+에디터 쪽 하이라이팅(CodeBlockLowlight)은 T9 NodeView와의 통합 비용 대비 가치가 낮아 **보기 화면만** — 스펙 원 결정(코드 블록: 언어 선택·복사 = 에디터 UX, 하이라이트 = 뷰)과 일치. 커밋 `feat(macros): 코드 블록 syntax highlight — rehype-highlight (보기 화면)`.
+
+### Task 17: 하위 페이지 목록 (Children Display)
+
+**Files:**
+- Create: `src/features/wiki/components/ChildPages.tsx` — props `{ pages: Page[]; currentPageId: string; spaceId: string }`. `parentId === currentPageId`인 페이지를 position 순 정렬해 링크 목록 렌더. 자식 0개면 null. 본문 마크다운에는 아무것도 저장하지 않음 (화면 자동 영역)
+- Modify: `src/features/wiki/pages/PageViewPage.tsx` — MarkdownView 아래·CommentSection 위에 `<ChildPages ... />` ("하위 페이지" 제목)
+- Modify: `src/app/app.css`
+- Test: `ChildPages.test.tsx` (필터/정렬/0개 null), App 통합 1개 (자식 있는 페이지 보기 → 링크 표시·클릭 이동)
+
+TDD 사이클 후 커밋 `feat(macros): 하위 페이지 목록 — 보기 화면 자동 영역`.
+
+---
+
 ## Self-Review 체크 결과
 
 - **스펙 커버리지**: 블록 화이트리스트(T1·T7·T9·T10), [[링크]] 파스/직렬화/자동완성(T2·T6), 필수 상호작용 4종(T6·T7·T8·T11 + 마크다운 단축은 StarterKit inputRule 기본 제공), 본문 불변(T4), 이탈 가드(T5), 파싱 폴백(T3), 레이아웃(T12), 기존 테스트 이관(T4·T6) — 전부 태스크 존재.
