@@ -10,7 +10,7 @@ export interface SlashItem {
   run: (editor: Editor) => void;
 }
 
-/** 화이트리스트 11개 블록 — 순서가 곧 기본 노출 순서다 */
+/** 화이트리스트 15개 블록 — 순서가 곧 기본 노출 순서다 */
 export const SLASH_ITEMS: SlashItem[] = [
   { id: "h1", label: "제목 1", run: (e) => e.chain().focus().setHeading({ level: 1 }).run() },
   { id: "h2", label: "제목 2", run: (e) => e.chain().focus().setHeading({ level: 2 }).run() },

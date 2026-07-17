@@ -7,11 +7,14 @@ body {
 
 /* ── 레이아웃 ─────────────────────────────────────────── */
 
-/* TopBar(상단) + 본문(사이드바 | 콘텐츠) 수직 배치 */
+/* TopBar(상단) + 본문(사이드바 | 콘텐츠) 수직 배치
+ * height: 100vh(고정, min-height 아님)로 뷰포트에 고정한다 — 그렇지 않으면 본문이 길어질 때
+ * aside(사이드바)도 문서 높이만큼 함께 늘어나 .wiki-sidebar-body의 내부 스크롤이 발동하지 않고
+ * 사이드바 푸터가 화면 밖으로 밀려난다. 스크롤은 .wiki-content가 전담한다. */
 .wiki-layout {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
 }
 
 .wiki-body {
@@ -107,6 +110,7 @@ body {
 .wiki-content {
   flex: 1;
   min-width: 0;
+  overflow-y: auto; /* .wiki-layout이 뷰포트 고정 높이가 됨에 따라 본문 스크롤을 여기서 전담 */
   padding: var(--chanho-space-300) var(--chanho-space-400);
 }
 
@@ -594,7 +598,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--chanho-space-200);
-  max-width: 880px;
   margin: var(--chanho-space-400) 0;
   padding: var(--chanho-space-300) 0;
   border-top: 1px solid var(--chanho-color-border-default);
@@ -821,40 +824,6 @@ body {
 /* W4: 페이지 간 링크 */
 .markdown-body .wiki-link-missing {
   color: var(--chanho-color-text-danger);
-}
-
-/* W4: [[ 자동완성 */
-.wiki-autocomplete {
-  position: relative;
-}
-
-.wiki-autocomplete-list {
-  position: absolute;
-  z-index: 10;
-  left: 0;
-  right: 0;
-  margin: 0;
-  padding: var(--chanho-space-50, 4px) 0;
-  list-style: none;
-  background: var(--chanho-color-background-surface);
-  border: 1px solid var(--chanho-color-border-default);
-  border-radius: var(--chanho-radius-medium);
-}
-
-.wiki-autocomplete-item {
-  display: block;
-  width: 100%;
-  padding: var(--chanho-space-100) var(--chanho-space-200);
-  border: 0;
-  background: none;
-  text-align: left;
-  color: var(--chanho-color-text-default);
-  cursor: pointer;
-}
-
-.wiki-autocomplete-item:hover,
-.wiki-autocomplete-item[aria-selected="true"] {
-  background: var(--chanho-color-background-neutral-hovered);
 }
 
 /* W5: 에디터 서제스천 팝업(공용) — [[ 자동완성·슬래시 메뉴 */

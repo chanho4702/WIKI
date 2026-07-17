@@ -45,6 +45,8 @@ export function PageEditPage() {
 
   useEffect(() => {
     if (!isEdit || !pageId) return;
+    // edit(A) → edit(B) 재사용 시 이전 페이지의 본문이 새 페이지 로딩 중 잠깐 노출되는 것을 방지
+    setInitialBody(null);
     void getPage(pageId).then((page) => {
       if (page === null) {
         setNotFound(true);
