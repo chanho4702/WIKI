@@ -27,7 +27,9 @@ const CASES: Array<{ name: string; md: string }> = [
   // 원문 케이스도 이스케이프된 형태로 고정한다(이스케이프 형태가 parse↔serialize의 fixed point —
   // 이스케이프 없는 "[!NOTE]"로 입력해도 직렬화 결과는 항상 이스케이프된 형태가 된다).
   // remark-parse(렌더 경로)는 백슬래시 이스케이프를 파싱 시점에 리터럴로 되돌리므로
-  // remarkAlerts의 마커 인식에는 영향이 없다(MarkdownView.test.tsx에서 별도 확인).
+  // remarkAlerts의 마커 인식에는 영향이 없다 — MarkdownView.test.tsx의
+  // "이스케이프 저장형(\[!NOTE\])도 md-alert-note 패널로 렌더한다" 및
+  // "비이스케이프 입력이 에디터 왕복(파싱→직렬화) 후에도 패널로 유지된다" 테스트로 실증했다.
   { name: "GitHub-style alert(NOTE)", md: "> \\[!NOTE\\] 내용" },
 ];
 

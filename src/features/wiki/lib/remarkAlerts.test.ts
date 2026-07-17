@@ -96,6 +96,22 @@ describe("remarkAlerts", () => {
     expect(contentParagraph.children[0].type).toBe("strong");
   });
 
+  it("중첩 blockquote(> > [!NOTE])는 안쪽 blockquote만 패널로 변환하고 바깥은 건드리지 않는다", () => {
+    const inner = quoteOf([text("[!NOTE] 내용")]);
+    const outer: Blockquote = { type: "blockquote", children: [inner] };
+    const tree = rootOf(outer);
+    run(tree);
+
+    // 바깥 blockquote는 첫 자식이 paragraph가 아니라(blockquote이므로) 변환 대상이 아니다
+    expect(outer.data).toBeUndefined();
+    // 안쪽 blockquote는 visit()이 별도로 방문해 정상적으로 패널로 변환된다
+    expect(inner.data?.hName).toBe("div");
+    expect(inner.data?.hProperties).toEqual({ className: ["md-alert", "md-alert-note"] });
+    const [labelNode, contentNode] = inner.children as Paragraph[];
+    expect((labelNode.children[0] as Text).value).toBe("노트");
+    expect((contentNode.children[0] as Text).value).toBe("내용");
+  });
+
   it("blockquote의 첫 자식이 paragraph가 아니면 건드리지 않는다", () => {
     const blockquote: Blockquote = {
       type: "blockquote",

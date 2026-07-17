@@ -28,7 +28,9 @@ describe("슬래시 메뉴", () => {
   // GitHub-style alerts — 저장 문법은 순수 blockquote + [!TYPE] 마커 텍스트뿐이다(신규 노드 타입 없음).
   // tiptap-markdown 직렬화기는 "["를 링크 문법과의 혼동을 막기 위해 "\["로 이스케이프한다 —
   // 저장 문자열에는 백슬래시가 남지만, remark-parse(react-markdown 렌더 경로)는 이를 파싱 시점에
-  // 다시 리터럴 "["로 되돌리므로 remarkAlerts 마커 인식에는 영향이 없다(MarkdownView 렌더 테스트로 별도 확인).
+  // 다시 리터럴 "["로 되돌리므로 remarkAlerts 마커 인식에는 영향이 없다 —
+  // MarkdownView.test.tsx의 "이스케이프 저장형(\[!NOTE\])도 md-alert-note 패널로 렌더한다" 및
+  // "비이스케이프 입력이 에디터 왕복(파싱→직렬화) 후에도 패널로 유지된다" 테스트로 실증했다.
   describe.each([
     { id: "note", marker: "[!NOTE]" },
     { id: "tip", marker: "[!TIP]" },
