@@ -6,6 +6,7 @@ import type { Page, User } from "../store/types";
 import { deletePage, getPage, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/WikiLayout";
 import { MarkdownView } from "../components/MarkdownView";
+import { TableOfContents } from "../components/TableOfContents";
 import { HistoryModal } from "../components/HistoryModal";
 import { CommentSection } from "../components/CommentSection";
 
@@ -129,6 +130,7 @@ export function PageViewPage() {
         ) : null}
         <span>{formatDate(page.updatedAt)} 수정</span>
       </div>
+      <TableOfContents markdown={page.body} />
       <MarkdownView markdown={page.body} pages={pages} spaceId={space.id} />
       <CommentSection pageId={page.id} users={users} />
     </article>

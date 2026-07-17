@@ -211,6 +211,50 @@ body {
   font-size: var(--chanho-font-size-100);
 }
 
+/* ── 목차 (.page-toc — TableOfContents 전용 스코프) ── */
+
+.page-toc {
+  margin-bottom: var(--chanho-space-300);
+  padding: var(--chanho-space-200) var(--chanho-space-300);
+  border-left: 2px solid var(--chanho-color-border-default);
+  background: var(--chanho-color-background-subtle);
+  border-radius: var(--chanho-radius-small);
+}
+
+.page-toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.page-toc li {
+  margin: var(--chanho-space-50) 0;
+}
+
+.page-toc a {
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+  text-decoration: none;
+}
+
+.page-toc a:hover {
+  color: var(--chanho-color-text-brand);
+  text-decoration: underline;
+}
+
+.page-toc-level-1 {
+  padding-left: 0;
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.page-toc-level-2 {
+  padding-left: var(--chanho-space-200);
+}
+
+.page-toc-level-3 {
+  padding-left: var(--chanho-space-400);
+}
+
 /* ── 마크다운 본문 (.markdown-body — MarkdownView 전용 스코프) ── */
 
 .markdown-body {

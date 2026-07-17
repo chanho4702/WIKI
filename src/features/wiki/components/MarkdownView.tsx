@@ -1,6 +1,7 @@
 import type { AnchorHTMLAttributes } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeSlug from "rehype-slug";
 import { Link } from "react-router";
 import type { Page } from "../store/types";
 import { resolveWikiLinks } from "../lib/wikiLinks";
@@ -41,6 +42,8 @@ function WikiAnchor({
  * 마크다운 렌더러 — react-markdown + remark-gfm(표) 래핑.
  * raw HTML은 렌더하지 않는다(react-markdown 기본값) — rehype-raw 추가 금지.
  * 요소 스타일은 app.css의 .markdown-body 스코프에서만 정의한다.
+ * rehype-slug가 heading에 id를 부여해 TableOfContents의 `#slug` 링크가 실제로 스크롤된다 —
+ * TableOfContents는 같은 github-slugger 버전으로 별도 계산하므로 slug 값이 서로 일치한다.
  */
 export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
   const wikiMode = pages !== undefined && spaceId !== undefined;
@@ -49,6 +52,7 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
     <div className="markdown-body">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkAlerts]}
+        rehypePlugins={[rehypeSlug]}
         components={wikiMode ? { a: WikiAnchor } : undefined}
       >
         {source}

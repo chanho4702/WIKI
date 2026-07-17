@@ -40,6 +40,15 @@ describe("MarkdownView", () => {
     expect(panel).toHaveTextContent("참고할 내용");
   });
 
+  it("heading에 rehype-slug가 id를 부여한다 (TableOfContents #slug 앵커의 전제)", () => {
+    render(<MarkdownView markdown={["# 개발 위키에 오신 것을 환영합니다", "## 시작 순서"].join("\n")} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveAttribute(
+      "id",
+      "개발-위키에-오신-것을-환영합니다",
+    );
+    expect(screen.getByRole("heading", { level: 2 })).toHaveAttribute("id", "시작-순서");
+  });
+
   it("마커 없는 일반 인용구는 blockquote로 그대로 렌더한다 (안전 열화 확인)", () => {
     const { container } = render(<MarkdownView markdown={"> 그냥 인용문입니다."} />);
     expect(container.querySelector(".md-alert")).toBeNull();
