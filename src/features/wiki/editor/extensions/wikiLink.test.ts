@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { JSONContent } from "@tiptap/core";
+import { Editor, type JSONContent } from "@tiptap/core";
 import { parseMarkdown, serializeMarkdown } from "../markdown";
+import { buildBaseExtensions } from "./base";
 
 function findNodes(doc: JSONContent, type: string): JSONContent[] {
   const found: JSONContent[] = [];
@@ -38,5 +39,34 @@ describe("wikiLink 노드", () => {
   it("한 문단에 여러 링크", () => {
     const doc = parseMarkdown("[[A]]와 [[B]] 비교");
     expect(findNodes(doc, "wikiLink").map((n) => n.attrs?.title)).toEqual(["A", "B"]);
+  });
+
+  it("굵게 마크 안의 [[제목]]도 승격 시 마크를 유지한 채 왕복 보존된다 (회귀)", () => {
+    const md = "**[[운영 런북]]** 뒤";
+    const doc = parseMarkdown(md);
+    const [link] = findNodes(doc, "wikiLink");
+    expect(link.marks?.some((m) => m.type === "bold")).toBe(true);
+    expect(serializeMarkdown(doc).trim()).toBe(md);
+  });
+
+  it("존재 판정은 제목의 앞뒤 공백·대소문자를 무시한다 (회귀)", () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    const editor = new Editor({
+      element: el,
+      extensions: buildBaseExtensions({
+        getPages: () => [
+          { id: "p1", spaceId: "s1", parentId: null, title: " 운영 런북 ", body: "", position: 0, createdBy: "u", updatedBy: "u", createdAt: "", updatedAt: "" },
+        ],
+      }),
+      content: "<p></p>",
+    });
+    editor.commands.insertContent({
+      type: "paragraph",
+      content: [{ type: "wikiLink", attrs: { title: "운영 런북" } }],
+    });
+    const missing = el.querySelectorAll(".wiki-chip-missing");
+    editor.destroy();
+    expect(missing).toHaveLength(0);
   });
 });

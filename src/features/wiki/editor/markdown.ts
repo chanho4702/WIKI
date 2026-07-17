@@ -30,7 +30,8 @@ function promoteInline(nodes: JSONContent[]): JSONContent[] {
     for (const match of node.text.matchAll(WIKI_LINK_G)) {
       const index = match.index ?? 0;
       if (index > last) parts.push({ ...node, text: node.text.slice(last, index) });
-      parts.push({ type: "wikiLink", attrs: { title: match[1] } });
+      // 원본 텍스트의 마크(굵게 등)를 승격된 wikiLink 노드에도 유지한다 — 없으면 필드 생략
+      parts.push({ type: "wikiLink", attrs: { title: match[1] }, ...(node.marks ? { marks: node.marks } : {}) });
       last = index + match[0].length;
     }
     if (parts.length === 0) return [node];

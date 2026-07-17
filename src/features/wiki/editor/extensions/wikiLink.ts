@@ -9,6 +9,14 @@ export interface WikiLinkOptions {
 }
 
 /**
+ * 존재/부재 판별용 제목 정규화 — wikiLinks.ts(뷰 쪽 렌더링)의 `title.trim().toLowerCase()`와
+ * 동일 규약을 따른다. 두 쪽이 다르게 정규화하면 에디터 칩과 뷰 링크의 판정이 어긋난다.
+ */
+export function normalizeWikiLinkTitle(title: string): string {
+  return title.trim().toLowerCase();
+}
+
+/**
  * [[제목]] 인라인 원자 노드.
  * - 에디터 안에서는 칩으로 렌더 (부재 페이지는 데코레이션으로 .wiki-chip-missing 부여)
  * - 마크다운 직렬화는 tiptap-markdown 확장 스토리지 규약(storage.markdown.serialize) 사용
@@ -71,10 +79,10 @@ export const WikiLink = Node.create<WikiLinkOptions>({
       new Plugin({
         props: {
           decorations(state) {
-            const titles = new Set(getPages().map((p) => p.title));
+            const titles = new Set(getPages().map((p) => normalizeWikiLinkTitle(p.title)));
             const decos: Decoration[] = [];
             state.doc.descendants((node, pos) => {
-              if (node.type.name === "wikiLink" && !titles.has(node.attrs.title)) {
+              if (node.type.name === "wikiLink" && !titles.has(normalizeWikiLinkTitle(node.attrs.title))) {
                 decos.push(Decoration.node(pos, pos + node.nodeSize, { class: "wiki-chip-missing" }));
               }
             });
