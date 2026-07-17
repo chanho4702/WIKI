@@ -32,7 +32,7 @@ describe("W2 페이지 편집·생성", () => {
     // setContent의 emitUpdate 기본값은 false(update 이벤트 미발생) — WikiEditor의 dirty 판정이
     // onUpdate에 의존하므로 테스트에서 프로그램적으로 내용을 바꿀 때는 명시적으로 true를 준다.
     editorRegistry.current!.commands.setContent("## 새 규칙", true);
-    await user.click(screen.getByRole("button", { name: "저장" }));
+    await user.click(screen.getByRole("button", { name: "업데이트" }));
     // 보기로 복귀 + 마크다운 렌더 반영
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent(/\/spaces\/sp1\/pages\/pg2$/);
@@ -51,7 +51,7 @@ describe("W2 페이지 편집·생성", () => {
     const titleField = await screen.findByPlaceholderText("제목 없음");
     await user.clear(titleField);
     await user.type(titleField, "버려질 제목");
-    await user.click(screen.getByRole("button", { name: "취소" }));
+    await user.click(screen.getByRole("button", { name: "닫기" }));
     // Task 5: 제목 변경 후 취소는 confirm을 거치고 동의하면 이동
     expect(confirmSpy).toHaveBeenCalledWith("저장하지 않은 변경이 있습니다. 나가시겠습니까?");
     await waitFor(() => {
@@ -67,7 +67,7 @@ describe("W2 페이지 편집·생성", () => {
     await waitFor(() => expect(editorRegistry.current).toBeTruthy());
     await user.type(screen.getByPlaceholderText("제목 없음"), "새 하위 문서");
     editorRegistry.current!.commands.setContent("# 하위 문서 본문", true);
-    await user.click(screen.getByRole("button", { name: "저장" }));
+    await user.click(screen.getByRole("button", { name: "업데이트" }));
     // 새 페이지 보기로 이동 + 렌더
     expect(
       await screen.findByRole("heading", { level: 1, name: "새 하위 문서" }),
@@ -91,7 +91,7 @@ describe("W2 페이지 편집·생성", () => {
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/new");
     });
-    await user.click(screen.getByRole("button", { name: "취소" }));
+    await user.click(screen.getByRole("button", { name: "닫기" }));
     // 루트 생성 취소 → /spaces/sp1 → SpaceIndexPage가 첫 루트 페이지로 이어서 redirect
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg1");
@@ -108,7 +108,7 @@ describe("W2 페이지 편집·생성", () => {
     });
     // parent=pg2가 실제로 적용되는지 — 저장 후 pg2를 접으면 새 항목이 사라진다
     await user.type(screen.getByPlaceholderText("제목 없음"), "회의록 규칙");
-    await user.click(screen.getByRole("button", { name: "저장" }));
+    await user.click(screen.getByRole("button", { name: "업데이트" }));
     await screen.findByRole("heading", { level: 1, name: "회의록 규칙" });
     await user.click(within(tree).getByRole("button", { name: "팀 규칙 하위 접기" }));
     expect(within(tree).queryByRole("link", { name: "회의록 규칙" })).not.toBeInTheDocument();
@@ -132,7 +132,7 @@ describe("W2 페이지 편집·생성", () => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp9/pages/new");
     });
     await user.type(screen.getByPlaceholderText("제목 없음"), "홈");
-    await user.click(screen.getByRole("button", { name: "저장" })); // 본문 없이 저장 가능 (body="")
+    await user.click(screen.getByRole("button", { name: "업데이트" })); // 본문 없이 저장 가능 (body="")
     expect(await screen.findByRole("heading", { level: 1, name: "홈" })).toBeInTheDocument();
     const tree = screen.getByRole("navigation", { name: "페이지 트리" });
     expect(within(tree).getByRole("link", { name: "홈" })).toBeInTheDocument();

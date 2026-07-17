@@ -1,3 +1,9 @@
+:root {
+  /* W6: .edit-chrome 실측 높이와 동기화 — .top-toolbar의 sticky top 오프셋이 이 값을 참조해
+   * 같은 스크롤 컨테이너(.wiki-content) 안에서 두 sticky 바가 겹치지 않게 한다. */
+  --edit-chrome-height: 52px;
+}
+
 body {
   margin: 0;
   font-family: var(--chanho-font-family-sans);
@@ -664,9 +670,40 @@ body {
   color: var(--color-text-subtlest, #8993a4);
 }
 
-.page-edit-actions {
+/* W6: 컨플식 편집 크롬 — 최상단 고정 바(제목 미리보기 + 전체 너비/업데이트/닫기).
+ * .top-toolbar와 같은 스크롤 컨테이너(.wiki-content) 안에서 sticky top: 0으로 고정되므로,
+ * z-index를 .top-toolbar(10)보다 높여 겹칠 때 이 바가 위에 오도록 한다. */
+.edit-chrome {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-200);
+  min-height: var(--edit-chrome-height);
+  box-sizing: border-box;
+  padding: var(--chanho-space-100) 0;
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  background: var(--chanho-color-background-surface, #fff);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
+
+.edit-chrome-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--chanho-font-size-200);
+  font-weight: var(--chanho-font-weight-semibold);
+  color: var(--chanho-color-text-default);
+}
+
+.edit-chrome-actions {
+  display: flex;
+  align-items: center;
   gap: var(--chanho-space-100);
+  flex-shrink: 0;
 }
 
 /* ── 버전 히스토리 모달 (W3) ──────────────────────────── */
@@ -896,7 +933,9 @@ body {
   border-bottom: 1px solid var(--chanho-color-border-default, #dcdfe4);
   margin-bottom: var(--chanho-space-150, 12px);
   position: sticky;
-  top: 0;
+  /* W6: .edit-chrome이 같은 스크롤 컨테이너 안에서 top: 0으로 먼저 고정되므로,
+   * 그 높이만큼 내려 겹치지 않게 한다. */
+  top: var(--edit-chrome-height);
   background: var(--chanho-color-background-surface, #fff);
   z-index: 10;
 }

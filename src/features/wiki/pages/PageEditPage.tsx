@@ -123,6 +123,29 @@ export function PageEditPage() {
 
   return (
     <div className={`page-edit${width === "full" ? " page-edit--full" : ""}`}>
+      {/* W6: 컨플식 편집 크롬 — 최상단 고정 바. 좌측은 title state를 비편집으로 미리보기만 한다. */}
+      <div className="edit-chrome">
+        <span className="edit-chrome-title">{title.trim() ? title : "제목 없음"}</span>
+        <div className="edit-chrome-actions">
+          {isEdit && pageId ? (
+            <Button
+              size="small"
+              variant="subtle"
+              aria-label="전체 너비"
+              aria-pressed={width === "full"}
+              onClick={toggleWidth}
+            >
+              {width === "full" ? "기본 너비" : "전체 너비"}
+            </Button>
+          ) : null}
+          <Button onClick={handleSave} disabled={!title.trim()}>
+            업데이트
+          </Button>
+          <Button variant="subtle" onClick={handleCancel}>
+            닫기
+          </Button>
+        </div>
+      </div>
       <input
         className="page-edit-title"
         value={title}
@@ -134,25 +157,6 @@ export function PageEditPage() {
         aria-label="페이지 제목"
       />
       <WikiEditor ref={editorRef} initialMarkdown={initialBody} pages={pages ?? []} />
-      <div className="page-edit-actions">
-        <Button onClick={handleSave} disabled={!title.trim()}>
-          저장
-        </Button>
-        <Button variant="subtle" onClick={handleCancel}>
-          취소
-        </Button>
-        {isEdit && pageId ? (
-          <Button
-            size="small"
-            variant="subtle"
-            aria-label="전체 너비"
-            aria-pressed={width === "full"}
-            onClick={toggleWidth}
-          >
-            {width === "full" ? "기본 너비" : "전체 너비"}
-          </Button>
-        ) : null}
-      </div>
     </div>
   );
 }
