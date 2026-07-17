@@ -7,6 +7,7 @@ import type { Page } from "../store/types";
 import { buildBaseExtensions } from "./extensions/base";
 import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
 import { SlashMenu, type SlashItem } from "./extensions/slashMenu";
+import { AlertDecoration } from "./extensions/alertDecoration";
 import { SuggestionPopup } from "./components/SuggestionPopup";
 import { BubbleToolbar } from "./components/BubbleToolbar";
 import { TopToolbar } from "./components/TopToolbar";
@@ -75,6 +76,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
           onStateChange: setLinkMenu,
         }),
         SlashMenu.configure({ onStateChange: setSlashMenu }),
+        AlertDecoration,
         GlobalDragHandle.configure({
           dragHandleWidth: 20,
           scrollTreshold: 100, // 패키지 옵션명 오탈자 그대로 (upstream API)

@@ -4,6 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
 import { editorRegistry } from "../features/wiki/editor/editorTestRegistry";
+// node:fs 대신 Vite의 ?raw 쿼리로 CSS 소스를 문자열로 가져온다 — @types/node 의존 없이
+// tsconfig의 기존 "vite/client" 타입만으로 typecheck를 통과한다.
+import css from "./app.css?raw";
 
 beforeEach(() => {
   localStorage.clear();
@@ -81,5 +84,38 @@ describe("Task 18 페이지 너비 토글", () => {
       "false",
     );
     expect(heading2.closest("article.page-view")).not.toHaveClass("page-view--full");
+  });
+});
+
+// Task 20: 편집 화면 기본 폭이 보기 화면과 같은 720px인지 — jsdom은 레이아웃 엔진이 없고
+// app.css는 테스트 렌더 트리에서 import되지 않으므로(main.tsx 전용) getComputedStyle로는
+// 검증할 수 없다. CSS 소스 텍스트(?raw import)를 직접 대조한다.
+describe("Task 20 편집↔보기 폭 일치 (CSS 회귀)", () => {
+  /** 선택자 이름 뒤에 다른 문자(예: --full의 "--")가 바로 붙지 않는 정확한 규칙 블록만 찾는다 */
+  function findRule(selector: string): string {
+    const re = new RegExp(
+      `(?:^|\\n)${selector.replace(/[.[\]]/g, "\\$&")}\\s*\\{([^}]*)\\}`,
+    );
+    const match = re.exec(css);
+    if (!match) throw new Error(`CSS 규칙을 찾지 못했습니다: ${selector}`);
+    return match[1];
+  }
+
+  it(".page-edit 기본 폭이 .page-view와 동일한 720px 중앙 정렬이다", () => {
+    const pageView = findRule(".page-view");
+    const pageEdit = findRule(".page-edit");
+    expect(pageView).toContain("max-width: 720px");
+    expect(pageView).toContain("margin: 0 auto");
+    expect(pageEdit).toContain("max-width: 720px");
+    expect(pageEdit).toContain("margin: 0 auto");
+    expect(pageEdit).not.toContain("880px");
+  });
+
+  it(".page-edit--full은 .page-view--full과 동일하게 폭 제약을 해제한다", () => {
+    const pageViewFull = findRule(".page-view--full");
+    const pageEditFull = findRule(".page-edit--full");
+    expect(pageViewFull).toContain("max-width: none");
+    expect(pageEditFull).toContain("max-width: none");
+    expect(pageEditFull).toContain("margin: 0");
   });
 });

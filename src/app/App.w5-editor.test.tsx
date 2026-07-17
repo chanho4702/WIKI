@@ -111,4 +111,19 @@ describe("W5 블록 에디터 — 편집 화면", () => {
     await screen.findByRole("listbox", { name: "블록 삽입 메뉴" });
     expect(screen.queryByRole("listbox", { name: "페이지 링크 자동완성" })).not.toBeInTheDocument();
   });
+
+  // Task 20 — 편집↔보기 시각 동등화: 저장 전 편집 화면에서도 "/"로 넣은 패널이 바로 보여야 한다.
+  it("본문에 `> [!NOTE]` 인용구가 있으면 편집 중에도 md-alert-note 패널로 보인다", async () => {
+    renderApp("/spaces/sp1/pages/pg1/edit");
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    editorRegistry.current!.commands.insertContent({
+      type: "blockquote",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "[!NOTE] 참고하세요" }] },
+      ],
+    });
+    await waitFor(() => {
+      expect(document.querySelector(".md-alert-note")).toBeInTheDocument();
+    });
+  });
 });
