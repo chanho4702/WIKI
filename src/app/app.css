@@ -197,6 +197,21 @@ body {
 
 /* ── 페이지 보기 (W2) ─────────────────────────────────── */
 
+/*
+ * Task 18: 기본 폭 720px + 가운데 정렬 — 노션/컨플식 "전체 너비" 토글이 시각적으로 의미를 가지려면
+ * 최대 폭 제약이 선행되어야 한다. T12(doc-column 도입)가 실행되면 이 제약은 .doc-column으로
+ * 흡수되고, 이 .page-view 규칙은 --full 모디파이어만 남기고 제거될 예정.
+ */
+.page-view {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.page-view--full {
+  max-width: none;
+  margin: 0;
+}
+
 /* PageHeader와 본문 사이 간격 */
 .page-view-header {
   margin-bottom: var(--chanho-space-200);
@@ -502,6 +517,11 @@ body {
   flex-direction: column;
   gap: var(--chanho-space-200);
   max-width: 880px;
+}
+
+/* Task 18: 전체 너비 토글 — 기존 편집 화면 최대 폭(880px) 제약을 해제 */
+.page-edit--full {
+  max-width: none;
 }
 
 .page-edit-title {

@@ -4,6 +4,7 @@ import { Button, Spinner, useToast } from "@chanho/react";
 import { createPage, getPage, updatePage } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/WikiLayout";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
+import { usePageWidth } from "../lib/pageWidth";
 
 /**
  * 페이지 편집 화면 — 생성(/pages/new?parent=<id|없음>)과 수정(/pages/:pageId/edit) 공용.
@@ -26,6 +27,8 @@ export function PageEditPage() {
   const [pageSpaceId, setPageSpaceId] = useState<string | null>(null);
   // Task 5: 제목 변경 추적 (본문은 WikiEditor.isDirty()로 추적)
   const [titleDirty, setTitleDirty] = useState(false);
+  // Task 18: 페이지 너비 토글 — 생성 화면(pageId 없음)은 항상 기본 폭, toggle은 무동작
+  const { width, toggle: toggleWidth } = usePageWidth(pageId);
 
   // Task 5: 이탈 가드 — 제목·본문 미저장 변경 감지
   const isDirty = () => titleDirty || (editorRef.current?.isDirty() ?? false);
@@ -117,7 +120,7 @@ export function PageEditPage() {
   };
 
   return (
-    <div className="page-edit">
+    <div className={`page-edit${width === "full" ? " page-edit--full" : ""}`}>
       <input
         className="page-edit-title"
         value={title}
@@ -136,6 +139,17 @@ export function PageEditPage() {
         <Button variant="subtle" onClick={handleCancel}>
           취소
         </Button>
+        {isEdit && pageId ? (
+          <Button
+            size="small"
+            variant="subtle"
+            aria-label="전체 너비"
+            aria-pressed={width === "full"}
+            onClick={toggleWidth}
+          >
+            {width === "full" ? "기본 너비" : "전체 너비"}
+          </Button>
+        ) : null}
       </div>
     </div>
   );

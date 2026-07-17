@@ -10,6 +10,7 @@ import { TableOfContents } from "../components/TableOfContents";
 import { HistoryModal } from "../components/HistoryModal";
 import { ChildPages } from "../components/ChildPages";
 import { CommentSection } from "../components/CommentSection";
+import { usePageWidth } from "../lib/pageWidth";
 
 /** 수정일 표기: 2026-07-10T10:00:00.000Z → "2026년 7월 10일" */
 function formatDate(iso: string): string {
@@ -45,6 +46,8 @@ export function PageViewPage() {
   // undefined = 로딩 중, null = 없음
   const [page, setPage] = useState<Page | null | undefined>(undefined);
   const [users, setUsers] = useState<User[]>([]);
+  // Task 18: 페이지 너비 토글 — early return 이전에 호출해야 하는 훅
+  const { width, toggle: toggleWidth } = usePageWidth(pageId);
 
   useEffect(() => {
     void listUsers().then(setUsers);
@@ -95,13 +98,22 @@ export function PageViewPage() {
   };
 
   return (
-    <article className="page-view">
+    <article className={`page-view${width === "full" ? " page-view--full" : ""}`}>
       <PageHeader
         className="page-view-header"
         breadcrumbs={breadcrumbs}
         title={page.title}
         actions={
           <>
+            <Button
+              size="small"
+              variant="subtle"
+              aria-label="전체 너비"
+              aria-pressed={width === "full"}
+              onClick={toggleWidth}
+            >
+              {width === "full" ? "기본 너비" : "전체 너비"}
+            </Button>
             <Button
               size="small"
               onClick={() => navigate(`/spaces/${space.id}/pages/${page.id}/edit`)}
