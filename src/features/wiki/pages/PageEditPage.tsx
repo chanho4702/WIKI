@@ -24,6 +24,21 @@ export function PageEditPage() {
   const [notFound, setNotFound] = useState(false);
   // 수정 모드에서 로드한 페이지의 실제 spaceId (URL 불일치 가드용)
   const [pageSpaceId, setPageSpaceId] = useState<string | null>(null);
+  // Task 5: 제목 변경 추적 (본문은 WikiEditor.isDirty()로 추적)
+  const [titleDirty, setTitleDirty] = useState(false);
+
+  // Task 5: 이탈 가드 — 제목·본문 미저장 변경 감지
+  const isDirty = () => titleDirty || (editorRef.current?.isDirty() ?? false);
+
+  // 브라우저 새로고침/닫기 가드 — 라우터 내비게이션은 선언형 Routes라 useBlocker 불가(스펙 각주 참조)
+  // 훅은 조건부가 아닌 곳에 고정해야 함 — early return 가드 이전에 배치
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty()) e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  });
 
   useEffect(() => {
     if (!isEdit || !pageId) return;
@@ -44,6 +59,7 @@ export function PageEditPage() {
     const prefill = searchParams.get("title");
     if (prefill !== null) {
       setTitle(prefill);
+      setTitleDirty(false); // Task 5: 프리필은 사용자 변경이 아님
     }
   }, [isEdit, searchParams]);
 
@@ -61,9 +77,6 @@ export function PageEditPage() {
     // 잘못된 스페이스 URL — 페이지가 속한 스페이스의 편집 URL로 redirect (PageViewPage와 동일 패턴)
     return <Navigate to={`/spaces/${pageSpaceId}/pages/${pageId}/edit`} replace />;
   }
-
-  // 이탈 가드(제목/본문 미저장 변경 감지)는 Task 5 범위 — WikiEditorHandle.isDirty()는
-  // 이미 노출돼 있으니 그때 editorRef.current?.isDirty()로 그대로 소비하면 된다.
 
   const handleSave = async () => {
     // 본문 불변 보장 — 본문 미수정이면 직렬화 대신 원문 그대로 (버전 diff 노이즈 방지)
@@ -90,6 +103,10 @@ export function PageEditPage() {
   };
 
   const handleCancel = () => {
+    // Task 5: dirty 이탈 가드
+    if (isDirty() && !window.confirm("저장하지 않은 변경이 있습니다. 나가시겠습니까?")) {
+      return;
+    }
     if (isEdit) {
       navigate(`/spaces/${spaceId}/pages/${pageId}`); // 수정 취소 → 보기
     } else if (parentId) {
@@ -104,7 +121,10 @@ export function PageEditPage() {
       <input
         className="page-edit-title"
         value={title}
-        onChange={(e) => setTitle(e.target.value)}
+        onChange={(e) => {
+          setTitle(e.target.value);
+          setTitleDirty(true); // Task 5: 제목 변경 감지
+        }}
         placeholder="제목 없음"
         aria-label="페이지 제목"
       />

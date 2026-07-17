@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
@@ -46,15 +46,19 @@ describe("W2 페이지 편집·생성", () => {
 
   it("수정 화면에서 취소하면 보기로 돌아가고 내용은 바뀌지 않는다", async () => {
     const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     renderApp("/spaces/sp1/pages/pg2/edit");
     const titleField = await screen.findByPlaceholderText("제목 없음");
     await user.clear(titleField);
     await user.type(titleField, "버려질 제목");
     await user.click(screen.getByRole("button", { name: "취소" }));
+    // Task 5: 제목 변경 후 취소는 confirm을 거치고 동의하면 이동
+    expect(confirmSpy).toHaveBeenCalledWith("저장하지 않은 변경이 있습니다. 나가시겠습니까?");
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent(/\/spaces\/sp1\/pages\/pg2$/);
     });
     expect(await screen.findByRole("heading", { level: 1, name: "팀 규칙" })).toBeInTheDocument();
+    confirmSpy.mockRestore();
   });
 
   it("생성 URL(new?parent=pg1)에서 저장하면 새 페이지로 이동하고 트리의 pg1 하위에 나타난다", async () => {

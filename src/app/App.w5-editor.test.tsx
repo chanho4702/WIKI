@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
@@ -49,5 +49,27 @@ describe("W5 블록 에디터 — 편집 화면", () => {
     // findByText는 제목이 h1과 브레드크럼 현재 위치 span 양쪽에 렌더돼 다중 매치로 실패하므로 heading으로 특정
     await screen.findByRole("heading", { level: 1, name: "새 제목" });
     expect((await getPage("pg1"))!.body).toBe(before);
+  });
+
+  it("본문 변경 후 취소를 누르면 confirm을 묻고, 거부하면 편집에 머문다", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderApp("/spaces/sp1/pages/pg1/edit");
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    editorRegistry.current!.commands.insertContent("변경");
+    await user.click(screen.getByRole("button", { name: "취소" }));
+    expect(confirmSpy).toHaveBeenCalledWith("저장하지 않은 변경이 있습니다. 나가시겠습니까?");
+    expect(screen.getByTestId("location")).toHaveTextContent("/edit");
+    confirmSpy.mockRestore();
+  });
+
+  it("변경이 없으면 취소 시 confirm 없이 이동한다", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm");
+    renderApp("/spaces/sp1/pages/pg1/edit");
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    await user.click(screen.getByRole("button", { name: "취소" }));
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 });
