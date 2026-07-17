@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useNavigate, useParams } from "react-router";
 import { Avatar, Button, EmptyState, Select, Spinner, Switch, TextField, TopBar } from "@chanho/react";
 import type { Page, Space, User } from "../store/types";
@@ -49,6 +49,24 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
     },
     [setWidth],
   );
+
+  // 접기/열기 토글 후 포커스를 상대 버튼으로 옮긴다 — 그렇지 않으면 클릭한 버튼이 DOM에서
+  // 사라지면서 포커스가 body로 떨어져 키보드 사용자가 위치를 잃는다.
+  // 초기 마운트에서는 옮기지 않는다(첫 렌더에서 포커스를 훔치면 안 됨) — isFirstRender로 가드.
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const openButtonRef = useRef<HTMLButtonElement>(null);
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (collapsed) {
+      openButtonRef.current?.focus();
+    } else {
+      closeButtonRef.current?.focus();
+    }
+  }, [collapsed]);
 
   useEffect(() => {
     void getCurrentUser().then(setMe);
@@ -104,10 +122,12 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
       <div className="wiki-body">
         {collapsed ? (
           <Button
+            ref={openButtonRef}
             className="wiki-sidebar-opener"
             variant="subtle"
             size="small"
             aria-label="사이드바 열기"
+            aria-expanded={!collapsed}
             onClick={() => setCollapsed(false)}
           >
             »
@@ -122,10 +142,11 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
                 onValueChange={(id) => navigate(`/spaces/${id}`)}
               />
               <Button
+                ref={closeButtonRef}
                 variant="ghost"
                 size="small"
                 aria-label="사이드바 접기"
-                aria-expanded={true}
+                aria-expanded={!collapsed}
                 onClick={() => setCollapsed(true)}
               >
                 «

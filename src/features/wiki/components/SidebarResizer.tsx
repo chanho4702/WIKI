@@ -26,7 +26,9 @@ export function SidebarResizer({ width, onDrag, onCommit }: SidebarResizerProps)
 
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      event.currentTarget.setPointerCapture(event.pointerId);
+      // 실제 브라우저에서는 항상 존재하지만, jsdom(테스트 환경)은 미구현이라 옵셔널 체이닝으로
+      // 방어한다 — 없어도 드래그 상태 추적(dragRef)만으로 로직은 동일하게 동작한다.
+      event.currentTarget.setPointerCapture?.(event.pointerId);
       dragRef.current = { startX: event.clientX, startWidth: width, lastWidth: width };
     },
     [width],
@@ -43,13 +45,18 @@ export function SidebarResizer({ width, onDrag, onCommit }: SidebarResizerProps)
     [onDrag],
   );
 
-  const handlePointerUp = useCallback(
+  // pointerup(정상 종료)과 pointercancel(브라우저가 제스처를 가로채는 등 비정상 종료) 모두
+  // 같은 방식으로 마무리한다 — dragRef를 리셋하고, 사용자가 마지막으로 본 폭을 그대로 커밋한다.
+  // 여기서 롤백(시작 폭으로 되돌림) 대신 커밋을 택한 이유: pointercancel 후에도 화면에는 이미
+  // onDrag로 갱신된 미리보기 폭이 보이고 있으므로, 조용히 되돌리면 "화면과 실제 저장값이 다른"
+  // 더 혼란스러운 상태가 된다.
+  const endDrag = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       const state = dragRef.current;
       dragRef.current = null;
       if (!state) return;
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
       }
       onCommit(state.lastWidth);
     },
@@ -81,7 +88,8 @@ export function SidebarResizer({ width, onDrag, onCommit }: SidebarResizerProps)
       tabIndex={0}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
       onKeyDown={handleKeyDown}
     />
   );

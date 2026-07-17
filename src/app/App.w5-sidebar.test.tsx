@@ -58,6 +58,40 @@ describe("Task 19 사이드바 접기/펼치기", () => {
   });
 });
 
+describe("Task 19 사이드바 토글 포커스 관리", () => {
+  it("초기 마운트 시에는 사이드바 버튼으로 포커스를 옮기지 않는다(스틸 방지)", async () => {
+    renderApp();
+    await screen.findByRole("navigation", { name: "페이지 트리" });
+    const closeButton = screen.getByRole("button", { name: "사이드바 접기" });
+    expect(document.activeElement).not.toBe(closeButton);
+  });
+
+  it("접기 버튼을 클릭하면 포커스가 열기 버튼으로 이동한다", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await screen.findByRole("navigation", { name: "페이지 트리" });
+
+    await user.click(screen.getByRole("button", { name: "사이드바 접기" }));
+
+    const opener = screen.getByRole("button", { name: "사이드바 열기" });
+    expect(opener).toHaveAttribute("aria-expanded", "false");
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("열기 버튼을 클릭하면 포커스가 접기 버튼으로 이동한다", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await screen.findByRole("navigation", { name: "페이지 트리" });
+    await user.click(screen.getByRole("button", { name: "사이드바 접기" }));
+    const opener = screen.getByRole("button", { name: "사이드바 열기" });
+
+    await user.click(opener);
+
+    const closeButton = screen.getByRole("button", { name: "사이드바 접기" });
+    expect(document.activeElement).toBe(closeButton);
+  });
+});
+
 describe("Task 19 사이드바 너비 조절(리사이저)", () => {
   it("리사이저에 포커스 후 → 키를 누르면 aside 폭이 16px 늘어난다", async () => {
     const user = userEvent.setup();
