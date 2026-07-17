@@ -1,5 +1,7 @@
 import type { Extensions } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
+import CodeBlock from "@tiptap/extension-code-block";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import Link from "@tiptap/extension-link";
 import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
@@ -10,7 +12,15 @@ import TaskItem from "@tiptap/extension-task-item";
 import Image from "@tiptap/extension-image";
 import { Markdown } from "tiptap-markdown";
 import { WikiLink } from "./wikiLink";
+import { CodeBlockView } from "../components/CodeBlockView";
 import type { Page } from "../../store/types";
+
+/** 언어 선택 + 복사 버튼 NodeView가 붙은 코드 블록 — StarterKit 기본 codeBlock을 대체한다 */
+const CodeBlockWithView = CodeBlock.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(CodeBlockView);
+  },
+});
 
 export interface BaseExtensionOptions {
   /** 존재/부재 페이지 판별용 — 없으면 항상 빈 목록(모두 부재 처리) */
@@ -26,7 +36,9 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
+      codeBlock: false,
     }),
+    CodeBlockWithView,
     Link.configure({ openOnClick: false }),
     Table.configure({ resizable: false }),
     TableRow,
