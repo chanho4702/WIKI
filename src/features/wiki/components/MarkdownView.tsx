@@ -2,6 +2,7 @@ import type { AnchorHTMLAttributes } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
+import rehypeHighlight from "rehype-highlight";
 import { Link } from "react-router";
 import type { Page } from "../store/types";
 import { resolveWikiLinks } from "../lib/wikiLinks";
@@ -52,7 +53,7 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
     <div className="markdown-body">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkAlerts]}
-        rehypePlugins={[rehypeSlug]}
+        rehypePlugins={[rehypeSlug, [rehypeHighlight, { detect: false }]]}
         components={wikiMode ? { a: WikiAnchor } : undefined}
       >
         {source}

@@ -83,4 +83,32 @@ describe("MarkdownView", () => {
     expect(panel).toHaveTextContent("노트");
     expect(panel).toHaveTextContent("내용");
   });
+
+  it("언어가 명시된 코드 블록(```ts)에 rehype-highlight가 hljs- 토큰 클래스를 부여한다", () => {
+    const md = ["```ts", "const answer = 42;", "```"].join("\n");
+    const { container } = render(<MarkdownView markdown={md} />);
+
+    // hljs- 클래스를 가진 토큰 span이 존재하는지 확인
+    const tokenSpans = container.querySelectorAll("[class^='hljs-']");
+    expect(tokenSpans.length).toBeGreaterThan(0);
+
+    // 코드 블록의 구조는 유지되는지 확인
+    const code = container.querySelector("pre code");
+    expect(code).not.toBeNull();
+    expect(code).toHaveTextContent("const answer = 42;");
+  });
+
+  it("언어가 없는 코드 블록은 하이라이트되지 않는다 (detect: false 검증)", () => {
+    const md = ["```", "const answer = 42;", "```"].join("\n");
+    const { container } = render(<MarkdownView markdown={md} />);
+
+    // hljs- 클래스를 가진 토큰이 없어야 함 (detect:false로 인해 하이라이트 안 됨)
+    const tokenSpans = container.querySelectorAll("[class^='hljs-']");
+    expect(tokenSpans.length).toBe(0);
+
+    // 하지만 코드 블록 자체는 존재해야 함
+    const code = container.querySelector("pre code");
+    expect(code).not.toBeNull();
+    expect(code).toHaveTextContent("const answer = 42;");
+  });
 });

@@ -322,6 +322,48 @@ body {
   background: transparent;
 }
 
+/* highlight.js 토큰 색 정의 — 라이트 테마 기준 */
+.markdown-body .hljs-keyword {
+  color: #0c66e4; /* 키워드 — 파란색 */
+}
+
+.markdown-body .hljs-string {
+  color: #2f8b2f; /* 문자열 — 초록색 */
+}
+
+.markdown-body .hljs-number {
+  color: #a64d79; /* 숫자 — 자주색 */
+}
+
+.markdown-body .hljs-comment {
+  color: #8993a4; /* 주석 — 회색 */
+}
+
+.markdown-body .hljs-title {
+  color: #6f42c1; /* 함수/클래스 제목 — 보라색 */
+}
+
+.markdown-body .hljs-attr,
+.markdown-body .hljs-attribute {
+  color: #6f42c1; /* 속성명 — 보라색 */
+}
+
+.markdown-body .hljs-built_in {
+  color: #0c66e4; /* 내장 함수/타입 — 파란색 */
+}
+
+.markdown-body .hljs-literal {
+  color: #a64d79; /* 리터럴(true, false, null) — 자주색 */
+}
+
+.markdown-body .hljs-tag {
+  color: #0c66e4; /* HTML 태그 — 파란색 */
+}
+
+.markdown-body .hljs-variable {
+  color: #2f8b2f; /* 변수명 — 초록색 */
+}
+
 .markdown-body table {
   margin: 0 0 var(--chanho-space-200);
   border-collapse: collapse;

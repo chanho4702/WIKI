@@ -23,8 +23,11 @@ describe("W2 페이지 보기", () => {
     // GFM 표 — remark-gfm 없이는 table이 생기지 않는다 (W1 최종리뷰 인계 검증 겸용)
     expect(screen.getByRole("columnheader", { name: "명령어" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "타입 검사" })).toBeInTheDocument();
-    // 코드블록
-    expect(screen.getByText(/export function greet/)).toBeInTheDocument();
+    // 코드블록 (highlight 토큰으로 분할되어도 코드 요소 내 텍스트가 존재하는지 확인)
+    const codeElements = screen.getAllByRole("code");
+    expect(
+      codeElements.some((code) => code.textContent?.includes("export function greet")),
+    ).toBe(true);
     // 메타: 수정자(u2 이서연) + 수정일 (T_UPDATE=2026-07-10T10:00:00Z — KST/UTC 모두 7월 10일)
     // W3에서 추가된 CommentSection의 시드 코멘트 c1도 작성자가 이서연이라 이름이 페이지에 두 번 나타난다.
     // 코멘트 영역(role=region "코멘트") 밖에서 찾아 페이지 메타 표기임을 명확히 한다.
