@@ -9,6 +9,13 @@ export interface SlashItem {
   label: string;
   /** 요소 브라우저(InsertMenu)·슬래시 메뉴 팝업에 라벨 아래 한 줄로 노출하는 설명 */
   description: string;
+  /**
+   * 항목 선택이 일반 편집 명령이 아니라 UI를 열어야 하는 경우의 마커(W6 T4) — 현재는
+   * "이모지" 항목만 해당한다. SlashItem.run은 editor만 받으므로 팝오버를 직접 열 수 없다.
+   * action이 있으면 호출부(이 파일의 Suggestion command, InsertMenu.tsx의 select)가 run 대신
+   * 등록된 오픈 콜백을 호출한다 — run은 그 경우 아무 것도 하지 않는 no-op으로 둔다.
+   */
+  action?: "openEmoji";
   run: (editor: Editor) => void;
 }
 
@@ -111,6 +118,14 @@ export const SLASH_ITEMS: SlashItem[] = [
       if (src) e.chain().focus().setImage({ src }).run();
     },
   },
+  {
+    id: "emoji",
+    label: "이모지",
+    description: "이모지를 삽입합니다",
+    // run은 no-op — 실제로는 action 마커를 보고 호출부가 EmojiPicker 팝오버를 연다.
+    action: "openEmoji",
+    run: () => {},
+  },
 ];
 
 export function filterSlashItems(query: string): SlashItem[] {
@@ -138,17 +153,19 @@ export interface SlashMenuOptions {
     clientRect: DOMRect | null;
     command: (item: SlashItem) => void;
   } | null) => void;
+  /** action: "openEmoji" 항목이 선택됐을 때 호출 — WikiEditor가 EmojiPicker의 open 상태를 연다 */
+  onOpenEmoji: () => void;
 }
 
 export const SlashMenu = Extension.create<SlashMenuOptions>({
   name: "slashMenu",
 
   addOptions() {
-    return { onStateChange: () => {} };
+    return { onStateChange: () => {}, onOpenEmoji: () => {} };
   },
 
   addProseMirrorPlugins() {
-    const { onStateChange } = this.options;
+    const { onStateChange, onOpenEmoji } = this.options;
     let items: SlashItem[] = [];
     let highlight = 0;
     let clientRect: (() => DOMRect | null) | null = null;
@@ -174,7 +191,12 @@ export const SlashMenu = Extension.create<SlashMenuOptions>({
         },
         command: ({ editor, range, props }) => {
           editor.chain().focus().deleteRange(range).run();
-          (props as SlashItem).run(editor);
+          const item = props as SlashItem;
+          if (item.action === "openEmoji") {
+            onOpenEmoji();
+            return;
+          }
+          item.run(editor);
         },
         items: ({ query }) => filterSlashItems(query),
         render: () => ({

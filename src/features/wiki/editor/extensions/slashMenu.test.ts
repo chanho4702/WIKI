@@ -9,7 +9,7 @@ describe("슬래시 메뉴", () => {
     expect(SLASH_ITEMS.map((i) => i.id)).toEqual([
       "h1", "h2", "h3", "bullet", "ordered", "task", "quote",
       "note", "tip", "warning", "caution",
-      "code", "divider", "table", "image",
+      "code", "divider", "table", "image", "emoji",
     ]);
   });
 
@@ -28,6 +28,18 @@ describe("슬래시 메뉴", () => {
     const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
     SLASH_ITEMS.find((i) => i.id === "h1")!.run(editor);
     expect(serializeMarkdown(editor.getJSON()).trim()).toBe("# 본문");
+    editor.destroy();
+  });
+
+  // W6 T4 — "이모지" 항목은 run(editor)에서 직접 삽입하지 않는다(SlashItem.run은 editor만 받아
+  // UI(EmojiPicker 팝오버)를 열 수 없기 때문). action 마커로 구분하고 run은 문서를 바꾸지 않는
+  // no-op이어야 한다 — 실제 열기는 호출부(Suggestion command/InsertMenu.select)가 담당한다.
+  it("emoji 항목은 action: openEmoji 마커를 갖고, run(editor)은 문서를 바꾸지 않는 no-op이다", () => {
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+    const item = SLASH_ITEMS.find((i) => i.id === "emoji")!;
+    expect(item.action).toBe("openEmoji");
+    item.run(editor);
+    expect(serializeMarkdown(editor.getJSON()).trim()).toBe("본문");
     editor.destroy();
   });
 

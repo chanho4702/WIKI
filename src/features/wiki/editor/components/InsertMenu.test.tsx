@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Editor } from "@tiptap/core";
@@ -102,6 +102,21 @@ describe("InsertMenu — 요소 브라우저", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(other).toHaveFocus();
     expect(trigger).not.toHaveFocus();
+    editor.destroy();
+  });
+
+  // W6 T4 — "이모지" 항목은 SLASH_ITEMS를 그대로 재사용하는 InsertMenu에도 노출되지만, run이
+  // no-op이므로 클릭 시 onOpenEmoji로 위임돼야 한다(그렇지 않으면 클릭이 조용히 아무 일도 안 함).
+  it("'이모지' 항목을 클릭하면 onOpenEmoji가 호출되고 메뉴가 닫힌다(문서는 바뀌지 않음)", async () => {
+    const user = userEvent.setup();
+    const onOpenEmoji = vi.fn();
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+    render(<InsertMenu editor={editor} onOpenEmoji={onOpenEmoji} />);
+    await user.click(screen.getByRole("button", { name: "요소 삽입" }));
+    await user.click(screen.getByRole("button", { name: "이모지" }));
+    expect(onOpenEmoji).toHaveBeenCalledTimes(1);
+    expect(serializeMarkdown(editor.getJSON()).trim()).toBe("본문");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     editor.destroy();
   });
 

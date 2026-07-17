@@ -16,7 +16,15 @@ import { filterSlashItems, type SlashItem } from "../extensions/slashMenu";
  *   캐럿이 안 놓인다" 같은 회귀가 생긴다(리뷰 반영 — 이전엔 preventDefault + 강제 focus였다).
  * - 항목 선택으로 닫힘: 에디터로 포커스를 보낸다(바로 이어서 타이핑하도록).
  */
-export function InsertMenu({ editor }: { editor: Editor }) {
+export interface InsertMenuProps {
+  editor: Editor;
+  /** action: "openEmoji" 항목(이모지) 선택 시 호출 — TopToolbar가 EmojiPicker의 open 상태를 연다.
+   * slashMenu.ts의 Suggestion command와 동일한 분기를 여기서도 둔다(InsertMenu는 SLASH_ITEMS를
+   * 그대로 재사용하므로 "이모지" 항목이 이 팝오버에도 그대로 노출되기 때문). */
+  onOpenEmoji?: () => void;
+}
+
+export function InsertMenu({ editor, onOpenEmoji }: InsertMenuProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -55,6 +63,10 @@ export function InsertMenu({ editor }: { editor: Editor }) {
 
   const select = (item: SlashItem) => {
     close();
+    if (item.action === "openEmoji") {
+      onOpenEmoji?.();
+      return;
+    }
     // 슬래시 메뉴의 command 핸들러와 동일하게, item.run 전에 에디터 포커스를 보장한다 —
     // 이미지처럼 prompt를 취소할 수 있는 run은 그 경우 focus를 안 걸 수 있기 때문이다.
     editor.chain().focus().run();

@@ -1192,6 +1192,92 @@ body {
   width: 100%;
 }
 
+/* W6: 이모지 피커 — TopToolbar의 이모지 버튼과 팝오버(InsertMenu.tsx 관례 재사용) */
+.emoji-picker {
+  position: relative;
+  display: inline-flex;
+}
+.emoji-picker-trigger {
+  border: none;
+  background: none;
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100, 8px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  color: var(--chanho-color-text-default);
+  min-width: 30px;
+}
+.emoji-picker-trigger:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+.emoji-picker-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  width: 280px;
+  padding: var(--chanho-space-100, 8px);
+  background: var(--chanho-color-background-surface, #fff);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.emoji-picker-filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-100, 8px);
+  margin-bottom: var(--chanho-space-100, 8px);
+  border: 1px solid var(--chanho-color-border-default, #dcdfe4);
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: var(--chanho-color-text-default);
+}
+.emoji-picker-tabs {
+  display: flex;
+  gap: var(--chanho-space-50, 4px);
+  margin-bottom: var(--chanho-space-100, 8px);
+}
+.emoji-picker-tabs button {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-50, 4px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  font-size: var(--chanho-font-size-75, 12px);
+  color: var(--chanho-color-text-subtle, #626f86);
+}
+.emoji-picker-tabs button:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+.emoji-picker-tabs button.is-active {
+  background: var(--color-background-accent-blue-subtlest, #e9f2ff);
+  color: var(--color-text-accent-blue, #0c66e4);
+}
+.emoji-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--chanho-space-50, 4px);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.emoji-picker-item {
+  border: none;
+  background: none;
+  padding: var(--chanho-space-50, 4px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  font-size: var(--chanho-font-size-200, 18px);
+  line-height: 1;
+}
+.emoji-picker-item:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+.emoji-picker-empty {
+  margin: var(--chanho-space-100, 8px) 0 0;
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-200, 8px);
+  color: var(--chanho-color-text-subtle, #626f86);
+}
+
 /* W5: 코드 블록 NodeView — 언어 셀렉트 + 복사 버튼 */
 .code-block-view {
   position: relative;

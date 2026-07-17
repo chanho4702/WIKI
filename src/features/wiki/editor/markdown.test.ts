@@ -31,6 +31,9 @@ const CASES: Array<{ name: string; md: string }> = [
   // "이스케이프 저장형(\[!NOTE\])도 md-alert-note 패널로 렌더한다" 및
   // "비이스케이프 입력이 에디터 왕복(파싱→직렬화) 후에도 패널로 유지된다" 테스트로 실증했다.
   { name: "GitHub-style alert(NOTE)", md: "> \\[!NOTE\\] 내용" },
+  // 이모지 피커(W6 T4) — EmojiPicker.select()는 유니코드 문자를 insertContent로 그대로 넣으므로
+  // 마크다운 문법 문자가 아닌 일반 텍스트로 직렬화되고, 유니코드 자체가 손실 없이 보존돼야 한다.
+  { name: "이모지 포함 문단", md: "오늘 기분 😀 최고! 🎉" },
 ];
 
 describe("markdown 왕복", () => {

@@ -65,6 +65,10 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
       clientRect: DOMRect | null;
       command: (item: SlashItem) => void;
     } | null>(null);
+    // 이모지 피커(W6 T4) 열림 상태 — TopToolbar의 이모지 버튼과 슬래시 메뉴 "이모지" 항목이
+    // 같은 팝오버를 공유하므로 여기(WikiEditor)로 끌어올린다. SlashMenu 확장은 useEditor 안에서
+    // 구성되므로 TopToolbar가 마운트되기 전에 이미 이 상태의 setter를 필요로 한다.
+    const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
     const editor = useEditor({
       immediatelyRender: true,
@@ -75,7 +79,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
           getPages: () => pagesRef.current,
           onStateChange: setLinkMenu,
         }),
-        SlashMenu.configure({ onStateChange: setSlashMenu }),
+        SlashMenu.configure({ onStateChange: setSlashMenu, onOpenEmoji: () => setEmojiPickerOpen(true) }),
         AlertDecoration,
         GlobalDragHandle.configure({
           dragHandleWidth: 20,
@@ -120,7 +124,13 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
 
     return (
       <div className="wiki-editor">
-        {editor && <TopToolbar editor={editor} />}
+        {editor && (
+          <TopToolbar
+            editor={editor}
+            emojiPickerOpen={emojiPickerOpen}
+            onEmojiPickerOpenChange={setEmojiPickerOpen}
+          />
+        )}
         <EditorContent editor={editor} />
         {editor && <BubbleToolbar editor={editor} />}
         {linkMenu && linkMenu.clientRect && (

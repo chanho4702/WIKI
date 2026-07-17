@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/core";
 import { SLASH_ITEMS } from "../extensions/slashMenu";
 import { promptSetLink } from "../lib/linkCommand";
 import { InsertMenu } from "./InsertMenu";
+import { EmojiPicker } from "./EmojiPicker";
 
 /** 슬래시 메뉴 이미지 항목의 run을 그대로 재사용 — URL 프롬프트/삽입 로직을 이중 정의하지 않는다 */
 const insertImage = SLASH_ITEMS.find((i) => i.id === "image")!.run;
@@ -14,8 +15,20 @@ const BLOCK_OPTIONS = [
   { value: "h3", label: "제목 3" },
 ] as const;
 
+export interface TopToolbarProps {
+  editor: Editor;
+  /**
+   * 이모지 피커(W6 T4) 열림 상태를 WikiEditor가 제어할 때 지정한다 — 슬래시 메뉴 "이모지" 항목이
+   * 이 팝오버를 열어야 하는데, 슬래시 메뉴 확장은 TopToolbar보다 먼저(useEditor 안에서) 구성되므로
+   * 상태를 WikiEditor로 끌어올려야 두 진입점(이 버튼, 슬래시 메뉴)이 같은 팝오버를 공유한다.
+   * 미지정 시(예: 이 컴포넌트 단독 테스트) EmojiPicker가 자체 내부 상태로 대체한다.
+   */
+  emojiPickerOpen?: boolean;
+  onEmojiPickerOpenChange?: (open: boolean) => void;
+}
+
 /** 컨플식 상단 고정 툴바 — 마크다운 표현 가능 컨트롤만. 정렬은 저장 포맷 제약으로 제외(로드맵 3단계) */
-export function TopToolbar({ editor }: { editor: Editor }) {
+export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange }: TopToolbarProps) {
   // 셀렉션/문서 변경 시 활성 상태 갱신 — transaction 구독
   const [, force] = useReducer((x: number) => x + 1, 0);
   useEffect(() => {
@@ -85,7 +98,8 @@ export function TopToolbar({ editor }: { editor: Editor }) {
       {btn("링크", "🔗", () => promptSetLink(editor), editor.isActive("link"))}
       {btn("이미지", "🖼", () => insertImage(editor))}
       <span className="top-toolbar-divider" />
-      <InsertMenu editor={editor} />
+      <EmojiPicker editor={editor} open={emojiPickerOpen} onOpenChange={onEmojiPickerOpenChange} />
+      <InsertMenu editor={editor} onOpenEmoji={() => onEmojiPickerOpenChange?.(true)} />
     </div>
   );
 }
