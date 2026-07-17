@@ -2079,6 +2079,21 @@ TDD 사이클 후 커밋 `feat(macros): 목차 + heading 앵커 — rehype-slug/
 
 TDD 사이클 후 커밋 `feat(macros): 하위 페이지 목록 — 보기 화면 자동 영역`.
 
+### Task 18: 페이지 너비 조절 (노션/컨플식) — 2026-07-17 사용자 요청 추가
+
+> 노션 "전체 너비" 토글 / 컨플 고정·전체 폭 레이아웃 대응. 실행 순서: Task 17 다음, Task 12(최종 스윕) 직전.
+> **저장 위치 결정**: `Page` 타입·스토어·백엔드 계약은 동결이므로 **클라이언트 UI 설정**으로 구현 —
+> `localStorage` 키 `wiki.ui.width.<pageId>` = `"full"` (기본값 부재 = 기본 폭). 사용자별·기기별 설정이며
+> 문서 데이터가 아니다. 서버 저장(페이지 메타데이터화)은 wiki-service 정책 결정 목록에 추가만 해 둔다.
+
+**Files:**
+- Create: `src/features/wiki/lib/pageWidth.ts` — `getPageWidth(pageId): "default" | "full"`, `setPageWidth(pageId, width)` (localStorage, 예외 안전), `usePageWidth(pageId)` 훅 (state + 토글)
+- Modify: `src/features/wiki/pages/PageViewPage.tsx`, `src/features/wiki/pages/PageEditPage.tsx` — 문서 컬럼에 `doc-column-full` 클래스 조건 부여 + 토글 버튼 (아이콘/서브틀 버튼, aria-label "전체 너비" / aria-pressed)
+- Modify: `src/app/app.css` — `.doc-column-full { max-width: none; }` (T12의 `.doc-column` 위에 얹음; T12보다 먼저 실행되는 경우 `.page-view`/`.page-edit`에 직접 적용 후 T12에서 통합)
+- Test: `pageWidth.test.ts` (get/set/기본값/스토리지 예외), App 통합 1개 (토글 → 클래스 변경 → 리로드 후 유지, 보기/편집 공유)
+
+TDD 사이클 후 커밋 `feat(wiki): 페이지 너비 토글 — 기본 720px/전체 너비, 페이지별 로컬 설정`.
+
 ---
 
 ## Self-Review 체크 결과
