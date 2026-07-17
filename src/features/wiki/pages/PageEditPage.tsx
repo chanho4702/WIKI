@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
-import { Button, Spinner, Tabs, TextField, useToast } from "@chanho/react";
+import { Button, Spinner, useToast } from "@chanho/react";
 import { createPage, getPage, updatePage } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/WikiLayout";
-import { MarkdownView } from "../components/MarkdownView";
-import { WikiLinkTextArea } from "../components/WikiLinkTextArea";
+import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 
 /**
  * 페이지 편집 화면 — 생성(/pages/new?parent=<id|없음>)과 수정(/pages/:pageId/edit) 공용.
- * 제목 TextField + 작성/미리보기 Tabs + 저장/취소.
+ * 노션풍: 대형 인라인 제목 + WYSIWYG 본문. 저장은 명시적(컨플식).
  */
 export function PageEditPage() {
   const { spaceId, pageId } = useParams();
@@ -19,10 +18,9 @@ export function PageEditPage() {
   const { pages, reloadPages } = useOutletContext<WikiOutletContext>();
   const isEdit = pageId !== undefined;
 
+  const editorRef = useRef<WikiEditorHandle>(null);
   const [title, setTitle] = useState(() => (isEdit ? "" : (searchParams.get("title") ?? "")));
-  const [body, setBody] = useState("");
-  // 수정 모드는 기존 내용을 불러온 뒤에 입력 가능
-  const [ready, setReady] = useState(!isEdit);
+  const [initialBody, setInitialBody] = useState<string | null>(isEdit ? null : "");
   const [notFound, setNotFound] = useState(false);
   // 수정 모드에서 로드한 페이지의 실제 spaceId (URL 불일치 가드용)
   const [pageSpaceId, setPageSpaceId] = useState<string | null>(null);
@@ -34,10 +32,9 @@ export function PageEditPage() {
         setNotFound(true);
       } else {
         setTitle(page.title);
-        setBody(page.body);
+        setInitialBody(page.body);
         setPageSpaceId(page.spaceId);
       }
-      setReady(true);
     });
   }, [isEdit, pageId]);
 
@@ -47,7 +44,6 @@ export function PageEditPage() {
     const prefill = searchParams.get("title");
     if (prefill !== null) {
       setTitle(prefill);
-      setBody("");
     }
   }, [isEdit, searchParams]);
 
@@ -55,18 +51,23 @@ export function PageEditPage() {
     // 라우팅상 도달 불가 — 타입 좁히기용 가드
     return <Navigate to="/" replace />;
   }
-  if (!ready) {
-    return <Spinner label="페이지 로딩 중" />;
-  }
   if (notFound) {
     return <p>페이지를 찾을 수 없습니다</p>;
+  }
+  if (initialBody === null) {
+    return <Spinner label="페이지 로딩 중" />;
   }
   if (isEdit && pageId && pageSpaceId !== null && pageSpaceId !== spaceId) {
     // 잘못된 스페이스 URL — 페이지가 속한 스페이스의 편집 URL로 redirect (PageViewPage와 동일 패턴)
     return <Navigate to={`/spaces/${pageSpaceId}/pages/${pageId}/edit`} replace />;
   }
 
+  // 이탈 가드(제목/본문 미저장 변경 감지)는 Task 5 범위 — WikiEditorHandle.isDirty()는
+  // 이미 노출돼 있으니 그때 editorRef.current?.isDirty()로 그대로 소비하면 된다.
+
   const handleSave = async () => {
+    // 본문 불변 보장 — 본문 미수정이면 직렬화 대신 원문 그대로 (버전 diff 노이즈 방지)
+    const body = editorRef.current?.isDirty() ? editorRef.current.getMarkdown() : initialBody;
     try {
       if (isEdit && pageId) {
         const saved = await updatePage(pageId, { title, body });
@@ -100,36 +101,14 @@ export function PageEditPage() {
 
   return (
     <div className="page-edit">
-      <TextField
-        label="제목"
+      <input
+        className="page-edit-title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="페이지 제목"
+        placeholder="제목 없음"
+        aria-label="페이지 제목"
       />
-      <Tabs
-        label="본문 편집"
-        items={[
-          {
-            value: "write",
-            label: "작성",
-            content: (
-              <WikiLinkTextArea
-                label="본문"
-                rows={16}
-                value={body}
-                onValueChange={setBody}
-                placeholder="마크다운으로 작성하세요"
-                pages={pages ?? []}
-              />
-            ),
-          },
-          {
-            value: "preview",
-            label: "미리보기",
-            content: <MarkdownView markdown={body} pages={pages ?? undefined} spaceId={pages ? spaceId : undefined} />,
-          },
-        ]}
-      />
+      <WikiEditor ref={editorRef} initialMarkdown={initialBody} pages={pages ?? []} />
       <div className="page-edit-actions">
         <Button onClick={handleSave} disabled={!title.trim()}>
           저장

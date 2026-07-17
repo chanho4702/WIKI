@@ -4,10 +4,14 @@ import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
 import { MOCK_USERS } from "../mock/users";
+import { editorRegistry } from "../features/wiki/editor/editorTestRegistry";
 
 beforeEach(() => {
   localStorage.clear();
   __resetForTest();
+  // 이전 테스트의 에디터 destroy가 setTimeout(0)으로 지연 발화될 수 있어, 그 사이 이 테스트가
+  // "아직 안 지워진 이전 인스턴스"를 자기 것으로 착각하지 않도록 매 테스트 시작 전 명시적으로 비운다.
+  editorRegistry.current = null;
 });
 
 describe("W2 페이지 편집·생성", () => {
@@ -19,14 +23,15 @@ describe("W2 페이지 편집·생성", () => {
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg2/edit");
     });
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
     // 기존 내용이 채워져 있다
-    const titleField = await screen.findByLabelText("제목");
+    const titleField = screen.getByPlaceholderText("제목 없음");
     expect(titleField).toHaveValue("팀 규칙");
     await user.clear(titleField);
     await user.type(titleField, "팀 규칙 v2");
-    const bodyField = screen.getByLabelText("본문");
-    await user.clear(bodyField);
-    await user.type(bodyField, "## 새 규칙");
+    // setContent의 emitUpdate 기본값은 false(update 이벤트 미발생) — WikiEditor의 dirty 판정이
+    // onUpdate에 의존하므로 테스트에서 프로그램적으로 내용을 바꿀 때는 명시적으로 true를 준다.
+    editorRegistry.current!.commands.setContent("## 새 규칙", true);
     await user.click(screen.getByRole("button", { name: "저장" }));
     // 보기로 복귀 + 마크다운 렌더 반영
     await waitFor(() => {
@@ -39,24 +44,10 @@ describe("W2 페이지 편집·생성", () => {
     expect(within(tree).getByRole("link", { name: "팀 규칙 v2" })).toBeInTheDocument();
   });
 
-  it("미리보기 탭에서 입력 중인 마크다운이 렌더로 보이고, 작성 탭으로 돌아와도 입력이 유지된다", async () => {
-    const user = userEvent.setup();
-    renderApp("/spaces/sp1/pages/pg2/edit");
-    const bodyField = await screen.findByLabelText("본문");
-    await user.clear(bodyField);
-    await user.type(bodyField, "# 미리보기 확인");
-    await user.click(screen.getByRole("tab", { name: "미리보기" }));
-    expect(
-      await screen.findByRole("heading", { level: 1, name: "미리보기 확인" }),
-    ).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "작성" }));
-    expect(screen.getByLabelText("본문")).toHaveValue("# 미리보기 확인");
-  });
-
   it("수정 화면에서 취소하면 보기로 돌아가고 내용은 바뀌지 않는다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg2/edit");
-    const titleField = await screen.findByLabelText("제목");
+    const titleField = await screen.findByPlaceholderText("제목 없음");
     await user.clear(titleField);
     await user.type(titleField, "버려질 제목");
     await user.click(screen.getByRole("button", { name: "취소" }));
@@ -69,8 +60,9 @@ describe("W2 페이지 편집·생성", () => {
   it("생성 URL(new?parent=pg1)에서 저장하면 새 페이지로 이동하고 트리의 pg1 하위에 나타난다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/new?parent=pg1");
-    await user.type(await screen.findByLabelText("제목"), "새 하위 문서");
-    await user.type(screen.getByLabelText("본문"), "# 하위 문서 본문");
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    await user.type(screen.getByPlaceholderText("제목 없음"), "새 하위 문서");
+    editorRegistry.current!.commands.setContent("# 하위 문서 본문", true);
     await user.click(screen.getByRole("button", { name: "저장" }));
     // 새 페이지 보기로 이동 + 렌더
     expect(
@@ -111,7 +103,7 @@ describe("W2 페이지 편집·생성", () => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/new");
     });
     // parent=pg2가 실제로 적용되는지 — 저장 후 pg2를 접으면 새 항목이 사라진다
-    await user.type(screen.getByLabelText("제목"), "회의록 규칙");
+    await user.type(screen.getByPlaceholderText("제목 없음"), "회의록 규칙");
     await user.click(screen.getByRole("button", { name: "저장" }));
     await screen.findByRole("heading", { level: 1, name: "회의록 규칙" });
     await user.click(within(tree).getByRole("button", { name: "팀 규칙 하위 접기" }));
@@ -135,7 +127,7 @@ describe("W2 페이지 편집·생성", () => {
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp9/pages/new");
     });
-    await user.type(screen.getByLabelText("제목"), "홈");
+    await user.type(screen.getByPlaceholderText("제목 없음"), "홈");
     await user.click(screen.getByRole("button", { name: "저장" })); // 본문 없이 저장 가능 (body="")
     expect(await screen.findByRole("heading", { level: 1, name: "홈" })).toBeInTheDocument();
     const tree = screen.getByRole("navigation", { name: "페이지 트리" });

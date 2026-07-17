@@ -35,7 +35,7 @@ describe("W3 이월 정리", () => {
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp2/pages/pgA/edit");
     });
-    expect(await screen.findByLabelText("제목")).toHaveValue("운영 문서");
+    expect(await screen.findByPlaceholderText("제목 없음")).toHaveValue("운영 문서");
   });
 
   it("순환 parentId 데이터에서도 페이지 보기가 멈추지 않고 렌더된다 (ancestorsOf 방어)", async () => {

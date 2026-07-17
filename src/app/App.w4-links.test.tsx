@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
 import { __resetForTest, updatePage } from "../features/wiki/store/wikiStore";
+import { editorRegistry } from "../features/wiki/editor/editorTestRegistry";
 
 beforeEach(() => {
   localStorage.clear();
   __resetForTest();
+  // 이전 테스트의 에디터 destroy가 setTimeout(0)으로 지연 발화될 수 있어, 그 사이 이 테스트가
+  // "아직 안 지워진 이전 인스턴스"를 자기 것으로 착각하지 않도록 매 테스트 시작 전 명시적으로 비운다.
+  editorRegistry.current = null;
 });
 
 describe("W4 [[제목]] 페이지 링크", () => {
@@ -32,25 +36,22 @@ describe("W4 [[제목]] 페이지 링크", () => {
     const link = within(article).getByRole("link", { name: "운영 런북" });
     expect(link).toHaveClass("wiki-link-missing");
     await user.click(link);
-    expect(await screen.findByLabelText("제목")).toHaveValue("운영 런북");
+    expect(await screen.findByPlaceholderText("제목 없음")).toHaveValue("운영 런북");
   });
 
-  it("편집 화면 미리보기에서 없는 링크를 클릭하면 생성 화면으로 리마운트되어 프리필된다", async () => {
-    const user = userEvent.setup();
+  // W5: 미리보기 탭이 사라지면서 "편집 화면에서 링크 클릭 → 생성 화면 리마운트" 흐름 자체가
+  // 없어졌다(칩은 원자 노드일 뿐 클릭 가능한 링크가 아니다). 대신 편집 화면(WikiEditor)에도
+  // outlet의 실제 pages가 제대로 흘러들어가 부재 링크가 칩으로 구분되는지를 검증한다.
+  it("편집 화면에서도 [[제목]]을 입력하면 부재 링크 칩으로 구분되어 보인다", async () => {
     renderApp("/spaces/sp1/pages/pg2/edit");
-    expect(await screen.findByLabelText("제목")).toHaveValue("팀 규칙");
-    const body = screen.getByLabelText("본문");
-    await user.click(body);
-    await user.type(body, "[[[[운영 런북]]");
-    expect((body as HTMLTextAreaElement).value).toContain("[[운영 런북]]");
-
-    await user.click(screen.getByRole("tab", { name: "미리보기" }));
-    const link = screen.getByRole("link", { name: "운영 런북" });
-    expect(link).toHaveClass("wiki-link-missing");
-    await user.click(link);
-
-    await user.click(screen.getByRole("tab", { name: "작성" }));
-    expect(await screen.findByLabelText("제목")).toHaveValue("운영 런북");
-    expect(screen.getByLabelText("본문")).toHaveValue("");
+    expect(await screen.findByPlaceholderText("제목 없음")).toHaveValue("팀 규칙");
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    editorRegistry.current!.commands.insertContentAt(0, {
+      type: "wikiLink",
+      attrs: { title: "운영 런북" },
+    });
+    const chip = await screen.findByText("운영 런북");
+    expect(chip).toHaveClass("wiki-chip-missing");
+    expect(editorRegistry.current!.storage.markdown.getMarkdown()).toContain("[[운영 런북]]");
   });
 });

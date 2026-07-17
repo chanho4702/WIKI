@@ -9,7 +9,10 @@ beforeEach(() => {
   __resetForTest();
 });
 
-describe("W4 [[ 자동완성", () => {
+// TODO(Task 6): 에디터 자동완성으로 재작성 — 이 파일의 시나리오는 textarea 기반 [[ 자동완성
+// (WikiLinkTextArea, W5에서 제거)을 전제로 하므로, WikiEditor의 [[ 자동완성 UI가 나오면
+// editorRegistry 경유로 다시 작성한다.
+describe.skip("W4 [[ 자동완성", () => {
   it("[[ 뒤 글자로 제목을 필터하고 Enter로 [[제목]]을 완성한다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/new");
