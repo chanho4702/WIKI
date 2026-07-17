@@ -13,12 +13,20 @@ import Image from "@tiptap/extension-image";
 import { Markdown } from "tiptap-markdown";
 import { WikiLink } from "./wikiLink";
 import { CodeBlockView } from "../components/CodeBlockView";
+import { ImageView } from "../components/ImageView";
 import type { Page } from "../../store/types";
 
 /** 언어 선택 + 복사 버튼 NodeView가 붙은 코드 블록 — StarterKit 기본 codeBlock을 대체한다 */
 const CodeBlockWithView = CodeBlock.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockView);
+  },
+});
+
+/** 로드 실패 placeholder가 붙은 이미지 — 기본 Image를 대체한다 */
+const ImageWithView = Image.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageView);
   },
 });
 
@@ -46,7 +54,7 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     TableCell,
     TaskList,
     TaskItem.configure({ nested: false }),
-    Image,
+    ImageWithView,
     Markdown.configure({
       html: false, // 생 HTML은 텍스트로 보존 (손실 정책)
       linkify: false,

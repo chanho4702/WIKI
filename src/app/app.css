@@ -631,3 +631,18 @@ body {
   top: 4px;
   right: 4px;
 }
+
+/* W5: 이미지 NodeView — 로드 실패 placeholder */
+.image-view img {
+  max-width: 100%;
+}
+.image-view-broken {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px dashed var(--color-border, #dcdfe4);
+  border-radius: 6px;
+  color: var(--color-text-subtlest, #8993a4);
+  background: var(--color-background-neutral-subtle, #f7f8f9);
+}
