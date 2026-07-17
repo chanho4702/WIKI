@@ -456,6 +456,45 @@ body {
   color: var(--chanho-color-text-link-hovered);
 }
 
+/* ── 하위 페이지 목록 (W5) ────────────────────────────── */
+
+.child-pages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+  max-width: 880px;
+  margin: var(--chanho-space-400) 0;
+  padding: var(--chanho-space-300) 0;
+  border-top: 1px solid var(--chanho-color-border-default);
+}
+
+.child-pages h2 {
+  margin: 0;
+  font-size: var(--chanho-font-size-200);
+  font-weight: var(--chanho-font-weight-semibold);
+  line-height: var(--chanho-font-lineHeight-300);
+}
+
+.child-pages ul {
+  margin: 0;
+  padding-left: var(--chanho-space-300);
+  list-style: disc;
+}
+
+.child-pages li {
+  margin-bottom: var(--chanho-space-100);
+}
+
+.child-pages a {
+  color: var(--chanho-color-text-link);
+  text-decoration: none;
+}
+
+.child-pages a:hover {
+  color: var(--chanho-color-text-link-hovered);
+  text-decoration: underline;
+}
+
 /* ── 페이지 편집 (W2) ─────────────────────────────────── */
 
 .page-edit {

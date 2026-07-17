@@ -8,6 +8,7 @@ import type { WikiOutletContext } from "../components/WikiLayout";
 import { MarkdownView } from "../components/MarkdownView";
 import { TableOfContents } from "../components/TableOfContents";
 import { HistoryModal } from "../components/HistoryModal";
+import { ChildPages } from "../components/ChildPages";
 import { CommentSection } from "../components/CommentSection";
 
 /** 수정일 표기: 2026-07-10T10:00:00.000Z → "2026년 7월 10일" */
@@ -132,6 +133,7 @@ export function PageViewPage() {
       </div>
       <TableOfContents markdown={page.body} />
       <MarkdownView markdown={page.body} pages={pages} spaceId={space.id} />
+      <ChildPages pages={pages} currentPageId={page.id} spaceId={space.id} />
       <CommentSection pageId={page.id} users={users} />
     </article>
   );
