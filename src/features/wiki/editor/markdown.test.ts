@@ -1,0 +1,38 @@
+import { describe, expect, it } from "vitest";
+import { parseMarkdown, serializeMarkdown } from "./markdown";
+
+/** 개행 정규화 — 왕복 판정은 이 수준의 차이만 허용한다 */
+const normalize = (s: string) => s.replace(/\r\n/g, "\n").trim();
+
+/** 케이스 원문은 tiptap-markdown 직렬화 방언(- 불릿, 1. 번호, ``` 펜스)에 맞춰 작성한다 */
+const CASES: Array<{ name: string; md: string }> = [
+  { name: "문단", md: "안녕하세요.\n\n두 번째 문단입니다." },
+  { name: "제목 1~3", md: "# 제목1\n\n## 제목2\n\n### 제목3" },
+  { name: "글머리 목록", md: "- 하나\n- 둘\n- 셋" },
+  { name: "중첩 목록", md: "- 상위\n  - 하위\n  - 하위2" },
+  { name: "번호 목록", md: "1. 첫째\n2. 둘째" },
+  // tiptap-markdown은 태스크 리스트를 loose list(항목 사이 빈 줄)로 직렬화한다 — 의미 손실 아님
+  { name: "체크박스", md: "- [ ] 할 일\n\n- [x] 완료한 일" },
+  { name: "인용", md: "> 인용문입니다." },
+  { name: "코드 블록 언어", md: "```ts\nconst a = 1;\n```" },
+  { name: "구분선", md: "위\n\n---\n\n아래" },
+  {
+    name: "표",
+    md: "| 이름 | 값 |\n| --- | --- |\n| 가 | 1 |\n| 나 | 2 |",
+  },
+  { name: "이미지", md: "![대체텍스트](https://example.com/a.png)" },
+  { name: "인라인 서식", md: "**굵게** *기울임* ~~취소~~ `코드` [링크](https://example.com)" },
+];
+
+describe("markdown 왕복", () => {
+  it.each(CASES)("$name", ({ md }) => {
+    const doc = parseMarkdown(md);
+    expect(normalize(serializeMarkdown(doc))).toBe(normalize(md));
+  });
+
+  it("모르는 구문(생 HTML)은 내용이 보존된다", () => {
+    const md = "<div>원문</div>";
+    const out = serializeMarkdown(parseMarkdown(md));
+    expect(out).toContain("원문");
+  });
+});
