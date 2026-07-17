@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
-import { __resetForTest, getPage } from "../features/wiki/store/wikiStore";
+import { __resetForTest, createPage, getPage } from "../features/wiki/store/wikiStore";
 import { editorRegistry } from "../features/wiki/editor/editorTestRegistry";
 
 beforeEach(() => {
@@ -88,5 +88,25 @@ describe("W5 블록 에디터 — 편집 화면", () => {
     expect(screen.getByRole("option", { name: "제목 1" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  // 회귀: 리뷰어 Important — [[ 쿼리(공백 허용)는 "/"도 그대로 삼킬 수 있어, 그 안에서
+  // slashMenu까지 동시에 활성화되면 팝업 두 개가 겹치고 키보드는 먼저 등록된 링크 쪽이 삼켰다.
+  // slashMenu의 allow가 열린 [[ 런 안에서는 활성화를 거부해야 한다.
+  it("[[ 쿼리 안의 '/'는 슬래시 메뉴를 띄우지 않는다 — 링크 팝업만 유지", async () => {
+    await createPage({ spaceId: "sp1", parentId: null, title: "운영 / 배포", body: "" });
+    renderApp("/spaces/sp1/pages/pg1/edit");
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    editorRegistry.current!.chain().focus().insertContent("[[운영 /").run();
+    await screen.findByRole("listbox", { name: "페이지 링크 자동완성" });
+    expect(screen.queryByRole("listbox", { name: "블록 삽입 메뉴" })).not.toBeInTheDocument();
+  });
+
+  it("[[ 밖의 일반 텍스트에서는 '/'가 슬래시 메뉴를 정상적으로 띄운다", async () => {
+    renderApp("/spaces/sp1/pages/pg1/edit");
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    editorRegistry.current!.chain().focus().insertContent("일반 텍스트 /제목").run();
+    await screen.findByRole("listbox", { name: "블록 삽입 메뉴" });
+    expect(screen.queryByRole("listbox", { name: "페이지 링크 자동완성" })).not.toBeInTheDocument();
   });
 });

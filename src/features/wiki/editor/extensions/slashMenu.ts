@@ -41,6 +41,15 @@ export function filterSlashItems(query: string): SlashItem[] {
   return SLASH_ITEMS.filter((i) => i.label.toLowerCase().includes(q));
 }
 
+/**
+ * 커서 앞 텍스트 기준으로 "아직 닫히지 않은 [[ 런"이 활성인지 판정 — wikiLinkSuggestion이
+ * 반응하는 것과 동일한 패턴이다. `[[운영 /`처럼 [[ 쿼리(공백 허용) 안에 "/"가 오면 두 팝업이
+ * 동시에 뜨는 것을 막기 위해 slashMenu의 allow에서 이 함수가 true면 활성화를 거부한다.
+ */
+export function isInsideOpenWikiLink(textBefore: string): boolean {
+  return /\[\[[^[\]\n]*$/.test(textBefore);
+}
+
 export interface SlashMenuOptions {
   /**
    * 팝업 상태 브릿지 — null이면 닫힘. WikiEditor가 React 상태로 그린다.
@@ -82,6 +91,10 @@ export const SlashMenu = Extension.create<SlashMenuOptions>({
         char: "/",
         allowSpaces: false,
         startOfLine: false,
+        allow: ({ state, range }) => {
+          const textBefore = state.doc.textBetween(0, range.from, "\n", "\n");
+          return !isInsideOpenWikiLink(textBefore);
+        },
         command: ({ editor, range, props }) => {
           editor.chain().focus().deleteRange(range).run();
           (props as SlashItem).run(editor);
