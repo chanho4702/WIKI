@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
+import GlobalDragHandle from "tiptap-extension-global-drag-handle";
 import type { Editor, JSONContent } from "@tiptap/core";
 import type { Page } from "../store/types";
 import { buildBaseExtensions } from "./extensions/base";
@@ -73,6 +74,10 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
           onStateChange: setLinkMenu,
         }),
         SlashMenu.configure({ onStateChange: setSlashMenu }),
+        GlobalDragHandle.configure({
+          dragHandleWidth: 20,
+          scrollTreshold: 100, // 패키지 옵션명 오탈자 그대로 (upstream API)
+        }),
       ],
       content: safeParse(initialMarkdown),
       onCreate({ editor }) {

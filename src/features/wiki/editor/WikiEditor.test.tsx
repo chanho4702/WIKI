@@ -27,4 +27,11 @@ describe("WikiEditor", () => {
     const doc = safeParse("정상 텍스트");
     expect(doc).toBeTruthy();
   });
+
+  it("드래그 핸들 확장이 등록된다", async () => {
+    render(<WikiEditor initialMarkdown="본문" pages={[]} />);
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    const names = editorRegistry.current!.extensionManager.extensions.map((e) => e.name);
+    expect(names).toContain("globalDragHandle");
+  });
 });

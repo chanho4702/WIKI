@@ -646,3 +646,19 @@ body {
   color: var(--color-text-subtlest, #8993a4);
   background: var(--color-background-neutral-subtle, #f7f8f9);
 }
+
+/* W5: 블록 드래그 핸들 (tiptap-extension-global-drag-handle) */
+.drag-handle {
+  position: fixed;
+  opacity: 1;
+  transition: opacity 0.2s ease-in;
+  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  cursor: grab;
+  background: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5' cy='4' r='1.2' fill='%238993a4'/%3E%3Ccircle cx='11' cy='4' r='1.2' fill='%238993a4'/%3E%3Ccircle cx='5' cy='8' r='1.2' fill='%238993a4'/%3E%3Ccircle cx='11' cy='8' r='1.2' fill='%238993a4'/%3E%3Ccircle cx='5' cy='12' r='1.2' fill='%238993a4'/%3E%3Ccircle cx='11' cy='12' r='1.2' fill='%238993a4'/%3E%3C/svg%3E") no-repeat center;
+}
+.drag-handle.hide {
+  opacity: 0;
+  pointer-events: none;
+}
