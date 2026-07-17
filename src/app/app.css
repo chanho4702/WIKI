@@ -302,6 +302,66 @@ body {
   color: var(--chanho-color-text-subtle);
 }
 
+/* GitHub-style alerts(Task 14) — remarkAlerts가 `> [!TYPE]` blockquote를 이 구조로 변환한다.
+   저장 문법은 순수 blockquote이며, 이 클래스들은 렌더 전용 스타일이다. */
+.markdown-body .md-alert {
+  margin: 0 0 var(--chanho-space-200);
+  padding: var(--chanho-space-150) var(--chanho-space-200);
+  border-left: 3px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-subtle);
+  color: var(--chanho-color-text-default);
+}
+
+.markdown-body .md-alert > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body .md-alert-label {
+  margin: 0 0 var(--chanho-space-100);
+  font-weight: var(--chanho-font-weight-bold);
+}
+
+.markdown-body .md-alert-note {
+  border-left-color: var(--chanho-color-text-info);
+  background: var(--chanho-color-background-info-subtle);
+}
+.markdown-body .md-alert-note .md-alert-label {
+  color: var(--chanho-color-text-info);
+}
+
+.markdown-body .md-alert-tip {
+  border-left-color: var(--chanho-color-text-success);
+  background: var(--chanho-color-background-success-subtle);
+}
+.markdown-body .md-alert-tip .md-alert-label {
+  color: var(--chanho-color-text-success);
+}
+
+.markdown-body .md-alert-important {
+  border-left-color: var(--chanho-color-text-brand);
+  background: var(--chanho-color-background-brand-subtle);
+}
+.markdown-body .md-alert-important .md-alert-label {
+  color: var(--chanho-color-text-brand);
+}
+
+.markdown-body .md-alert-warning {
+  border-left-color: var(--chanho-color-text-warning);
+  background: var(--chanho-color-background-warning-subtle);
+}
+.markdown-body .md-alert-warning .md-alert-label {
+  color: var(--chanho-color-text-warning);
+}
+
+.markdown-body .md-alert-caution {
+  border-left-color: var(--chanho-color-border-danger);
+  background: var(--chanho-color-background-danger-subtle);
+}
+.markdown-body .md-alert-caution .md-alert-label {
+  color: var(--chanho-color-text-danger);
+}
+
 .markdown-body a {
   color: var(--chanho-color-text-link);
 }

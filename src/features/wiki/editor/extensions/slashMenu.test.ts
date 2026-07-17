@@ -7,7 +7,9 @@ import { buildBaseExtensions } from "./base";
 describe("슬래시 메뉴", () => {
   it("전체 항목 — 화이트리스트 블록과 일치", () => {
     expect(SLASH_ITEMS.map((i) => i.id)).toEqual([
-      "h1", "h2", "h3", "bullet", "ordered", "task", "quote", "code", "divider", "table", "image",
+      "h1", "h2", "h3", "bullet", "ordered", "task", "quote",
+      "note", "tip", "warning", "caution",
+      "code", "divider", "table", "image",
     ]);
   });
 
@@ -21,6 +23,26 @@ describe("슬래시 메뉴", () => {
     SLASH_ITEMS.find((i) => i.id === "h1")!.run(editor);
     expect(serializeMarkdown(editor.getJSON()).trim()).toBe("# 본문");
     editor.destroy();
+  });
+
+  // GitHub-style alerts — 저장 문법은 순수 blockquote + [!TYPE] 마커 텍스트뿐이다(신규 노드 타입 없음).
+  // tiptap-markdown 직렬화기는 "["를 링크 문법과의 혼동을 막기 위해 "\["로 이스케이프한다 —
+  // 저장 문자열에는 백슬래시가 남지만, remark-parse(react-markdown 렌더 경로)는 이를 파싱 시점에
+  // 다시 리터럴 "["로 되돌리므로 remarkAlerts 마커 인식에는 영향이 없다(MarkdownView 렌더 테스트로 별도 확인).
+  describe.each([
+    { id: "note", marker: "[!NOTE]" },
+    { id: "tip", marker: "[!TIP]" },
+    { id: "warning", marker: "[!WARNING]" },
+    { id: "caution", marker: "[!CAUTION]" },
+  ])("run($id)은 blockquote + $marker 마커를 삽입한다", ({ id, marker }) => {
+    it("직렬화하면 (이스케이프된) blockquote 마크다운이 된다", () => {
+      const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("") });
+      SLASH_ITEMS.find((i) => i.id === id)!.run(editor);
+      const md = serializeMarkdown(editor.getJSON()).trim();
+      const escapedMarker = marker.replace(/\[/g, "\\[").replace(/\]/g, "\\]");
+      expect(md).toBe(`> ${escapedMarker}`);
+      editor.destroy();
+    });
   });
 
   // 회귀: 리뷰어 Important — [[ 쿼리(공백 허용) 안에 "/"가 오면 wikiLinkSuggestion과

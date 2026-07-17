@@ -22,6 +22,13 @@ const CASES: Array<{ name: string; md: string }> = [
   },
   { name: "이미지", md: "![대체텍스트](https://example.com/a.png)" },
   { name: "인라인 서식", md: "**굵게** *기울임* ~~취소~~ `코드` [링크](https://example.com)" },
+  // GitHub-style alerts(Task 14) — 저장 문법은 순수 blockquote일 뿐 신규 노드가 아니다.
+  // tiptap-markdown 직렬화기가 "["를 링크 문법과의 혼동 방지를 위해 "\["로 이스케이프하므로
+  // 원문 케이스도 이스케이프된 형태로 고정한다(이스케이프 형태가 parse↔serialize의 fixed point —
+  // 이스케이프 없는 "[!NOTE]"로 입력해도 직렬화 결과는 항상 이스케이프된 형태가 된다).
+  // remark-parse(렌더 경로)는 백슬래시 이스케이프를 파싱 시점에 리터럴로 되돌리므로
+  // remarkAlerts의 마커 인식에는 영향이 없다(MarkdownView.test.tsx에서 별도 확인).
+  { name: "GitHub-style alert(NOTE)", md: "> \\[!NOTE\\] 내용" },
 ];
 
 describe("markdown 왕복", () => {

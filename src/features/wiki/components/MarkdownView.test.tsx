@@ -29,4 +29,20 @@ describe("MarkdownView", () => {
     render(<MarkdownView markdown={'<button onclick="alert(1)">클릭</button>'} />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
+
+  it("[!NOTE] blockquote를 md-alert-note 패널로 렌더한다 (GitHub-style alerts, remarkAlerts 검증)", () => {
+    const { container } = render(<MarkdownView markdown={"> [!NOTE] 참고할 내용"} />);
+    const panel = container.querySelector(".md-alert.md-alert-note");
+    expect(panel).not.toBeNull();
+    expect(panel?.tagName).toBe("DIV");
+    expect(panel).toHaveTextContent("노트");
+    expect(panel).toHaveTextContent("참고할 내용");
+  });
+
+  it("마커 없는 일반 인용구는 blockquote로 그대로 렌더한다 (안전 열화 확인)", () => {
+    const { container } = render(<MarkdownView markdown={"> 그냥 인용문입니다."} />);
+    expect(container.querySelector(".md-alert")).toBeNull();
+    expect(container.querySelector("blockquote")).not.toBeNull();
+    expect(container.querySelector("blockquote")).toHaveTextContent("그냥 인용문입니다.");
+  });
 });

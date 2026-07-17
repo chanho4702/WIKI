@@ -36,12 +36,14 @@
     "react-router": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "tiptap-extension-global-drag-handle": "^0.1.18",
-    "tiptap-markdown": "^0.8.10"
+    "tiptap-markdown": "^0.8.10",
+    "unist-util-visit": "^5.1.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.0",
+    "@types/mdast": "^4.0.4",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",

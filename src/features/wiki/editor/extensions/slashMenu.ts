@@ -19,6 +19,30 @@ export const SLASH_ITEMS: SlashItem[] = [
   { id: "ordered", label: "번호 목록", run: (e) => e.chain().focus().toggleOrderedList().run() },
   { id: "task", label: "체크박스 목록", run: (e) => e.chain().focus().toggleTaskList().run() },
   { id: "quote", label: "인용", run: (e) => e.chain().focus().toggleBlockquote().run() },
+  // GitHub-style alerts — 저장 문법은 순수 blockquote(`> [!TYPE] `)뿐이라 신규 노드 타입이 필요 없다.
+  // insertContent("> [!NOTE] ")는 TipTap에서 마크다운으로 재해석되지 않으므로
+  // toggleBlockquote()로 blockquote를 먼저 만들고 그 안에 마커 텍스트만 삽입한다.
+  // IMPORTANT는 문법(렌더)은 지원하되 슬래시 메뉴에는 노출하지 않는다(브리프 지시).
+  {
+    id: "note",
+    label: "노트 패널",
+    run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!NOTE] ").run(),
+  },
+  {
+    id: "tip",
+    label: "팁 패널",
+    run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!TIP] ").run(),
+  },
+  {
+    id: "warning",
+    label: "경고 패널",
+    run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!WARNING] ").run(),
+  },
+  {
+    id: "caution",
+    label: "주의 패널",
+    run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!CAUTION] ").run(),
+  },
   { id: "code", label: "코드 블록", run: (e) => e.chain().focus().toggleCodeBlock().run() },
   { id: "divider", label: "구분선", run: (e) => e.chain().focus().setHorizontalRule().run() },
   {

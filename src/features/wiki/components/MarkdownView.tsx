@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { Link } from "react-router";
 import type { Page } from "../store/types";
 import { resolveWikiLinks } from "../lib/wikiLinks";
+import { remarkAlerts } from "../lib/remarkAlerts";
 
 export interface MarkdownViewProps {
   /** 마크다운 원문 (Page.body 또는 편집 중인 입력값) */
@@ -46,7 +47,10 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
   const source = wikiMode ? resolveWikiLinks(markdown, pages, spaceId) : markdown;
   return (
     <div className="markdown-body">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={wikiMode ? { a: WikiAnchor } : undefined}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkAlerts]}
+        components={wikiMode ? { a: WikiAnchor } : undefined}
+      >
         {source}
       </ReactMarkdown>
     </div>
