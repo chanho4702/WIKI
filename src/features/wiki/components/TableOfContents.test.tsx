@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { extractHeadings, TableOfContents } from "./TableOfContents";
+import { MarkdownView } from "./MarkdownView";
 
 describe("extractHeadings", () => {
   it("heading 1~3을 문서 순서대로 추출한다", () => {
@@ -61,6 +63,16 @@ describe("extractHeadings", () => {
     expect(headings.map((h) => h.text)).toEqual(["시작하기 안내", "문서 참고", "세 번째"]);
   });
 
+  // 리뷰어 Important 1 — [[ ]] 안쪽 패딩을 trim하지 않으면 이중 공백이 생겨
+  // rehype-slug(실제 렌더 id)와 slug가 어긋난다. resolveWikiLinks(lib/wikiLinks.ts)가
+  // title=raw.trim()을 하는 것과 동일한 계약을 맞춰야 한다.
+  it("[[ 제목 ]]처럼 내부에 패딩이 있어도 trim된 라벨로 합쳐 이중 공백을 만들지 않는다", () => {
+    const md = ["# 안내 [[ 시작하기 ]] 참고", "## 둘", "### 셋"].join("\n");
+    const headings = extractHeadings(md);
+    expect(headings[0].text).toBe("안내 시작하기 참고");
+    expect(headings[0].slug).toBe("안내-시작하기-참고");
+  });
+
   it("빈 heading이나 heading이 하나도 없으면 빈 배열을 반환한다", () => {
     expect(extractHeadings("본문만 있는 문서입니다.")).toEqual([]);
   });
@@ -89,5 +101,24 @@ describe("TableOfContents", () => {
     expect(container.querySelector("li.page-toc-level-1")).not.toBeNull();
     expect(container.querySelector("li.page-toc-level-2")).not.toBeNull();
     expect(container.querySelector("li.page-toc-level-3")).not.toBeNull();
+  });
+
+  // 리뷰어 Important 1 회귀 — [[ 제목 ]] 내부 패딩이 있는 heading을 TableOfContents와
+  // MarkdownView(rehype-slug) 양쪽에 같은 마크다운으로 넣어 slug(href)와 실제 id가 일치하는지 대조.
+  it("내부 패딩이 있는 위키링크 heading도 rehype-slug id와 TOC href가 일치한다", () => {
+    const md = ["# 안내 [[ 시작하기 ]] 참고", "## 둘", "### 셋"].join("\n");
+
+    render(<TableOfContents markdown={md} />);
+    const link = screen.getByRole("link", { name: "안내 시작하기 참고" });
+    expect(link).toHaveAttribute("href", "#안내-시작하기-참고");
+
+    // 실사용(PageViewPage)과 동일하게 wikiMode(pages+spaceId)로 렌더 — [[ ]]가 실제로 링크 라벨로 치환된다
+    const { container } = render(
+      <MemoryRouter>
+        <MarkdownView markdown={md} pages={[]} spaceId="sp1" />
+      </MemoryRouter>,
+    );
+    const heading = container.querySelector("h1");
+    expect(heading).toHaveAttribute("id", "안내-시작하기-참고");
   });
 });
