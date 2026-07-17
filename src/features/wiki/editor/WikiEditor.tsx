@@ -7,6 +7,7 @@ import { buildBaseExtensions } from "./extensions/base";
 import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
 import { SlashMenu, type SlashItem } from "./extensions/slashMenu";
 import { SuggestionPopup } from "./components/SuggestionPopup";
+import { BubbleToolbar } from "./components/BubbleToolbar";
 import { parseMarkdown, serializeMarkdown } from "./markdown";
 import { editorRegistry } from "./editorTestRegistry";
 
@@ -112,6 +113,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     return (
       <div className="wiki-editor">
         <EditorContent editor={editor} />
+        {editor && <BubbleToolbar editor={editor} />}
         {linkMenu && linkMenu.clientRect && (
           <SuggestionPopup
             ariaLabel="페이지 링크 자동완성"

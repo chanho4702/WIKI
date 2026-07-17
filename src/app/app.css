@@ -587,3 +587,34 @@ body {
   background: var(--color-background-accent-red-subtlest, #ffedeb);
   color: var(--color-text-accent-red, #c9372c);
 }
+
+/* W5: 선택 시 플로팅 서식 툴바 — 선택 DOMRect 기준 고정 위치, 툴바 자체 높이만큼 위로 띄운다 */
+.bubble-toolbar-anchor {
+  position: fixed;
+  z-index: 30;
+  transform: translate(-50%, calc(-100% - 8px));
+}
+.bubble-toolbar {
+  display: flex;
+  gap: 2px;
+  padding: var(--chanho-space-50, 4px);
+  background: var(--chanho-color-background-surface, #fff);
+  border-radius: var(--chanho-radius-medium, 6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.bubble-toolbar button {
+  border: none;
+  background: none;
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100, 8px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  color: var(--chanho-color-text-default);
+}
+.bubble-toolbar button:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+.bubble-toolbar button.is-active {
+  background: var(--color-background-accent-blue-subtlest, #e9f2ff);
+  color: var(--color-text-accent-blue, #0c66e4);
+}
