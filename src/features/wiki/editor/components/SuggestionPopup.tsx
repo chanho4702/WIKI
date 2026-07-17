@@ -14,20 +14,29 @@ export interface SuggestionPopupProps {
 export function SuggestionPopup({ items, highlight, left, top, onPick, ariaLabel }: SuggestionPopupProps) {
   return (
     <ul className="editor-suggestions" role="listbox" aria-label={ariaLabel} style={{ left, top }}>
-      {items.map((item, i) => (
-        <li key={item.id} role="option" aria-selected={i === highlight}>
-          <button type="button" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); onPick(i); }}>
-            <span className="editor-suggestion-label">{item.label}</span>
-            {item.description && (
-              // aria-hidden — 접근성 이름은 라벨만으로 계산되게 한다(예: getByRole("option", { name: "제목 1" })).
-              // 설명은 시각적 보조 텍스트일 뿐 스크린리더 항목 이름에는 포함하지 않는다.
-              <span className="editor-suggestion-description" aria-hidden="true">
-                {item.description}
-              </span>
-            )}
-          </button>
-        </li>
-      ))}
+      {items.map((item, i) => {
+        const descriptionId = item.description ? `suggestion-desc-${item.id}` : undefined;
+        return (
+          // li[role=option] 자체도 subtree 텍스트(라벨+설명)로 이름이 계산되므로, 여기도
+          // aria-label을 걸어 li와 안쪽 button 양쪽의 접근 가능한 이름을 라벨만으로 고정한다.
+          <li key={item.id} role="option" aria-label={item.label} aria-selected={i === highlight}>
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label={item.label}
+              aria-describedby={descriptionId}
+              onMouseDown={(e) => { e.preventDefault(); onPick(i); }}
+            >
+              <span className="editor-suggestion-label">{item.label}</span>
+              {item.description && (
+                <span id={descriptionId} className="editor-suggestion-description">
+                  {item.description}
+                </span>
+              )}
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }

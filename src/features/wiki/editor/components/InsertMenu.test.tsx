@@ -19,13 +19,18 @@ describe("InsertMenu — 요소 브라우저", () => {
     editor.destroy();
   });
 
-  it("항목에 라벨과 설명이 함께 렌더된다", async () => {
+  it("항목에 라벨과 설명이 함께 렌더되고, 버튼의 접근 가능한 이름은 라벨만이다(설명은 aria-describedby)", async () => {
     const user = userEvent.setup();
     const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
     render(<InsertMenu editor={editor} />);
     await user.click(screen.getByRole("button", { name: "요소 삽입" }));
     expect(screen.getByRole("option", { name: "제목 1" })).toBeInTheDocument();
-    expect(screen.getByText("큰 섹션 제목을 추가합니다")).toBeInTheDocument();
+    const description = screen.getByText("큰 섹션 제목을 추가합니다");
+    expect(description).toBeInTheDocument();
+    // getByRole("button", { name: "제목 1" })이 정확히 하나만 매치된다는 것 자체가, 접근 가능한
+    // 이름 계산에 설명 텍스트가 섞이지 않았다는(즉 aria-describedby로만 연결됐다는) 증거다.
+    const button = screen.getByRole("button", { name: "제목 1" });
+    expect(button).toHaveAttribute("aria-describedby", description.id);
     editor.destroy();
   });
 
@@ -76,23 +81,49 @@ describe("InsertMenu — 요소 브라우저", () => {
     editor.destroy();
   });
 
-  it("외부 클릭으로 닫히면 트리거 버튼으로 포커스가 되돌아간다", async () => {
+  // 리뷰 반영(Important #1): 이전엔 외부 클릭 시 preventDefault + 트리거로 포커스를 강제
+  // 되돌렸다 — 그 결과 다른 툴바 버튼을 눌러도 포커스는 여전히 +버튼에 남았고, 에디터 본문
+  // (contenteditable)을 클릭해도 캐럿이 놓이지 않는 회귀가 있었다. 이제는 닫기만 하고
+  // 포커스는 건드리지 않는다 — 클릭 대상이 자연스럽게 포커스/캐럿을 받아야 한다.
+  it("메뉴가 열린 채 다른 툴바 버튼을 누르면 메뉴만 닫히고 그 버튼이 포커스를 받는다(트리거로 강탈되지 않음)", async () => {
     const user = userEvent.setup();
     const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
     render(
       <div>
         <InsertMenu editor={editor} />
-        {/* 포커스 가능하지 않은 순수 바깥 영역 — 클릭 자체가 포커스를 가져가지 않으므로
-            "외부 클릭 시 트리거로 포커스 복귀" 동작만 순수하게 검증할 수 있다. */}
-        <div data-testid="outside">바깥 영역</div>
+        <button type="button">다른 툴바 버튼</button>
       </div>,
     );
     const trigger = screen.getByRole("button", { name: "요소 삽입" });
     await user.click(trigger);
     expect(screen.getByRole("listbox")).toBeInTheDocument();
-    await user.click(screen.getByTestId("outside"));
+    const other = screen.getByRole("button", { name: "다른 툴바 버튼" });
+    await user.click(other);
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
+    expect(other).toHaveFocus();
+    expect(trigger).not.toHaveFocus();
+    editor.destroy();
+  });
+
+  it("메뉴가 열린 채 에디터 본문(contenteditable)을 누르면 메뉴만 닫히고 캐럿 배치가 막히지 않는다", async () => {
+    const user = userEvent.setup();
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+    render(
+      <div>
+        <InsertMenu editor={editor} />
+        <div contentEditable suppressContentEditableWarning data-testid="editor-body">
+          본문
+        </div>
+      </div>,
+    );
+    const trigger = screen.getByRole("button", { name: "요소 삽입" });
+    await user.click(trigger);
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    const body = screen.getByTestId("editor-body");
+    await user.click(body);
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(body).toHaveFocus();
+    expect(trigger).not.toHaveFocus();
     editor.destroy();
   });
 });

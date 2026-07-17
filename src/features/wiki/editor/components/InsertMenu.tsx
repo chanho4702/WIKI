@@ -7,9 +7,14 @@ import { filterSlashItems, type SlashItem } from "../extensions/slashMenu";
  * 라벨+설명 2줄로 나열하는 팝오버가 뜬다. 슬래시 메뉴(에디터 안에서 "/"로 여는 것)와 동일한
  * 항목 데이터를 재사용하되, 진입점은 마우스만으로도 쓸 수 있는 버튼이라는 점이 다르다.
  *
- * 포커스 정책 — WikiLayout.tsx의 사이드바 토글 패턴(트리거 ref + 닫힘 시 재포커스)을 참고해,
- * Escape/외부 클릭으로 닫힐 때는 트리거(+) 버튼으로 포커스를 되돌리고(키보드 사용자가 위치를
- * 잃지 않도록), 항목을 선택해 닫힐 때는 대신 에디터로 포커스를 보낸다(바로 이어서 타이핑하도록).
+ * 포커스 정책 — WikiLayout.tsx의 사이드바 토글 패턴(트리거 ref + 닫힘 시 재포커스)을 참고하되,
+ * "닫히는 이유"에 따라 되돌릴 곳이 다르다.
+ * - Escape(키보드로 닫음): 트리거(+) 버튼으로 포커스를 되돌린다 — 키보드 사용자가 위치를 잃지 않도록.
+ * - 외부 클릭으로 닫힘: 포커스를 강탈하지 않는다 — preventDefault 없이 그냥 닫기만 하면, 클릭
+ *   대상(다른 툴바 버튼, 에디터 본문 등)이 자연스럽게 포커스/캐럿을 받는다. 여기서 트리거로
+ *   강제로 되돌리면 "다른 버튼을 클릭했는데 포커스는 + 버튼에 있다"거나 "에디터 본문을 클릭했는데
+ *   캐럿이 안 놓인다" 같은 회귀가 생긴다(리뷰 반영 — 이전엔 preventDefault + 강제 focus였다).
+ * - 항목 선택으로 닫힘: 에디터로 포커스를 보낸다(바로 이어서 타이핑하도록).
  */
 export function InsertMenu({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
@@ -34,15 +39,14 @@ export function InsertMenu({ editor }: { editor: Editor }) {
 
   // 외부 클릭 닫기 — 트리거 버튼도 컨테이너 안에 있으므로, 버튼 자체를 누른 mousedown은 여기서
   // "안"으로 판정돼 무시되고 onClick 토글로만 처리된다.
+  // preventDefault는 걸지 않는다 — 다른 툴바 버튼이나 에디터 본문(contenteditable)을 클릭했을 때
+  // 그 대상이 정상적으로 포커스/캐럿을 받아야 하므로, 여기서는 팝오버를 닫기만 한다(포커스는
+  // 건드리지 않음). 트리거로 포커스를 강제로 되돌리는 건 Escape 케이스에서만 한다.
   useEffect(() => {
     if (!open) return;
     const handlePointerDown = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        // mousedown 기본 동작(포커스 이동/블러)을 막아야, 바로 아래서 트리거로 되돌리는 focus()가
-        // 브라우저의 기본 블러 처리로 덮어써지지 않는다 — 클릭 대상이 포커스 불가 영역이어도 마찬가지다.
-        e.preventDefault();
         close();
-        triggerRef.current?.focus();
       }
     };
     document.addEventListener("mousedown", handlePointerDown);
@@ -109,22 +113,31 @@ export function InsertMenu({ editor }: { editor: Editor }) {
             onKeyDown={handleInputKeyDown}
           />
           <ul className="insert-menu-list" role="listbox" aria-label="요소 삽입 메뉴">
-            {items.map((item, i) => (
-              <li key={item.id} role="option" aria-selected={i === highlight}>
-                <button
-                  type="button"
-                  className={i === highlight ? "is-highlighted" : undefined}
-                  onMouseEnter={() => setHighlight(i)}
-                  onClick={() => select(item)}
-                >
-                  <span className="insert-menu-item-label">{item.label}</span>
-                  {/* aria-hidden — SuggestionPopup과 동일한 정책: 접근성 이름은 라벨만으로 계산되게 한다 */}
-                  <span className="insert-menu-item-description" aria-hidden="true">
-                    {item.description}
-                  </span>
-                </button>
-              </li>
-            ))}
+            {items.map((item, i) => {
+              const descriptionId = `insert-menu-desc-${item.id}`;
+              return (
+                // li[role=option]과 안쪽 button 둘 다 subtree 텍스트(라벨+설명)로 이름이
+                // 계산되므로, 양쪽에 aria-label을 걸어 접근 가능한 이름을 라벨만으로 고정한다
+                // (그렇지 않으면 description 텍스트까지 섞여 getByRole name 매치가 깨진다).
+                // description은 button에 aria-describedby로 별도 연결해 스크린 리더가 읽어주게 한다.
+                <li key={item.id} role="option" aria-label={item.label} aria-selected={i === highlight}>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    aria-label={item.label}
+                    aria-describedby={descriptionId}
+                    className={i === highlight ? "is-highlighted" : undefined}
+                    onMouseEnter={() => setHighlight(i)}
+                    onClick={() => select(item)}
+                  >
+                    <span className="insert-menu-item-label">{item.label}</span>
+                    <span id={descriptionId} className="insert-menu-item-description">
+                      {item.description}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
             {items.length === 0 && <li className="insert-menu-empty">일치하는 요소가 없습니다</li>}
           </ul>
         </div>
