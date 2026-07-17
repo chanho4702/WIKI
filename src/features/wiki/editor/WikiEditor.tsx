@@ -5,6 +5,7 @@ import type { Editor, JSONContent } from "@tiptap/core";
 import type { Page } from "../store/types";
 import { buildBaseExtensions } from "./extensions/base";
 import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
+import { SlashMenu, type SlashItem } from "./extensions/slashMenu";
 import { SuggestionPopup } from "./components/SuggestionPopup";
 import { parseMarkdown, serializeMarkdown } from "./markdown";
 import { editorRegistry } from "./editorTestRegistry";
@@ -53,6 +54,13 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
       clientRect: DOMRect | null;
       command: (item: Page) => void;
     } | null>(null);
+    // "/" 슬래시 메뉴 팝업 상태 — SlashMenu가 onStateChange로 밀어넣는다
+    const [slashMenu, setSlashMenu] = useState<{
+      items: SlashItem[];
+      highlight: number;
+      clientRect: DOMRect | null;
+      command: (item: SlashItem) => void;
+    } | null>(null);
 
     const editor = useEditor({
       immediatelyRender: true,
@@ -63,6 +71,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
           getPages: () => pagesRef.current,
           onStateChange: setLinkMenu,
         }),
+        SlashMenu.configure({ onStateChange: setSlashMenu }),
       ],
       content: safeParse(initialMarkdown),
       onCreate({ editor }) {
@@ -90,7 +99,10 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     // 클릭 선택 경로와 충돌하지 않는다.
     useEffect(() => {
       if (!editor) return;
-      const handleBlur = () => setLinkMenu(null);
+      const handleBlur = () => {
+        setLinkMenu(null);
+        setSlashMenu(null);
+      };
       editor.on("blur", handleBlur);
       return () => {
         editor.off("blur", handleBlur);
@@ -108,6 +120,16 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
             left={linkMenu.clientRect.left}
             top={linkMenu.clientRect.bottom + 4}
             onPick={(i) => linkMenu.command(linkMenu.items[i])}
+          />
+        )}
+        {slashMenu && slashMenu.clientRect && (
+          <SuggestionPopup
+            ariaLabel="블록 삽입 메뉴"
+            items={slashMenu.items}
+            highlight={slashMenu.highlight}
+            left={slashMenu.clientRect.left}
+            top={slashMenu.clientRect.bottom + 4}
+            onPick={(i) => slashMenu.command(slashMenu.items[i])}
           />
         )}
       </div>

@@ -72,4 +72,21 @@ describe("W5 블록 에디터 — 편집 화면", () => {
     expect(confirmSpy).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
   });
+
+  // Task 7 최소 통합 확인 — WikiEditor에 슬래시 확장이 실제로 연결됐는지만 확인한다.
+  // 항목 실행(run)·필터·키보드 이동 등은 slashMenu.test.ts(유닛)에서 이미 검증했다.
+  // (Enter로 블록 전환을 완주시키지 않는 이유: setHeading처럼 블록 태그 자체가 바뀌는 커맨드는
+  // jsdom의 미완성 레이아웃/Range 구현 위에서 ProseMirror의 scrollIntoView 계산과 충돌해
+  // 테스트 통과와 무관한 unhandled exception을 만든다 — 여기서는 "연결 확인"만이 목적이라 회피한다.)
+  it("'/' 입력 시 블록 삽입 메뉴가 뜨고 Escape로 닫힌다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1/edit");
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    editorRegistry.current!.chain().focus().insertContent("/제목").run();
+    const listbox = await screen.findByRole("listbox", { name: "블록 삽입 메뉴" });
+    expect(listbox).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "제목 1" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
 });
