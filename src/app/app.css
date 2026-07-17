@@ -15,20 +15,93 @@ body {
 }
 
 .wiki-body {
+  position: relative; /* 접힘 상태의 wiki-sidebar-opener 고정 위치 기준 */
   flex: 1;
   display: flex;
   min-height: 0;
 }
 
+/*
+ * Task 19: 컨플루언스식 3영역 구조 — 헤더(스페이스 선택+접기 버튼)/본문(검색+트리, 스크롤 전담)/
+ * 푸터(새 페이지·스페이스 만들기). aside 자체는 스크롤하지 않고 body만 overflow-y: auto다.
+ * 폭은 인라인 style(WikiLayout의 displayWidth)로 결정되며, 이 규칙은 flex 배치만 담당한다.
+ */
 .wiki-sidebar {
+  position: relative; /* sidebar-resizer 절대 위치 기준 */
   display: flex;
   flex-direction: column;
-  gap: var(--chanho-space-250);
-  width: 260px;
   flex-shrink: 0;
-  padding: var(--chanho-space-300) var(--chanho-space-200);
   background: var(--chanho-color-background-surface);
   border-right: 1px solid var(--chanho-color-border-default);
+  min-height: 0;
+}
+
+.wiki-sidebar-header {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--chanho-space-100);
+  padding: var(--chanho-space-300) var(--chanho-space-200) var(--chanho-space-150);
+}
+
+.wiki-sidebar-header > *:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.wiki-sidebar-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+  padding: 0 var(--chanho-space-200);
+}
+
+.wiki-sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+  padding: var(--chanho-space-150) var(--chanho-space-200) var(--chanho-space-300);
+}
+
+/* 사이드바 우측 경계 드래그 핸들 — 히트 영역은 8px, 시각 표시는 hover/focus 시 가운데 4px만 */
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 1;
+}
+
+.sidebar-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 4px;
+  background: transparent;
+}
+
+.sidebar-resizer:hover::after,
+.sidebar-resizer:focus-visible::after {
+  background: var(--chanho-color-border-brand, #0c66e4);
+}
+
+.sidebar-resizer:focus-visible {
+  outline: none;
+}
+
+/* 접힘 상태 — aside가 아예 렌더되지 않으므로 wiki-body 좌상단에 고정된 열기 버튼만 남는다 */
+.wiki-sidebar-opener {
+  position: absolute;
+  top: var(--chanho-space-200);
+  left: var(--chanho-space-100);
+  z-index: 2;
 }
 
 .wiki-content {

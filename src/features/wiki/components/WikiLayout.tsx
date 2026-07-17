@@ -6,8 +6,10 @@ import { getCurrentUser, listPages } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
 import { useAuth } from "../../../auth/AuthGate";
 import { PageTree } from "./PageTree";
+import { SidebarResizer } from "./SidebarResizer";
 import { SpaceCreateModal } from "./SpaceCreateModal";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
+import { useSidebarPrefs } from "../lib/sidebarPrefs";
 
 export interface WikiLayoutProps {
   spaces: Space[];
@@ -32,6 +34,21 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   const [me, setMe] = useState<User | null>(null);
   const [pages, setPages] = useState<Page[] | null>(null);
   const [query, setQuery] = useState("");
+  const { collapsed, width, setCollapsed, setWidth } = useSidebarPrefs();
+  // 드래그 중 실시간 미리보기 폭 — pointermove마다 저장하지 않고 화면 표시만 갱신한다.
+  // 저장된 폭(width)이 바뀌면(예: 마운트 시 localStorage 복원) 같이 맞춘다.
+  const [displayWidth, setDisplayWidth] = useState(width);
+  useEffect(() => {
+    setDisplayWidth(width);
+  }, [width]);
+
+  const handleResizeCommit = useCallback(
+    (px: number) => {
+      setDisplayWidth(px);
+      setWidth(px);
+    },
+    [setWidth],
+  );
 
   useEffect(() => {
     void getCurrentUser().then(setMe);
@@ -85,41 +102,69 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
         }
       />
       <div className="wiki-body">
-        <aside className="wiki-sidebar">
-          <Select
-            label="스페이스"
-            options={spaces.map((s) => ({ value: s.id, label: `${s.name} (${s.key})` }))}
-            value={current.id}
-            onValueChange={(id) => navigate(`/spaces/${id}`)}
-          />
-          <TextField
-            label="페이지 검색"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="제목으로 검색"
-          />
-          {visiblePages === null ? (
-            <Spinner size="small" label="페이지 트리 로딩 중" />
-          ) : searching && visiblePages.length === 0 ? (
-            <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
-          ) : (
-            <PageTree
-              spaceId={current.id}
-              pages={visiblePages}
-              forceExpand={searching}
-              onMoved={reloadPages}
-            />
-          )}
-          <Button variant="subtle" onClick={() => navigate(`/spaces/${current.id}/pages/new`)}>
-            새 페이지
+        {collapsed ? (
+          <Button
+            className="wiki-sidebar-opener"
+            variant="subtle"
+            size="small"
+            aria-label="사이드바 열기"
+            onClick={() => setCollapsed(false)}
+          >
+            »
           </Button>
-          <SpaceCreateModal
-            onCreated={async (space) => {
-              await onSpacesChanged();
-              navigate(`/spaces/${space.id}`);
-            }}
-          />
-        </aside>
+        ) : (
+          <aside className="wiki-sidebar" style={{ width: displayWidth }}>
+            <div className="wiki-sidebar-header">
+              <Select
+                label="스페이스"
+                options={spaces.map((s) => ({ value: s.id, label: `${s.name} (${s.key})` }))}
+                value={current.id}
+                onValueChange={(id) => navigate(`/spaces/${id}`)}
+              />
+              <Button
+                variant="ghost"
+                size="small"
+                aria-label="사이드바 접기"
+                aria-expanded={true}
+                onClick={() => setCollapsed(true)}
+              >
+                «
+              </Button>
+            </div>
+            <div className="wiki-sidebar-body">
+              <TextField
+                label="페이지 검색"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="제목으로 검색"
+              />
+              {visiblePages === null ? (
+                <Spinner size="small" label="페이지 트리 로딩 중" />
+              ) : searching && visiblePages.length === 0 ? (
+                <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
+              ) : (
+                <PageTree
+                  spaceId={current.id}
+                  pages={visiblePages}
+                  forceExpand={searching}
+                  onMoved={reloadPages}
+                />
+              )}
+            </div>
+            <div className="wiki-sidebar-footer">
+              <Button variant="subtle" onClick={() => navigate(`/spaces/${current.id}/pages/new`)}>
+                새 페이지
+              </Button>
+              <SpaceCreateModal
+                onCreated={async (space) => {
+                  await onSpacesChanged();
+                  navigate(`/spaces/${space.id}`);
+                }}
+              />
+            </div>
+            <SidebarResizer width={displayWidth} onDrag={setDisplayWidth} onCommit={handleResizeCommit} />
+          </aside>
+        )}
         <main className="wiki-content">
           <Outlet context={{ pages, space: current, reloadPages } satisfies WikiOutletContext} />
         </main>
