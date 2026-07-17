@@ -84,11 +84,13 @@ export const WikiLinkSuggestion = Extension.create<WikiLinkSuggestionOptions>({
               return true;
             }
             if (props.event.key === "ArrowDown") {
+              if (items.length === 0) return false;
               highlight = (highlight + 1) % items.length;
               emit();
               return true;
             }
             if (props.event.key === "ArrowUp") {
+              if (items.length === 0) return false;
               highlight = (highlight - 1 + items.length) % items.length;
               emit();
               return true;

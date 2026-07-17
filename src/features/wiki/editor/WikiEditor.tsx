@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/core";
@@ -83,6 +83,19 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
       getMarkdown: () => serializeMarkdown(editor.getJSON()),
       isDirty: () => dirtyRef.current,
     }));
+
+    // @tiptap/suggestion은 트랜잭션(state.apply) 기반이라 blur만으로는 onExit이 발화하지 않는다 —
+    // 팝업이 열린 채 에디터 밖을 클릭하면 무한히 남으므로 blur 이벤트로 직접 닫는다.
+    // 팝업 내부 클릭(SuggestionPopup의 onMouseDown preventDefault)은 애초에 blur를 일으키지 않으므로
+    // 클릭 선택 경로와 충돌하지 않는다.
+    useEffect(() => {
+      if (!editor) return;
+      const handleBlur = () => setLinkMenu(null);
+      editor.on("blur", handleBlur);
+      return () => {
+        editor.off("blur", handleBlur);
+      };
+    }, [editor]);
 
     return (
       <div className="wiki-editor">

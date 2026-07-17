@@ -83,4 +83,43 @@ describe("W4 [[ 자동완성", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
+
+  // 회귀: 리뷰어 Important #1 — @tiptap/suggestion은 트랜잭션 기반이라 blur만으로 onExit이
+  // 발화하지 않는다. WikiEditor가 editor.on("blur", ...)로 팝업을 직접 닫아야 한다.
+  it("포커스가 밖으로 나가면(blur) 드롭다운이 닫힌다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/new");
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    editorRegistry.current!.chain().focus().insertContent("[[개").run();
+    await screen.findByRole("listbox", { name: "페이지 링크 자동완성" });
+    await user.click(screen.getByLabelText("페이지 제목"));
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  // 회귀: 리뷰어 Important #2 — 후보 0개 상태에서 ArrowDown/Up을 누르면 highlight가
+  // (0 + 1) % 0 = NaN이 되어, 이후 Enter가 items[NaN](undefined)로 command를 호출해 크래시했다.
+  // 0개일 때는 무시하고, 쿼리를 다시 매치되게 고치면 highlight가 0으로 정상 복구되는지도 함께 검증한다.
+  it("후보 0개에서 ArrowDown은 무시되고, 쿼리 복구 후 highlight가 정상화된다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/new");
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+    editorRegistry.current!.chain().focus().insertContent("[[zzz").run();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    // highlight=NaN 크래시 없이 무시되어야 한다 — 예외가 던져지면 이 await 자체가 실패한다
+    await user.keyboard("{ArrowDown}");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    // "zzz"를 지워 다시 전체 후보가 매치되게 한다 — jsdom에서 연속 Backspace 키 이벤트가 간헐적으로
+    // 유실돼(hasFocus 타이밍 이슈로 추정) 신뢰성이 낮으므로, 트랜잭션을 직접 디스패치해 확정적으로 지운다.
+    // 커서는 insertContent 직후 텍스트 끝에 있으므로 selection.to 기준으로 마지막 3글자를 지운다
+    // (doc.content.size는 문단 닫힘 토큰까지 포함해 경계가 하나 어긋난다 — 이번에 직접 겪은 함정).
+    const pos = editorRegistry.current!.state.selection.to;
+    editorRegistry.current!.commands.deleteRange({ from: pos - 3, to: pos });
+    await screen.findByRole("listbox", { name: "페이지 링크 자동완성" });
+    expect(screen.getByRole("option", { name: "시작하기" })).toHaveAttribute("aria-selected", "true");
+    // Enter도 안전하게 동작(command(undefined) 크래시 없음) — items[0]인 "시작하기"가 완성된다
+    await user.keyboard("{Enter}");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(editorRegistry.current!.storage.markdown.getMarkdown()).toContain("[[시작하기]]");
+  });
 });
