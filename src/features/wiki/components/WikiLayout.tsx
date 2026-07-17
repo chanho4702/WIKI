@@ -11,6 +11,7 @@ import { SpaceCreateModal } from "./SpaceCreateModal";
 import { SpaceFlyout } from "./SpaceFlyout";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
+import { pruneStarredSpaces } from "../lib/starredSpaces";
 
 export interface WikiLayoutProps {
   spaces: Space[];
@@ -72,6 +73,13 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   useEffect(() => {
     void getCurrentUser().then(setMe);
   }, []);
+
+  // T3 잔여 픽스(b) — 스페이스 목록이 로드/갱신될 때마다 별표 저장 배열에서 더 이상 존재하지 않는
+  // id를 정리한다(스페이스 삭제 등으로 죽은 id가 영구히 남는 것 방지). spaces prop은 App이 로드해
+  // 내려주므로, 여기서는 그 값이 바뀔 때(최초 로드 포함) 1회씩 호출한다.
+  useEffect(() => {
+    pruneStarredSpaces(spaces.map((s) => s.id));
+  }, [spaces]);
 
   // 스페이스 플라이아웃(W6 T3) — 사이드바 헤더의 Select를 대체하는 "현재 스페이스" 버튼 +
   // 옆에 뜨는 필터/전환 패널. 모달 open 상태는 여기(WikiLayout)로 끌어올려, 플라이아웃의

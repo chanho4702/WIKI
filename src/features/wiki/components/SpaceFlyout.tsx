@@ -59,8 +59,12 @@ export function SpaceFlyout({
     const isStarred = starred.includes(space.id);
     return (
       <li key={space.id} className="space-flyout-item">
+        {/* InsertMenu.tsx 관례(W6-T2 확정 패턴) — 항목 버튼은 tabIndex={-1}로 탭 순서에서 뺀다.
+         * 필터 입력만 탭 가능하게 두어야 Tab으로 이 버튼들에 진입한 뒤 Escape를 눌러도 안 먹는
+         * (포커스가 팝오버 밖 관리 로직 대상이 아닌) 갭이 생기지 않는다(T3 잔여 픽스). */}
         <button
           type="button"
+          tabIndex={-1}
           className="space-flyout-item-name"
           onClick={() => onNavigate(space.id)}
         >
@@ -68,6 +72,7 @@ export function SpaceFlyout({
         </button>
         <button
           type="button"
+          tabIndex={-1}
           className="space-flyout-star"
           aria-pressed={isStarred}
           aria-label="별표"
@@ -113,7 +118,8 @@ export function SpaceFlyout({
           </section>
         </>
       )}
-      <Button variant="subtle" className="space-flyout-create" onClick={onCreateClick}>
+      {/* InsertMenu.tsx 관례(W6-T2) — 이 버튼도 tabIndex={-1}로 탭 순서에서 뺀다(T3 잔여 픽스) */}
+      <Button variant="subtle" tabIndex={-1} className="space-flyout-create" onClick={onCreateClick}>
         스페이스 만들기
       </Button>
     </div>

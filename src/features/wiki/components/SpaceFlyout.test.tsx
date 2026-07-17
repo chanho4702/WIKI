@@ -116,4 +116,19 @@ describe("SpaceFlyout", () => {
     await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  // T3 잔여 픽스(a) — InsertMenu.tsx 관례(W6-T2 확정 패턴): 항목 이름/별표/만들기 버튼은
+  // tabIndex={-1}로 탭 순서에서 뺀다. 그렇지 않으면 Tab으로 이 버튼들에 들어간 뒤 Escape를 눌러도
+  // (필터 입력의 onKeyDown만 처리하므로) 안 먹는 갭이 생긴다.
+  it("항목 이름/별표/만들기 버튼은 tabIndex={-1}로 탭 순서에서 제외된다", () => {
+    setup();
+    const allSection = screen.getByRole("heading", { name: "모든 스페이스" }).closest("section")!;
+    const nameButton = within(allSection).getByRole("button", { name: "개발 위키 (DEV)" });
+    expect(nameButton).toHaveAttribute("tabIndex", "-1");
+    const starButton = within(allSection)
+      .getAllByRole("button", { name: "별표" })
+      .find((btn) => btn.closest(".space-flyout-item")?.textContent?.includes("개발 위키"))!;
+    expect(starButton).toHaveAttribute("tabIndex", "-1");
+    expect(screen.getByRole("button", { name: "스페이스 만들기" })).toHaveAttribute("tabIndex", "-1");
+  });
 });

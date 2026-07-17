@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getStarredSpaces, setStarredSpaces, useStarredSpaces } from "./starredSpaces";
+import { getStarredSpaces, pruneStarredSpaces, setStarredSpaces, useStarredSpaces } from "./starredSpaces";
 
 beforeEach(() => {
   localStorage.clear();
@@ -52,6 +52,35 @@ describe("starredSpaces — get/set", () => {
     });
     expect(() => setStarredSpaces(["sp1"])).not.toThrow();
     spy.mockRestore();
+  });
+});
+
+describe("pruneStarredSpaces — T3 잔여 픽스", () => {
+  it("validIds에 없는 id를 저장 배열에서 제거한다", () => {
+    setStarredSpaces(["sp1", "sp2", "sp3"]);
+    pruneStarredSpaces(["sp1", "sp3"]);
+    expect(getStarredSpaces()).toEqual(["sp1", "sp3"]);
+  });
+
+  it("모두 validIds에 있으면 저장을 건드리지 않는다(불필요한 쓰기 방지)", () => {
+    setStarredSpaces(["sp1", "sp2"]);
+    const spy = vi.spyOn(Storage.prototype, "setItem");
+    pruneStarredSpaces(["sp1", "sp2", "sp3"]);
+    expect(spy).not.toHaveBeenCalled();
+    expect(getStarredSpaces()).toEqual(["sp1", "sp2"]);
+    spy.mockRestore();
+  });
+
+  it("모두 사라졌으면 빈 배열로(키 제거) 정리된다", () => {
+    setStarredSpaces(["sp1", "sp2"]);
+    pruneStarredSpaces([]);
+    expect(localStorage.getItem("wiki.ui.starredSpaces")).toBeNull();
+    expect(getStarredSpaces()).toEqual([]);
+  });
+
+  it("저장된 별표가 없으면 아무것도 하지 않는다", () => {
+    pruneStarredSpaces(["sp1"]);
+    expect(getStarredSpaces()).toEqual([]);
   });
 });
 

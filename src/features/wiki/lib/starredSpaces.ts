@@ -22,6 +22,20 @@ export function getStarredSpaces(): string[] {
   }
 }
 
+/**
+ * 저장된 별표 목록에서 더 이상 존재하지 않는 스페이스 id를 제거한다(T3 잔여 픽스) — 스페이스가
+ * 삭제되거나 이 브라우저에서 접근 불가능해진 뒤에도 별표 목록에 죽은 id가 영구히 남는 것을 막는다.
+ * WikiLayout이 스페이스 목록을 처음 로드한 시점에 1회 호출한다. 제거할 게 없으면 저장을 건드리지
+ * 않는다(불필요한 쓰기 방지).
+ */
+export function pruneStarredSpaces(validIds: string[]): void {
+  const current = getStarredSpaces();
+  const pruned = current.filter((id) => validIds.includes(id));
+  if (pruned.length !== current.length) {
+    setStarredSpaces(pruned);
+  }
+}
+
 /** 별표 스페이스 id 목록을 저장한다. 빈 배열은 기본값이므로 키를 제거해 부재로 표현한다. */
 export function setStarredSpaces(ids: string[]): void {
   try {
