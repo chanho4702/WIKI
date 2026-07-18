@@ -18,18 +18,16 @@ beforeEach(() => {
 function setup(overrides: Partial<Parameters<typeof SpaceFlyout>[0]> = {}) {
   const onNavigate = vi.fn();
   const onCreateClick = vi.fn();
-  const onClose = vi.fn();
   render(
     <SpaceFlyout
       spaces={SPACES}
       currentSpaceId="sp1"
       onNavigate={onNavigate}
       onCreateClick={onCreateClick}
-      onClose={onClose}
       {...overrides}
     />,
   );
-  return { onNavigate, onCreateClick, onClose };
+  return { onNavigate, onCreateClick };
 }
 
 describe("SpaceFlyout", () => {
@@ -109,13 +107,8 @@ describe("SpaceFlyout", () => {
     expect(onCreateClick).toHaveBeenCalledTimes(1);
   });
 
-  it("필터 입력에서 Escape를 누르면 onClose가 호출된다", async () => {
-    const user = userEvent.setup();
-    const { onClose } = setup();
-    screen.getByPlaceholderText("스페이스 필터").focus();
-    await user.keyboard("{Escape}");
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
+  // Escape/외부 클릭/Tab-out 닫기는 이 컴포넌트가 아니라 호출 측(WikiLayout)이 공용 훅
+  // (useDismissablePopover.ts)으로 처리한다(W7 T1) — App.w6-spaces.test.tsx에서 통합 검증한다.
 
   // T3 잔여 픽스(a) — InsertMenu.tsx 관례(W6-T2 확정 패턴): 항목 이름/별표/만들기 버튼은
   // tabIndex={-1}로 탭 순서에서 뺀다. 그렇지 않으면 Tab으로 이 버튼들에 들어간 뒤 Escape를 눌러도

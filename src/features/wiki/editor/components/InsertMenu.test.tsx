@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Editor } from "@tiptap/core";
 import { buildBaseExtensions } from "../extensions/base";
@@ -139,6 +139,43 @@ describe("InsertMenu — 요소 브라우저", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(body).toHaveFocus();
     expect(trigger).not.toHaveFocus();
+    editor.destroy();
+  });
+
+  // W7 T1 — Tab-out 갭: 필터 입력에서 Tab으로 컨테이너 밖으로 나가면(포커스 강탈 없이) 메뉴가
+  // 닫혀야 한다. relatedTarget이 컨테이너 밖임을 focusout으로 시뮬레이션한다.
+  it("필터 입력에서 Tab으로 컨테이너 밖으로 나가면(Tab-out) 포커스를 빼앗지 않고 메뉴만 닫힌다", async () => {
+    const user = userEvent.setup();
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+    render(
+      <div>
+        <InsertMenu editor={editor} />
+        <button type="button">다음 버튼</button>
+      </div>,
+    );
+    const trigger = screen.getByRole("button", { name: "요소 삽입" });
+    await user.click(trigger);
+    const filter = screen.getByPlaceholderText("요소 검색");
+    const next = screen.getByRole("button", { name: "다음 버튼" });
+    fireEvent.focusOut(filter, { relatedTarget: next });
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(trigger).not.toHaveFocus();
+    editor.destroy();
+  });
+
+  // W7 T1 — Escape 승격: 이전엔 필터 input에만 바인딩돼 있어 다른 항목 버튼에 포커스가 가 있으면
+  // Escape가 먹지 않았다. 이제 컨테이너 전체 keydown이라 항목 버튼에서 눌러도 동작해야 한다.
+  it("항목 버튼에 포커스가 가 있어도 Escape를 누르면 닫히고 트리거로 포커스가 되돌아간다", async () => {
+    const user = userEvent.setup();
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+    render(<InsertMenu editor={editor} />);
+    const trigger = screen.getByRole("button", { name: "요소 삽입" });
+    await user.click(trigger);
+    const item = screen.getByRole("button", { name: "제목 1" });
+    item.focus();
+    fireEvent.keyDown(item, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
     editor.destroy();
   });
 });

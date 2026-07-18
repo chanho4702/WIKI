@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
 import { filterSlashItems, type SlashItem } from "../extensions/slashMenu";
+import { useDismissablePopover } from "../../lib/useDismissablePopover";
 
 /**
  * 요소 브라우저(컨플루언스 "삽입" 메뉴 스타일) — TopToolbar 끝의 + 버튼을 누르면 SLASH_ITEMS를
@@ -45,21 +46,11 @@ export function InsertMenu({ editor, onOpenEmoji }: InsertMenuProps) {
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  // 외부 클릭 닫기 — 트리거 버튼도 컨테이너 안에 있으므로, 버튼 자체를 누른 mousedown은 여기서
-  // "안"으로 판정돼 무시되고 onClick 토글로만 처리된다.
-  // preventDefault는 걸지 않는다 — 다른 툴바 버튼이나 에디터 본문(contenteditable)을 클릭했을 때
-  // 그 대상이 정상적으로 포커스/캐럿을 받아야 하므로, 여기서는 팝오버를 닫기만 한다(포커스는
-  // 건드리지 않음). 트리거로 포커스를 강제로 되돌리는 건 Escape 케이스에서만 한다.
-  useEffect(() => {
-    if (!open) return;
-    const handlePointerDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        close();
-      }
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open, close]);
+  // 외부 클릭/Escape/Tab-out 닫기 — 공용 훅(useDismissablePopover.ts)에 위임한다. 트리거 버튼도
+  // 컨테이너 안에 있으므로, 버튼 자체를 누른 mousedown은 "안"으로 판정돼 무시되고 onClick 토글로만
+  // 처리된다. 외부 클릭은 preventDefault 없이 닫기만 한다 — 다른 툴바 버튼이나 에디터 본문
+  // (contenteditable)을 클릭했을 때 그 대상이 정상적으로 포커스/캐럿을 받아야 하기 때문이다.
+  useDismissablePopover({ containerRef, triggerRef, open, onClose: close });
 
   const select = (item: SlashItem) => {
     close();
@@ -73,13 +64,9 @@ export function InsertMenu({ editor, onOpenEmoji }: InsertMenuProps) {
     item.run(editor);
   };
 
+  // Escape는 더 이상 여기서 처리하지 않는다 — useDismissablePopover가 컨테이너 전체 keydown으로
+  // 승격해 처리한다(닫기 + 트리거 재포커스).
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      close();
-      triggerRef.current?.focus();
-      return;
-    }
     if (e.key === "ArrowDown") {
       e.preventDefault();
       if (items.length) setHighlight((h) => (h + 1) % items.length);

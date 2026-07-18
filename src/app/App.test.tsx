@@ -76,7 +76,7 @@ describe("App 라우팅과 위키 W1 흐름", () => {
     // 스위처(현재 스페이스 버튼)가 새 스페이스로 바뀌고 그 스페이스로 이동
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: "설계 위키 (ARCH)" }),
+        screen.getByRole("button", { name: "스페이스 전환: 설계 위키" }),
       ).toBeInTheDocument();
     });
     expect(screen.getByTestId("location").textContent).toMatch(/^\/spaces\/[^/]+$/);

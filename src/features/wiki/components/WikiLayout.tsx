@@ -12,6 +12,7 @@ import { SpaceFlyout } from "./SpaceFlyout";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
 import { pruneStarredSpaces } from "../lib/starredSpaces";
+import { useDismissablePopover } from "../lib/useDismissablePopover";
 
 export interface WikiLayoutProps {
   spaces: Space[];
@@ -91,20 +92,20 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   const spaceSwitcherRef = useRef<HTMLDivElement>(null);
   const spaceTriggerRef = useRef<HTMLButtonElement>(null);
 
-  // 외부 클릭 닫기 — InsertMenu.tsx 패턴 준수: 트리거 버튼도 포함하는 영역(spaceSwitcherRef)
-  // 바깥의 mousedown이면 닫기만 하고 포커스는 건드리지 않는다(preventDefault 없음). 트리거 버튼이
-  // 이 영역 "안"에 있으므로, 트리거를 다시 눌러 닫는 경우는 여기서 무시되고 트리거의 onClick
-  // 토글로만 처리된다(닫힘→토글로 즉시 재열림되는 경합을 피함).
-  useEffect(() => {
-    if (!spaceFlyoutOpen) return;
-    const handlePointerDown = (e: MouseEvent) => {
-      if (spaceSwitcherRef.current && !spaceSwitcherRef.current.contains(e.target as Node)) {
-        setSpaceFlyoutOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [spaceFlyoutOpen]);
+  // 외부 클릭/Escape/Tab-out 닫기 — 공용 훅(useDismissablePopover.ts)에 위임한다. 트리거 버튼도
+  // 포함하는 영역(spaceSwitcherRef) 바깥의 mousedown이면 닫기만 하고 포커스는 건드리지 않는다.
+  // 트리거 버튼이 이 영역 "안"에 있으므로, 트리거를 다시 눌러 닫는 경우는 여기서 무시되고 트리거의
+  // onClick 토글로만 처리된다(닫힘→토글로 즉시 재열림되는 경합을 피함). Escape는 컨테이너 전체
+  // keydown으로 승격돼 있어(예: SpaceFlyout의 별표 버튼에 포커스가 가 있어도) 동작한다.
+  const closeSpaceFlyout = useCallback(() => {
+    setSpaceFlyoutOpen(false);
+  }, []);
+  useDismissablePopover({
+    containerRef: spaceSwitcherRef,
+    triggerRef: spaceTriggerRef,
+    open: spaceFlyoutOpen,
+    onClose: closeSpaceFlyout,
+  });
 
   const current = spaces.find((s) => s.id === spaceId);
   const currentId = current?.id ?? null;
@@ -176,6 +177,7 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
                   className="space-switcher-trigger"
                   aria-haspopup="dialog"
                   aria-expanded={spaceFlyoutOpen}
+                  aria-label={`스페이스 전환: ${current.name}`}
                   onClick={() => setSpaceFlyoutOpen((prev) => !prev)}
                 >
                   {current.name} ({current.key})
@@ -191,11 +193,6 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
                     onCreateClick={() => {
                       setSpaceFlyoutOpen(false);
                       setSpaceModalOpen(true);
-                    }}
-                    onClose={() => {
-                      // Escape로 닫힘 — 트리거 버튼으로 포커스를 되돌린다(InsertMenu.tsx 패턴).
-                      setSpaceFlyoutOpen(false);
-                      spaceTriggerRef.current?.focus();
                     }}
                   />
                 )}

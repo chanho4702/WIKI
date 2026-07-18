@@ -1255,10 +1255,16 @@ body {
 }
 .emoji-picker-grid {
   display: grid;
+  /* W7 T1 — 열 수는 EmojiPicker.tsx의 EMOJI_GRID_COLUMNS 상수(↑↓ 화살표 내비 계산)와 일치해야 한다 */
   grid-template-columns: repeat(6, 1fr);
   gap: var(--chanho-space-50, 4px);
   max-height: 220px;
   overflow-y: auto;
+}
+/* W7 T1 — role=option 정합을 위해 각 버튼을 div로 감쌌다. display: contents로 래퍼 박스를 없애서
+ * 버튼 자체가 그리드 셀이 되게 한다(레이아웃은 래퍼 이전과 동일하게 유지). */
+.emoji-picker-grid > [role="option"] {
+  display: contents;
 }
 .emoji-picker-item {
   border: none;
@@ -1269,7 +1275,8 @@ body {
   font-size: var(--chanho-font-size-200, 18px);
   line-height: 1;
 }
-.emoji-picker-item:hover {
+.emoji-picker-item:hover,
+.emoji-picker-item.is-highlighted {
   background: var(--chanho-color-background-neutral-hovered);
 }
 .emoji-picker-empty {
