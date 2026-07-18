@@ -28,4 +28,21 @@ describe("CodeBlockView", () => {
     await user.click(await screen.findByRole("button", { name: "코드 복사" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("const a = 1;"));
   });
+
+  it("언어가 지정된 코드 블록은 lowlight가 붙인 hljs 토큰 span으로 렌더된다", async () => {
+    const { container } = render(
+      <WikiEditor initialMarkdown={"```ts\nconst a = 1;\n```"} pages={[]} />,
+    );
+    await screen.findByLabelText("코드 언어");
+    await waitFor(() => {
+      expect(container.querySelector('span[class^="hljs-"]')).not.toBeNull();
+    });
+  });
+
+  it("언어가 없는 코드 블록은 하이라이트 토큰 없이 렌더된다", async () => {
+    const { container } = render(<WikiEditor initialMarkdown={"```\nconst a = 1;\n```"} pages={[]} />);
+    const select = await screen.findByLabelText("코드 언어");
+    expect((select as HTMLSelectElement).value).toBe("plaintext");
+    expect(container.querySelector('span[class^="hljs-"]')).toBeNull();
+  });
 });

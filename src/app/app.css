@@ -490,45 +490,57 @@ body {
   background: transparent;
 }
 
-/* highlight.js 토큰 색 정의 — 값은 :root/[data-theme="dark"]의 --wiki-hljs-* 변수(W7 T4) */
-.markdown-body .hljs-keyword {
+/* highlight.js 토큰 색 정의 — 값은 :root/[data-theme="dark"]의 --wiki-hljs-* 변수(W7 T4).
+   에디터(.wiki-editor .ProseMirror)는 lowlight가 붙인 동일한 hljs-* 토큰을 재사용한다(W7 T5) */
+.markdown-body .hljs-keyword,
+.wiki-editor .ProseMirror .hljs-keyword {
   color: var(--wiki-hljs-keyword); /* 키워드 — 파란색 */
 }
 
-.markdown-body .hljs-string {
+.markdown-body .hljs-string,
+.wiki-editor .ProseMirror .hljs-string {
   color: var(--wiki-hljs-string); /* 문자열 — 초록색 */
 }
 
-.markdown-body .hljs-number {
+.markdown-body .hljs-number,
+.wiki-editor .ProseMirror .hljs-number {
   color: var(--wiki-hljs-number); /* 숫자 — 자주색 */
 }
 
-.markdown-body .hljs-comment {
+.markdown-body .hljs-comment,
+.wiki-editor .ProseMirror .hljs-comment {
   color: var(--wiki-hljs-comment); /* 주석 — 회색 */
 }
 
-.markdown-body .hljs-title {
+.markdown-body .hljs-title,
+.wiki-editor .ProseMirror .hljs-title {
   color: var(--wiki-hljs-title); /* 함수/클래스 제목 — 보라색 */
 }
 
 .markdown-body .hljs-attr,
-.markdown-body .hljs-attribute {
+.markdown-body .hljs-attribute,
+.wiki-editor .ProseMirror .hljs-attr,
+.wiki-editor .ProseMirror .hljs-attribute {
   color: var(--wiki-hljs-title); /* 속성명 — 보라색 */
 }
 
-.markdown-body .hljs-built_in {
+.markdown-body .hljs-built_in,
+.wiki-editor .ProseMirror .hljs-built_in {
   color: var(--wiki-hljs-keyword); /* 내장 함수/타입 — 파란색 */
 }
 
-.markdown-body .hljs-literal {
+.markdown-body .hljs-literal,
+.wiki-editor .ProseMirror .hljs-literal {
   color: var(--wiki-hljs-number); /* 리터럴(true, false, null) — 자주색 */
 }
 
-.markdown-body .hljs-tag {
+.markdown-body .hljs-tag,
+.wiki-editor .ProseMirror .hljs-tag {
   color: var(--wiki-hljs-keyword); /* HTML 태그 — 파란색 */
 }
 
-.markdown-body .hljs-variable {
+.markdown-body .hljs-variable,
+.wiki-editor .ProseMirror .hljs-variable {
   color: var(--wiki-hljs-string); /* 변수명 — 초록색 */
 }
 
