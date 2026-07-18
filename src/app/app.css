@@ -1433,3 +1433,102 @@ body {
 [data-theme="dark"] .drag-handle {
   background: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5' cy='4' r='1.2' fill='%2398a2b0'/%3E%3Ccircle cx='11' cy='4' r='1.2' fill='%2398a2b0'/%3E%3Ccircle cx='5' cy='8' r='1.2' fill='%2398a2b0'/%3E%3Ccircle cx='11' cy='8' r='1.2' fill='%2398a2b0'/%3E%3Ccircle cx='5' cy='12' r='1.2' fill='%2398a2b0'/%3E%3Ccircle cx='11' cy='12' r='1.2' fill='%2398a2b0'/%3E%3C/svg%3E") no-repeat center;
 }
+
+/* W7 T7: 스페이스 디렉토리 페이지(/spaces) — WikiLayout 밖의 독립 라우트라 사이드바가 없다.
+ * WikiTopBar(토글 없음) + 전폭 콘텐츠. .wiki-layout처럼 height: 100vh로 고정하지 않고 자연스러운
+ * 문서 스크롤을 쓴다(사이드바 내부 스크롤을 별도로 관리할 필요가 없어서 W7 T6 수준의 고정 높이가
+ * 불필요하다). */
+.space-directory-content {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--chanho-space-400, 24px) var(--chanho-space-400, 24px) var(--chanho-space-600, 48px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-400, 24px);
+}
+
+.space-directory-starred h2,
+.space-directory-all h2 {
+  margin: 0 0 var(--chanho-space-200, 12px);
+  font-size: var(--chanho-font-size-200, 16px);
+}
+
+/* 자주 찾는 스페이스 — 카드 그리드(flex wrap) */
+.space-directory-cards {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--chanho-space-200, 12px);
+}
+
+.space-directory-card {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100, 8px);
+  width: 240px;
+  box-sizing: border-box;
+  padding: var(--chanho-space-200, 12px);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium, 8px);
+  background: var(--chanho-color-background-surface, #fff);
+}
+
+.space-directory-card-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--chanho-color-text-default);
+}
+
+.space-directory-card-title {
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.space-directory-card-key {
+  font-size: var(--chanho-font-size-75, 12px);
+  color: var(--chanho-color-text-subtle, #626f86);
+}
+
+/* 모든 스페이스 — 필터 입력 + 테이블(DS Table 컴포넌트 사용, 셀 내용만 커스텀) */
+.space-directory-all input {
+  max-width: 320px;
+}
+
+.space-directory-row-name {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--chanho-color-text-brand, #0c66e4);
+  text-align: left;
+}
+
+.space-directory-row-name:hover {
+  text-decoration: underline;
+}
+
+/* 별표 토글 — .space-flyout-star(W6 T3)과 동일한 시각 패턴 재사용 */
+.space-directory-star {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: var(--chanho-space-50, 4px);
+  color: var(--chanho-color-text-subtle, #626f86);
+}
+.space-directory-star[aria-pressed="true"] {
+  color: var(--chanho-color-text-warning, #b38600);
+}

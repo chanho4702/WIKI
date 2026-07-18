@@ -6,6 +6,7 @@ import { listSpaces } from "../features/wiki/store/wikiStore";
 import { WikiLayout } from "../features/wiki/components/WikiLayout";
 import { EmptySpaces } from "../features/wiki/components/EmptySpaces";
 import { SpaceIndexPage } from "../features/wiki/pages/SpaceIndexPage";
+import { SpaceDirectoryPage } from "../features/wiki/pages/SpaceDirectoryPage";
 import { PageViewPage } from "../features/wiki/pages/PageViewPage";
 import { PageEditPage } from "../features/wiki/pages/PageEditPage";
 
@@ -34,6 +35,9 @@ export function App() {
 
   return (
     <Routes>
+      {/* W7 T7: 스페이스 디렉토리 — WikiLayout(스페이스 종속 사이드바) 밖의 독립 라우트라
+       * "/spaces/:spaceId"보다 먼저, catch-all "*"보다 먼저 와야 한다. */}
+      <Route path="/spaces" element={<SpaceDirectoryPage spaces={spaces} />} />
       <Route
         path="/spaces/:spaceId"
         element={<WikiLayout spaces={spaces} onSpacesChanged={reload} />}

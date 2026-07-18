@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate, Outlet, useNavigate, useParams } from "react-router";
-import { Avatar, Button, EmptyState, Spinner, Switch, TextField, TopBar } from "@chanho/react";
-import type { Page, Space, User } from "../store/types";
-import { getCurrentUser, listPages } from "../store/wikiStore";
-import { useTheme } from "../../../app/theme";
-import { useAuth } from "../../../auth/AuthGate";
+import { Button, EmptyState, Spinner, TextField } from "@chanho/react";
+import type { Page, Space } from "../store/types";
+import { listPages } from "../store/wikiStore";
 import { PageTree } from "./PageTree";
 import { SidebarResizer } from "./SidebarResizer";
 import { SpaceCreateModal } from "./SpaceCreateModal";
 import { SpaceFlyout } from "./SpaceFlyout";
+import { WikiTopBar } from "./WikiTopBar";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
 import { pruneStarredSpaces, useStarredSpaces } from "../lib/starredSpaces";
@@ -32,9 +31,6 @@ export interface WikiOutletContext {
 export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   const { spaceId } = useParams();
   const navigate = useNavigate();
-  const { theme, toggle } = useTheme();
-  const { user: authUser, logout } = useAuth();
-  const [me, setMe] = useState<User | null>(null);
   const [pages, setPages] = useState<Page[] | null>(null);
   const [query, setQuery] = useState("");
   const { collapsed, width, setCollapsed, setWidth } = useSidebarPrefs();
@@ -53,10 +49,6 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
     },
     [setWidth],
   );
-
-  useEffect(() => {
-    void getCurrentUser().then(setMe);
-  }, []);
 
   // T3 잔여 픽스(b) — 스페이스 목록이 로드/갱신될 때마다 별표 저장 배열에서 더 이상 존재하지 않는
   // id를 정리한다(스페이스 삭제 등으로 죽은 id가 영구히 남는 것 방지). spaces prop은 App이 로드해
@@ -120,41 +112,7 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
 
   return (
     <div className="wiki-layout">
-      <TopBar
-        brand={
-          <>
-            <Button
-              variant="ghost"
-              size="small"
-              className="wiki-sidebar-toggle"
-              aria-label="사이드바 토글"
-              aria-expanded={!collapsed}
-              onClick={() => setCollapsed(!collapsed)}
-            >
-              ⧉
-            </Button>
-            <span className="wiki-brand">WIKI</span>
-          </>
-        }
-        actions={
-          <>
-            <Switch
-              label="다크 모드"
-              checked={theme === "dark"}
-              onCheckedChange={toggle}
-            />
-            {authUser ? (
-              <>
-                <span className="wiki-auth-user">{authUser.name ?? authUser.email}</span>
-                <Button size="small" variant="ghost" onClick={() => void logout()}>
-                  로그아웃
-                </Button>
-              </>
-            ) : null}
-            {me ? <Avatar name={me.name} size="small" /> : null}
-          </>
-        }
-      />
+      <WikiTopBar onSidebarToggle={() => setCollapsed(!collapsed)} sidebarExpanded={!collapsed} />
       <div className="wiki-body">
         {collapsed ? null : (
           <aside className="wiki-sidebar" style={{ width: displayWidth }}>
