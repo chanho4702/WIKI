@@ -19,6 +19,30 @@ export interface SlashItem {
   run: (editor: Editor) => void;
 }
 
+/**
+ * 노트/팁/경고/주의 패널 삽입 — blockquote로 감싼 뒤 마커 텍스트를 "현재 텍스트블록의 시작
+ * 위치"에 삽입한다(W7 T2 — 줄 중간 가드). 이전엔 `insertContent(marker)`로 커서 위치에 바로
+ * 삽입했는데, "안내: " 뒤에서 실행하면 "안내: [!NOTE] "처럼 마커가 줄 중간에 박혀
+ * remarkAlerts의 `^[!TYPE]` 앵커(줄 시작 고정)에 걸리지 않고 조용히 무늬만 blockquote인
+ * 텍스트가 됐다.
+ *
+ * `.command(({ tr, state }) => ...)`는 체인의 다른 명령들과 같은 트랜잭션(tr)을 공유하므로
+ * `state.selection`은 toggleBlockquote가 반영된(매핑된) 이후 상태를 가리킨다 — 즉 여기서 읽는
+ * `$from.start()`는 wrap 이후의 블록 시작 위치다. 하나의 트랜잭션으로 처리되므로 실행 취소도
+ * 한 번에 묶인다.
+ */
+function insertAlertMarker(editor: Editor, marker: string): void {
+  editor
+    .chain()
+    .focus()
+    .toggleBlockquote()
+    .command(({ tr, state }) => {
+      tr.insertText(marker, state.selection.$from.start());
+      return true;
+    })
+    .run();
+}
+
 /** 화이트리스트 15개 블록 — 순서가 곧 기본 노출 순서다 */
 export const SLASH_ITEMS: SlashItem[] = [
   {
@@ -71,25 +95,25 @@ export const SLASH_ITEMS: SlashItem[] = [
     id: "note",
     label: "노트 패널",
     description: "파란색 정보 패널을 추가합니다",
-    run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!NOTE] ").run(),
+    run: (e) => insertAlertMarker(e, "[!NOTE] "),
   },
   {
     id: "tip",
     label: "팁 패널",
     description: "초록색 팁 패널을 추가합니다",
-    run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!TIP] ").run(),
+    run: (e) => insertAlertMarker(e, "[!TIP] "),
   },
   {
     id: "warning",
     label: "경고 패널",
     description: "노란색 경고 패널을 추가합니다",
-    run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!WARNING] ").run(),
+    run: (e) => insertAlertMarker(e, "[!WARNING] "),
   },
   {
     id: "caution",
     label: "주의 패널",
     description: "빨간색 주의 패널을 추가합니다",
-    run: (e) => e.chain().focus().toggleBlockquote().insertContent("[!CAUTION] ").run(),
+    run: (e) => insertAlertMarker(e, "[!CAUTION] "),
   },
   {
     id: "code",
@@ -131,6 +155,19 @@ export const SLASH_ITEMS: SlashItem[] = [
 export function filterSlashItems(query: string): SlashItem[] {
   const q = query.toLowerCase();
   return SLASH_ITEMS.filter((i) => i.label.toLowerCase().includes(q));
+}
+
+/**
+ * InsertMenu(요소 브라우저) 전용 필터 — 라벨뿐 아니라 설명(description)도 부분 일치로 검색한다.
+ * 슬래시 메뉴(에디터 안 "/" 트리거)는 filterSlashItems(라벨 전용)를 그대로 쓴다 — "/"로 빠르게
+ * 타이핑하는 흐름에서 설명 텍스트까지 매치되면 의도치 않은 항목이 섞여 들어올 수 있어서다.
+ * InsertMenu는 마우스로 찾아보는 브라우징 UI라 설명 검색이 오히려 발견성을 높인다.
+ */
+export function filterInsertMenuItems(query: string): SlashItem[] {
+  const q = query.toLowerCase();
+  return SLASH_ITEMS.filter(
+    (i) => i.label.toLowerCase().includes(q) || i.description.toLowerCase().includes(q),
+  );
 }
 
 /**

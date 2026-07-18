@@ -2,6 +2,7 @@ import { useEffect, useReducer } from "react";
 import type { Editor } from "@tiptap/core";
 import { SLASH_ITEMS } from "../extensions/slashMenu";
 import { promptSetLink } from "../lib/linkCommand";
+import { useControlledOpenState } from "../../lib/controlledOpenState";
 import { InsertMenu } from "./InsertMenu";
 import { EmojiPicker } from "./EmojiPicker";
 
@@ -29,6 +30,14 @@ export interface TopToolbarProps {
 
 /** 컨플식 상단 고정 툴바 — 마크다운 표현 가능 컨트롤만. 정렬은 저장 포맷 제약으로 제외(로드맵 3단계) */
 export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange }: TopToolbarProps) {
+  // emojiPickerOpen/onEmojiPickerOpenChange 쌍 판정(W7 T2) — 둘 다 있으면 controlled, 둘 다 없으면
+  // 내부 state, 한쪽만 있으면 dev 경고 + 내부 state 폴백. 이렇게 정규화한 [open, setOpen]을
+  // EmojiPicker에 항상 "완전한 쌍"으로 넘기므로, EmojiPicker 자신은 반쪽 프롭을 볼 일이 없다 —
+  // InsertMenu의 onOpenEmoji도 이 setOpen 하나로 통일한다(이전엔 `onEmojiPickerOpenChange?.(true)`로
+  // 옵셔널 체이닝했는데, 그러면 onEmojiPickerOpenChange 없이 emojiPickerOpen만 온 반쪽 배선에서
+  // 이모지 항목 클릭이 조용히 아무 일도 안 했다).
+  const [emojiOpen, setEmojiOpen] = useControlledOpenState("TopToolbar", emojiPickerOpen, onEmojiPickerOpenChange);
+
   // 셀렉션/문서 변경 시 활성 상태 갱신 — transaction 구독
   const [, force] = useReducer((x: number) => x + 1, 0);
   useEffect(() => {
@@ -98,8 +107,8 @@ export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange }:
       {btn("링크", "🔗", () => promptSetLink(editor), editor.isActive("link"))}
       {btn("이미지", "🖼", () => insertImage(editor))}
       <span className="top-toolbar-divider" />
-      <EmojiPicker editor={editor} open={emojiPickerOpen} onOpenChange={onEmojiPickerOpenChange} />
-      <InsertMenu editor={editor} onOpenEmoji={() => onEmojiPickerOpenChange?.(true)} />
+      <EmojiPicker editor={editor} open={emojiOpen} onOpenChange={setEmojiOpen} />
+      <InsertMenu editor={editor} onOpenEmoji={() => setEmojiOpen(true)} />
     </div>
   );
 }

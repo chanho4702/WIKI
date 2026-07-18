@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
 import { EMOJI_CATEGORIES, searchEmojis } from "../lib/emojiData";
 import { useDismissablePopover } from "../../lib/useDismissablePopover";
+import { useControlledOpenState } from "../../lib/controlledOpenState";
 
 export interface EmojiPickerProps {
   editor: Editor;
@@ -31,9 +32,7 @@ const EMOJI_GRID_COLUMNS = 6;
  * Enter로 내비게이션한다(W7 T1, EmojiPicker ARIA 정합 — W6 리뷰 Issue #1).
  */
 export function EmojiPicker({ editor, open: openProp, onOpenChange: onOpenChangeProp }: EmojiPickerProps) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const open = openProp ?? internalOpen;
-  const setOpen = onOpenChangeProp ?? setInternalOpen;
+  const [open, setOpen] = useControlledOpenState("EmojiPicker", openProp, onOpenChangeProp);
 
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState(EMOJI_CATEGORIES[0].id);

@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Button, Modal, TextField, useToast } from "@chanho/react";
 import type { Space } from "../store/types";
 import { createSpace } from "../store/wikiStore";
+import { useControlledOpenState } from "../lib/controlledOpenState";
 
 export interface SpaceCreateModalProps {
   /** 트리거 버튼 문구 */
@@ -23,18 +24,13 @@ export function SpaceCreateModal({
   open: openProp,
   onOpenChange: onOpenChangeProp,
 }: SpaceCreateModalProps) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const open = openProp ?? internalOpen;
+  const [open, setOpen] = useControlledOpenState("SpaceCreateModal", openProp, onOpenChangeProp);
   const [name, setName] = useState("");
   const [key, setKey] = useState("");
   const toast = useToast();
 
   const handleOpenChange = (next: boolean) => {
-    if (onOpenChangeProp) {
-      onOpenChangeProp(next);
-    } else {
-      setInternalOpen(next);
-    }
+    setOpen(next);
     if (!next) {
       setName("");
       setKey("");

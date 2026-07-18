@@ -45,6 +45,19 @@ describe("InsertMenu — 요소 브라우저", () => {
     editor.destroy();
   });
 
+  // W7 T2 — InsertMenu는 filterInsertMenuItems(라벨+설명)를 쓴다(슬래시 메뉴는 라벨 전용 유지).
+  // "구분선" 항목의 설명 "가로 구분선을 추가합니다"에만 있는 단어로 검색해도 찾아져야 한다.
+  it("라벨에 없는 단어도 설명(description)에 있으면 검색된다", async () => {
+    const user = userEvent.setup();
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+    render(<InsertMenu editor={editor} />);
+    await user.click(screen.getByRole("button", { name: "요소 삽입" }));
+    await user.type(screen.getByPlaceholderText("요소 검색"), "가로");
+    expect(screen.getByRole("option", { name: "구분선" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "제목 1" })).not.toBeInTheDocument();
+    editor.destroy();
+  });
+
   it("항목 클릭으로 선택하면 실행 후 팝오버가 닫히고 에디터에 반영된다", async () => {
     const user = userEvent.setup();
     const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });

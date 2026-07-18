@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Editor } from "@tiptap/core";
@@ -120,6 +120,28 @@ describe("EmojiPicker", () => {
     const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
     render(<EmojiPicker editor={editor} open onOpenChange={() => {}} />);
     expect(screen.getByRole("listbox")).toBeInTheDocument();
+    editor.destroy();
+  });
+
+  // W7 T2 — 반쪽 제어 방지: open/onOpenChange 중 하나만 넘기면(배선 실수) dev 콘솔 경고를 내고
+  // 내부 상태로 폴백한다(useControlledOpenState 공용 판정 — TopToolbar/SpaceCreateModal과 동일 패턴).
+  it("open만 넘기고 onOpenChange를 빠뜨리면 콘솔 경고를 내고 내부 상태로 폴백한다", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+    render(<EmojiPicker editor={editor} open />);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("EmojiPicker"));
+    // 내부 상태로 폴백했으므로 open=true를 그대로 반영하지 않고 초기값 false로 시작한다
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    warnSpy.mockRestore();
+    editor.destroy();
+  });
+
+  it("onOpenChange만 넘기고 open을 빠뜨리면 콘솔 경고를 낸다", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+    render(<EmojiPicker editor={editor} onOpenChange={() => {}} />);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("EmojiPicker"));
+    warnSpy.mockRestore();
     editor.destroy();
   });
 

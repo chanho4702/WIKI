@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
-import { filterSlashItems, type SlashItem } from "../extensions/slashMenu";
+import { filterInsertMenuItems, type SlashItem } from "../extensions/slashMenu";
 import { useDismissablePopover } from "../../lib/useDismissablePopover";
 
 /**
@@ -33,7 +33,8 @@ export function InsertMenu({ editor, onOpenEmoji }: InsertMenuProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const items = filterSlashItems(query);
+  // 라벨뿐 아니라 설명도 검색한다(W7 T2) — 슬래시 메뉴는 filterSlashItems(라벨 전용)를 그대로 쓴다.
+  const items = filterInsertMenuItems(query);
 
   const close = useCallback(() => {
     setOpen(false);
