@@ -2,6 +2,40 @@
   /* W6: .edit-chrome 실측 높이와 동기화 — .top-toolbar의 sticky top 오프셋이 이 값을 참조해
    * 같은 스크롤 컨테이너(.wiki-content) 안에서 두 sticky 바가 겹치지 않게 한다. */
   --edit-chrome-height: 52px;
+
+  /* W7 T4: @chanho/tokens(DS)에 대응 토큰이 없는 색 — 라이트 값은 기존에 쓰이던 raw hex 폴백을
+   * 그대로 보존해 시각 회귀가 없다. 다크 값은 아래 [data-theme="dark"]에서 재정의한다
+   * — theme.ts(applyTheme)가 document.documentElement.dataset.theme로 스위치하는 실제 셀렉터를
+   * 그대로 따른다(DS 토큰의 다크 셀렉터와 동일). 각 값의 WCAG 대비 계산은 task-4-report.md 참고. */
+  --wiki-text-subtlest: #8993a4; /* placeholder, 이미지 로드 실패 보조 텍스트 */
+  --wiki-chip-accent-blue-subtle-bg: #e9f2ff; /* wiki-chip, 툴바 버튼 is-active 배경 */
+  --wiki-chip-accent-blue-text: #0c66e4;
+  --wiki-chip-accent-red-subtle-bg: #ffedeb; /* wiki-chip-missing */
+  --wiki-chip-accent-red-text: #c9372c;
+
+  /* hljs 토큰 색 — 라이트 값(기존 유지) */
+  --wiki-hljs-keyword: #0c66e4; /* keyword/built_in/tag — 파란색 */
+  --wiki-hljs-string: #256e25; /* string/variable — 초록색 */
+  --wiki-hljs-number: #a64d79; /* number/literal — 자주색 */
+  --wiki-hljs-comment: #5b6472; /* comment — 회색 */
+  --wiki-hljs-title: #6f42c1; /* title/attr/attribute — 보라색 */
+}
+
+[data-theme="dark"] {
+  /* W7 T4: 다크 코드블록 배경은 --chanho-color-background-subtle(다크 값 #0B0F15)이다
+   * (.markdown-body pre, .wiki-editor .ProseMirror pre가 이미 이 토큰을 참조 — 자동으로 테마 전환).
+   * hljs 값은 전부 그 배경 기준 WCAG AA(4.5:1) 이상 — 계산 수치는 task-4-report.md 참고. */
+  --wiki-text-subtlest: #7e8898; /* 4.97:1(배경 #14181F) / 5.36:1(배경 #0B0F15) */
+  --wiki-chip-accent-blue-subtle-bg: var(--chanho-color-background-brand-subtle);
+  --wiki-chip-accent-blue-text: var(--chanho-color-text-brand); /* 6.54:1 */
+  --wiki-chip-accent-red-subtle-bg: var(--chanho-color-background-danger-subtle);
+  --wiki-chip-accent-red-text: var(--chanho-color-text-danger); /* 4.77:1 */
+
+  --wiki-hljs-keyword: #6cb6ff; /* 8.94:1 */
+  --wiki-hljs-string: #6fd199; /* 10.29:1 */
+  --wiki-hljs-number: #e2a3d0; /* 9.50:1 */
+  --wiki-hljs-comment: var(--chanho-color-text-subtle); /* 7.44:1 */
+  --wiki-hljs-title: #b79cff; /* 8.43:1 */
 }
 
 body {
@@ -456,46 +490,46 @@ body {
   background: transparent;
 }
 
-/* highlight.js 토큰 색 정의 — 라이트 테마 기준 */
+/* highlight.js 토큰 색 정의 — 값은 :root/[data-theme="dark"]의 --wiki-hljs-* 변수(W7 T4) */
 .markdown-body .hljs-keyword {
-  color: #0c66e4; /* 키워드 — 파란색 */
+  color: var(--wiki-hljs-keyword); /* 키워드 — 파란색 */
 }
 
 .markdown-body .hljs-string {
-  color: #256e25; /* 문자열 — 초록색 (대비 5.2:1 WCAG AA) */
+  color: var(--wiki-hljs-string); /* 문자열 — 초록색 */
 }
 
 .markdown-body .hljs-number {
-  color: #a64d79; /* 숫자 — 자주색 */
+  color: var(--wiki-hljs-number); /* 숫자 — 자주색 */
 }
 
 .markdown-body .hljs-comment {
-  color: #5b6472; /* 주석 — 회색 (대비 4.77:1 WCAG AA) */
+  color: var(--wiki-hljs-comment); /* 주석 — 회색 */
 }
 
 .markdown-body .hljs-title {
-  color: #6f42c1; /* 함수/클래스 제목 — 보라색 */
+  color: var(--wiki-hljs-title); /* 함수/클래스 제목 — 보라색 */
 }
 
 .markdown-body .hljs-attr,
 .markdown-body .hljs-attribute {
-  color: #6f42c1; /* 속성명 — 보라색 */
+  color: var(--wiki-hljs-title); /* 속성명 — 보라색 */
 }
 
 .markdown-body .hljs-built_in {
-  color: #0c66e4; /* 내장 함수/타입 — 파란색 */
+  color: var(--wiki-hljs-keyword); /* 내장 함수/타입 — 파란색 */
 }
 
 .markdown-body .hljs-literal {
-  color: #a64d79; /* 리터럴(true, false, null) — 자주색 */
+  color: var(--wiki-hljs-number); /* 리터럴(true, false, null) — 자주색 */
 }
 
 .markdown-body .hljs-tag {
-  color: #0c66e4; /* HTML 태그 — 파란색 */
+  color: var(--wiki-hljs-keyword); /* HTML 태그 — 파란색 */
 }
 
 .markdown-body .hljs-variable {
-  color: #256e25; /* 변수명 — 초록색 (대비 5.2:1 WCAG AA) */
+  color: var(--wiki-hljs-string); /* 변수명 — 초록색 */
 }
 
 .markdown-body table,
@@ -686,7 +720,7 @@ body {
   color: inherit;
 }
 .page-edit-title::placeholder {
-  color: var(--color-text-subtlest, #8993a4);
+  color: var(--wiki-text-subtlest);
 }
 
 /* W6: 컨플식 편집 크롬 — 최상단 고정 바(제목 미리보기 + 전체 너비/업데이트/닫기).
@@ -936,7 +970,7 @@ body {
 }
 .wiki-editor .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
-  color: var(--color-text-subtlest, #8993a4);
+  color: var(--wiki-text-subtlest);
   float: left;
   height: 0;
   pointer-events: none;
@@ -944,12 +978,12 @@ body {
 .wiki-chip {
   border-radius: 4px;
   padding: 0 4px;
-  background: var(--color-background-accent-blue-subtlest, #e9f2ff);
-  color: var(--color-text-accent-blue, #0c66e4);
+  background: var(--wiki-chip-accent-blue-subtle-bg);
+  color: var(--wiki-chip-accent-blue-text);
 }
 .wiki-chip-missing {
-  background: var(--color-background-accent-red-subtlest, #ffedeb);
-  color: var(--color-text-accent-red, #c9372c);
+  background: var(--wiki-chip-accent-red-subtle-bg);
+  color: var(--wiki-chip-accent-red-text);
 }
 
 /* W5: 상단 고정 툴바 (컨플식) — wiki-editor 내부, EditorContent 위에 sticky로 배치 */
@@ -986,8 +1020,8 @@ body {
   cursor: default;
 }
 .top-toolbar button.is-active {
-  background: var(--color-background-accent-blue-subtlest, #e9f2ff);
-  color: var(--color-text-accent-blue, #0c66e4);
+  background: var(--wiki-chip-accent-blue-subtle-bg);
+  color: var(--wiki-chip-accent-blue-text);
 }
 .top-toolbar select {
   border: 1px solid var(--chanho-color-border-default, #dcdfe4);
@@ -1030,8 +1064,8 @@ body {
   background: var(--chanho-color-background-neutral-hovered);
 }
 .bubble-toolbar button.is-active {
-  background: var(--color-background-accent-blue-subtlest, #e9f2ff);
-  color: var(--color-text-accent-blue, #0c66e4);
+  background: var(--wiki-chip-accent-blue-subtle-bg);
+  color: var(--wiki-chip-accent-blue-text);
 }
 
 /* W6: 요소 브라우저(InsertMenu) — TopToolbar 끝의 + 버튼과 팝오버 */
@@ -1250,8 +1284,8 @@ body {
   background: var(--chanho-color-background-neutral-hovered);
 }
 .emoji-picker-tabs button.is-active {
-  background: var(--color-background-accent-blue-subtlest, #e9f2ff);
-  color: var(--color-text-accent-blue, #0c66e4);
+  background: var(--wiki-chip-accent-blue-subtle-bg);
+  color: var(--wiki-chip-accent-blue-text);
 }
 .emoji-picker-grid {
   display: grid;
@@ -1307,13 +1341,17 @@ body {
   flex-direction: column;
   gap: 4px;
   padding: 16px;
-  border: 1px dashed var(--color-border, #dcdfe4);
+  border: 1px dashed var(--chanho-color-border-default);
   border-radius: 6px;
-  color: var(--color-text-subtlest, #8993a4);
-  background: var(--color-background-neutral-subtle, #f7f8f9);
+  color: var(--wiki-text-subtlest);
+  background: var(--chanho-color-background-subtle);
 }
 
-/* W5: 블록 드래그 핸들 (tiptap-extension-global-drag-handle) */
+/* W5: 블록 드래그 핸들 (tiptap-extension-global-drag-handle)
+ * SVG는 data URI라 CSS 변수를 참조할 수 없다 — 라이트/다크 각각 정적 fill로 둔다.
+ * 라이트 fill(#8993a4)은 --wiki-text-subtlest 라이트 값과 동일. 다크 fill(#98a2b0)은
+ * --chanho-color-text-subtle 다크 값과 동일(비-텍스트 아이콘이라 WCAG 1.4.11 기준 3:1이면
+ * 충분하지만, 배경(#14181F) 대비 6.89:1로 여유 있게 확보). */
 .drag-handle {
   position: fixed;
   opacity: 1;
@@ -1327,4 +1365,7 @@ body {
 .drag-handle.hide {
   opacity: 0;
   pointer-events: none;
+}
+[data-theme="dark"] .drag-handle {
+  background: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='5' cy='4' r='1.2' fill='%2398a2b0'/%3E%3Ccircle cx='11' cy='4' r='1.2' fill='%2398a2b0'/%3E%3Ccircle cx='5' cy='8' r='1.2' fill='%2398a2b0'/%3E%3Ccircle cx='11' cy='8' r='1.2' fill='%2398a2b0'/%3E%3Ccircle cx='5' cy='12' r='1.2' fill='%2398a2b0'/%3E%3Ccircle cx='11' cy='12' r='1.2' fill='%2398a2b0'/%3E%3C/svg%3E") no-repeat center;
 }
