@@ -62,6 +62,28 @@
 
 커밋: `feat(editor): 에디터 내 코드 하이라이팅 — CodeBlockLowlight, 뷰와 팔레트 공유`
 
+### Task 6: 헤더 토글 + 사이드바 완전 닫힘 + 별표 섹션 (2026-07-18 사용자 요청, 참고: `사이드바 및 헤더 참고.png`)
+
+**Files:** Modify `WikiLayout.tsx`, `app.css`. Tests: `App.w5-sidebar.test.tsx` 갱신 + 신규 케이스.
+
+- **토글 위치 이동**: 사이드바 접기/열기를 TopBar 좌측 버튼(햄버거/패널 아이콘, aria-label "사이드바 토글", aria-expanded)으로 통합 — 컨플 스크린샷의 좌상단 버튼. 사이드바 내부 "사이드바 접기" 버튼과 `.wiki-sidebar-opener` 플로팅 버튼 **제거**.
+- **완전 닫힘**: collapsed 시 aside 미렌더(현행 유지) + 본문 전폭. 포커스 관리: 토글 버튼이 상시 존재하므로 W6의 포커스 이동 로직 단순화(토글 버튼에 포커스 유지 — 기존 close↔open 이동 로직·테스트 갱신).
+- **사이드바 별표 섹션**: `.wiki-sidebar-body` 상단(검색 위)에 "별표 표시된 스페이스" 목록(useStarredSpaces — 현재 스페이스 제외, 클릭 이동) + "모든 스페이스 보기" 링크(`/spaces` — Task 7 라우트). 별표 0개면 섹션 숨김, 링크는 항상.
+- sidebarPrefs collapsed 키·동작 재사용 (localStorage 유지).
+
+커밋: `feat(sidebar): 헤더 토글로 완전 닫힘 + 별표 스페이스 섹션·모든 스페이스 링크`
+
+### Task 7: 스페이스 디렉토리 페이지 (`/spaces`)
+
+**Files:** Create `src/features/wiki/pages/SpaceDirectoryPage.tsx`, `src/features/wiki/components/WikiTopBar.tsx`(TopBar 추출). Modify `App.tsx`(라우트), `WikiLayout.tsx`(추출된 WikiTopBar 사용), `app.css`. Tests: `App.w7-directory.test.tsx`.
+
+- **WikiTopBar 추출**: WikiLayout의 TopBar JSX(브랜드/다크모드/로그아웃/아바타 + Task 6의 사이드바 토글)를 공용 컴포넌트로 — props로 토글 표시 여부(`onSidebarToggle?`). WikiLayout 동작 무변경 계약.
+- **라우트**: App.tsx에 `<Route path="/spaces" element={<SpaceDirectoryPage spaces={spaces} />} />` (WikiLayout 밖, `*` 리다이렉트보다 먼저). 사이드바 없음 — WikiTopBar + 전폭 콘텐츠 (컨플 디렉토리도 사이드바 있지만 우리 사이드바는 스페이스 종속이라 생략 — 계획 결정, 스펙 기록).
+- **콘텐츠** (스크린샷 대응): 제목 "스페이스" / "자주 찾는 스페이스" 카드 그리드(별표된 스페이스 — 카드: 이름·키·별표 토글, 클릭 이동; 0개면 섹션 숨김) / "모든 스페이스" 테이블(상단 "제목으로 필터링" input — 이름·키 부분 일치; 컬럼: 스페이스 이름(키) | 생성일 | 별표 토글 액션; 행 이름 클릭 → `/spaces/:id`). Labels/Owner 컬럼은 도메인 부재로 생략 (백엔드 로드맵 항목 — 스펙 한 줄).
+- **테스트**: 라우트 렌더, 별표 카드 반영, 필터, 별표 토글 → 자주 찾는 섹션 갱신, 행 클릭 이동.
+
+커밋: `feat(spaces): 스페이스 디렉토리 페이지 — 자주 찾는 카드·전체 테이블·필터, WikiTopBar 추출`
+
 ---
 
 ### 최종: 게이트 + 브라우저 스모크 + 압축 리뷰
