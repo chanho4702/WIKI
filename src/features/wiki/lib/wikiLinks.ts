@@ -2,7 +2,12 @@ import type { Page } from "../store/types";
 
 /** 코드 펜스(```)와 인라인 코드(`)를 분리해 코드 밖에서만 치환하기 위한 분할 패턴 */
 const CODE_SPLIT = /(```[\s\S]*?```|`[^`\n]*`)/;
-const WIKI_LINK = /\[\[([^[\]\n]+)\]\]/g;
+
+/** [[ ]] 패턴 소스 상수 — 닫힌 wiki link [[제목]] 매칭 */
+export const WIKI_LINK_SOURCE = "\\[\\[([^\\[\\]\\n]+)\\]\\]";
+
+/** [[ ]] 패턴 소스 상수 — 닫히지 않은 wiki link 런 [[... 매칭 (줄 끝 앵커 $) */
+export const WIKI_LINK_OPEN_SOURCE = "\\[\\[[^\\[\\]\\n]*$";
 
 /**
  * 생성 링크의 title 쿼리 인코딩 — encodeURIComponent가 남기는 괄호까지 이스케이프한다.
@@ -23,11 +28,12 @@ export function resolveWikiLinks(markdown: string, pages: Page[], spaceId: strin
     const key = page.title.trim().toLowerCase();
     if (!byTitle.has(key)) byTitle.set(key, page);
   }
+  const wikiLinkRegex = new RegExp(WIKI_LINK_SOURCE, "g");
   return markdown
     .split(CODE_SPLIT)
     .map((segment, index) => {
       if (index % 2 === 1) return segment; // 홀수 인덱스 = 코드 구간
-      return segment.replace(WIKI_LINK, (_match, raw: string) => {
+      return segment.replace(wikiLinkRegex, (_match, raw: string) => {
         const title = raw.trim();
         const target = byTitle.get(title.toLowerCase());
         return target

@@ -1,6 +1,7 @@
 import { Extension, type Editor } from "@tiptap/core";
 import Suggestion from "@tiptap/suggestion";
 import { PluginKey } from "@tiptap/pm/state";
+import { WIKI_LINK_OPEN_SOURCE } from "../../lib/wikiLinks";
 
 const slashMenuPluginKey = new PluginKey("slashMenu");
 
@@ -176,7 +177,7 @@ export function filterInsertMenuItems(query: string): SlashItem[] {
  * 동시에 뜨는 것을 막기 위해 slashMenu의 allow에서 이 함수가 true면 활성화를 거부한다.
  */
 export function isInsideOpenWikiLink(textBefore: string): boolean {
-  return /\[\[[^[\]\n]*$/.test(textBefore);
+  return new RegExp(WIKI_LINK_OPEN_SOURCE).test(textBefore);
 }
 
 export interface SlashMenuOptions {

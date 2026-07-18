@@ -2,6 +2,7 @@ import { Node, nodeInputRule } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { Page } from "../../store/types";
+import { WIKI_LINK_SOURCE } from "../../lib/wikiLinks";
 
 export interface WikiLinkOptions {
   /** 존재/부재 판별용 — WikiEditor가 최신 pages를 ref로 공급한다 */
@@ -65,8 +66,8 @@ export const WikiLink = Node.create<WikiLinkOptions>({
   addInputRules() {
     return [
       nodeInputRule({
-        // wikiLinks.ts의 WIKI_LINK와 같은 문자 클래스 — [, ], 개행 미포함 제목만
-        find: /\[\[([^[\]\n]+)\]\]$/,
+        // WIKI_LINK_SOURCE에서 가져온 패턴 — [, ], 개행 미포함 제목만, $ 앵커 붙음
+        find: new RegExp(WIKI_LINK_SOURCE + "$"),
         type: this.type,
         getAttributes: (match) => ({ title: match[1] }),
       }),

@@ -1,4 +1,5 @@
 import GithubSlugger from "github-slugger";
+import { WIKI_LINK_SOURCE } from "../lib/wikiLinks";
 
 export interface TocHeading {
   level: 1 | 2 | 3;
@@ -20,8 +21,8 @@ const HEADING_RE = /^ {0,3}(#{1,6})(?:\s+(.*))?$/;
 function stripInlineMarkdown(raw: string): string {
   return raw
     // [[위키링크]] → 라벨. resolveWikiLinks(lib/wikiLinks.ts)는 title=raw.trim()로 내부 패딩을
-    // 제거하므로 여기서도 캡처 그룹을 trim해야("$1" 그대로 쓰면 안 됨) rehype-slug 결과와 일치한다.
-    .replace(/\[\[([^[\]\n]+)\]\]/g, (_match, inner: string) => inner.trim())
+    // 제거하므로 여기서도 캡처 그룹을 trim해야 WIKI_LINK_SOURCE 기준에 맞춰서 rehype-slug 결과와 일치한다.
+    .replace(new RegExp(WIKI_LINK_SOURCE, "g"), (_match, inner: string) => inner.trim())
     .replace(/!\[[^\]]*\]\([^)]*\)/g, "") // 이미지는 대체텍스트 없이 제거
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // [라벨](url) → 라벨
     .replace(/(\*\*\*|___)(.+?)\1/g, "$2") // 굵게+기울임

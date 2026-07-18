@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Page } from "../store/types";
-import { resolveWikiLinks } from "./wikiLinks";
+import { resolveWikiLinks, WIKI_LINK_SOURCE, WIKI_LINK_OPEN_SOURCE } from "./wikiLinks";
 
 const base = {
   spaceId: "sp1",
@@ -56,5 +56,54 @@ describe("resolveWikiLinks", () => {
     expect(resolveWikiLinks("[[7월 회의)]]", PAGES, "sp1")).toBe(
       "[7월 회의)](/spaces/sp1/pages/new?title=7%EC%9B%94%20%ED%9A%8C%EC%9D%98%29)",
     );
+  });
+});
+
+describe("WIKI_LINK_SOURCE 상수", () => {
+  it("WIKI_LINK_SOURCE는 닫힌 wiki link [[제목]]을 전역 플래그와 함께 매칭한다", () => {
+    const regex = new RegExp(WIKI_LINK_SOURCE, "g");
+    const text = "[[시작하기]] 그리고 [[팀 규칙]]";
+    const matches = Array.from(text.matchAll(regex));
+    expect(matches).toHaveLength(2);
+    expect(matches[0][1]).toBe("시작하기");
+    expect(matches[1][1]).toBe("팀 규칙");
+  });
+
+  it("WIKI_LINK_SOURCE는 닫히지 않은 [[를 매칭하지 않는다", () => {
+    const regex = new RegExp(WIKI_LINK_SOURCE, "g");
+    expect(regex.test("[[")).toBe(false);
+    expect(regex.test("[[제목")).toBe(false);
+  });
+
+  it("WIKI_LINK_SOURCE는 개행을 포함하는 제목을 매칭하지 않는다", () => {
+    const regex = new RegExp(WIKI_LINK_SOURCE, "g");
+    expect(regex.test("[[제목\n설명]]")).toBe(false);
+  });
+
+  it("WIKI_LINK_SOURCE는 괄호를 포함하는 제목을 매칭한다", () => {
+    const regex = new RegExp(WIKI_LINK_SOURCE, "g");
+    const text = "[[7월 회의)]]";
+    const match = text.match(regex);
+    expect(match).not.toBeNull();
+    expect(match!).toHaveLength(1);
+    expect(match![0]).toBe("[[7월 회의)]]");
+  });
+
+  it("WIKI_LINK_OPEN_SOURCE는 줄 끝 앵커와 함께 닫히지 않은 wiki link [[를 매칭한다", () => {
+    const regex = new RegExp(WIKI_LINK_OPEN_SOURCE);
+    expect(regex.test("[[")).toBe(true);
+    expect(regex.test("[[제목")).toBe(true);
+    expect(regex.test("[[운영 /")).toBe(true);
+  });
+
+  it("WIKI_LINK_OPEN_SOURCE는 닫힌 ]를 포함하면 매칭하지 않는다", () => {
+    const regex = new RegExp(WIKI_LINK_OPEN_SOURCE);
+    expect(regex.test("[[제목]]")).toBe(false);
+    expect(regex.test("[[제목]")).toBe(false);
+  });
+
+  it("WIKI_LINK_OPEN_SOURCE는 개행이 있으면 매칭하지 않는다", () => {
+    const regex = new RegExp(WIKI_LINK_OPEN_SOURCE);
+    expect(regex.test("[[제목\n")).toBe(false);
   });
 });
