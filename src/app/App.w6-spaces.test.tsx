@@ -140,9 +140,9 @@ describe("W6 스페이스 플라이아웃", () => {
     const trigger = await screen.findByRole("button", { name: "스페이스 전환: 개발 위키" });
     await user.click(trigger);
     const filter = await screen.findByPlaceholderText("스페이스 필터");
-    const closeSidebarButton = screen.getByRole("button", { name: "사이드바 접기" });
+    const sidebarToggleButton = screen.getByRole("button", { name: "사이드바 토글" });
 
-    fireEvent.focusOut(filter, { relatedTarget: closeSidebarButton });
+    fireEvent.focusOut(filter, { relatedTarget: sidebarToggleButton });
 
     expect(screen.queryByPlaceholderText("스페이스 필터")).not.toBeInTheDocument();
     expect(trigger).toHaveAttribute("aria-expanded", "false");

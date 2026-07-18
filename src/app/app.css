@@ -58,16 +58,17 @@ body {
 }
 
 .wiki-body {
-  position: relative; /* 접힘 상태의 wiki-sidebar-opener 고정 위치 기준 */
   flex: 1;
   display: flex;
   min-height: 0;
 }
 
 /*
- * Task 19: 컨플루언스식 3영역 구조 — 헤더(스페이스 선택+접기 버튼)/본문(검색+트리, 스크롤 전담)/
+ * Task 19: 컨플루언스식 3영역 구조 — 헤더(스페이스 선택)/본문(별표·검색·트리, 스크롤 전담)/
  * 푸터(새 페이지·스페이스 만들기). aside 자체는 스크롤하지 않고 body만 overflow-y: auto다.
  * 폭은 인라인 style(WikiLayout의 displayWidth)로 결정되며, 이 규칙은 flex 배치만 담당한다.
+ * W7 T6: 접기/열기 토글은 TopBar 좌측(.wiki-sidebar-toggle)으로 이동 — 사이드바 헤더에는
+ * 스페이스 선택 트리거만 남는다.
  */
 .wiki-sidebar {
   position: relative; /* sidebar-resizer 절대 위치 기준 */
@@ -158,14 +159,6 @@ body {
   outline: none;
 }
 
-/* 접힘 상태 — aside가 아예 렌더되지 않으므로 wiki-body 좌상단에 고정된 열기 버튼만 남는다 */
-.wiki-sidebar-opener {
-  position: absolute;
-  top: var(--chanho-space-200);
-  left: var(--chanho-space-100);
-  z-index: 2;
-}
-
 .wiki-content {
   flex: 1;
   min-width: 0;
@@ -173,11 +166,70 @@ body {
   padding: var(--chanho-space-300) var(--chanho-space-400);
 }
 
+/* W7 T6: TopBar 좌측 사이드바 토글 — 컨플루언스 좌상단 패널 아이콘 참고. TopBar의 brand 슬롯은
+ * 이미 display: flex + gap이라 브랜드 span과 나란히 놓인다. */
+.wiki-sidebar-toggle {
+  font-size: var(--chanho-font-size-100);
+  line-height: 1;
+}
+
 .wiki-brand {
   font-size: var(--chanho-font-size-200);
   font-weight: var(--chanho-font-weight-bold);
   color: var(--chanho-color-text-brand);
   letter-spacing: 0.02em;
+}
+
+/* W7 T6: 사이드바 별표 스페이스 섹션 — .space-flyout-*(W6 T3)과 동일한 시각 패턴을 재사용한다. */
+.wiki-sidebar-starred {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-50, 4px);
+}
+
+.wiki-sidebar-section-title {
+  margin: 0;
+  font-size: var(--chanho-font-size-75, 12px);
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  color: var(--chanho-color-text-subtle, #626f86);
+  text-transform: uppercase;
+}
+
+.wiki-sidebar-starred-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.wiki-sidebar-starred-item {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  border: none;
+  background: none;
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-100, 8px);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  color: var(--chanho-color-text-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiki-sidebar-starred-item:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.wiki-sidebar-all-spaces-link {
+  font-size: var(--chanho-font-size-75, 12px);
+  color: var(--chanho-color-text-brand, #0c66e4);
+  text-decoration: none;
+}
+
+.wiki-sidebar-all-spaces-link:hover {
+  text-decoration: underline;
 }
 
 .app-loading,

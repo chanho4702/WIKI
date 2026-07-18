@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Navigate, Outlet, useNavigate, useParams } from "react-router";
+import { Link, Navigate, Outlet, useNavigate, useParams } from "react-router";
 import { Avatar, Button, EmptyState, Spinner, Switch, TextField, TopBar } from "@chanho/react";
 import type { Page, Space, User } from "../store/types";
 import { getCurrentUser, listPages } from "../store/wikiStore";
@@ -11,7 +11,7 @@ import { SpaceCreateModal } from "./SpaceCreateModal";
 import { SpaceFlyout } from "./SpaceFlyout";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
-import { pruneStarredSpaces } from "../lib/starredSpaces";
+import { pruneStarredSpaces, useStarredSpaces } from "../lib/starredSpaces";
 import { useDismissablePopover } from "../lib/useDismissablePopover";
 
 export interface WikiLayoutProps {
@@ -38,6 +38,7 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   const [pages, setPages] = useState<Page[] | null>(null);
   const [query, setQuery] = useState("");
   const { collapsed, width, setCollapsed, setWidth } = useSidebarPrefs();
+  const { starred } = useStarredSpaces();
   // 드래그 중 실시간 미리보기 폭 — pointermove마다 저장하지 않고 화면 표시만 갱신한다.
   // 저장된 폭(width)이 바뀌면(예: 마운트 시 localStorage 복원) 같이 맞춘다.
   const [displayWidth, setDisplayWidth] = useState(width);
@@ -52,24 +53,6 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
     },
     [setWidth],
   );
-
-  // 접기/열기 토글 후 포커스를 상대 버튼으로 옮긴다 — 그렇지 않으면 클릭한 버튼이 DOM에서
-  // 사라지면서 포커스가 body로 떨어져 키보드 사용자가 위치를 잃는다.
-  // 초기 마운트에서는 옮기지 않는다(첫 렌더에서 포커스를 훔치면 안 됨) — isFirstRender로 가드.
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const openButtonRef = useRef<HTMLButtonElement>(null);
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    if (collapsed) {
-      openButtonRef.current?.focus();
-    } else {
-      closeButtonRef.current?.focus();
-    }
-  }, [collapsed]);
 
   useEffect(() => {
     void getCurrentUser().then(setMe);
@@ -131,10 +114,28 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   // 검색어가 비어 있으면 원본 배열 그대로 (원상복귀). Outlet context에는 항상 전체 pages를 준다
   const visiblePages = pages === null ? null : filterPagesWithAncestors(pages, query);
 
+  // 사이드바 별표 섹션(Task 6) — 현재 스페이스는 제외(이미 헤더 트리거로 보임), spaces에
+  // 실존하는 것만(별표 저장 배열은 pruneStarredSpaces가 정리하지만 렌더 시점에도 방어적으로 필터).
+  const starredSpaceList = spaces.filter((s) => s.id !== current.id && starred.includes(s.id));
+
   return (
     <div className="wiki-layout">
       <TopBar
-        brand={<span className="wiki-brand">WIKI</span>}
+        brand={
+          <>
+            <Button
+              variant="ghost"
+              size="small"
+              className="wiki-sidebar-toggle"
+              aria-label="사이드바 토글"
+              aria-expanded={!collapsed}
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              ⧉
+            </Button>
+            <span className="wiki-brand">WIKI</span>
+          </>
+        }
         actions={
           <>
             <Switch
@@ -155,19 +156,7 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
         }
       />
       <div className="wiki-body">
-        {collapsed ? (
-          <Button
-            ref={openButtonRef}
-            className="wiki-sidebar-opener"
-            variant="subtle"
-            size="small"
-            aria-label="사이드바 열기"
-            aria-expanded={!collapsed}
-            onClick={() => setCollapsed(false)}
-          >
-            »
-          </Button>
-        ) : (
+        {collapsed ? null : (
           <aside className="wiki-sidebar" style={{ width: displayWidth }}>
             <div className="wiki-sidebar-header">
               <div className="space-switcher" ref={spaceSwitcherRef}>
@@ -197,18 +186,29 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
                   />
                 )}
               </div>
-              <Button
-                ref={closeButtonRef}
-                variant="ghost"
-                size="small"
-                aria-label="사이드바 접기"
-                aria-expanded={!collapsed}
-                onClick={() => setCollapsed(true)}
-              >
-                «
-              </Button>
             </div>
             <div className="wiki-sidebar-body">
+              {starredSpaceList.length > 0 && (
+                <section className="wiki-sidebar-starred" aria-label="별표 표시된 스페이스">
+                  <h3 className="wiki-sidebar-section-title">별표 표시된 스페이스</h3>
+                  <ul className="wiki-sidebar-starred-list">
+                    {starredSpaceList.map((s) => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          className="wiki-sidebar-starred-item"
+                          onClick={() => navigate(`/spaces/${s.id}`)}
+                        >
+                          {s.name} ({s.key})
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              <Link to="/spaces" className="wiki-sidebar-all-spaces-link">
+                모든 스페이스 보기
+              </Link>
               <TextField
                 label="페이지 검색"
                 value={query}
