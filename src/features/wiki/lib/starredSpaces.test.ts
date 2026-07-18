@@ -106,3 +106,45 @@ describe("useStarredSpaces", () => {
     expect(getStarredSpaces()).toEqual(["sp2"]);
   });
 });
+
+describe("useStarredSpaces — 인스턴스 간 동기화(W7 T6 리뷰 Important 수정)", () => {
+  // 이전엔 컴포넌트 로컬 useState라 WikiLayout(사이드바)과 SpaceFlyout처럼 이 훅을 동시에 쓰는
+  // 두 인스턴스가 서로의 변경을 몰랐다 — 한쪽에서 toggle해도 다른 쪽은 리마운트 전까지 그대로였다.
+  // 모듈 스코프 스토어(useSyncExternalStore)로 바꾼 뒤에는 한쪽의 toggle이 다른 인스턴스에도
+  // 같은 렌더 사이클에서 반영돼야 한다.
+  it("한 인스턴스에서 toggle하면 같은 컴포넌트 트리의 다른 인스턴스도 즉시 갱신된다", () => {
+    const a = renderHook(() => useStarredSpaces());
+    const b = renderHook(() => useStarredSpaces());
+
+    expect(a.result.current.starred).toEqual([]);
+    expect(b.result.current.starred).toEqual([]);
+
+    act(() => a.result.current.toggle("sp1"));
+
+    expect(a.result.current.starred).toEqual(["sp1"]);
+    expect(b.result.current.starred).toEqual(["sp1"]);
+  });
+
+  it("b에서 제거하면 a에도 즉시 반영된다(양방향)", () => {
+    setStarredSpaces(["sp1", "sp2"]);
+    const a = renderHook(() => useStarredSpaces());
+    const b = renderHook(() => useStarredSpaces());
+
+    act(() => b.result.current.toggle("sp1"));
+
+    expect(b.result.current.starred).toEqual(["sp2"]);
+    expect(a.result.current.starred).toEqual(["sp2"]);
+  });
+
+  it("언마운트된 인스턴스는 이후 toggle에 영향을 주지도 받지도 않는다(구독 해제 확인)", () => {
+    setStarredSpaces([]);
+    const a = renderHook(() => useStarredSpaces());
+    const b = renderHook(() => useStarredSpaces());
+    a.unmount();
+
+    act(() => b.result.current.toggle("sp1"));
+
+    expect(b.result.current.starred).toEqual(["sp1"]);
+    expect(getStarredSpaces()).toEqual(["sp1"]);
+  });
+});

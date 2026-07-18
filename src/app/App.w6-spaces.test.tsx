@@ -81,6 +81,25 @@ describe("W6 스페이스 플라이아웃", () => {
     ).not.toBeInTheDocument();
   });
 
+  // W7 T6 리뷰 Important 수정 회귀 — useStarredSpaces가 컴포넌트 로컬 useState였을 때는
+  // SpaceFlyout에서 별표를 눌러도 WikiLayout(사이드바, 상시 마운트)의 "별표 표시된 스페이스"
+  // 섹션이 리마운트 전까지 갱신되지 않았다. 모듈 스코프 스토어(useSyncExternalStore)로 바꾼 뒤에는
+  // 같은 렌더 사이클에서 즉시 반영돼야 한다 — 플라이아웃을 닫지도, 페이지를 리마운트하지도 않는다.
+  it("플라이아웃에서 별표를 누르면 리마운트 없이 사이드바 '별표 표시된 스페이스' 섹션에 즉시 나타난다", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    expect(screen.queryByText("별표 표시된 스페이스")).not.toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "스페이스 전환: 개발 위키" }));
+    const opsItem = screen
+      .getByRole("button", { name: "운영 위키 (OPS)" })
+      .closest(".space-flyout-item") as HTMLElement;
+    await user.click(within(opsItem).getByRole("button", { name: "별표" }));
+
+    const sidebarSection = screen.getByRole("region", { name: "별표 표시된 스페이스" });
+    expect(within(sidebarSection).getByRole("button", { name: "운영 위키 (OPS)" })).toBeInTheDocument();
+  });
+
   it("Escape로 닫으면 트리거 버튼으로 포커스가 돌아간다", async () => {
     const user = userEvent.setup();
     renderApp();
