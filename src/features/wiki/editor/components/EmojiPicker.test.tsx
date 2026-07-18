@@ -169,6 +169,45 @@ describe("EmojiPicker", () => {
     editor.destroy();
   });
 
+  // 리뷰 반영 — 모듈러 래핑(% length)은 목록 길이가 열 수(6)의 배수가 아니면 엉뚱한 열로 튄다.
+  // "손" 검색 결과는 정확히 7개(6의 배수가 아님)라 이 회귀를 재현하기 좋다.
+  it("열 수의 배수가 아닌 목록(검색 결과 7개)에서도 ↑/↓가 같은 열을 유지한다", async () => {
+    const user = userEvent.setup();
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+    render(<EmojiPicker editor={editor} />);
+    await user.click(screen.getByRole("button", { name: "이모지" }));
+    const filter = screen.getByPlaceholderText("이모지 검색");
+    await user.type(filter, "손");
+    const options = screen.getAllByRole("option");
+    expect(options).toHaveLength(7);
+    expect(options[0]).toHaveAttribute("aria-selected", "true");
+
+    // ↑: index 0(0열) → 같은 열(0)의 마지막 행 = index 6 (모듈러였다면 (0-6)%7+7)%7=1로 튀었을 자리)
+    fireEvent.keyDown(filter, { key: "ArrowUp" });
+    expect(screen.getAllByRole("option")[6]).toHaveAttribute("aria-selected", "true");
+
+    // ↓: index 6(0열, 마지막 행) → 같은 열의 첫 행 = index 0
+    fireEvent.keyDown(filter, { key: "ArrowDown" });
+    expect(screen.getAllByRole("option")[0]).toHaveAttribute("aria-selected", "true");
+    editor.destroy();
+  });
+
+  it("검색 결과가 열 수의 배수가 아니고 그 열에 다른 행이 없으면 ↑에서 같은 위치로 clamp된다", async () => {
+    const user = userEvent.setup();
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+    render(<EmojiPicker editor={editor} />);
+    await user.click(screen.getByRole("button", { name: "이모지" }));
+    const filter = screen.getByPlaceholderText("이모지 검색");
+    await user.type(filter, "손");
+    // index 1(1열)로 이동 — 7개 중 1열은 1행(index1)만 있고 2행(index7)은 없다(범위 밖)
+    fireEvent.keyDown(filter, { key: "ArrowRight" });
+    expect(screen.getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
+    // ↑ — 그 열엔 위로 갈 다른 행이 없으므로(마지막 유효 행이 자기 자신) 제자리 clamp
+    fireEvent.keyDown(filter, { key: "ArrowUp" });
+    expect(screen.getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
+    editor.destroy();
+  });
+
   // W7 T1 — Tab-out 갭: 검색 입력에서 Tab으로 컨테이너 밖으로 나가면(포커스 강탈 없이) 팝오버가
   // 닫혀야 한다.
   it("검색 입력에서 Tab으로 컨테이너 밖으로 나가면(Tab-out) 포커스를 빼앗지 않고 팝오버만 닫힌다", async () => {

@@ -88,12 +88,26 @@ export function EmojiPicker({ editor, open: openProp, onOpenChange: onOpenChange
     }
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlight((h) => (h + EMOJI_GRID_COLUMNS) % visible.length);
+      // 모듈러 래핑(% length)은 목록 길이가 열 수의 배수가 아니면(예: 검색 결과 7개) 엉뚱한 열로
+      // 튄다 — 리뷰 반영. 행/열 기하로 계산한다: 다음 행이 없으면(범위 밖) 같은 열의 첫 행(=col)으로.
+      setHighlight((h) => {
+        const col = h % EMOJI_GRID_COLUMNS;
+        const next = h + EMOJI_GRID_COLUMNS;
+        return next < visible.length ? next : col;
+      });
       return;
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlight((h) => (((h - EMOJI_GRID_COLUMNS) % visible.length) + visible.length) % visible.length);
+      // 같은 열의 마지막 행으로 래핑한다 — 그 열이 마지막 행까지 채워지지 않았으면(예: 검색 결과가
+      // 열 수의 배수가 아닌 경우) 존재하는 마지막 행으로 clamp한다.
+      setHighlight((h) => {
+        const col = h % EMOJI_GRID_COLUMNS;
+        const prev = h - EMOJI_GRID_COLUMNS;
+        if (prev >= 0) return prev;
+        const lastRow = col + EMOJI_GRID_COLUMNS * Math.floor((visible.length - 1 - col) / EMOJI_GRID_COLUMNS);
+        return Math.min(lastRow, visible.length - 1);
+      });
       return;
     }
     if (e.key === "Enter") {
