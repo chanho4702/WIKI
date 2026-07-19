@@ -1,6 +1,11 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
+
+// CI(2코어) 러너에서는 스페이스 생성→라우팅→렌더가 findBy*/waitFor 기본 대기 1s를
+// 간헐적으로 넘긴다(App.test.tsx W1 EmptyState, CI 2연속 실패·로컬 420 green 실측).
+// 상한만 5s로 — 통과하는 테스트는 조건 충족 즉시 반환되므로 로컬 속도에 영향 없다.
+configure({ asyncUtilTimeout: 5000 });
 
 afterEach(() => {
   cleanup();
