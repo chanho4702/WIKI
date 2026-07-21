@@ -1,12 +1,12 @@
 // wiki-backend 어댑터. 각 태스크에서 REST 구현으로 교체한다. 미구현분은 목업 위임.
 export {
-  listUsers, getCurrentUser, listVersions, restoreVersion,
+  listUsers, getCurrentUser,
   listComments, addComment, updateComment, deleteComment, __resetForTest,
 } from "./wikiMock";
 
 import { sharedApiFetch } from "./apiClient";
-import { mapSpace, mapPage, mapPageTree, toBackendId, extractError } from "./mapping";
-import type { Space, Page } from "./types";
+import { mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError } from "./mapping";
+import type { Space, Page, PageVersion } from "./types";
 
 /** 백엔드 응답(JSON) 파싱 + 4xx/5xx를 한국어 에러로 변환. 이후 태스크(pages/versions/attachments)도 재사용. */
 async function json<T>(res: Response): Promise<T> {
@@ -79,5 +79,18 @@ export async function movePage(id: string, target: { parentId: string | null; be
       expectedVersion: current.version,
     }),
   });
+  return mapPage(await json(res));
+}
+
+export async function listVersions(pageId: string): Promise<PageVersion[]> {
+  const metas = await json<Parameters<typeof mapVersionMeta>[0][]>(
+    await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/revisions`),
+  );
+  return metas.map((m) => mapVersionMeta(m, pageId)); // 백엔드가 최신순 보장
+}
+export async function restoreVersion(pageId: string, versionId: string): Promise<Page> {
+  // versionId는 어댑터가 만든 `${pageId}:${version}` — 버전 번호를 추출해 restore 엔드포인트 호출.
+  const version = Number(versionId.split(":")[1]);
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/revisions/${version}/restore`, { method: "POST" });
   return mapPage(await json(res));
 }
