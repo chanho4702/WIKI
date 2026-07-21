@@ -1,18 +1,31 @@
 // wiki-backend 어댑터. 각 태스크에서 REST 구현으로 교체한다. 미구현분은 목업 위임.
+// comments는 백엔드에 없어 계속 목업(localStorage) 위임 — 설계 §4-2.
 export {
-  listUsers, getCurrentUser,
   listComments, addComment, updateComment, deleteComment, __resetForTest,
 } from "./wikiMock";
 
 import { sharedApiFetch } from "./apiClient";
 import { mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError } from "./mapping";
-import type { Space, Page, PageVersion } from "./types";
+import type { Space, Page, PageVersion, User } from "./types";
 
 /** 백엔드 응답(JSON) 파싱 + 4xx/5xx를 한국어 에러로 변환. 이후 태스크(pages/versions/attachments)도 재사용. */
 async function json<T>(res: Response): Promise<T> {
   const body: unknown = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) throw new Error(extractError(res.status, body));
   return body as T;
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const me = await json<{ id: number | string; name?: string; email?: string }>(await sharedApiFetch("/api/me"));
+  return { id: String(me.id), name: me.name ?? me.email ?? `사용자 #${me.id}` };
+}
+export async function listUsers(): Promise<User[]> {
+  // 백엔드에 사용자 목록 없음 — org-service users API 연동 전까지 빈 배열(작성자 이름은 폴백 `사용자 #{id}`).
+  return [];
+}
+/** 화면이 updatedBy/authorId(숫자 id)를 이름으로 못 찾을 때 쓰는 폴백. (호출부 후속 배선.) */
+export function displayUserName(id: string): string {
+  return `사용자 #${id}`;
 }
 
 export async function listSpaces(): Promise<Space[]> {
