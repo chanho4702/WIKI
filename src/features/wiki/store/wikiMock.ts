@@ -157,6 +157,7 @@ export async function createPage(input: {
     parentId,
     title,
     body: input.body ?? "",
+    version: 1, // 목업은 낙관적 락을 쓰지 않으므로 항상 1 고정
     position: maxPosition + 1,
     createdBy: CURRENT_USER_ID,
     updatedBy: CURRENT_USER_ID,

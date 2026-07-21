@@ -49,7 +49,7 @@ const PG5_BODY = ["## MySQL 컨테이너", "", "`docker compose up -d mysql`로 
 export function createSeedData(): WikiData {
   const space: Space = { id: "sp1", key: "DEV", name: "개발 위키", createdAt: T_CREATE };
 
-  const base = { spaceId: "sp1", createdAt: T_CREATE };
+  const base = { spaceId: "sp1", createdAt: T_CREATE, version: 1 };
 
   const pages: Page[] = [
     // 루트 2개 — pg1은 수정 이력(v2)이 있어 updatedBy/updatedAt이 다르다

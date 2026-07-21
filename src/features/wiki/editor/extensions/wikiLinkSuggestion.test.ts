@@ -3,7 +3,7 @@ import { filterLinkCandidates } from "./wikiLinkSuggestion";
 import type { Page } from "../../store/types";
 
 const page = (id: string, title: string): Page => ({
-  id, spaceId: "s1", parentId: null, title, body: "", position: 0,
+  id, spaceId: "s1", parentId: null, title, body: "", version: 1, position: 0,
   createdBy: "u1", updatedBy: "u1", createdAt: "", updatedAt: "",
 });
 

@@ -16,6 +16,7 @@ function seedTwoSpaces() {
     parentId: null,
     title: "운영 시작하기",
     body: "# 운영 위키",
+    version: 1,
     position: 1,
     createdBy: "u1",
     updatedBy: "u1",

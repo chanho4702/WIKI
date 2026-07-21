@@ -7,6 +7,7 @@ export interface Space {
   id: string;
   key: string; // "DEV" 같은 대문자 접두어, 중복 금지
   name: string;
+  description?: string;
   createdAt: string;
 }
 
@@ -16,6 +17,7 @@ export interface Page {
   parentId: string | null; // null = 루트 페이지
   title: string;
   body: string; // 마크다운 원문
+  version: number; // 낙관적 락 카운터(백엔드 연동). 목업은 항상 1.
   position: number; // 형제 내 정렬 (생성순 max+1)
   createdBy: string;
   updatedBy: string;

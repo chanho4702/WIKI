@@ -6,6 +6,7 @@ const base = {
   spaceId: "sp1",
   parentId: null,
   body: "",
+  version: 1,
   position: 1,
   createdBy: "u1",
   updatedBy: "u1",
