@@ -5,7 +5,7 @@ export interface User {
 
 export interface Space {
   id: string;
-  key: string; // "DEV" 같은 대문자 접두어, 중복 금지
+  key: string; // 스페이스 구분 접두어(중복 금지). 목업은 대문자("DEV"), 백엔드 모드는 소문자 그대로 통과([a-z0-9-]+)
   name: string;
   description?: string;
   createdAt: string;

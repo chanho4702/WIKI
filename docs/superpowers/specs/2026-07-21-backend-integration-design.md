@@ -70,3 +70,13 @@
 - **목업 모드 유지** → 기존 420 green(회귀 게이트).
 - **어댑터 계약 테스트**(fetch 모킹): id Long↔string, content↔body, `expectedVersion` 전송, 409→충돌 에러, 에러 `{error}`→한국어.
 - 콜로케이션 유닛(경계 매핑 순수 함수).
+
+## 9. Backend-mode 알려진 한계 (최종 리뷰 발견 — 후속 티켓)
+
+목업 모드(테스트/CI 기본)는 무관. 아래는 `VITE_API_BASE` 설정 시에만 나타나며, 대부분 "화면 무수정" 제약 때문에 후속 화면 배선이 필요하다. 수동 스모크(§6 Task7) 체크리스트에 포함할 것.
+
+1. **낙관적 락이 실질적으로 무력** — 어댑터 `updatePage`/`movePage`가 *저장 시점*에 `getPage`로 version을 읽어 `expectedVersion`에 넣는다. 편집 *시작 시점* version이 아니라 항상 최신이라, 실제 stale-edit 충돌(다른 사용자가 그 사이 저장)을 잡지 못하고 last-write-wins가 된다. 409 테스트는 에러 매핑만 검증(모킹). → 진짜 락은 PageEditPage가 load-time version을 전달해야 함(화면 변경, 후속).
+2. **빈 시각 → "Invalid Date"** — `mapSpace`/`mapPage`가 백엔드에 없는 createdAt/updatedAt을 `""`로 둔다. 화면의 `new Date("").toLocaleDateString()` → "Invalid Date"(SpaceDirectory 생성일, PageView 수정 메타). → formatDate 폴백("-"/숨김) 후속 배선.
+3. **HistoryModal 복원이 항상 "변경 없음"** — no-op 판정 `restored.updatedAt === page.updatedAt`가 backend 모드에선 둘 다 `""` → 실제 복원돼도 "현재 내용과 동일합니다" 토스트. → 판정 기준 보강 후속.
+4. **작성자 이름/아바타 부재** — updatedBy/createdBy가 숫자 id(빈 문자열) → `사용자 #{id}` 폴백 배선 필요(§4-1, org-service users 연동).
+5. Minor: `/api/me` 중복 호출(AuthGate + getCurrentUser), `mapVersionFull` 미사용(향후 단일 버전 미리보기용).

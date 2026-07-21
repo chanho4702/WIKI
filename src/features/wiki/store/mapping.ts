@@ -17,14 +17,20 @@ export function mapSpace(dto: SpaceDto): Space {
     key: dto.key,
     name: dto.name,
     description: dto.description ?? undefined,
-    // 백엔드 SpaceResponse엔 createdAt이 없다 — 목록/카드의 생성일은 빈 값 처리(디렉토리는 "-" 표기).
+    // 백엔드 SpaceResponse엔 createdAt이 없다 → 빈 문자열. ⚠️ 백엔드 모드에서 화면이 이 값을
+    // new Date("")로 포맷하면 "Invalid Date"가 노출된다 — 디렉토리 생성일 "-" 폴백은 후속 화면 배선 필요
+    // (설계 §7 backend-mode 알려진 한계). 목업 모드는 실제 createdAt이 있어 무관.
     createdAt: "",
   };
 }
 
 interface PageDto { id: number; spaceId: number; parentId: number | null; title: string; content: string; version: number }
 export function mapPage(dto: PageDto): Page {
-  const now = ""; // 백엔드 PageResponse엔 시각/작성자 없음 — 상세는 별도(§ 사용자/시각 폴백)
+  // 백엔드 PageResponse엔 시각/작성자가 없다 → 빈 문자열. ⚠️ 백엔드 모드에서 PageView 메타의
+  // "N이 수정"(작성자)·수정일(new Date("")→"Invalid Date")과 HistoryModal의 no-op 판정
+  // (restored.updatedAt === page.updatedAt, 둘 다 "" → 항상 "변경 없음")이 어긋난다 — 화면 폴백 배선은
+  // 후속(설계 §7 backend-mode 알려진 한계). 목업 모드는 실제 값이 있어 무관.
+  const now = "";
   return {
     id: toClientId(dto.id),
     spaceId: toClientId(dto.spaceId),
