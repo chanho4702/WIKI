@@ -25,15 +25,14 @@ describe("Task 18 페이지 너비 토글", () => {
     expect(article).not.toBeNull();
     expect(article).not.toHaveClass("page-view--full");
 
+    // 보기 헤더의 너비 토글은 아이콘 버튼(접근 이름은 aria-label "전체 너비"로 고정) — 상태는 aria-pressed로 확인
     const toggle = screen.getByRole("button", { name: "전체 너비" });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
-    expect(toggle).toHaveTextContent("전체 너비");
 
     await user.click(toggle);
 
     expect(article).toHaveClass("page-view--full");
     expect(toggle).toHaveAttribute("aria-pressed", "true");
-    expect(toggle).toHaveTextContent("기본 너비");
 
     // 편집 화면으로 이동 — 같은 pageId의 너비 설정을 공유해야 한다
     await user.click(screen.getByRole("button", { name: "편집" }));
@@ -101,12 +100,12 @@ describe("Task 20 편집↔보기 폭 일치 (CSS 회귀)", () => {
     return match[1];
   }
 
-  it(".page-edit 기본 폭이 .page-view와 동일한 720px 중앙 정렬이다", () => {
+  it(".page-edit 기본 폭이 .page-view와 동일한 760px 중앙 정렬이다", () => {
     const pageView = findRule(".page-view");
     const pageEdit = findRule(".page-edit");
-    expect(pageView).toContain("max-width: 720px");
+    expect(pageView).toContain("max-width: 760px");
     expect(pageView).toContain("margin: 0 auto");
-    expect(pageEdit).toContain("max-width: 720px");
+    expect(pageEdit).toContain("max-width: 760px");
     expect(pageEdit).toContain("margin: 0 auto");
     expect(pageEdit).not.toContain("880px");
   });

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
+import { Smile } from "lucide-react";
 import { EMOJI_CATEGORIES, searchEmojis } from "../lib/emojiData";
 import { useDismissablePopover } from "../../lib/useDismissablePopover";
 import { useControlledOpenState } from "../../lib/controlledOpenState";
@@ -122,11 +123,12 @@ export function EmojiPicker({ editor, open: openProp, onOpenChange: onOpenChange
         type="button"
         ref={triggerRef}
         aria-label="이모지"
+        title="이모지"
         aria-expanded={open}
         className="emoji-picker-trigger"
         onClick={() => setOpen(!open)}
       >
-        🙂
+        <Smile size={16} aria-hidden />
       </button>
       {open && (
         <div className="emoji-picker-popover">

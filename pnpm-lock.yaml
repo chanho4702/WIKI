@@ -5,18 +5,18 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@chanho/tokens': file:../design-system/artifacts/chanho-tokens-0.2.0.tgz
+  '@chanho/tokens': file:../design-system/artifacts/chanho-tokens-0.3.0.tgz
 
 importers:
 
   .:
     dependencies:
       '@chanho/react':
-        specifier: file:../design-system/artifacts/chanho-react-0.3.0.tgz
-        version: file:../design-system/artifacts/chanho-react-0.3.0.tgz(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: file:../design-system/artifacts/chanho-react-0.5.0.tgz
+        version: file:../design-system/artifacts/chanho-react-0.5.0.tgz(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@chanho/tokens':
-        specifier: file:../design-system/artifacts/chanho-tokens-0.2.0.tgz
-        version: file:../design-system/artifacts/chanho-tokens-0.2.0.tgz
+        specifier: file:../design-system/artifacts/chanho-tokens-0.3.0.tgz
+        version: file:../design-system/artifacts/chanho-tokens-0.3.0.tgz
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -80,6 +80,9 @@ importers:
       lowlight:
         specifier: ^3.3.0
         version: 3.3.0
+      lucide-react:
+        specifier: ^1.25.0
+        version: 1.25.0(react@19.2.7)
       react:
         specifier: ^19.0.0
         version: 19.2.7
@@ -240,16 +243,16 @@ packages:
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
 
-  '@chanho/react@file:../design-system/artifacts/chanho-react-0.3.0.tgz':
-    resolution: {integrity: sha512-THK5ZLpDfkn/Inn9/oLb7RyBWtd95yYtWUn4zuoC8Zf7Px9gxMUvSDpvn5fEk/Q2XRFxGkb284N+Nf4iMocBDw==, tarball: file:../design-system/artifacts/chanho-react-0.3.0.tgz}
-    version: 0.3.0
+  '@chanho/react@file:../design-system/artifacts/chanho-react-0.5.0.tgz':
+    resolution: {integrity: sha512-VOixktQfhvswU/vkKqB8ZYLMJFLJ/8z0k9iGMxPOQvJVouuwb3BIYpE2uWz9Qu7rp5onUp+ohO8tfxxK9CSm8g==, tarball: file:../design-system/artifacts/chanho-react-0.5.0.tgz}
+    version: 0.5.0
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@chanho/tokens@file:../design-system/artifacts/chanho-tokens-0.2.0.tgz':
-    resolution: {integrity: sha512-le/v9aijOIpzI2hXKssBJCYdp1GZRubssqyymTknHSOwpquRbL5fIfyiOR9y9KU0UmOIstPK7Zna1vSDyLQHEQ==, tarball: file:../design-system/artifacts/chanho-tokens-0.2.0.tgz}
-    version: 0.2.0
+  '@chanho/tokens@file:../design-system/artifacts/chanho-tokens-0.3.0.tgz':
+    resolution: {integrity: sha512-uo7YkgQpW3XOJker4v0i05qqZQgfy/mDn+PKA0u8fuQtMmr3ux9wvqKUjKgMSt8AQKqVVx7lBpybwfZy+oJAcw==, tarball: file:../design-system/artifacts/chanho-tokens-0.3.0.tgz}
+    version: 0.3.0
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -1981,6 +1984,11 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
+  lucide-react@1.25.0:
+    resolution: {integrity: sha512-/mdJTRbiwcLOQ1NZZK1amZF9rIZyvO18D6r9TngE6TG1NmqHgFuT4eE7Xrkm9UsXMbBJD1NlfwHVltCDWHrOTw==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
     hasBin: true
@@ -2785,9 +2793,9 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@chanho/react@file:../design-system/artifacts/chanho-react-0.3.0.tgz(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@chanho/react@file:../design-system/artifacts/chanho-react-0.5.0.tgz(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@chanho/tokens': file:../design-system/artifacts/chanho-tokens-0.2.0.tgz
+      '@chanho/tokens': file:../design-system/artifacts/chanho-tokens-0.3.0.tgz
       radix-ui: 1.6.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
@@ -2795,7 +2803,7 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  '@chanho/tokens@file:../design-system/artifacts/chanho-tokens-0.2.0.tgz': {}
+  '@chanho/tokens@file:../design-system/artifacts/chanho-tokens-0.3.0.tgz': {}
 
   '@csstools/color-helpers@5.1.0': {}
 
@@ -4477,6 +4485,10 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lucide-react@1.25.0(react@19.2.7):
+    dependencies:
+      react: 19.2.7
 
   lz-string@1.5.0: {}
 

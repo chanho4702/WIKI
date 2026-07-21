@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
+import { Plus } from "lucide-react";
 import { filterInsertMenuItems, type SlashItem } from "../extensions/slashMenu";
 import { useDismissablePopover } from "../../lib/useDismissablePopover";
 
@@ -91,11 +92,12 @@ export function InsertMenu({ editor, onOpenEmoji }: InsertMenuProps) {
         type="button"
         ref={triggerRef}
         aria-label="요소 삽입"
+        title="요소 삽입"
         aria-expanded={open}
         className="insert-menu-trigger"
         onClick={() => (open ? close() : setOpen(true))}
       >
-        +
+        <Plus size={16} aria-hidden />
       </button>
       {open && (
         <div className="insert-menu-popover">

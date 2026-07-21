@@ -67,8 +67,9 @@ describe("App 라우팅과 위키 W1 흐름", () => {
     const user = userEvent.setup();
     renderApp();
     await screen.findByRole("link", { name: "시작하기" });
-    // 모달 열기 → 입력 → 생성
-    await user.click(screen.getByRole("button", { name: "새 스페이스" }));
+    // 헤더 "만들기" 드롭다운 → "새 스페이스" → 모달 열기 → 입력 → 생성
+    await user.click(screen.getByRole("button", { name: "만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "새 스페이스" }));
     await user.type(screen.getByLabelText("이름"), "설계 위키");
     await user.type(screen.getByLabelText("키"), "arch");
     expect(screen.getByLabelText("키")).toHaveValue("ARCH"); // 자동 대문자

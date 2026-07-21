@@ -27,6 +27,8 @@ export function PageEditPage() {
   const [pageSpaceId, setPageSpaceId] = useState<string | null>(null);
   // Task 5: 제목 변경 추적 (본문은 WikiEditor.isDirty()로 추적)
   const [titleDirty, setTitleDirty] = useState(false);
+  // 저장 진행 상태 — 업데이트 버튼 로딩 표시 + 중복 저장 차단
+  const [saving, setSaving] = useState(false);
   // Task 18: 페이지 너비 토글 — 생성 화면(pageId 없음)은 항상 기본 폭, toggle은 무동작
   const { width, toggle: toggleWidth } = usePageWidth(pageId);
 
@@ -86,6 +88,7 @@ export function PageEditPage() {
   const handleSave = async () => {
     // 본문 불변 보장 — 본문 미수정이면 직렬화 대신 원문 그대로 (버전 diff 노이즈 방지)
     const body = editorRef.current?.isDirty() ? editorRef.current.getMarkdown() : initialBody;
+    setSaving(true);
     try {
       if (isEdit && pageId) {
         const saved = await updatePage(pageId, { title, body });
@@ -104,6 +107,8 @@ export function PageEditPage() {
         description: error instanceof Error ? error.message : String(error),
         appearance: "danger",
       });
+      // 성공 시엔 이동으로 언마운트되므로 실패 시에만 로딩 해제
+      setSaving(false);
     }
   };
 
@@ -138,7 +143,7 @@ export function PageEditPage() {
               {width === "full" ? "기본 너비" : "전체 너비"}
             </Button>
           ) : null}
-          <Button onClick={handleSave} disabled={!title.trim()}>
+          <Button onClick={handleSave} disabled={!title.trim()} loading={saving}>
             업데이트
           </Button>
           <Button variant="subtle" onClick={handleCancel}>

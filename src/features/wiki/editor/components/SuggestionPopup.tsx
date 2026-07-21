@@ -1,5 +1,7 @@
+import type { LucideIcon } from "lucide-react";
+
 export interface SuggestionPopupProps {
-  items: Array<{ id: string; label: string; description?: string }>;
+  items: Array<{ id: string; label: string; description?: string; icon?: LucideIcon }>;
   highlight: number;
   left: number;
   top: number;
@@ -16,6 +18,7 @@ export function SuggestionPopup({ items, highlight, left, top, onPick, ariaLabel
     <ul className="editor-suggestions" role="listbox" aria-label={ariaLabel} style={{ left, top }}>
       {items.map((item, i) => {
         const descriptionId = item.description ? `suggestion-desc-${item.id}` : undefined;
+        const Icon = item.icon;
         return (
           // li[role=option] 자체도 subtree 텍스트(라벨+설명)로 이름이 계산되므로, 여기도
           // aria-label을 걸어 li와 안쪽 button 양쪽의 접근 가능한 이름을 라벨만으로 고정한다.
@@ -27,6 +30,9 @@ export function SuggestionPopup({ items, highlight, left, top, onPick, ariaLabel
               aria-describedby={descriptionId}
               onMouseDown={(e) => { e.preventDefault(); onPick(i); }}
             >
+              {/* 슬래시 메뉴 항목만 icon을 갖는다(wikiLink 자동완성은 없음) — aria-hidden으로
+                  접근 가능한 이름 계산에서 제외한다. .editor-suggestion-icon 스타일은 app.css에 있다. */}
+              {Icon && <Icon size={16} aria-hidden className="editor-suggestion-icon" />}
               <span className="editor-suggestion-label">{item.label}</span>
               {item.description && (
                 <span id={descriptionId} className="editor-suggestion-description">

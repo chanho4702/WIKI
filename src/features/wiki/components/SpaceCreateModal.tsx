@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Button, Modal, TextField, useToast } from "@chanho/react";
+import { Plus } from "lucide-react";
 import type { Space } from "../store/types";
 import { createSpace } from "../store/wikiStore";
 import { useControlledOpenState } from "../lib/controlledOpenState";
@@ -8,6 +9,8 @@ import { useControlledOpenState } from "../lib/controlledOpenState";
 export interface SpaceCreateModalProps {
   /** 트리거 버튼 문구 */
   triggerLabel?: string;
+  /** false면 트리거 버튼 없이 제어형(open/onOpenChange)으로만 연다. @default true */
+  showTrigger?: boolean;
   onCreated: (space: Space) => void | Promise<void>;
   /**
    * 열림 상태를 외부에서 제어하고 싶을 때(W6: 스페이스 플라이아웃의 "스페이스 만들기" 버튼이
@@ -20,6 +23,7 @@ export interface SpaceCreateModalProps {
 
 export function SpaceCreateModal({
   triggerLabel = "새 스페이스",
+  showTrigger = true,
   onCreated,
   open: openProp,
   onOpenChange: onOpenChangeProp,
@@ -55,7 +59,13 @@ export function SpaceCreateModal({
 
   return (
     <Modal
-      trigger={<Button variant="subtle">{triggerLabel}</Button>}
+      trigger={
+        showTrigger ? (
+          <Button variant="subtle" iconBefore={<Plus size={16} aria-hidden="true" />}>
+            {triggerLabel}
+          </Button>
+        ) : undefined
+      }
       title="새 스페이스"
       description="이름과 키를 입력하세요. 키는 스페이스를 구분하는 접두어가 됩니다."
       open={open}

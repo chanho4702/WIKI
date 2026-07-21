@@ -14,15 +14,15 @@ const WIDTH_KEY = "wiki.ui.sidebar.width";
 
 export const SIDEBAR_MIN_WIDTH = 200;
 export const SIDEBAR_MAX_WIDTH = 480;
-export const SIDEBAR_DEFAULT_WIDTH = 288;
+export const SIDEBAR_DEFAULT_WIDTH = 260; // 컨플식 기본 사이드바 폭
 
-/** 폭을 [200, 480] 범위로 자른다. 숫자가 아니거나(NaN 등) 유한하지 않으면 기본값(288)으로 대체한다. */
+/** 폭을 [200, 480] 범위로 자른다. 숫자가 아니거나(NaN 등) 유한하지 않으면 기본값(260)으로 대체한다. */
 export function clampSidebarWidth(px: number): number {
   if (!Number.isFinite(px)) return SIDEBAR_DEFAULT_WIDTH;
   return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, px));
 }
 
-/** 저장된 사이드바 설정을 읽는다. 값 부재/오류/손상 시 기본값(펼침, 288px)으로 대체한다. */
+/** 저장된 사이드바 설정을 읽는다. 값 부재/오류/손상 시 기본값(펼침, 260px)으로 대체한다. */
 export function getSidebarPrefs(): SidebarPrefs {
   let collapsed = false;
   try {

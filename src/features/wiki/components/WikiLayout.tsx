@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate, Outlet, useNavigate, useParams } from "react-router";
-import { Button, EmptyState, Spinner, TextField } from "@chanho/react";
+import { Avatar, Button, Dropdown, EmptyState, Spinner, TextField } from "@chanho/react";
+import { FileText, FolderPlus, Plus } from "lucide-react";
 import type { Page, Space } from "../store/types";
 import { listPages } from "../store/wikiStore";
 import { PageTree } from "./PageTree";
@@ -110,14 +111,47 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
   // 실존하는 것만(별표 저장 배열은 pruneStarredSpaces가 정리하지만 렌더 시점에도 방어적으로 필터).
   const starredSpaceList = spaces.filter((s) => s.id !== current.id && starred.includes(s.id));
 
+  // 헤더 중앙 "만들기" 드롭다운 — 사이드바에서 옮겨온 새 페이지/새 스페이스 액션
+  const createMenu = (
+    <Dropdown
+      trigger={
+        <Button size="small" iconBefore={<Plus size={16} aria-hidden="true" />}>
+          만들기
+        </Button>
+      }
+      items={[
+        {
+          label: "새 페이지",
+          icon: <FileText size={16} aria-hidden="true" />,
+          onSelect: () => navigate(`/spaces/${current.id}/pages/new`),
+        },
+        {
+          label: "새 스페이스",
+          icon: <FolderPlus size={16} aria-hidden="true" />,
+          onSelect: () => setSpaceModalOpen(true),
+        },
+      ]}
+    />
+  );
+
   return (
     <div className="wiki-layout">
-      <WikiTopBar onSidebarToggle={() => setCollapsed(!collapsed)} sidebarExpanded={!collapsed} />
+      <WikiTopBar
+        onSidebarToggle={() => setCollapsed(!collapsed)}
+        sidebarExpanded={!collapsed}
+        create={createMenu}
+      />
       <div className="wiki-body">
         {collapsed ? null : (
           <aside className="wiki-sidebar" style={{ width: displayWidth }}>
             <div className="wiki-sidebar-header">
               <div className="space-switcher" ref={spaceSwitcherRef}>
+                <Avatar
+                  className="space-switcher-avatar"
+                  name={current.name}
+                  color="auto"
+                  size="small"
+                />
                 <button
                   ref={spaceTriggerRef}
                   type="button"
@@ -186,19 +220,6 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
                 />
               )}
             </div>
-            <div className="wiki-sidebar-footer">
-              <Button variant="subtle" onClick={() => navigate(`/spaces/${current.id}/pages/new`)}>
-                새 페이지
-              </Button>
-              <SpaceCreateModal
-                open={spaceModalOpen}
-                onOpenChange={setSpaceModalOpen}
-                onCreated={async (space) => {
-                  await onSpacesChanged();
-                  navigate(`/spaces/${space.id}`);
-                }}
-              />
-            </div>
             <SidebarResizer width={displayWidth} onDrag={setDisplayWidth} onCommit={handleResizeCommit} />
           </aside>
         )}
@@ -206,6 +227,16 @@ export function WikiLayout({ spaces, onSpacesChanged }: WikiLayoutProps) {
           <Outlet context={{ pages, space: current, reloadPages } satisfies WikiOutletContext} />
         </main>
       </div>
+      {/* 스페이스 생성 모달 — 사이드바 접힘 여부와 무관하게 항상 마운트(헤더 "만들기"와 스페이스 플라이아웃이 연다) */}
+      <SpaceCreateModal
+        showTrigger={false}
+        open={spaceModalOpen}
+        onOpenChange={setSpaceModalOpen}
+        onCreated={async (space) => {
+          await onSpacesChanged();
+          navigate(`/spaces/${space.id}`);
+        }}
+      />
     </div>
   );
 }

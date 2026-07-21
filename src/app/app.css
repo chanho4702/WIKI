@@ -75,9 +75,30 @@ body {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  background: var(--chanho-color-background-surface);
+  /* 컨플식 사이드바 — 본문(background.default #fff)과 구분되는 옅은 회색면(subtle #F7F8F9).
+   * 회색 배경 위라 트리/항목 hover는 neutral-hovered(#DCDFE4)가 오히려 대비가 살아 그대로 둔다. */
+  background: var(--chanho-color-background-subtle);
   border-right: 1px solid var(--chanho-color-border-default);
   min-height: 0;
+}
+
+/* 사이드바 헤더의 스페이스 아바타 + 스위처를 한 줄로 정렬 */
+.space-switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  min-width: 0;
+}
+.space-switcher > .space-switcher-trigger {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.space-switcher-avatar {
+  flex-shrink: 0;
 }
 
 .wiki-sidebar-header {
@@ -119,13 +140,6 @@ body {
   flex-direction: column;
   gap: var(--chanho-space-200);
   padding: 0 var(--chanho-space-200);
-}
-
-.wiki-sidebar-footer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--chanho-space-100);
-  padding: var(--chanho-space-150) var(--chanho-space-200) var(--chanho-space-300);
 }
 
 /* 사이드바 우측 경계 드래그 핸들 — 히트 영역은 8px, 시각 표시는 hover/focus 시 가운데 4px만 */
@@ -320,14 +334,34 @@ body {
 .page-tree-row a {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: var(--chanho-space-75) var(--chanho-space-100);
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-75);
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 0 var(--chanho-space-100);
   border-radius: var(--chanho-radius-medium);
   color: var(--chanho-color-text-default);
   text-decoration: none;
   font-size: var(--chanho-font-size-100);
+}
+
+/* 페이지 문서 아이콘 — 링크 텍스트 앞. 활성/기본 색은 링크의 currentColor를 따른다. */
+.page-tree-icon {
+  flex-shrink: 0;
+  display: flex;
+  color: var(--chanho-color-text-subtle);
+}
+
+.page-tree-row a.active .page-tree-icon {
+  color: var(--chanho-color-text-selected);
+}
+
+.page-tree-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .page-tree-row a:hover {
@@ -391,7 +425,7 @@ body {
  * 흡수되고, 이 .page-view 규칙은 --full 모디파이어만 남기고 제거될 예정.
  */
 .page-view {
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
 }
 
@@ -542,6 +576,41 @@ body {
   background: transparent;
 }
 
+/* 보기 화면 코드블록 복사 버튼 — pre를 relative 래퍼로 감싸고 우상단에 hover 시 노출 */
+.markdown-pre {
+  position: relative;
+}
+.markdown-code-copy {
+  position: absolute;
+  top: var(--chanho-space-100);
+  right: var(--chanho-space-100);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50);
+  padding: var(--chanho-space-50) var(--chanho-space-100);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-surface);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+  font-family: var(--chanho-font-family-sans);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--chanho-transition-base), background var(--chanho-transition-base);
+}
+.markdown-pre:hover .markdown-code-copy,
+.markdown-code-copy:focus-visible {
+  opacity: 1;
+}
+.markdown-code-copy:hover {
+  background: var(--chanho-color-background-neutral);
+  color: var(--chanho-color-text-default);
+}
+.markdown-code-copy:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
 /* highlight.js 토큰 색 정의 — 값은 :root/[data-theme="dark"]의 --wiki-hljs-* 변수(W7 T4).
    에디터(.wiki-editor .ProseMirror)는 lowlight가 붙인 동일한 hljs-* 토큰을 재사용한다(W7 T5) */
 .markdown-body .hljs-keyword,
@@ -615,6 +684,11 @@ body {
 .wiki-editor .ProseMirror th {
   background: var(--chanho-color-background-subtle);
   font-weight: var(--chanho-font-weight-semibold);
+}
+
+/* 표 본문 행 hover — 보기 화면 가독성(에디터는 편집 커서가 있어 제외) */
+.markdown-body tbody tr:hover td {
+  background: var(--chanho-color-background-subtle);
 }
 
 .markdown-body blockquote,
@@ -763,7 +837,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--chanho-space-200);
-  max-width: 720px;
+  max-width: 760px;
   margin: 0 auto;
 }
 
@@ -1008,6 +1082,18 @@ body {
   border-radius: var(--chanho-radius-small, 4px);
   cursor: pointer;
   color: var(--chanho-color-text-default);
+}
+
+/* 슬래시 메뉴 항목 아이콘(lucide) — 아이콘이 있을 때만 렌더된다(wikiLink 자동완성은 아이콘 없음).
+ * float-left로 두어 라벨(블록)이 오른쪽에 오고, 텍스트 래퍼 마크업 없이도 정렬이 유지된다. */
+.editor-suggestion-icon {
+  float: left;
+  margin-right: var(--chanho-space-100);
+  padding-top: 2px;
+  color: var(--chanho-color-text-subtle);
+}
+.editor-suggestions [aria-selected="true"] .editor-suggestion-icon {
+  color: var(--chanho-color-text-brand);
 }
 
 /* W6: 슬래시 메뉴 항목의 설명 줄(요소 브라우저 스타일) — wikiLink 자동완성은 description이 없어 렌더되지 않는다 */
@@ -1453,26 +1539,35 @@ body {
   font-size: var(--chanho-font-size-200, 16px);
 }
 
-/* 자주 찾는 스페이스 — 카드 그리드(flex wrap) */
+/* 스페이스 카드 그리드 — 자주 찾는/모든 스페이스 공용. 반응형 auto-fill 그리드. */
 .space-directory-cards {
   margin: 0;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: var(--chanho-space-200, 12px);
 }
 
 .space-directory-card {
   display: flex;
   align-items: center;
-  gap: var(--chanho-space-100, 8px);
-  width: 240px;
+  gap: var(--chanho-space-150, 12px);
   box-sizing: border-box;
   padding: var(--chanho-space-200, 12px);
   border: 1px solid var(--chanho-color-border-default);
-  border-radius: var(--chanho-radius-medium, 8px);
+  border-radius: var(--chanho-radius-medium, 6px);
   background: var(--chanho-color-background-surface, #fff);
+  transition: border-color var(--chanho-transition-base), box-shadow var(--chanho-transition-base);
+}
+
+.space-directory-card:hover {
+  border-color: var(--chanho-color-border-input);
+  box-shadow: var(--chanho-shadow-100);
+}
+
+.space-directory-card-avatar {
+  flex-shrink: 0;
 }
 
 .space-directory-card-name {
@@ -1481,7 +1576,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: var(--chanho-space-50, 4px);
   text-align: left;
   border: none;
   background: none;
@@ -1498,27 +1593,19 @@ body {
   max-width: 100%;
 }
 
-.space-directory-card-key {
+/* 키 Chip + 생성일 한 줄 */
+.space-directory-card-sub {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100, 8px);
   font-size: var(--chanho-font-size-75, 12px);
   color: var(--chanho-color-text-subtle, #626f86);
+  max-width: 100%;
 }
 
-/* 모든 스페이스 — 필터 입력 + 테이블(DS Table 컴포넌트 사용, 셀 내용만 커스텀) */
+/* 모든 스페이스 — 필터 입력 */
 .space-directory-all input {
   max-width: 320px;
-}
-
-.space-directory-row-name {
-  border: none;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-  color: var(--chanho-color-text-brand, #0c66e4);
-  text-align: left;
-}
-
-.space-directory-row-name:hover {
-  text-decoration: underline;
 }
 
 /* 별표 토글 — .space-flyout-star(W6 T3)과 동일한 시각 패턴 재사용 */

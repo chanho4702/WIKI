@@ -11,6 +11,7 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useToast } from "@chanho/react";
+import { ChevronRight, FileText, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Page } from "../store/types";
 import { movePage } from "../store/wikiStore";
@@ -28,42 +29,6 @@ export interface PageTreeProps {
 interface TreeNode {
   page: Page;
   children: TreeNode[];
-}
-
-/** 접기/펼치기 토글 글리프 — 접힘 시 오른쪽, 펼침 시 CSS로 90도 회전. */
-function ChevronIcon() {
-  return (
-    <svg
-      className="page-tree-toggle-icon"
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M4.5 2.5L8 6l-3.5 3.5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-/** 하위 페이지 추가 글리프. */
-function PlusIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-      <path
-        d="M6 2.5v7M2.5 6h7"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 /** parentId 인접 리스트 → 트리. 형제는 position 오름차순. */
@@ -206,12 +171,15 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved }: PageT
                   }
                   onClick={() => toggle(page.id)}
                 >
-                  <ChevronIcon />
+                  <ChevronRight className="page-tree-toggle-icon" size={14} aria-hidden="true" />
                 </button>
               ) : (
                 <span className="page-tree-toggle-spacer" aria-hidden="true" />
               )}
-              <NavLink to={`/spaces/${spaceId}/pages/${page.id}`}>{page.title}</NavLink>
+              <NavLink to={`/spaces/${spaceId}/pages/${page.id}`}>
+                <FileText className="page-tree-icon" size={16} aria-hidden="true" />
+                <span className="page-tree-label">{page.title}</span>
+              </NavLink>
               {/* NavLink의 형제 — 링크 안에 버튼 중첩 금지 */}
               <button
                 type="button"
@@ -219,7 +187,7 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved }: PageT
                 aria-label={`${page.title} 하위 페이지 추가`}
                 onClick={() => navigate(`/spaces/${spaceId}/pages/new?parent=${page.id}`)}
               >
-                <PlusIcon />
+                <Plus size={14} aria-hidden="true" />
               </button>
             </div>
             {children.length > 0 && !isCollapsed ? renderNodes(children) : null}

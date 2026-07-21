@@ -90,11 +90,20 @@ describe("W2 페이지 보기", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "운영 문서" })).toBeInTheDocument();
   });
 
+  /** 삭제는 헤더의 "더 보기(…)" 드롭다운 → "삭제" 항목 → confirm 다이얼로그의 "삭제" 버튼 순서다. */
+  async function confirmDelete(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "더 보기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "삭제" }));
+    // ConfirmDialog(role=dialog)의 확인 버튼(role=button "삭제")
+    const dialog = await screen.findByRole("dialog", { name: "페이지 삭제" });
+    await user.click(within(dialog).getByRole("button", { name: "삭제" }));
+  }
+
   it("하위가 있는 페이지 삭제는 거부되고 Toast로 안내한다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg1"); // pg1은 pg3·pg4의 부모
     await screen.findByRole("heading", { level: 1, name: "시작하기" });
-    await user.click(screen.getByRole("button", { name: "삭제" }));
+    await confirmDelete(user);
     expect(await screen.findByText("하위 페이지가 있어 삭제할 수 없습니다")).toBeInTheDocument();
     // 페이지와 URL은 그대로
     expect(screen.getByRole("heading", { level: 1, name: "시작하기" })).toBeInTheDocument();
@@ -105,7 +114,7 @@ describe("W2 페이지 보기", () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg5"); // pg5는 잎(leaf), 부모는 pg3
     await screen.findByRole("heading", { level: 1, name: "로컬 DB 설정" });
-    await user.click(screen.getByRole("button", { name: "삭제" }));
+    await confirmDelete(user);
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg3");
     });

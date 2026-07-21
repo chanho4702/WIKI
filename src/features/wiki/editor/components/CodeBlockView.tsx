@@ -1,4 +1,5 @@
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { Copy } from "lucide-react";
 
 /** 언어 셀렉트 기본 후보 목록 */
 const LANGUAGES = [
@@ -45,8 +46,8 @@ export function CodeBlockView({ node, updateAttributes }: NodeViewProps) {
             </option>
           ))}
         </select>
-        <button type="button" aria-label="코드 복사" onClick={copy}>
-          복사
+        <button type="button" aria-label="코드 복사" title="코드 복사" onClick={copy}>
+          <Copy size={16} aria-hidden />
         </button>
       </div>
       <pre>

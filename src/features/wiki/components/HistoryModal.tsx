@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Modal, Spinner, Tabs, useToast } from "@chanho/react";
+import { History } from "lucide-react";
 import type { Page, PageVersion, User } from "../store/types";
 import { listVersions, restoreVersion } from "../store/wikiStore";
 import { DiffView } from "./DiffView";
@@ -68,8 +69,8 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
   return (
     <Modal
       trigger={
-        <Button variant="subtle" size="small">
-          히스토리
+        <Button variant="subtle" size="small" iconOnly aria-label="히스토리" title="히스토리">
+          <History size={16} aria-hidden="true" />
         </Button>
       }
       title="버전 히스토리"

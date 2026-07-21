@@ -1,5 +1,22 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, type ReactNode } from "react";
 import type { Editor } from "@tiptap/core";
+import {
+  Undo2,
+  Redo2,
+  Bold,
+  Italic,
+  Strikethrough,
+  Code,
+  List,
+  ListOrdered,
+  ListChecks,
+  Quote,
+  SquareCode,
+  Minus,
+  Table,
+  Link,
+  Image,
+} from "lucide-react";
 import { SLASH_ITEMS } from "../extensions/slashMenu";
 import { promptSetLink } from "../lib/linkCommand";
 import { useControlledOpenState } from "../../lib/controlledOpenState";
@@ -61,11 +78,15 @@ export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange }:
     else chain.setHeading({ level: Number(value.slice(1)) as 1 | 2 | 3 }).run();
   };
 
-  const btn = (label: string, text: string, onClick: () => void, active = false, disabled = false) => (
+  // 아이콘 버튼 — 접근 가능한 이름은 aria-label(한국어)로 고정하고, 렌더되는 lucide 아이콘은
+  // aria-hidden으로 접근성 트리에서 뺀다(이름 계산에 아이콘 SVG가 섞이지 않게). title은 마우스
+  // 호버 시 네이티브 툴팁으로 aria-label과 동일 문구를 보여준다.
+  const btn = (label: string, icon: ReactNode, onClick: () => void, active = false, disabled = false) => (
     <button
       key={label}
       type="button"
       aria-label={label}
+      title={label}
       aria-pressed={active}
       disabled={disabled}
       className={active ? "is-active" : undefined}
@@ -75,14 +96,14 @@ export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange }:
         onClick();
       }}
     >
-      {text}
+      {icon}
     </button>
   );
 
   return (
     <div className="top-toolbar" role="toolbar" aria-label="편집 도구">
-      {btn("실행 취소", "↶", () => editor.chain().focus().undo().run(), false, !editor.can().undo())}
-      {btn("다시 실행", "↷", () => editor.chain().focus().redo().run(), false, !editor.can().redo())}
+      {btn("실행 취소", <Undo2 size={16} aria-hidden />, () => editor.chain().focus().undo().run(), false, !editor.can().undo())}
+      {btn("다시 실행", <Redo2 size={16} aria-hidden />, () => editor.chain().focus().redo().run(), false, !editor.can().redo())}
       <span className="top-toolbar-divider" />
       <select aria-label="블록 타입" value={blockValue} onChange={(e) => setBlock(e.target.value)}>
         {BLOCK_OPTIONS.map((o) => (
@@ -90,22 +111,22 @@ export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange }:
         ))}
       </select>
       <span className="top-toolbar-divider" />
-      {btn("굵게", "B", () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}
-      {btn("기울임", "I", () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"))}
-      {btn("취소선", "S", () => editor.chain().focus().toggleStrike().run(), editor.isActive("strike"))}
-      {btn("코드", "<>", () => editor.chain().focus().toggleCode().run(), editor.isActive("code"))}
+      {btn("굵게", <Bold size={16} aria-hidden />, () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}
+      {btn("기울임", <Italic size={16} aria-hidden />, () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"))}
+      {btn("취소선", <Strikethrough size={16} aria-hidden />, () => editor.chain().focus().toggleStrike().run(), editor.isActive("strike"))}
+      {btn("코드", <Code size={16} aria-hidden />, () => editor.chain().focus().toggleCode().run(), editor.isActive("code"))}
       <span className="top-toolbar-divider" />
-      {btn("글머리 목록", "•≡", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}
-      {btn("번호 목록", "1≡", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}
-      {btn("체크박스 목록", "☑", () => editor.chain().focus().toggleTaskList().run(), editor.isActive("taskList"))}
+      {btn("글머리 목록", <List size={16} aria-hidden />, () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}
+      {btn("번호 목록", <ListOrdered size={16} aria-hidden />, () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}
+      {btn("체크박스 목록", <ListChecks size={16} aria-hidden />, () => editor.chain().focus().toggleTaskList().run(), editor.isActive("taskList"))}
       <span className="top-toolbar-divider" />
-      {btn("인용", "❝", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}
-      {btn("코드 블록", "{}", () => editor.chain().focus().toggleCodeBlock().run(), editor.isActive("codeBlock"))}
-      {btn("구분선", "—", () => editor.chain().focus().setHorizontalRule().run())}
-      {btn("표", "⊞", () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
+      {btn("인용", <Quote size={16} aria-hidden />, () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}
+      {btn("코드 블록", <SquareCode size={16} aria-hidden />, () => editor.chain().focus().toggleCodeBlock().run(), editor.isActive("codeBlock"))}
+      {btn("구분선", <Minus size={16} aria-hidden />, () => editor.chain().focus().setHorizontalRule().run())}
+      {btn("표", <Table size={16} aria-hidden />, () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
       <span className="top-toolbar-divider" />
-      {btn("링크", "🔗", () => promptSetLink(editor), editor.isActive("link"))}
-      {btn("이미지", "🖼", () => insertImage(editor))}
+      {btn("링크", <Link size={16} aria-hidden />, () => promptSetLink(editor), editor.isActive("link"))}
+      {btn("이미지", <Image size={16} aria-hidden />, () => insertImage(editor))}
       <span className="top-toolbar-divider" />
       <EmojiPicker editor={editor} open={emojiOpen} onOpenChange={setEmojiOpen} />
       <InsertMenu editor={editor} onOpenEmoji={() => setEmojiOpen(true)} />

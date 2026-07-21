@@ -31,18 +31,17 @@ beforeEach(() => {
 });
 
 describe("Task 19/W7-T6 사이드바 접기/펼치기 — 헤더 토글", () => {
-  it("기본 상태는 펼침 — 검색·트리·새 페이지가 보이고 토글 버튼은 aria-expanded=true다", async () => {
+  it("기본 상태는 펼침 — 검색·트리가 보이고 토글 버튼은 aria-expanded=true다", async () => {
     renderApp();
     await screen.findByRole("navigation", { name: "페이지 트리" });
     expect(screen.getByLabelText("페이지 검색")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "새 페이지" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "사이드바 토글" })).toHaveAttribute(
       "aria-expanded",
       "true",
     );
   });
 
-  it("토글 버튼을 누르면 사이드바(aside)가 완전히 사라진다(트리·검색·새 페이지 미렌더), 다시 누르면 복원된다", async () => {
+  it("토글 버튼을 누르면 사이드바(aside)가 완전히 사라진다(트리·검색 미렌더), 다시 누르면 복원된다", async () => {
     const user = userEvent.setup();
     renderApp();
     await screen.findByRole("navigation", { name: "페이지 트리" });
@@ -53,7 +52,6 @@ describe("Task 19/W7-T6 사이드바 접기/펼치기 — 헤더 토글", () => 
     expect(document.querySelector(".wiki-sidebar")).not.toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "페이지 트리" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("페이지 검색")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "새 페이지" })).not.toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "false");
 
     await user.click(toggle);
@@ -120,13 +118,13 @@ describe("Task 19 사이드바 너비 조절(리사이저)", () => {
 
     const resizer = screen.getByRole("separator", { name: "사이드바 너비 조절" });
     const aside = document.querySelector(".wiki-sidebar") as HTMLElement;
-    expect(aside.style.width).toBe("288px"); // 기본값
+    expect(aside.style.width).toBe("260px"); // 기본값
 
     resizer.focus();
     await user.keyboard("{ArrowRight}");
 
-    expect(aside.style.width).toBe("304px");
-    expect(resizer).toHaveAttribute("aria-valuenow", "304");
+    expect(aside.style.width).toBe("276px");
+    expect(resizer).toHaveAttribute("aria-valuenow", "276");
   });
 
   it("← 키를 누르면 aside 폭이 16px 줄어들고, 최솟값(200px) 아래로는 내려가지 않는다", async () => {
@@ -139,7 +137,7 @@ describe("Task 19 사이드바 너비 조절(리사이저)", () => {
 
     resizer.focus();
     await user.keyboard("{ArrowLeft}");
-    expect(aside.style.width).toBe("272px");
+    expect(aside.style.width).toBe("244px");
 
     // 최솟값까지 여러 번 눌러도 200px 밑으로는 내려가지 않는다
     for (let i = 0; i < 10; i += 1) {
@@ -157,13 +155,13 @@ describe("Task 19 사이드바 너비 조절(리사이저)", () => {
     resizer.focus();
     await user.keyboard("{ArrowRight}{ArrowRight}");
 
-    expect(localStorage.getItem("wiki.ui.sidebar.width")).toBe("320");
+    expect(localStorage.getItem("wiki.ui.sidebar.width")).toBe("292");
     unmount();
 
     renderApp();
     await screen.findByRole("navigation", { name: "페이지 트리" });
     const aside = document.querySelector(".wiki-sidebar") as HTMLElement;
-    expect(aside.style.width).toBe("320px");
+    expect(aside.style.width).toBe("292px");
   });
 });
 

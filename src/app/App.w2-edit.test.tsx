@@ -83,11 +83,12 @@ describe("W2 페이지 편집·생성", () => {
     expect(within(tree).queryByRole("link", { name: "새 하위 문서" })).not.toBeInTheDocument();
   });
 
-  it("사이드바 '새 페이지'는 루트 생성으로 이동하고, 취소하면 스페이스 인덱스를 거쳐 첫 페이지로 돌아간다", async () => {
+  it("헤더 '만들기 → 새 페이지'는 루트 생성으로 이동하고, 취소하면 스페이스 인덱스를 거쳐 첫 페이지로 돌아간다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg1");
     await screen.findByRole("heading", { level: 1, name: "시작하기" });
-    await user.click(screen.getByRole("button", { name: "새 페이지" }));
+    await user.click(screen.getByRole("button", { name: "만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "새 페이지" }));
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/new");
     });

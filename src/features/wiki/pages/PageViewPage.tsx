@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
-import { Avatar, Button, PageHeader, Spinner, useToast } from "@chanho/react";
+import { Avatar, Button, ConfirmDialog, Dropdown, PageHeader, Spinner, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
+import { Maximize2, Minimize2, MoreHorizontal, Trash2 } from "lucide-react";
 import type { Page, User } from "../store/types";
 import { deletePage, getPage, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/WikiLayout";
@@ -48,6 +49,9 @@ export function PageViewPage() {
   const [users, setUsers] = useState<User[]>([]);
   // Task 18: 페이지 너비 토글 — early return 이전에 호출해야 하는 훅
   const { width, toggle: toggleWidth } = usePageWidth(pageId);
+  // 삭제 확인 다이얼로그(공통 ConfirmDialog) — "…" 드롭다운의 삭제에서 연다
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     void listUsers().then(setUsers);
@@ -81,6 +85,7 @@ export function PageViewPage() {
   ];
 
   const handleDelete = async () => {
+    setDeleting(true);
     try {
       await deletePage(page.id);
       toast({ title: `"${page.title}" 페이지를 삭제했습니다`, appearance: "success" });
@@ -94,6 +99,9 @@ export function PageViewPage() {
         description: error instanceof Error ? error.message : String(error),
         appearance: "danger",
       });
+      // 실패 시 다이얼로그를 닫아 페이지로 돌아간다(사유는 Toast로 안내). 성공 시엔 이동으로 언마운트됨.
+      setConfirmOpen(false);
+      setDeleting(false);
     }
   };
 
@@ -105,21 +113,31 @@ export function PageViewPage() {
         title={page.title}
         actions={
           <>
-            <Button
-              size="small"
-              variant="subtle"
-              aria-label="전체 너비"
-              aria-pressed={width === "full"}
-              onClick={toggleWidth}
-            >
-              {width === "full" ? "기본 너비" : "전체 너비"}
-            </Button>
+            {/* 전체 너비: 아이콘 버튼 + Tooltip. 접근 이름은 aria-label로 고정("전체 너비") */}
+            <Tooltip content={width === "full" ? "기본 너비" : "전체 너비"}>
+              <Button
+                size="small"
+                variant="subtle"
+                iconOnly
+                aria-label="전체 너비"
+                aria-pressed={width === "full"}
+                onClick={toggleWidth}
+              >
+                {width === "full" ? (
+                  <Minimize2 size={16} aria-hidden="true" />
+                ) : (
+                  <Maximize2 size={16} aria-hidden="true" />
+                )}
+              </Button>
+            </Tooltip>
+            {/* 편집만 primary — 화면의 핵심 액션 */}
             <Button
               size="small"
               onClick={() => navigate(`/spaces/${space.id}/pages/${page.id}/edit`)}
             >
               편집
             </Button>
+            {/* 히스토리: 아이콘 버튼(HistoryModal 내부). 모달 트리거라 native title 사용 */}
             <HistoryModal
               page={page}
               users={users}
@@ -128,16 +146,46 @@ export function PageViewPage() {
                 await reloadPages(); // 제목이 복원된 경우 사이드바 트리 반영
               }}
             />
-            <Button variant="danger" size="small" onClick={handleDelete}>
-              삭제
-            </Button>
+            {/* 삭제는 "…" 드롭다운으로 이동 + confirm 다이얼로그 */}
+            <Dropdown
+              trigger={
+                <Button
+                  size="small"
+                  variant="subtle"
+                  iconOnly
+                  aria-label="더 보기"
+                  title="더 보기"
+                >
+                  <MoreHorizontal size={16} aria-hidden="true" />
+                </Button>
+              }
+              items={[
+                {
+                  label: "삭제",
+                  danger: true,
+                  icon: <Trash2 size={16} aria-hidden="true" />,
+                  onSelect: () => setConfirmOpen(true),
+                },
+              ]}
+            />
           </>
         }
+      />
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="페이지 삭제"
+        description={`"${page.title}" 페이지를 삭제합니다. 이 작업은 되돌릴 수 없습니다.`}
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        danger
+        loading={deleting}
+        onConfirm={handleDelete}
       />
       <div className="page-view-meta">
         {editor ? (
           <>
-            <Avatar name={editor.name} size="small" />
+            <Avatar name={editor.name} color="auto" size="small" />
             <span>{editor.name}</span>
           </>
         ) : null}

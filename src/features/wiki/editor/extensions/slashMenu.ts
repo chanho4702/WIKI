@@ -1,6 +1,25 @@
 import { Extension, type Editor } from "@tiptap/core";
 import Suggestion from "@tiptap/suggestion";
 import { PluginKey } from "@tiptap/pm/state";
+import {
+  Heading1,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  ListChecks,
+  Quote,
+  Info,
+  Lightbulb,
+  TriangleAlert,
+  OctagonAlert,
+  SquareCode,
+  Minus,
+  Table,
+  Image,
+  Smile,
+  type LucideIcon,
+} from "lucide-react";
 import { WIKI_LINK_OPEN_SOURCE } from "../../lib/wikiLinks";
 
 const slashMenuPluginKey = new PluginKey("slashMenu");
@@ -10,6 +29,9 @@ export interface SlashItem {
   label: string;
   /** 요소 브라우저(InsertMenu)·슬래시 메뉴 팝업에 라벨 아래 한 줄로 노출하는 설명 */
   description: string;
+  /** 슬래시 메뉴 팝업(SuggestionPopup)에서 라벨 앞에 그리는 lucide 아이콘 컴포넌트 —
+   * 데이터 객체라 JSX가 아니라 컴포넌트 참조를 저장하고, 렌더는 SuggestionPopup이 담당한다. */
+  icon: LucideIcon;
   /**
    * 항목 선택이 일반 편집 명령이 아니라 UI를 열어야 하는 경우의 마커(W6 T4) — 현재는
    * "이모지" 항목만 해당한다. SlashItem.run은 editor만 받으므로 팝오버를 직접 열 수 없다.
@@ -50,42 +72,49 @@ export const SLASH_ITEMS: SlashItem[] = [
     id: "h1",
     label: "제목 1",
     description: "큰 섹션 제목을 추가합니다",
+    icon: Heading1,
     run: (e) => e.chain().focus().setHeading({ level: 1 }).run(),
   },
   {
     id: "h2",
     label: "제목 2",
     description: "중간 섹션 제목을 추가합니다",
+    icon: Heading2,
     run: (e) => e.chain().focus().setHeading({ level: 2 }).run(),
   },
   {
     id: "h3",
     label: "제목 3",
     description: "작은 섹션 제목을 추가합니다",
+    icon: Heading3,
     run: (e) => e.chain().focus().setHeading({ level: 3 }).run(),
   },
   {
     id: "bullet",
     label: "글머리 목록",
     description: "글머리 기호로 목록을 만듭니다",
+    icon: List,
     run: (e) => e.chain().focus().toggleBulletList().run(),
   },
   {
     id: "ordered",
     label: "번호 목록",
     description: "번호를 매겨 목록을 만듭니다",
+    icon: ListOrdered,
     run: (e) => e.chain().focus().toggleOrderedList().run(),
   },
   {
     id: "task",
     label: "체크박스 목록",
     description: "체크박스가 있는 할 일 목록을 만듭니다",
+    icon: ListChecks,
     run: (e) => e.chain().focus().toggleTaskList().run(),
   },
   {
     id: "quote",
     label: "인용",
     description: "인용구 블록을 추가합니다",
+    icon: Quote,
     run: (e) => e.chain().focus().toggleBlockquote().run(),
   },
   // GitHub-style alerts — 저장 문법은 순수 blockquote(`> [!TYPE] `)뿐이라 신규 노드 타입이 필요 없다.
@@ -96,48 +125,56 @@ export const SLASH_ITEMS: SlashItem[] = [
     id: "note",
     label: "노트 패널",
     description: "파란색 정보 패널을 추가합니다",
+    icon: Info,
     run: (e) => insertAlertMarker(e, "[!NOTE] "),
   },
   {
     id: "tip",
     label: "팁 패널",
     description: "초록색 팁 패널을 추가합니다",
+    icon: Lightbulb,
     run: (e) => insertAlertMarker(e, "[!TIP] "),
   },
   {
     id: "warning",
     label: "경고 패널",
     description: "노란색 경고 패널을 추가합니다",
+    icon: TriangleAlert,
     run: (e) => insertAlertMarker(e, "[!WARNING] "),
   },
   {
     id: "caution",
     label: "주의 패널",
     description: "빨간색 주의 패널을 추가합니다",
+    icon: OctagonAlert,
     run: (e) => insertAlertMarker(e, "[!CAUTION] "),
   },
   {
     id: "code",
     label: "코드 블록",
     description: "구문 강조가 있는 코드 블록을 추가합니다",
+    icon: SquareCode,
     run: (e) => e.chain().focus().toggleCodeBlock().run(),
   },
   {
     id: "divider",
     label: "구분선",
     description: "가로 구분선을 추가합니다",
+    icon: Minus,
     run: (e) => e.chain().focus().setHorizontalRule().run(),
   },
   {
     id: "table",
     label: "표",
     description: "행과 열로 콘텐츠를 구성합니다",
+    icon: Table,
     run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
   {
     id: "image",
     label: "이미지 (URL)",
     description: "URL로 이미지를 삽입합니다",
+    icon: Image,
     run: (e) => {
       const src = window.prompt("이미지 URL을 입력하세요");
       if (src) e.chain().focus().setImage({ src }).run();
@@ -147,6 +184,7 @@ export const SLASH_ITEMS: SlashItem[] = [
     id: "emoji",
     label: "이모지",
     description: "이모지를 삽입합니다",
+    icon: Smile,
     // run은 no-op — 실제로는 action 마커를 보고 호출부가 EmojiPicker 팝오버를 연다.
     action: "openEmoji",
     run: () => {},

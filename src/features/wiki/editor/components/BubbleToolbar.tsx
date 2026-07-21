@@ -1,15 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { posToDOMRect } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
+import { Bold, Italic, Strikethrough, Code, Link } from "lucide-react";
 import { promptSetLink } from "../lib/linkCommand";
 
 /** 버튼 행 — 위치 계산과 분리해 jsdom에서 단독 테스트 가능하게 한다(좌표 계산 없이 버튼 동작만 검증) */
 export function ToolbarButtons({ editor }: { editor: Editor }) {
-  const btn = (label: string, glyph: string, active: boolean, onClick: () => void) => (
+  // TopToolbar와 동일하게 접근 가능한 이름은 aria-label로 고정하고 lucide 아이콘은 aria-hidden.
+  const btn = (label: string, icon: ReactNode, active: boolean, onClick: () => void) => (
     <button
       key={label}
       type="button"
       aria-label={label}
+      title={label}
       aria-pressed={active}
       className={active ? "is-active" : undefined}
       // 마우스다운에서 preventDefault — 클릭 시점에 에디터 선택 영역이 blur로 풀리지 않게 한다
@@ -18,16 +21,16 @@ export function ToolbarButtons({ editor }: { editor: Editor }) {
         onClick();
       }}
     >
-      {glyph}
+      {icon}
     </button>
   );
   return (
     <div className="bubble-toolbar" role="toolbar" aria-label="서식">
-      {btn("굵게", "B", editor.isActive("bold"), () => editor.chain().focus().toggleBold().run())}
-      {btn("기울임", "I", editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run())}
-      {btn("취소선", "S", editor.isActive("strike"), () => editor.chain().focus().toggleStrike().run())}
-      {btn("코드", "<>", editor.isActive("code"), () => editor.chain().focus().toggleCode().run())}
-      {btn("링크", "🔗", editor.isActive("link"), () => promptSetLink(editor))}
+      {btn("굵게", <Bold size={16} aria-hidden />, editor.isActive("bold"), () => editor.chain().focus().toggleBold().run())}
+      {btn("기울임", <Italic size={16} aria-hidden />, editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run())}
+      {btn("취소선", <Strikethrough size={16} aria-hidden />, editor.isActive("strike"), () => editor.chain().focus().toggleStrike().run())}
+      {btn("코드", <Code size={16} aria-hidden />, editor.isActive("code"), () => editor.chain().focus().toggleCode().run())}
+      {btn("링크", <Link size={16} aria-hidden />, editor.isActive("link"), () => promptSetLink(editor))}
     </div>
   );
 }

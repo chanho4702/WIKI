@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { Avatar, Button, Switch, TopBar } from "@chanho/react";
 import type { User } from "../store/types";
 import { getCurrentUser } from "../store/wikiStore";
@@ -12,6 +13,8 @@ export interface WikiTopBarProps {
   onSidebarToggle?: () => void;
   /** 토글 버튼의 aria-expanded 값 — onSidebarToggle을 넘길 때 함께 넘긴다. */
   sidebarExpanded?: boolean;
+  /** 헤더 중앙 검색 인풋 오른쪽에 놓이는 "만들기" 컨트롤(선택). */
+  create?: ReactNode;
 }
 
 /**
@@ -20,7 +23,7 @@ export interface WikiTopBarProps {
  * 없는 화면에서도 재사용하기 위해 onSidebarToggle을 선택적으로 받는다 — 계약: WikiLayout의
  * 동작은 이 추출 전후로 무변경이다.
  */
-export function WikiTopBar({ onSidebarToggle, sidebarExpanded }: WikiTopBarProps) {
+export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTopBarProps) {
   const { theme, toggle } = useTheme();
   const { user: authUser, logout } = useAuth();
   const [me, setMe] = useState<User | null>(null);
@@ -29,8 +32,14 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded }: WikiTopBarProps
     void getCurrentUser().then(setMe);
   }, []);
 
+  // TODO(전역 검색): 헤더 검색은 아직 배치만 — 검색 로직은 기능 백로그(docs/roadmap 체크리스트) 항목.
+  const handleSearch = () => {};
+
   return (
     <TopBar
+      onSearch={handleSearch}
+      searchPlaceholder="검색"
+      searchTrailing={create}
       brand={
         <>
           {onSidebarToggle ? (

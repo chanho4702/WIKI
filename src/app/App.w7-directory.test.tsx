@@ -6,7 +6,7 @@ import { __resetForTest } from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
 
 /** 시드(sp1 하나)에 두 번째 스페이스(sp2)를 더해 localStorage에 직접 심는다
- * (App.w5-sidebar.test.tsx와 동일한 패턴) — 디렉토리 테이블/카드 그리드는 최소 2개 스페이스가
+ * (App.w5-sidebar.test.tsx와 동일한 패턴) — 디렉토리 카드 그리드는 최소 2개 스페이스가
  * 있어야 필터·별표 반영을 의미 있게 검증할 수 있다. */
 function seedTwoSpaces() {
   const data = createSeedData();
@@ -20,16 +20,15 @@ beforeEach(() => {
 });
 
 describe("W7-T7 스페이스 디렉토리 페이지(/spaces)", () => {
-  it("제목과 모든 스페이스 테이블(행 수)을 렌더한다", async () => {
+  it("제목과 '모든 스페이스' 카드(스페이스별 이름 버튼)를 렌더한다", async () => {
     localStorage.setItem("wiki.v1", JSON.stringify(seedTwoSpaces()));
     renderApp("/spaces");
 
     expect(await screen.findByRole("heading", { name: "스페이스", level: 1 })).toBeInTheDocument();
-    const table = screen.getByRole("table", { name: "모든 스페이스" });
-    // 헤더 행 1 + 데이터 행 2(sp1, sp2)
-    expect(within(table).getAllByRole("row")).toHaveLength(3);
-    expect(within(table).getByRole("button", { name: "개발 위키 (DEV)" })).toBeInTheDocument();
-    expect(within(table).getByRole("button", { name: "운영 위키 (OPS)" })).toBeInTheDocument();
+    const section = screen.getByRole("region", { name: "모든 스페이스" });
+    // 카드의 이름 버튼은 aria-label로 "이름 (키)"를 노출한다
+    expect(within(section).getByRole("button", { name: "개발 위키 (DEV)" })).toBeInTheDocument();
+    expect(within(section).getByRole("button", { name: "운영 위키 (OPS)" })).toBeInTheDocument();
   });
 
   it("별표된 스페이스가 없으면 '자주 찾는 스페이스' 섹션이 렌더되지 않는다", async () => {
@@ -60,18 +59,18 @@ describe("W7-T7 스페이스 디렉토리 페이지(/spaces)", () => {
     const filterInput = screen.getByLabelText("제목으로 필터링");
 
     await user.type(filterInput, "ops");
-    let table = screen.getByRole("table", { name: "모든 스페이스" });
-    expect(within(table).getAllByRole("row")).toHaveLength(2); // 헤더 + sp2
-    expect(within(table).getByRole("button", { name: "운영 위키 (OPS)" })).toBeInTheDocument();
-    expect(within(table).queryByRole("button", { name: "개발 위키 (DEV)" })).not.toBeInTheDocument();
+    const section = screen.getByRole("region", { name: "모든 스페이스" });
+    expect(within(section).getByRole("button", { name: "운영 위키 (OPS)" })).toBeInTheDocument();
+    expect(
+      within(section).queryByRole("button", { name: "개발 위키 (DEV)" }),
+    ).not.toBeInTheDocument();
 
     await user.clear(filterInput);
     await user.type(filterInput, "존재하지않음");
-    expect(screen.queryByRole("table", { name: "모든 스페이스" })).not.toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "검색 결과 없음" })).toBeInTheDocument();
   });
 
-  it("테이블 행의 별표 토글 버튼을 누르면 '자주 찾는 스페이스' 섹션이 즉시 갱신된다", async () => {
+  it("카드의 별표 토글 버튼을 누르면 '자주 찾는 스페이스' 섹션이 즉시 갱신된다", async () => {
     const user = userEvent.setup();
     localStorage.setItem("wiki.v1", JSON.stringify(seedTwoSpaces()));
     renderApp("/spaces");
@@ -79,25 +78,25 @@ describe("W7-T7 스페이스 디렉토리 페이지(/spaces)", () => {
     await screen.findByRole("heading", { name: "스페이스", level: 1 });
     expect(screen.queryByRole("heading", { name: "자주 찾는 스페이스" })).not.toBeInTheDocument();
 
-    const table = screen.getByRole("table", { name: "모든 스페이스" });
-    const star = within(table).getByRole("button", { name: "운영 위키 별표" });
+    const section = screen.getByRole("region", { name: "모든 스페이스" });
+    const star = within(section).getByRole("button", { name: "운영 위키 별표" });
     expect(star).toHaveAttribute("aria-pressed", "false");
 
     await user.click(star);
 
     expect(star).toHaveAttribute("aria-pressed", "true");
-    const section = screen.getByRole("region", { name: "자주 찾는 스페이스" });
-    expect(within(section).getByText("운영 위키")).toBeInTheDocument();
+    const starredSection = screen.getByRole("region", { name: "자주 찾는 스페이스" });
+    expect(within(starredSection).getByText("운영 위키")).toBeInTheDocument();
   });
 
-  it("테이블 행의 이름을 클릭하면 해당 스페이스로 이동한다", async () => {
+  it("카드의 이름을 클릭하면 해당 스페이스로 이동한다", async () => {
     const user = userEvent.setup();
     localStorage.setItem("wiki.v1", JSON.stringify(seedTwoSpaces()));
     renderApp("/spaces");
 
     await screen.findByRole("heading", { name: "스페이스", level: 1 });
-    const table = screen.getByRole("table", { name: "모든 스페이스" });
-    await user.click(within(table).getByRole("button", { name: "운영 위키 (OPS)" }));
+    const section = screen.getByRole("region", { name: "모든 스페이스" });
+    await user.click(within(section).getByRole("button", { name: "운영 위키 (OPS)" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp2");
