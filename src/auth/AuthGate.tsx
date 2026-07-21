@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { Spinner } from "@chanho/react";
 import type { AppUser, AuthClient } from "./types";
 import { rememberReturnTo } from "./returnTo";
-import { sharedAuthClient } from "../features/wiki/store/apiClient";
+import { sharedAuthClient, USE_BACKEND } from "../features/wiki/store/apiClient";
 
 interface AuthContextValue {
   user: AppUser | null;
@@ -39,7 +39,7 @@ export function AuthGate({
   children,
   client = sharedAuthClient,
   redirect = defaultRedirect,
-  enabled = import.meta.env.PROD || Boolean(import.meta.env.VITE_API_BASE),
+  enabled = import.meta.env.PROD || USE_BACKEND,
 }: AuthGateProps) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<"checking" | "authed">(enabled ? "checking" : "authed");
