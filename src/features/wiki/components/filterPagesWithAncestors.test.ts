@@ -6,7 +6,7 @@ const T = "2026-07-01T00:00:00.000Z";
 
 function makePage(id: string, title: string, parentId: string | null, position = 1): Page {
   return {
-    id, spaceId: "sp1", parentId, title, body: "", position,
+    id, spaceId: "sp1", parentId, title, body: "", version: 1, position,
     createdBy: "u1", updatedBy: "u1", createdAt: T, updatedAt: T,
   };
 }

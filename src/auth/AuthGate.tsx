@@ -1,11 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Spinner } from "@chanho/react";
 import type { AppUser, AuthClient } from "./types";
-import { createAuthClient } from "./client";
 import { rememberReturnTo } from "./returnTo";
-
-// 프로덕션(nginx same-origin) 기본 클라이언트. dev/test 에서는 게이트가 꺼져 있어 안 쓰인다.
-const defaultClient = createAuthClient({ baseUrl: (import.meta.env.VITE_API_BASE as string) ?? "" });
+import { sharedAuthClient } from "../features/wiki/store/apiClient";
 
 interface AuthContextValue {
   user: AppUser | null;
@@ -40,9 +37,9 @@ const defaultRedirect = (url: string) => window.location.assign(url);
  */
 export function AuthGate({
   children,
-  client = defaultClient,
+  client = sharedAuthClient,
   redirect = defaultRedirect,
-  enabled = import.meta.env.PROD,
+  enabled = import.meta.env.PROD || Boolean(import.meta.env.VITE_API_BASE),
 }: AuthGateProps) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<"checking" | "authed">(enabled ? "checking" : "authed");

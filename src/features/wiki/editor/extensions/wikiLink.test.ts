@@ -56,7 +56,7 @@ describe("wikiLink 노드", () => {
       element: el,
       extensions: buildBaseExtensions({
         getPages: () => [
-          { id: "p1", spaceId: "s1", parentId: null, title: " 운영 런북 ", body: "", position: 0, createdBy: "u", updatedBy: "u", createdAt: "", updatedAt: "" },
+          { id: "p1", spaceId: "s1", parentId: null, title: " 운영 런북 ", body: "", version: 1, position: 0, createdBy: "u", updatedBy: "u", createdAt: "", updatedAt: "" },
         ],
       }),
       content: "<p></p>",

@@ -11,6 +11,7 @@ describe("ChildPages", () => {
     parentId: null,
     title: "테스트 페이지",
     body: "# 테스트",
+    version: 1,
     position: 1,
     createdBy: "u1",
     updatedBy: "u1",
