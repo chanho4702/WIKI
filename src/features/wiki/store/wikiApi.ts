@@ -6,7 +6,7 @@ export {
 
 import { sharedApiFetch } from "./apiClient";
 import { mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError } from "./mapping";
-import type { Space, Page, PageVersion, User } from "./types";
+import type { Space, Page, PageVersion, User, Attachment } from "./types";
 
 /** 백엔드 응답(JSON) 파싱 + 4xx/5xx를 한국어 에러로 변환. 이후 태스크(pages/versions/attachments)도 재사용. */
 async function json<T>(res: Response): Promise<T> {
@@ -106,4 +106,27 @@ export async function restoreVersion(pageId: string, versionId: string): Promise
   const version = Number(versionId.split(":")[1]);
   const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/revisions/${version}/restore`, { method: "POST" });
   return mapPage(await json(res));
+}
+
+interface AttDto { id: number; filename: string; contentType: string; sizeBytes: number }
+function mapAtt(d: AttDto, pageId: string): Attachment {
+  return { id: String(d.id), pageId, filename: d.filename, contentType: d.contentType, sizeBytes: d.sizeBytes };
+}
+
+export async function listAttachments(pageId: string): Promise<Attachment[]> {
+  const dtos = await json<AttDto[]>(await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/attachments`));
+  return dtos.map((d) => mapAtt(d, pageId));
+}
+export async function uploadAttachment(pageId: string, file: File): Promise<Attachment> {
+  const form = new FormData();
+  form.append("file", file);
+  // Content-Type 헤더를 직접 지정하지 않는다 — 브라우저가 multipart boundary를 채워야 한다.
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/attachments`, { method: "POST", body: form });
+  return mapAtt(await json(res), pageId);
+}
+export function attachmentUrl(id: string): string {
+  return `${import.meta.env.VITE_API_BASE ?? ""}/api/wiki/attachments/${toBackendId(id)}`;
+}
+export async function deleteAttachment(id: string): Promise<void> {
+  await json(await sharedApiFetch(`/api/wiki/attachments/${toBackendId(id)}`, { method: "DELETE" }));
 }

@@ -1,5 +1,5 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
-import type { Comment, Page, PageVersion, Space, User, WikiData } from "./types";
+import type { Attachment, Comment, Page, PageVersion, Space, User, WikiData } from "./types";
 import { CURRENT_USER_ID } from "../../../mock/users";
 import { createSeedData } from "../../../mock/seed";
 
@@ -329,6 +329,25 @@ export async function updateComment(id: string, body: string): Promise<Comment> 
   comment.updatedAt = new Date().toISOString();
   persist();
   return clone(comment);
+}
+
+// ── attachments (목업 미지원) ────────────────────────────────
+// 백엔드 신규 capability — 목업 모드(localStorage)는 파일 저장을 지원하지 않는다.
+
+export async function listAttachments(_pageId: string): Promise<Attachment[]> {
+  return [];
+}
+
+export async function uploadAttachment(_pageId: string, _file: File): Promise<Attachment> {
+  throw new Error("목업 모드에서는 첨부를 지원하지 않습니다");
+}
+
+export function attachmentUrl(_id: string): string {
+  return "";
+}
+
+export async function deleteAttachment(_id: string): Promise<void> {
+  // no-op
 }
 
 export async function deleteComment(id: string): Promise<void> {

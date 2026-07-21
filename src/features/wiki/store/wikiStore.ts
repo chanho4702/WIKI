@@ -23,6 +23,10 @@ export const listComments = impl.listComments;
 export const addComment = impl.addComment;
 export const updateComment = impl.updateComment;
 export const deleteComment = impl.deleteComment;
+export const listAttachments = impl.listAttachments;
+export const uploadAttachment = impl.uploadAttachment;
+export const attachmentUrl = impl.attachmentUrl;
+export const deleteAttachment = impl.deleteAttachment;
 
 // 테스트 전용 — 항상 목업 캐시를 초기화(백엔드 모드에선 테스트를 돌리지 않음).
 export const __resetForTest = mock.__resetForTest;

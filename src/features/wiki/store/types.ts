@@ -45,6 +45,14 @@ export interface Comment {
   updatedAt: string | null; // 수정된 적 없으면 null — "(수정됨)" 표시 근거
 }
 
+export interface Attachment {
+  id: string;
+  pageId: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
 /** localStorage `wiki.v1`에 저장되는 루트 구조 */
 export interface WikiData {
   users: User[];
