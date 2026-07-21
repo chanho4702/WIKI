@@ -19,8 +19,19 @@ describe("wikiApi.listSpaces", () => {
 
 describe("wikiApi.createSpace", () => {
   it("POST 후 매핑, 4xx는 body.error를 한국어로 throw", async () => {
-    mockApiFetch(409, { error: "이미 존재하는 스페이스 키입니다" });
+    const spy = mockApiFetch(409, { error: "이미 존재하는 스페이스 키입니다" });
     const { createSpace } = await import("./wikiApi");
     await expect(createSpace({ key: "DEV", name: "개발" })).rejects.toThrow("이미 존재하는 스페이스 키입니다");
+    expect(spy).toHaveBeenCalledWith("/api/wiki/spaces", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("POST 성공 시 응답을 Space로 매핑하고 key를 소문자로 보낸다", async () => {
+    const spy = mockApiFetch(201, { id: 12, key: "ops", name: "운영", description: "" });
+    const { createSpace } = await import("./wikiApi");
+    const space = await createSpace({ key: "OPS", name: "운영" });
+    expect(space).toMatchObject({ id: "12", key: "ops", name: "운영" });
+    const init = spy.mock.calls[0][1];
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(init?.body as string)).toMatchObject({ key: "ops", name: "운영" });
   });
 });
