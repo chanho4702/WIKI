@@ -7,6 +7,7 @@ import { WikiLayout } from "../features/wiki/components/WikiLayout";
 import { EmptySpaces } from "../features/wiki/components/EmptySpaces";
 import { SpaceIndexPage } from "../features/wiki/pages/SpaceIndexPage";
 import { SpaceDirectoryPage } from "../features/wiki/pages/SpaceDirectoryPage";
+import { HomePage } from "../features/wiki/pages/HomePage";
 import { PageViewPage } from "../features/wiki/pages/PageViewPage";
 import { PageEditPage } from "../features/wiki/pages/PageEditPage";
 
@@ -54,6 +55,9 @@ export function App() {
     <Routes>
       {/* W7 T7: 스페이스 디렉토리 — WikiLayout(스페이스 종속 사이드바) 밖의 독립 라우트라
        * "/spaces/:spaceId"보다 먼저, catch-all "*"보다 먼저 와야 한다. */}
+      {/* 홈 대시보드 — 스페이스 종속 사이드바 밖의 독립 라우트. (기본 랜딩을 /home으로 전환하는 건
+       * renderApp 기본경로 의존 테스트 다수를 함께 갱신해야 해 별도 슬라이스 — 지금은 라우트만 추가) */}
+      <Route path="/home" element={<HomePage />} />
       <Route path="/spaces" element={<SpaceDirectoryPage spaces={spaces} />} />
       <Route
         path="/spaces/:spaceId"

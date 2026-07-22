@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { Avatar, Button, Switch, TopBar } from "@chanho/react";
 import type { User } from "../store/types";
 import { getCurrentUser } from "../store/wikiStore";
@@ -54,7 +55,9 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
               ⧉
             </Button>
           ) : null}
-          <span className="wiki-brand">WIKI</span>
+          <Link to="/home" className="wiki-brand">
+            WIKI
+          </Link>
         </>
       }
       actions={

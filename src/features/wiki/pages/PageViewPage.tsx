@@ -13,6 +13,7 @@ import { ChildPages } from "../components/ChildPages";
 import { CommentSection } from "../components/CommentSection";
 import { usePageWidth } from "../lib/pageWidth";
 import { displayUserName } from "../lib/userName";
+import { recordVisit } from "../lib/recentVisits";
 
 /** 수정일 표기: 2026-07-10T10:00:00.000Z → "2026년 7월 10일". 빈 값/무효 날짜는 ""(백엔드 모드에서
  * 시각이 없을 때 "Invalid Date" 노출 방지 — 설계 §9). */
@@ -61,7 +62,10 @@ export function PageViewPage() {
   useEffect(() => {
     if (!pageId) return;
     setPage(undefined);
-    void getPage(pageId).then(setPage);
+    void getPage(pageId).then((p) => {
+      setPage(p);
+      if (p) recordVisit(p.id); // "이어서 작업"용 방문 로그(클라이언트)
+    });
   }, [pageId]);
 
   if (page === undefined || pages === null) {

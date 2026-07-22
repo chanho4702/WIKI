@@ -98,3 +98,11 @@
 - `lib/excerpt.test.ts`, `lib/relativeTime.test.ts` — 순수 함수 단위.
 - `App.w8-home.test.tsx` — 홈 라우트 렌더(이어서 작업 카드·피드), 탭 전환(팔로우↔인기), 카드/피드 클릭 네비게이션, 배너 dismiss 지속, 루트→/home redirect. `renderApp` 하네스 사용.
 - 콜로케이션 유닛 테스트는 대상 옆.
+
+## 10. 백엔드 연결 후 데이터 재조정 (2026-07-22)
+
+목업 전제로 쓴 §3을 실제 wiki-backend에 맞춰 조정:
+- **이어서 작업(최근 방문):** wikiStore가 아닌 **클라이언트 방문 로그**(`lib/recentVisits.ts`, localStorage — 별표·pageWidth와 동일 UI-pref 계열). PageViewPage 조회 시 `recordVisit(pageId)`. HomePage가 id들로 `getPage`를 병렬 하이드레이트. 두 모드 공통.
+- **최신 업데이트 피드:** 백엔드 PageResponse엔 시각/작성자가 없다. 대신 **`listVersions(pageId)`의 최신 리비전 `createdAt`+`editedBy`**로 수정시각·작성자를 얻는다(발췌는 `getPage`의 content). 페이지당 콜이 늘어 **N+1** — MVP 수용, **후속: 백엔드에 `GET /api/wiki/recent-updates`(시각·작성자·발췌 포함) 추가로 대체.** 작성자 이름은 `displayUserName` 폴백.
+- **팔로우 = 별표 스페이스**, **인기 = 버전 수(`listVersions(pageId).length`)** 휴리스틱(댓글 수는 백엔드에 없음).
+- 규모 상한: 스페이스·페이지가 많으면 N+1이 커지므로 **상위 N개만**(예: 방문/별표 스페이스 우선) 조회하고 나머지는 "더 보기"로 — 무음 절단 금지, 갯수 표기.

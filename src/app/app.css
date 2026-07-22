@@ -1619,3 +1619,77 @@ body {
 .space-directory-star[aria-pressed="true"] {
   color: var(--chanho-color-text-warning, #b38600);
 }
+
+/* ── 홈 대시보드 (/home) ─────────────────────────────────── */
+.home {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+.home-content {
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--chanho-space-400) var(--chanho-space-400) var(--chanho-space-600);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-500);
+}
+.home-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+.home-section-title {
+  margin: 0;
+  font-size: var(--chanho-font-size-200);
+  font-weight: var(--chanho-font-weight-semibold);
+  color: var(--chanho-color-text-default);
+}
+.home-resume-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--chanho-space-200);
+}
+.home-resume-card {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--chanho-space-100);
+  text-align: left;
+  padding: var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-surface);
+  color: var(--chanho-color-text-default);
+  cursor: pointer;
+  transition: border-color var(--chanho-transition-base), box-shadow var(--chanho-transition-base);
+}
+.home-resume-card:hover {
+  border-color: var(--chanho-color-border-input);
+  box-shadow: var(--chanho-shadow-100);
+}
+.home-resume-card:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+.home-resume-icon {
+  color: var(--chanho-color-text-subtle);
+}
+.home-resume-title {
+  font-weight: var(--chanho-font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.home-resume-meta {
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
