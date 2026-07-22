@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router";
-import { Spinner } from "@chanho/react";
+import { Button, Spinner } from "@chanho/react";
 import type { Space } from "../features/wiki/store/types";
 import { listSpaces } from "../features/wiki/store/wikiStore";
 import { WikiLayout } from "../features/wiki/components/WikiLayout";
@@ -12,14 +12,31 @@ import { PageEditPage } from "../features/wiki/pages/PageEditPage";
 
 export function App() {
   const [spaces, setSpaces] = useState<Space[] | null>(null);
+  // 스페이스 로드 실패(예: 백엔드 모드에서 권한 서비스 불가 503) — 빈 목록으로 조용히 삼키지 않고
+  // 에러 화면 + 재시도로 노출한다(설계 §9 관측성).
+  const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    setSpaces(await listSpaces());
+    setError(null);
+    try {
+      setSpaces(await listSpaces());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }, []);
 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  if (error !== null) {
+    return (
+      <div className="app-loading">
+        <p>스페이스를 불러올 수 없습니다: {error}</p>
+        <Button onClick={() => void reload()}>다시 시도</Button>
+      </div>
+    );
+  }
 
   if (spaces === null) {
     return (

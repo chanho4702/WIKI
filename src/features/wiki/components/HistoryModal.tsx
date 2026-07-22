@@ -3,6 +3,7 @@ import { Button, Modal, Spinner, Tabs, useToast } from "@chanho/react";
 import { History } from "lucide-react";
 import type { Page, PageVersion, User } from "../store/types";
 import { listVersions, restoreVersion } from "../store/wikiStore";
+import { displayUserName } from "../lib/userName";
 import { DiffView } from "./DiffView";
 import { MarkdownView } from "./MarkdownView";
 
@@ -15,9 +16,11 @@ export interface HistoryModalProps {
   onRestored: (page: Page) => void | Promise<void>;
 }
 
-/** 저장 시각 표기: ko-KR 날짜+시간 (예: "2026. 7. 10. 오후 7:00:00") */
+/** 저장 시각 표기: ko-KR 날짜+시간 (예: "2026. 7. 10. 오후 7:00:00"). 빈 값/무효는 "". */
 function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("ko-KR");
+  if (!iso) return "";
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("ko-KR");
 }
 
 /**
@@ -43,14 +46,18 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
   };
 
   const selected = versions?.find((v) => v.id === selectedId) ?? null;
-  const userName = (id: string) => users.find((u) => u.id === id)?.name ?? "알 수 없음";
+  // 이름을 못 찾고 id가 있으면(백엔드 모드 — savedBy는 숫자 id) `사용자 #{id}` 폴백.
+  const userName = (id: string) =>
+    users.find((u) => u.id === id)?.name ?? (id ? displayUserName(id) : "알 수 없음");
 
   const handleRestore = async () => {
     if (!selected) return;
     try {
       const restored = await restoreVersion(page.id, selected.id);
-      // no-op 판정: 반환 Page의 updatedAt이 복원 전과 같으면 스토어가 버전을 쌓지 않았다
-      if (restored.updatedAt === page.updatedAt) {
+      // no-op 판정(목업): 반환 Page의 updatedAt이 복원 전과 같으면 버전을 안 쌓았다.
+      // 백엔드 모드는 updatedAt이 빈 문자열이라(설계 §9) 이 판정을 건너뛰어야 오작동 안 함 —
+      // 백엔드 restore는 항상 새 버전을 만드므로 "복원했습니다"가 맞다.
+      if (page.updatedAt !== "" && restored.updatedAt === page.updatedAt) {
         toast({ title: "현재 내용과 동일합니다 — 변경 없음", appearance: "info" });
       } else {
         toast({ title: `v${selected.version} 버전으로 복원했습니다`, appearance: "success" });
