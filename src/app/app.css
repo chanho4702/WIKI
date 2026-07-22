@@ -1603,9 +1603,30 @@ body {
   max-width: 100%;
 }
 
-/* 모든 스페이스 — 필터 입력 */
+/* 모든 스페이스 — 필터 입력 + 테이블 셀 */
 .space-directory-all input {
   max-width: 320px;
+}
+
+/* 테이블 "Space name" 셀 — 아바타 + 이름(클릭 시 이동) */
+.space-directory-row-name {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--chanho-color-text-brand);
+  text-align: left;
+}
+.space-directory-row-name:hover {
+  text-decoration: underline;
+}
+
+/* Labels/Owner 등 데이터 없는 셀 */
+.space-directory-muted {
+  color: var(--chanho-color-text-subtle);
 }
 
 /* 별표 토글 — .space-flyout-star(W6 T3)과 동일한 시각 패턴 재사용 */
