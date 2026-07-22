@@ -82,6 +82,62 @@ body {
   min-height: 0;
 }
 
+/* 글로벌 셸 사이드바 1단 — 글로벌 네비(추천/최근/별표 표시/스페이스/앱). 모든 화면 공통이며
+ * 컨텍스트 섹션 위에 고정된다(스크롤은 아래 .wiki-sidebar-body가 전담). 설계 §1.2. */
+.global-nav {
+  flex-shrink: 0;
+  padding: var(--chanho-space-150) var(--chanho-space-200);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
+
+.global-nav-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-25, 2px);
+}
+
+/* 네비 항목 — NavLink(추천/스페이스)와 자리표시 button(최근/별표/앱) 공용 */
+.global-nav-item {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-150);
+  text-align: left;
+  border: none;
+  background: none;
+  padding: var(--chanho-space-100) var(--chanho-space-100);
+  border-radius: var(--chanho-radius-small, 4px);
+  cursor: pointer;
+  color: var(--chanho-color-text-default);
+  font: inherit;
+  text-decoration: none;
+}
+
+.global-nav-item:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+/* 후속(플라이아웃 미구현) 자리표시 항목 — 비활성 표시 */
+.global-nav-item:disabled {
+  color: var(--chanho-color-text-subtle);
+  cursor: default;
+  background: none;
+}
+
+.global-nav-item--active {
+  background: var(--chanho-color-background-selected, #e9f2ff);
+  color: var(--chanho-color-text-selected, #0c66e4);
+  font-weight: var(--chanho-font-weight-semibold, 600);
+}
+
+.global-nav-icon {
+  flex-shrink: 0;
+}
+
 /* 사이드바 헤더의 스페이스 아바타 + 스위처를 한 줄로 정렬 */
 .space-switcher {
   display: flex;
@@ -1642,11 +1698,7 @@ body {
 }
 
 /* ── 홈 대시보드 (/home) ─────────────────────────────────── */
-.home {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
+/* 글로벌 셸(AppShell)의 .wiki-content 안에 렌더되므로 별도 화면 래퍼가 없다(설계 §2). */
 .home-content {
   max-width: 1040px;
   width: 100%;

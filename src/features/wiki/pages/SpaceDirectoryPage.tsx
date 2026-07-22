@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import { Avatar, EmptyState, Table, TextField } from "@chanho/react";
 import type { TableColumn } from "@chanho/react";
 import type { Space } from "../store/types";
-import { WikiTopBar } from "../components/WikiTopBar";
 import { useStarredSpaces } from "../lib/starredSpaces";
 
 export interface SpaceDirectoryPageProps {
@@ -74,10 +73,8 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
   ];
 
   return (
-    <div className="space-directory">
-      <WikiTopBar />
-      <main className="space-directory-content">
-        <h1>스페이스</h1>
+    <main className="space-directory-content">
+      <h1>스페이스</h1>
 
         {starredSpaces.length > 0 && (
           <section className="space-directory-starred" aria-label="자주 찾는 스페이스">
@@ -128,8 +125,7 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
           ) : (
             <Table columns={columns} rows={filtered} aria-label="모든 스페이스" />
           )}
-        </section>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }

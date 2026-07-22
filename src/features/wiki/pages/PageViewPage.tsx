@@ -5,7 +5,7 @@ import type { BreadcrumbItem } from "@chanho/react";
 import { Maximize2, Minimize2, MoreHorizontal, Trash2 } from "lucide-react";
 import type { Page, User } from "../store/types";
 import { deletePage, getPage, listUsers } from "../store/wikiStore";
-import type { WikiOutletContext } from "../components/WikiLayout";
+import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
 import { TableOfContents } from "../components/TableOfContents";
 import { HistoryModal } from "../components/HistoryModal";

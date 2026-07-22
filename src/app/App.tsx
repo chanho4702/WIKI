@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from "react-router";
 import { Button, Spinner } from "@chanho/react";
 import type { Space } from "../features/wiki/store/types";
 import { listSpaces } from "../features/wiki/store/wikiStore";
-import { WikiLayout } from "../features/wiki/components/WikiLayout";
+import { AppShell } from "../features/wiki/components/AppShell";
 import { EmptySpaces } from "../features/wiki/components/EmptySpaces";
 import { SpaceIndexPage } from "../features/wiki/pages/SpaceIndexPage";
 import { SpaceDirectoryPage } from "../features/wiki/pages/SpaceDirectoryPage";
@@ -53,23 +53,22 @@ export function App() {
 
   return (
     <Routes>
-      {/* W7 T7: 스페이스 디렉토리 — WikiLayout(스페이스 종속 사이드바) 밖의 독립 라우트라
-       * "/spaces/:spaceId"보다 먼저, catch-all "*"보다 먼저 와야 한다. */}
-      {/* 홈 대시보드 — 스페이스 종속 사이드바 밖의 독립 라우트. (기본 랜딩을 /home으로 전환하는 건
-       * renderApp 기본경로 의존 테스트 다수를 함께 갱신해야 해 별도 슬라이스 — 지금은 라우트만 추가) */}
-      <Route path="/home" element={<HomePage />} />
-      <Route path="/spaces" element={<SpaceDirectoryPage spaces={spaces} />} />
-      <Route
-        path="/spaces/:spaceId"
-        element={<WikiLayout spaces={spaces} onSpacesChanged={reload} />}
-      >
-        <Route index element={<SpaceIndexPage />} />
-        <Route path="pages/new" element={<PageEditPage key="new" />} />
-        <Route path="pages/:pageId" element={<PageViewPage />} />
-        <Route path="pages/:pageId/edit" element={<PageEditPage key="edit" />} />
+      {/* 글로벌 셸 — 모든 라우트를 감싼다(헤더 토글 상시 + GlobalSidebar). 스페이스 라우트에서만
+       * 페이지 트리를 로드해 WikiOutletContext를 하위 페이지 화면에 공급한다(설계 §2). */}
+      <Route element={<AppShell spaces={spaces} onSpacesChanged={reload} />}>
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/spaces" element={<SpaceDirectoryPage spaces={spaces} />} />
+        {/* 스페이스 컨텍스트 — element 없이 경로만 묶는다. 하위 페이지 화면은 AppShell의 Outlet
+         * 컨텍스트(pages/space/reloadPages)를 그대로 소비한다. */}
+        <Route path="/spaces/:spaceId">
+          <Route index element={<SpaceIndexPage />} />
+          <Route path="pages/new" element={<PageEditPage key="new" />} />
+          <Route path="pages/:pageId" element={<PageViewPage />} />
+          <Route path="pages/:pageId/edit" element={<PageEditPage key="edit" />} />
+        </Route>
+        {/* "/" 포함 그 외 전부 → 첫 스페이스 (index가 첫 루트 페이지로 이어서 redirect) */}
+        <Route path="*" element={<Navigate to={`/spaces/${spaces[0].id}`} replace />} />
       </Route>
-      {/* "/" 포함 그 외 전부 → 첫 스페이스 (index가 첫 루트 페이지로 이어서 redirect) */}
-      <Route path="*" element={<Navigate to={`/spaces/${spaces[0].id}`} replace />} />
     </Routes>
   );
 }

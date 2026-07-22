@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { Button, Spinner, useToast } from "@chanho/react";
 import { createPage, getPage, updatePage } from "../store/wikiStore";
-import type { WikiOutletContext } from "../components/WikiLayout";
+import type { WikiOutletContext } from "../components/wikiContext";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
 

@@ -1,6 +1,6 @@
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
 import { EmptyState, Spinner } from "@chanho/react";
-import type { WikiOutletContext } from "../components/WikiLayout";
+import type { WikiOutletContext } from "../components/wikiContext";
 
 /** /spaces/:spaceId index — 첫 루트 페이지로 redirect, 페이지 0개면 첫 페이지 만들기 EmptyState */
 export function SpaceIndexPage() {
