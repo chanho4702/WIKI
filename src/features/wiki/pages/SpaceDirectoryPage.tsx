@@ -12,11 +12,10 @@ export interface SpaceDirectoryPageProps {
 /** 생성일 표기: PageViewPage.tsx의 formatDate와 동일 패턴 (2026-07-10T... → "2026년 7월 10일").
  * 두 곳뿐이라 lib 추출 없이 최소 변경으로 중복을 남겨 둔다(스펙 결정). */
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  if (!iso) return "-"; // 백엔드 SpaceResponse엔 createdAt이 없다 → "-"(설계 §9, "Invalid Date" 방지)
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
 }
 
 /** 이름·키 부분 일치, 대소문자 무시 — SpaceFlyout.tsx의 matchesQuery와 동일 패턴. */

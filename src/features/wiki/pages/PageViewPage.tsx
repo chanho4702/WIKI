@@ -12,14 +12,15 @@ import { HistoryModal } from "../components/HistoryModal";
 import { ChildPages } from "../components/ChildPages";
 import { CommentSection } from "../components/CommentSection";
 import { usePageWidth } from "../lib/pageWidth";
+import { displayUserName } from "../lib/userName";
 
-/** 수정일 표기: 2026-07-10T10:00:00.000Z → "2026년 7월 10일" */
+/** 수정일 표기: 2026-07-10T10:00:00.000Z → "2026년 7월 10일". 빈 값/무효 날짜는 ""(백엔드 모드에서
+ * 시각이 없을 때 "Invalid Date" 노출 방지 — 설계 §9). */
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
 }
 
 /** parentId 체인을 따라 조상 페이지를 루트→직계 부모 순서로 반환. 순환 데이터 방어(방문 집합). */
@@ -182,15 +183,23 @@ export function PageViewPage() {
         loading={deleting}
         onConfirm={handleDelete}
       />
-      <div className="page-view-meta">
-        {editor ? (
-          <>
-            <Avatar name={editor.name} color="auto" size="small" />
-            <span>{editor.name}</span>
-          </>
-        ) : null}
-        <span>{formatDate(page.updatedAt)} 수정</span>
-      </div>
+      {(() => {
+        // 작성자: 이름을 못 찾고 id만 있으면(백엔드 모드) `사용자 #{id}` 폴백. id도 없으면 표기 없음.
+        const editorName = editor?.name ?? (page.updatedBy ? displayUserName(page.updatedBy) : null);
+        const updatedLabel = formatDate(page.updatedAt);
+        if (!editorName && !updatedLabel) return null; // 백엔드 모드처럼 둘 다 없으면 메타 숨김
+        return (
+          <div className="page-view-meta">
+            {editorName ? (
+              <>
+                <Avatar name={editorName} color="auto" size="small" />
+                <span>{editorName}</span>
+              </>
+            ) : null}
+            {updatedLabel ? <span>{updatedLabel} 수정</span> : null}
+          </div>
+        );
+      })()}
       <TableOfContents markdown={page.body} />
       <MarkdownView markdown={page.body} pages={pages} spaceId={space.id} />
       <ChildPages pages={pages} currentPageId={page.id} spaceId={space.id} />
