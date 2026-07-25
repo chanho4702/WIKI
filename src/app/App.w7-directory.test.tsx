@@ -46,8 +46,9 @@ describe("W7-T7 스페이스 디렉토리 페이지(/spaces)", () => {
 
     await screen.findByRole("heading", { name: "스페이스", level: 1 });
     const section = screen.getByRole("region", { name: "자주 찾는 스페이스" });
+    // 카드는 이름만 표시(캡처 충실 복제) — 키는 카드 버튼 접근 이름 "이름 (KEY)"으로 검증한다.
     expect(within(section).getByText("운영 위키")).toBeInTheDocument();
-    expect(within(section).getByText("OPS")).toBeInTheDocument();
+    expect(within(section).getByRole("button", { name: "운영 위키 (OPS)" })).toBeInTheDocument();
   });
 
   it("제목으로 필터링 — 이름·키 부분 일치(대소문자 무시), 결과 0개면 EmptyState", async () => {

@@ -83,30 +83,33 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
             <h2>자주 찾는 스페이스</h2>
             <ul className="space-directory-cards">
               {starredSpaces.map((space) => (
+                // 캡처(space 페이지.png): [정사각 아이콘 타일 좌상단 ↔ 별표 우상단] + [이름] 세로 배치
                 <li key={space.id} className="space-directory-card">
-                  <Avatar
-                    className="space-directory-card-avatar"
-                    name={space.name}
-                    color="auto"
-                    size="medium"
-                  />
+                  <div className="space-directory-card-top">
+                    <Avatar
+                      className="space-directory-card-icon"
+                      name={space.name}
+                      color="auto"
+                      size="large"
+                      aria-hidden="true"
+                    />
+                    <button
+                      type="button"
+                      className="space-directory-star"
+                      aria-pressed={true}
+                      aria-label={`${space.name} 별표`}
+                      onClick={() => toggle(space.id)}
+                    >
+                      <Star size={16} aria-hidden="true" fill="currentColor" />
+                    </button>
+                  </div>
                   <button
                     type="button"
                     className="space-directory-card-name"
                     aria-label={`${space.name} (${space.key})`}
                     onClick={() => navigate(`/spaces/${space.id}`)}
                   >
-                    <span className="space-directory-card-title">{space.name}</span>
-                    <span className="space-directory-card-sub">{space.key}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="space-directory-star"
-                    aria-pressed={true}
-                    aria-label={`${space.name} 별표`}
-                    onClick={() => toggle(space.id)}
-                  >
-                    <Star size={16} aria-hidden="true" fill="currentColor" />
+                    {space.name}
                   </button>
                 </li>
               ))}

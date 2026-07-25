@@ -1638,19 +1638,21 @@ body {
   font-size: var(--chanho-font-size-200, 16px);
 }
 
-/* 스페이스 카드 그리드 — 자주 찾는/모든 스페이스 공용. 반응형 auto-fill 그리드. */
+/* 스페이스 카드 그리드 — 반응형 auto-fill. 캡처는 고정 6열이나 본문 폭(max 960px)에선 안 맞아
+ * 밀도(180px)만 캡처에 맞추고 반응형은 유지한다(컨테이너가 좁아도 안 깨지도록). */
 .space-directory-cards {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--chanho-space-200, 12px);
 }
 
+/* 카드 = 세로 배치: 상단 행(아이콘 좌 ↔ 별표 우) + 이름. 캡처(space 페이지.png) 충실 복제. */
 .space-directory-card {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--chanho-space-150, 12px);
   box-sizing: border-box;
   padding: var(--chanho-space-200, 12px);
@@ -1665,41 +1667,34 @@ body {
   box-shadow: var(--chanho-shadow-100);
 }
 
-.space-directory-card-avatar {
+.space-directory-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+/* 스페이스 아이콘 타일 — 캡처는 정사각 라운드. Avatar(원형)의 radius만 오버라이드(틴트 색은 유지). */
+.space-directory-card-icon {
   flex-shrink: 0;
+  border-radius: var(--chanho-radius-medium, 6px);
 }
 
 .space-directory-card-name {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--chanho-space-50, 4px);
+  max-width: 100%;
   text-align: left;
   border: none;
   background: none;
   padding: 0;
   cursor: pointer;
   color: var(--chanho-color-text-default);
-}
-
-.space-directory-card-title {
   font-weight: var(--chanho-font-weight-semibold, 600);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 100%;
 }
 
-/* 키 Chip + 생성일 한 줄 */
-.space-directory-card-sub {
-  display: flex;
-  align-items: center;
-  gap: var(--chanho-space-100, 8px);
-  font-size: var(--chanho-font-size-75, 12px);
-  color: var(--chanho-color-text-subtle, #626f86);
-  max-width: 100%;
+.space-directory-card-name:hover {
+  color: var(--chanho-color-text-brand);
 }
 
 /* 모든 스페이스 — 필터 입력 + 테이블 셀 */
