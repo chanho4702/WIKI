@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Avatar, Button, Switch, TopBar } from "@chanho/react";
+import { PanelLeft } from "lucide-react";
 import type { User } from "../store/types";
 import { getCurrentUser } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
@@ -52,7 +53,7 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
               aria-expanded={!!sidebarExpanded}
               onClick={onSidebarToggle}
             >
-              ⧉
+              <PanelLeft size={16} aria-hidden="true" />
             </Button>
           ) : null}
           <Link to="/home" className="wiki-brand">

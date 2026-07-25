@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Avatar, EmptyState, Table, TextField } from "@chanho/react";
+import { Star } from "lucide-react";
 import type { TableColumn } from "@chanho/react";
 import type { Space } from "../store/types";
 import { useStarredSpaces } from "../lib/starredSpaces";
@@ -65,7 +66,8 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
             aria-label={`${space.name} 별표`}
             onClick={() => toggle(space.id)}
           >
-            {isStarred ? "★" : "☆"}
+            {/* 채움=별표됨 / 외곽=미별표 — 색만이 아니라 형태로 상태 구분(WCAG 1.4.1) */}
+            <Star size={16} aria-hidden="true" fill={isStarred ? "currentColor" : "none"} />
           </button>
         );
       },
@@ -104,7 +106,7 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
                     aria-label={`${space.name} 별표`}
                     onClick={() => toggle(space.id)}
                   >
-                    ★
+                    <Star size={16} aria-hidden="true" fill="currentColor" />
                   </button>
                 </li>
               ))}

@@ -105,10 +105,10 @@ describe("W7-T7 스페이스 디렉토리 페이지(/spaces)", () => {
 
   it("사이드바의 '모든 스페이스 보기' 링크를 클릭하면 /spaces 디렉토리 페이지에 도달한다", async () => {
     const user = userEvent.setup();
-    renderApp();
-    await screen.findByRole("navigation", { name: "페이지 트리" });
+    // '모든 스페이스 보기'는 홈·디렉토리 컨텍스트 사이드바에만 있다(스페이스 안에서는 노출 안 함).
+    renderApp("/home");
 
-    await user.click(screen.getByRole("link", { name: "모든 스페이스 보기" }));
+    await user.click(await screen.findByRole("link", { name: "모든 스페이스 보기" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces");

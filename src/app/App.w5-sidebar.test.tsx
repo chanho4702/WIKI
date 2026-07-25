@@ -166,23 +166,28 @@ describe("Task 19 사이드바 너비 조절(리사이저)", () => {
   });
 });
 
-describe("W7-T6 사이드바 별표 스페이스 섹션", () => {
+// 별표 스페이스 목록/디렉토리 링크는 홈·디렉토리 컨텍스트 사이드바에만 있다(스페이스 안 사이드바는
+// 순수 스페이스 스코프 — 디자인 재검토 §B "별표 오노출" 반영). 그래서 /spaces 컨텍스트에서 검증한다.
+// (기존 "현재 스페이스는 별표되어 있어도 섹션에 안 나타난다" 테스트는 삭제 — 스페이스 안에 별표 섹션
+// 자체가 없어졌고, 홈·디렉토리 컨텍스트엔 '현재 스페이스' 개념이 없어 제외 동작이 존재하지 않는다.)
+describe("W7-T6 사이드바 별표 스페이스 섹션 (홈·디렉토리 컨텍스트)", () => {
   it("별표된 스페이스가 없으면 섹션이 렌더되지 않고, '모든 스페이스 보기' 링크는 항상 보인다", async () => {
-    renderApp();
-    await screen.findByRole("navigation", { name: "페이지 트리" });
+    renderApp("/spaces");
+    await screen.findByRole("heading", { name: "스페이스", level: 1 });
 
     expect(screen.queryByText("별표 표시된 스페이스")).not.toBeInTheDocument();
     const link = screen.getByRole("link", { name: "모든 스페이스 보기" });
     expect(link).toHaveAttribute("href", "/spaces");
   });
 
-  it("별표된 다른 스페이스가 있으면 목록에 나타나고, 클릭하면 그 스페이스로 이동한다", async () => {
+  it("별표된 스페이스가 있으면 목록에 나타나고, 클릭하면 그 스페이스로 이동한다", async () => {
     seedTwoSpaces();
     localStorage.setItem("wiki.ui.starredSpaces", JSON.stringify(["sp2"]));
     const user = userEvent.setup();
-    renderApp();
-    await screen.findByRole("navigation", { name: "페이지 트리" });
+    renderApp("/spaces");
+    await screen.findByRole("heading", { name: "스페이스", level: 1 });
 
+    // 사이드바 별표 섹션으로 스코프 — 디렉토리 본문에도 같은 스페이스가 있어 이름이 중복되므로.
     const section = screen.getByRole("region", { name: "별표 표시된 스페이스" });
     const item = within(section).getByRole("button", { name: "운영 위키 (OPS)" });
 
@@ -191,15 +196,5 @@ describe("W7-T6 사이드바 별표 스페이스 섹션", () => {
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp2");
     });
-  });
-
-  it("현재 스페이스는 별표되어 있어도 별표 섹션에 나타나지 않는다", async () => {
-    seedTwoSpaces();
-    localStorage.setItem("wiki.ui.starredSpaces", JSON.stringify(["sp1"]));
-    renderApp();
-    await screen.findByRole("navigation", { name: "페이지 트리" });
-
-    // sp1(개발 위키)이 현재 스페이스 — 별표되어 있어도 섹션 자체가 뜨지 않는다(sp2는 별표 안 됨).
-    expect(screen.queryByText("별표 표시된 스페이스")).not.toBeInTheDocument();
   });
 });

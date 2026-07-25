@@ -7,7 +7,10 @@
    * 그대로 보존해 시각 회귀가 없다. 다크 값은 아래 [data-theme="dark"]에서 재정의한다
    * — theme.ts(applyTheme)가 document.documentElement.dataset.theme로 스위치하는 실제 셀렉터를
    * 그대로 따른다(DS 토큰의 다크 셀렉터와 동일). 각 값의 WCAG 대비 계산은 task-4-report.md 참고. */
-  --wiki-text-subtlest: #8993a4; /* placeholder, 이미지 로드 실패 보조 텍스트 */
+  /* WCAG 1.4.3: .image-view-broken 등 보조 "본문" 텍스트에 쓰이므로 흰 배경(#fff) 대비 ≥4.5:1
+   * 필요 — 기존 #8993a4(~3.1:1, 실패)를 #626f86(~5.08:1)로 상향. placeholder에도 함께 쓰이나
+   * placeholder는 관대 기준이라 문제 없음. */
+  --wiki-text-subtlest: #626f86;
   --wiki-chip-accent-blue-subtle-bg: #e9f2ff; /* wiki-chip, 툴바 버튼 is-active 배경 */
   --wiki-chip-accent-blue-text: #0c66e4;
   --wiki-chip-accent-red-subtle-bg: #ffedeb; /* wiki-chip-missing */
@@ -276,6 +279,9 @@ body {
 .wiki-sidebar-starred-item {
   width: 100%;
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100, 8px);
   text-align: left;
   border: none;
   background: none;
@@ -283,6 +289,11 @@ body {
   border-radius: var(--chanho-radius-small, 4px);
   cursor: pointer;
   color: var(--chanho-color-text-default);
+}
+
+/* 스페이스명은 아이콘 옆에서 남는 폭만큼만 쓰고 넘치면 … 처리 */
+.wiki-sidebar-starred-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -300,6 +311,38 @@ body {
 
 .wiki-sidebar-all-spaces-link:hover {
   text-decoration: underline;
+}
+
+/* 스페이스 컨텍스트 "콘텐츠" 섹션 — 별표 섹션과 동일한 세로 리듬 재사용 */
+.wiki-sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100, 8px);
+}
+
+/* 3단 푸터 — 컨텍스트 본문 아래 고정. 크로스앱 링크(Jira 등). */
+.wiki-sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-50, 4px);
+  padding: var(--chanho-space-150) var(--chanho-space-200);
+  border-top: 1px solid var(--chanho-color-border-default);
+}
+
+.wiki-sidebar-footer-link {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100, 8px);
+  padding: var(--chanho-space-100, 6px) var(--chanho-space-100, 8px);
+  border-radius: var(--chanho-radius-small, 4px);
+  color: var(--chanho-color-text-subtle);
+  text-decoration: none;
+  font-size: var(--chanho-font-size-100);
+}
+
+.wiki-sidebar-footer-link:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+  color: var(--chanho-color-text-default);
 }
 
 .app-loading,
@@ -1120,7 +1163,7 @@ body {
   background: var(--chanho-color-background-surface);
   border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-medium);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--chanho-shadow-overlay);
   min-width: 220px;
 }
 
@@ -1255,7 +1298,7 @@ body {
   padding: var(--chanho-space-50, 4px);
   background: var(--chanho-color-background-surface, #fff);
   border-radius: var(--chanho-radius-medium, 6px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--chanho-shadow-overlay);
 }
 .bubble-toolbar button {
   border: none;
@@ -1302,7 +1345,7 @@ body {
   background: var(--chanho-color-background-surface, #fff);
   border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-medium);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--chanho-shadow-overlay);
 }
 .insert-menu-filter {
   width: 100%;
@@ -1364,7 +1407,7 @@ body {
   background: var(--chanho-color-background-surface, #fff);
   border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-medium);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--chanho-shadow-overlay);
   display: flex;
   flex-direction: column;
   gap: var(--chanho-space-150, 8px);
@@ -1459,7 +1502,7 @@ body {
   background: var(--chanho-color-background-surface, #fff);
   border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-medium);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--chanho-shadow-overlay);
 }
 .emoji-picker-filter {
   width: 100%;
@@ -1555,9 +1598,9 @@ body {
 
 /* W5: 블록 드래그 핸들 (tiptap-extension-global-drag-handle)
  * SVG는 data URI라 CSS 변수를 참조할 수 없다 — 라이트/다크 각각 정적 fill로 둔다.
- * 라이트 fill(#8993a4)은 --wiki-text-subtlest 라이트 값과 동일. 다크 fill(#98a2b0)은
- * --chanho-color-text-subtle 다크 값과 동일(비-텍스트 아이콘이라 WCAG 1.4.11 기준 3:1이면
- * 충분하지만, 배경(#14181F) 대비 6.89:1로 여유 있게 확보). */
+ * 라이트 fill(#8993a4)·다크 fill(#98a2b0) 모두 비-텍스트 장식 아이콘이라 WCAG 1.4.11 기준
+ * 3:1이면 충분하다(본문 텍스트용 --wiki-text-subtlest 상향과 별개로 유지). 다크 fill은
+ * --chanho-color-text-subtle 다크 값과 동일 — 배경(#14181F) 대비 6.89:1. */
 .drag-handle {
   position: fixed;
   opacity: 1;

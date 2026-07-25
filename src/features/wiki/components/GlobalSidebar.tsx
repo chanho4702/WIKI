@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Avatar, EmptyState, Spinner, TextField } from "@chanho/react";
-import { Clock, Compass, Grid3x3, House, Star } from "lucide-react";
+import { Clock, Compass, ExternalLink, Grid3x3, House, Star } from "lucide-react";
 import type { Page, Space } from "../store/types";
 import { PageTree } from "./PageTree";
 import { SidebarResizer } from "./SidebarResizer";
@@ -26,9 +26,13 @@ export interface GlobalSidebarProps {
 /**
  * 컨플루언스 글로벌 셸의 좌측 사이드바 (설계 §1.2 — `2026-07-22-confluence-shell-design.md`).
  * 3단 구조: (1) 글로벌 네비(추천/최근/별표 표시/스페이스/앱, 모든 화면 공통) ·
- * (2) 컨텍스트 섹션(스페이스 안이면 스페이스 헤더+페이지 트리+검색, 홈·디렉토리면 별표 스페이스
- * 목록) · (3) 푸터. AppShell이 접힘 상태에 따라 이 컴포넌트를 마운트/언마운트한다(접히면 aside 자체가
- * 사라지는 기존 동작 유지 — App.w5-sidebar 테스트 계약).
+ * (2) 컨텍스트 섹션(스페이스 안이면 스페이스 헤더 + "콘텐츠"(페이지 트리+검색)만 — 순수 스페이스
+ * 스코프. 홈·디렉토리면 별표 스페이스 목록 + "모든 스페이스 보기") · (3) 푸터(Jira 크로스앱 링크).
+ * AppShell이 접힘 상태에 따라 이 컴포넌트를 마운트/언마운트한다(접히면 aside 자체가 사라지는 기존
+ * 동작 유지 — App.w5-sidebar 테스트 계약).
+ *
+ * 별표 스페이스 목록/디렉토리 링크는 컨플루언스처럼 홈·디렉토리 컨텍스트에만 둔다 — 스페이스
+ * 사이드바에 노출하면 스코프가 섞인다(디자인 재검토 §B Important "별표 오노출").
  *
  * 최근/별표/앱 항목의 플라이아웃과 스페이스 개요 페이지는 후속(설계 §3 4~5단계) — 이번 패스에서는
  * 추천·스페이스만 실제 라우트로 이동하고 최근·별표·앱은 자리표시 항목이다.
@@ -73,8 +77,8 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
   const inSpace = space !== null;
   const searching = query.trim().length > 0;
   const visiblePages = pages === null ? null : filterPagesWithAncestors(pages, query);
-  // 별표 섹션 — 현재 스페이스는 제외(스페이스 헤더 트리거로 이미 보임), 실존하는 것만 방어적 필터.
-  const starredSpaceList = spaces.filter((s) => s.id !== space?.id && starred.includes(s.id));
+  // 별표 스페이스 목록 — 홈·디렉토리 컨텍스트(space=null)에서만 렌더하므로 현재 스페이스 제외는 불필요.
+  const starredSpaceList = spaces.filter((s) => starred.includes(s.id));
 
   // 글로벌 네비 항목의 활성 클래스 — NavLink(추천/스페이스)만 실제 라우트라 활성 하이라이트가 붙는다.
   const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -158,45 +162,29 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
             </div>
           </div>
           <div className="wiki-sidebar-body">
-            {starredSpaceList.length > 0 && (
-              <section className="wiki-sidebar-starred" aria-label="별표 표시된 스페이스">
-                <h3 className="wiki-sidebar-section-title">별표 표시된 스페이스</h3>
-                <ul className="wiki-sidebar-starred-list">
-                  {starredSpaceList.map((s) => (
-                    <li key={s.id}>
-                      <button
-                        type="button"
-                        className="wiki-sidebar-starred-item"
-                        onClick={() => navigate(`/spaces/${s.id}`)}
-                      >
-                        {s.name} ({s.key})
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            <Link to="/spaces" className="wiki-sidebar-all-spaces-link">
-              모든 스페이스 보기
-            </Link>
-            <TextField
-              label="페이지 검색"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="제목으로 검색"
-            />
-            {visiblePages === null ? (
-              <Spinner size="small" label="페이지 트리 로딩 중" />
-            ) : searching && visiblePages.length === 0 ? (
-              <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
-            ) : (
-              <PageTree
-                spaceId={space.id}
-                pages={visiblePages}
-                forceExpand={searching}
-                onMoved={reloadPages}
+            {/* 스페이스 컨텍스트는 순수 스페이스 스코프 — "콘텐츠"(페이지 트리)만. 별표 목록/디렉토리
+             * 링크는 홈·디렉토리 컨텍스트로 이동(컨플루언스 스페이스 사이드바 충실 복제). */}
+            <section className="wiki-sidebar-content" aria-label="콘텐츠">
+              <h3 className="wiki-sidebar-section-title">콘텐츠</h3>
+              <TextField
+                label="페이지 검색"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="제목으로 검색"
               />
-            )}
+              {visiblePages === null ? (
+                <Spinner size="small" label="페이지 트리 로딩 중" />
+              ) : searching && visiblePages.length === 0 ? (
+                <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
+              ) : (
+                <PageTree
+                  spaceId={space.id}
+                  pages={visiblePages}
+                  forceExpand={searching}
+                  onMoved={reloadPages}
+                />
+              )}
+            </section>
           </div>
         </>
       ) : (
@@ -213,7 +201,11 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
                       className="wiki-sidebar-starred-item"
                       onClick={() => navigate(`/spaces/${s.id}`)}
                     >
-                      {s.name} ({s.key})
+                      {/* 스페이스 색 아이콘 선행 — 장식이라 접근 이름은 텍스트만(aria-hidden) */}
+                      <Avatar name={s.name} color="auto" size="small" aria-hidden="true" />
+                      <span className="wiki-sidebar-starred-name">
+                        {s.name} ({s.key})
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -225,6 +217,16 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
           </Link>
         </div>
       )}
+
+      {/* 3단 — 푸터. Jira는 게이트웨이 뒤 alm 앱(별도 SPA base /alm/)이라 a 태그로 풀페이지 이동.
+       * 팀·더 보기는 대상 앱이 아직 없어 후속 — 죽은 링크를 두지 않는다(디자인 재검토 접근성 지적). */}
+      <div className="wiki-sidebar-footer">
+        {/* 접근 이름에 앱 이동을 명시 — 아이콘(↗)은 장식이라 aria-hidden이라 텍스트만으론 크로스앱임이 안 드러남 */}
+        <a className="wiki-sidebar-footer-link" href="/alm/" aria-label="Jira 앱으로 이동">
+          <span>Jira</span>
+          <ExternalLink size={14} aria-hidden="true" />
+        </a>
+      </div>
 
       <SidebarResizer width={displayWidth} onDrag={setDisplayWidth} onCommit={handleResizeCommit} />
     </aside>

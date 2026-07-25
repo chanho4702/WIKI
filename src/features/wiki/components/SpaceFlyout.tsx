@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@chanho/react";
+import { Star } from "lucide-react";
 import type { Space } from "../store/types";
 import { useStarredSpaces } from "../lib/starredSpaces";
 
@@ -66,7 +67,8 @@ export function SpaceFlyout({ spaces, currentSpaceId, onNavigate, onCreateClick 
           aria-label="별표"
           onClick={() => toggle(space.id)}
         >
-          {isStarred ? "★" : "☆"}
+          {/* 채움=별표됨 / 외곽=미별표 — 색만이 아니라 형태로도 상태를 드러낸다(WCAG 1.4.1) */}
+          <Star size={16} aria-hidden="true" fill={isStarred ? "currentColor" : "none"} />
         </button>
       </li>
     );
