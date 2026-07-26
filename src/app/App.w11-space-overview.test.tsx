@@ -98,12 +98,15 @@ describe("W11 스페이스 개요 (/spaces/:spaceId)", () => {
       await screen.findByRole("heading", { name: "아직 페이지가 없습니다" }),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "첫 페이지 만들기" }));
+    // 초안을 실제로 만들고 그 편집 화면을 연다(예전엔 아직 없는 /pages/new로 이동만 했다)
     await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp2/pages/new");
+      expect(screen.getByTestId("location").textContent).toMatch(
+        /^\/spaces\/sp2\/pages\/[^/]+\/edit$/,
+      );
     });
   });
 
-  it("개요의 '새 페이지'는 이 스페이스의 루트 생성 화면으로 간다", async () => {
+  it("개요의 '새 페이지'는 루트 초안을 만들어 트리에 세운다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1");
     await screen.findByRole("heading", { level: 1, name: "개발 위키" });
@@ -111,7 +114,11 @@ describe("W11 스페이스 개요 (/spaces/:spaceId)", () => {
     // 헤더(셸)의 "만들기"와 구분되는, 개요 자체의 액션
     await user.click(screen.getByRole("button", { name: "새 페이지" }));
     await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/new");
+      expect(screen.getByTestId("location").textContent).toMatch(
+        /^\/spaces\/sp1\/pages\/[^/]+\/edit$/,
+      );
     });
+    const tree = screen.getByRole("navigation", { name: "페이지 트리" });
+    expect(within(tree).getByRole("link", { name: "제목 없음 초안" })).toBeInTheDocument();
   });
 });

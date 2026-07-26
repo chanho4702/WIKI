@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useOutletContext, useParams } from "react-router";
+import { Link, useOutletContext, useParams } from "react-router";
 import { Avatar, Button, EmptyState } from "@chanho/react";
 import { ChevronRight, FileText, Folder, FolderOpen, Plus } from "lucide-react";
 import type { Page, User } from "../store/types";
@@ -7,6 +7,7 @@ import { listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { displayUserName } from "../lib/userName";
 import { contentPathIn } from "../lib/contentPath";
+import { useCreateDraft } from "../lib/useCreateDraft";
 
 /** 최근 업데이트 목록에 보여줄 최대 개수 — 캡처(특정 스페이스 페이지.png)의 5건 + "더 보기" 없이 고정. */
 const RECENT_LIMIT = 8;
@@ -113,9 +114,9 @@ function formatDate(iso: string): string {
  */
 export function SpaceIndexPage() {
   const { spaceId } = useParams();
-  const navigate = useNavigate();
-  const { pages, space } = useOutletContext<WikiOutletContext>();
+  const { pages, space, reloadPages } = useOutletContext<WikiOutletContext>();
   const [users, setUsers] = useState<User[]>([]);
+  const { createDraft } = useCreateDraft(spaceId ?? null, reloadPages);
 
   useEffect(() => {
     void listUsers().then(setUsers);
@@ -147,7 +148,7 @@ export function SpaceIndexPage() {
           description="첫 페이지를 만들어 위키를 시작하세요."
           primaryAction={{
             label: "첫 페이지 만들기",
-            onClick: () => navigate(`/spaces/${spaceId}/pages/new`),
+            onClick: () => void createDraft(),
           }}
         />
       </div>
@@ -171,7 +172,7 @@ export function SpaceIndexPage() {
         <Button
           size="small"
           iconBefore={<Plus size={16} aria-hidden="true" />}
-          onClick={() => navigate(`/spaces/${spaceId}/pages/new`)}
+          onClick={() => void createDraft()}
         >
           새 페이지
         </Button>

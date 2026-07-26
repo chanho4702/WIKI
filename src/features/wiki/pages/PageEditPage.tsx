@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { Button, Spinner, useToast } from "@chanho/react";
-import { createPage, getPage, publishPage, updatePage } from "../store/wikiStore";
+import { createPage, deletePage, getPage, publishPage, updatePage } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
+import { DRAFT_TITLE } from "../lib/useCreateDraft";
 
 /**
  * 페이지 편집 화면 — 생성(/pages/new?parent=<id|없음>)과 수정(/pages/:pageId/edit) 공용.
@@ -125,10 +126,23 @@ export function PageEditPage() {
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     // Task 5: dirty 이탈 가드
     if (isDirty() && !window.confirm("저장하지 않은 변경이 있습니다. 나가시겠습니까?")) {
       return;
+    }
+    // 손대지 않은 초안은 닫을 때 지운다. 생성 버튼이 초안을 즉시 만들어 트리에 세우는 구조라,
+    // 정리하지 않으면 실수로 누른 만큼 "제목 없음"이 트리에 쌓인다. 제목이나 본문을 건드렸으면
+    // 사용자의 작업물이므로 남긴다(초안 상태로).
+    if (isEdit && pageId && isDraft && !isDirty() && title === DRAFT_TITLE && !initialBody) {
+      try {
+        await deletePage(pageId);
+        await reloadPages();
+        navigate(`/spaces/${spaceId}`);
+        return;
+      } catch {
+        // 삭제 실패는 조용히 넘긴다 — 취소 동작 자체를 막을 이유가 없다(초안은 그대로 남는다)
+      }
     }
     if (isEdit) {
       navigate(`/spaces/${spaceId}/pages/${pageId}`); // 수정 취소 → 보기
@@ -172,7 +186,7 @@ export function PageEditPage() {
           <Button onClick={handleSave} disabled={!title.trim()} loading={saving}>
             {isDraft ? "게시" : "업데이트"}
           </Button>
-          <Button variant="subtle" onClick={handleCancel}>
+          <Button variant="subtle" onClick={() => void handleCancel()}>
             닫기
           </Button>
         </div>

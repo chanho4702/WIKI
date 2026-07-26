@@ -250,3 +250,59 @@ describe("W12 초안 만들기 → 게시", () => {
     expect(screen.queryByRole("button", { name: "게시" })).not.toBeInTheDocument();
   });
 });
+
+describe("W12 폴더 이동·삭제 (A4)", () => {
+  it("페이지를 폴더의 하위로 옮길 수 있다 — 폴더도 부모가 된다", async () => {
+    localStorage.setItem("wiki.v1", JSON.stringify(seedWithFolder()));
+    const { movePage, listPages } = await import("../features/wiki/store/wikiStore");
+
+    await movePage("pg2", { parentId: "fd1" }); // 팀 규칙 → 운영 문서 폴더 안으로
+    const pages = await listPages("sp1");
+    expect(pages.find((p) => p.id === "pg2")?.parentId).toBe("fd1");
+  });
+
+  it("폴더를 자기 자신의 하위로 옮길 수 없다", async () => {
+    localStorage.setItem("wiki.v1", JSON.stringify(seedWithFolder()));
+    const { movePage } = await import("../features/wiki/store/wikiStore");
+    await expect(movePage("fd1", { parentId: "pgF" })).rejects.toThrow(
+      "페이지를 자신의 하위로 이동할 수 없습니다",
+    );
+  });
+
+  it("빈 폴더는 '…' 메뉴에서 삭제할 수 있다", async () => {
+    const user = userEvent.setup();
+    const data = seedWithFolder();
+    data.pages = data.pages.filter((p) => p.id !== "pgF"); // 폴더를 비운다
+    localStorage.setItem("wiki.v1", JSON.stringify(data));
+    renderApp("/spaces/sp1/folder/fd1");
+    await screen.findByRole("heading", { name: "이 폴더는 비어 있습니다" });
+
+    await user.click(screen.getByRole("button", { name: "더 보기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "폴더 삭제" }));
+    await user.click(await screen.findByRole("button", { name: "삭제" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1");
+    });
+    expect(tree().queryByRole("link", { name: /운영 문서/ })).not.toBeInTheDocument();
+  });
+
+  it("비어 있지 않은 폴더는 삭제를 막고 이유를 알려준다", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("wiki.v1", JSON.stringify(seedWithFolder()));
+    renderApp("/spaces/sp1/folder/fd1");
+    await screen.findByRole("table");
+
+    // 왜 안 되는지 화면에 적혀 있어야 한다 — 비활성 메뉴 항목만으로는 알 수 없다
+    expect(
+      screen.getByText(/비어 있지 않은 폴더는 삭제할 수 없습니다/),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "더 보기" }));
+    // Radix 메뉴 항목은 div(role=menuitem)라 disabled 속성이 아니라 aria-disabled로 표현된다
+    expect(await screen.findByRole("menuitem", { name: "폴더 삭제" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+});

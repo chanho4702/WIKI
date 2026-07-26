@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router";
-import { Button, EmptyState, InlineEdit, useToast } from "@chanho/react";
-import { FileText, Folder, FolderPlus, Plus } from "lucide-react";
+import { Button, ConfirmDialog, Dropdown, EmptyState, InlineEdit, useToast } from "@chanho/react";
+import { FileText, Folder, FolderPlus, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import type { Page, User } from "../store/types";
-import { createPage, listUsers, updatePage } from "../store/wikiStore";
+import { createPage, deletePage, listUsers, updatePage } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { contentPathIn } from "../lib/contentPath";
+import { useCreateDraft } from "../lib/useCreateDraft";
 import { displayUserName } from "../lib/userName";
 
 /** "2026년 7월 10일" — PageViewPage/SpaceIndexPage와 같은 규칙(빈 값·무효 날짜는 빈 문자열). */
@@ -31,6 +32,9 @@ export function FolderPage() {
   const toast = useToast();
   const { pages, space, reloadPages } = useOutletContext<WikiOutletContext>();
   const [users, setUsers] = useState<User[]>([]);
+  const { createDraft } = useCreateDraft(spaceId ?? null, reloadPages);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     void listUsers().then(setUsers);
@@ -91,8 +95,8 @@ export function FolderPage() {
 
   const createChild = async (type: "page" | "folder") => {
     if (type === "page") {
-      // 페이지는 제목·본문을 편집 화면에서 입력받는다 — 여기서 빈 페이지를 만들지 않는다
-      navigate(`/spaces/${space.id}/pages/new?parent=${folder.id}`);
+      // 이 폴더의 하위 초안으로 만든다 — 트리·이 화면 양쪽에 바로 나타난다
+      await createDraft(folder.id);
       return;
     }
     try {
@@ -129,8 +133,61 @@ export function FolderPage() {
             />
             {ownerName ? <p className="folder-banner-meta">작성자 {ownerName}</p> : null}
           </div>
+          {/* 삭제는 PageViewPage와 같은 패턴("…" 드롭다운 + 확인 다이얼로그)으로 둔다 —
+            * 화면마다 파괴적 액션의 위치가 다르면 실수로 누르기 쉽다. */}
+          <Dropdown
+            trigger={
+              <Button size="small" variant="subtle" iconOnly aria-label="더 보기" title="더 보기">
+                <MoreHorizontal size={16} aria-hidden="true" />
+              </Button>
+            }
+            items={[
+              {
+                label: "폴더 삭제",
+                danger: true,
+                icon: <Trash2 size={16} aria-hidden="true" />,
+                // 자식이 있으면 스토어가 거부한다(P2 정책 미정 — 안전한 기본값).
+                // 눌러서 실패 토스트를 보게 하는 대신 비활성으로 미리 막고 이유를 아래에 적는다.
+                disabled: children.length > 0,
+                onSelect: () => setConfirmOpen(true),
+              },
+            ]}
+          />
         </div>
+        {children.length > 0 ? (
+          <p className="folder-banner-hint">
+            비어 있지 않은 폴더는 삭제할 수 없습니다. 안의 항목을 먼저 옮기거나 지우세요.
+          </p>
+        ) : null}
       </header>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="폴더 삭제"
+        description={`"${folder.title}" 폴더를 삭제합니다. 이 작업은 되돌릴 수 없습니다.`}
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        danger
+        loading={deleting}
+        onConfirm={async () => {
+          setDeleting(true);
+          try {
+            await deletePage(folder.id);
+            toast({ title: `"${folder.title}" 폴더를 삭제했습니다`, appearance: "success" });
+            await reloadPages();
+            navigate(`/spaces/${space.id}`);
+          } catch (error) {
+            toast({
+              title: "삭제 실패",
+              description: error instanceof Error ? error.message : String(error),
+              appearance: "danger",
+            });
+            setConfirmOpen(false);
+            setDeleting(false);
+          }
+        }}
+      />
 
       <section className="folder-contents" aria-label="폴더 내용">
         <div className="folder-contents-actions">

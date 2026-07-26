@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
-import { Avatar, EmptyState, Spinner, TextField, useToast } from "@chanho/react";
+import { Avatar, EmptyState, Spinner, TextField } from "@chanho/react";
 import { Clock, Compass, ExternalLink, Grid3x3, House, Plus, Star } from "lucide-react";
 import type { Page, Space } from "../store/types";
 import { PageTree } from "./PageTree";
-import { createPage } from "../store/wikiStore";
+import { useCreateDraft } from "../lib/useCreateDraft";
 import { SidebarResizer } from "./SidebarResizer";
 import { SpaceFlyout } from "./SpaceFlyout";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
@@ -75,31 +75,9 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
     onClose: closeSpaceFlyout,
   });
 
-  // 콘텐츠 "+" — 초안을 즉시 만들고 편집 화면으로 보낸다. 제목을 먼저 묻지 않는 이유는
-  // 캡처의 흐름이 "빈 문서가 트리에 초안으로 생기고 거기서 채운다"이기 때문이다.
-  const [creatingDraft, setCreatingDraft] = useState(false);
-  const toast = useToast();
-  const createDraft = useCallback(async () => {
-    if (!space || creatingDraft) return;
-    setCreatingDraft(true);
-    try {
-      const created = await createPage({
-        spaceId: space.id,
-        title: "제목 없음",
-        status: "draft",
-      });
-      await reloadPages();
-      navigate(`/spaces/${space.id}/pages/${created.id}/edit`);
-    } catch (error) {
-      toast({
-        title: "초안 만들기 실패",
-        description: error instanceof Error ? error.message : String(error),
-        appearance: "danger",
-      });
-    } finally {
-      setCreatingDraft(false);
-    }
-  }, [space, creatingDraft, reloadPages, navigate, toast]);
+  // 콘텐츠 "+" 및 트리 행의 "+" — 공용 훅. 진입점마다 다르게 동작하면 어디서 만들었냐에 따라
+  // 트리에 보였다 안 보였다 한다.
+  const { createDraft, creating: creatingDraft } = useCreateDraft(space?.id ?? null, reloadPages);
 
   const inSpace = space !== null;
   const searching = query.trim().length > 0;
@@ -223,6 +201,7 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
                   pages={visiblePages}
                   forceExpand={searching}
                   onMoved={reloadPages}
+                  onCreateChild={createDraft}
                 />
               )}
             </section>

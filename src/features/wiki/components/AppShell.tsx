@@ -10,6 +10,7 @@ import { WikiTopBar } from "./WikiTopBar";
 import type { WikiOutletContext } from "./wikiContext";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
 import { pruneStarredSpaces } from "../lib/starredSpaces";
+import { useCreateDraft } from "../lib/useCreateDraft";
 
 export interface AppShellProps {
   spaces: Space[];
@@ -79,6 +80,8 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
     setPages(await listPages(currentId));
   }, [currentId]);
 
+  const { createDraft } = useCreateDraft(space?.id ?? null, reloadPages);
+
   /**
    * 폴더 만들기 — 페이지와 달리 편집 화면을 거치지 않는다. 폴더는 본문이 없어 입력받을 게
    * 이름뿐이고, 그 이름은 폴더 화면에서 인라인으로 고치는 게 캡처(`07-26-폴더2.png`)의 흐름이다.
@@ -123,7 +126,8 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
         {
           label: "페이지",
           icon: <FileText size={16} aria-hidden="true" />,
-          onSelect: () => navigate(`/spaces/${space.id}/pages/new`),
+          // 초안으로 즉시 만들어 트리에 세운다 — 빈 편집 화면만 열면 뭘 만드는지 확인이 안 된다
+          onSelect: () => void createDraft(),
         },
         {
           label: "폴더",

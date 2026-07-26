@@ -1987,6 +1987,14 @@ body {
   line-height: var(--chanho-font-lineHeight-400);
 }
 
+/* 삭제가 왜 막혔는지 — 비활성 메뉴 항목만으로는 이유를 알 수 없다 */
+.folder-banner-hint {
+  margin: 0;
+  padding: 0 var(--chanho-space-300) var(--chanho-space-300);
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+
 .folder-banner-meta {
   margin: var(--chanho-space-50, 4px) 0 0;
   font-size: var(--chanho-font-size-75);

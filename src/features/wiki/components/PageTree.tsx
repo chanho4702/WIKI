@@ -25,6 +25,8 @@ export interface PageTreeProps {
   forceExpand?: boolean;
   /** 드래그로 페이지를 이동한 뒤 호출 — 주어지지 않으면 드래그 비활성 */
   onMoved?: () => void | Promise<void>;
+  /** 행의 "+" — 해당 항목의 하위 초안을 만든다. 없으면 기존처럼 생성 화면으로 이동한다. */
+  onCreateChild?: (parentId: string) => void | Promise<void>;
 }
 
 interface TreeNode {
@@ -94,7 +96,7 @@ function SortableRow({ id, children }: { id: string; children: ReactNode }) {
   );
 }
 
-export function PageTree({ spaceId, pages, forceExpand = false, onMoved }: PageTreeProps) {
+export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreateChild }: PageTreeProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -198,7 +200,11 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved }: PageT
                 type="button"
                 className="page-tree-add"
                 aria-label={`${page.title} 하위 페이지 추가`}
-                onClick={() => navigate(`/spaces/${spaceId}/pages/new?parent=${page.id}`)}
+                onClick={() =>
+                  onCreateChild
+                    ? void onCreateChild(page.id)
+                    : navigate(`/spaces/${spaceId}/pages/new?parent=${page.id}`)
+                }
               >
                 <Plus size={14} aria-hidden="true" />
               </button>
