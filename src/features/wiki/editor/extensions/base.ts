@@ -13,6 +13,7 @@ import TaskItem from "@tiptap/extension-task-item";
 import Image from "@tiptap/extension-image";
 import { Markdown } from "tiptap-markdown";
 import { WikiLink } from "./wikiLink";
+import { Column, ColumnBlock } from "./columns";
 import { CodeBlockView } from "../components/CodeBlockView";
 import { ImageView } from "../components/ImageView";
 import type { Page } from "../../store/types";
@@ -69,6 +70,10 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     TaskList,
     TaskItem.configure({ nested: false }),
     ImageWithView,
+    // 레이어 분할 — 스키마에 영향을 주므로 화면(WikiEditor)이 아니라 여기(공용 목록)에 둔다.
+    // markdown.ts의 헤드리스 변환기도 같은 노드를 봐야 `::::columns` 왕복이 성립한다.
+    ColumnBlock,
+    Column,
     Markdown.configure({
       html: false, // 생 HTML은 텍스트로 보존 (손실 정책)
       linkify: false,

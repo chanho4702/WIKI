@@ -112,3 +112,61 @@ describe("MarkdownView", () => {
     expect(code).toHaveTextContent("const answer = 42;");
   });
 });
+
+describe("MarkdownView — 레이어 분할(컬럼)", () => {
+  const TWO_COLUMNS = [
+    "::::columns",
+    ":::column",
+    "왼쪽 내용",
+    ":::",
+    ":::column",
+    "오른쪽 내용",
+    ":::",
+    "::::",
+  ].join("\n");
+
+  it("`:::` 확장 문법을 열 구조로 렌더한다", () => {
+    const { container } = render(<MarkdownView markdown={TWO_COLUMNS} />);
+    const block = container.querySelector(".md-columns");
+    expect(block).not.toBeNull();
+    const columns = block!.querySelectorAll(".md-column");
+    expect(columns).toHaveLength(2);
+    expect(columns[0]).toHaveTextContent("왼쪽 내용");
+    expect(columns[1]).toHaveTextContent("오른쪽 내용");
+  });
+
+  it("마커 문자(:::)가 본문 텍스트로 새어나오지 않는다", () => {
+    const { container } = render(<MarkdownView markdown={TWO_COLUMNS} />);
+    expect(container.textContent).not.toContain(":::");
+  });
+
+  it("편집 왕복을 거친 문자열도 같은 구조로 렌더된다 — 편집↔보기 대칭", () => {
+    // 저장 경로(에디터 직렬화)와 렌더 경로(remark)가 같은 문자열을 같게 읽어야 한다
+    const saved = serializeMarkdown(parseMarkdown(TWO_COLUMNS));
+    const { container } = render(<MarkdownView markdown={saved} />);
+    expect(container.querySelectorAll(".md-column")).toHaveLength(2);
+  });
+
+  it("열 안의 블록 요소(제목·목록)도 그 열 안에서 렌더된다", () => {
+    const md = [
+      "::::columns",
+      ":::column",
+      "## 왼쪽 제목",
+      ":::",
+      ":::column",
+      "- 오른쪽 항목",
+      ":::",
+      "::::",
+    ].join("\n");
+    const { container } = render(<MarkdownView markdown={md} />);
+    const columns = container.querySelectorAll(".md-column");
+    expect(columns[0].querySelector("h2")).toHaveTextContent("왼쪽 제목");
+    expect(columns[1].querySelector("li")).toHaveTextContent("오른쪽 항목");
+  });
+
+  it("모르는 지시자는 내용을 잃지 않고 통과시킨다", () => {
+    // `:::` 문법을 쓰는 다른 블록이 나중에 추가돼도 본문이 조용히 증발하면 안 된다
+    const { container } = render(<MarkdownView markdown={":::unknown\n남아야 할 내용\n:::"} />);
+    expect(container.textContent).toContain("남아야 할 내용");
+  });
+});

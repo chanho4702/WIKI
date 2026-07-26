@@ -16,6 +16,8 @@ import {
   SquareCode,
   Minus,
   Table,
+  Columns2,
+  Columns3,
   Image,
   Smile,
   type LucideIcon,
@@ -169,6 +171,22 @@ export const SLASH_ITEMS: SlashItem[] = [
     description: "행과 열로 콘텐츠를 구성합니다",
     icon: Table,
     run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+  },
+  // 레이어 분할 — 저장 포맷은 `:::` 확장 문법(extensions/columns.ts). 열 수별로 항목을 나눠
+  // 두는 이유: 삽입 후 열을 더하고 빼는 UI가 아직 없어서, 만들 때 고르는 게 유일한 선택 지점이다.
+  {
+    id: "columns2",
+    label: "레이어 분할 (2열)",
+    description: "본문을 좌우 두 개의 열로 나눕니다",
+    icon: Columns2,
+    run: (e) => e.chain().focus().setColumns(2).run(),
+  },
+  {
+    id: "columns3",
+    label: "레이어 분할 (3열)",
+    description: "본문을 세 개의 열로 나눕니다",
+    icon: Columns3,
+    run: (e) => e.chain().focus().setColumns(3).run(),
   },
   {
     id: "image",

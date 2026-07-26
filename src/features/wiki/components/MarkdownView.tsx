@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkDirective from "remark-directive";
 import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
 import { Link } from "react-router";
@@ -9,6 +10,7 @@ import { Check, Copy } from "lucide-react";
 import type { Page } from "../store/types";
 import { resolveWikiLinks } from "../lib/wikiLinks";
 import { remarkAlerts } from "../lib/remarkAlerts";
+import { remarkColumns } from "../lib/remarkColumns";
 
 export interface MarkdownViewProps {
   /** 마크다운 원문 (Page.body 또는 편집 중인 입력값) */
@@ -86,8 +88,10 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
   const source = wikiMode ? resolveWikiLinks(markdown, pages, spaceId) : markdown;
   return (
     <div className="markdown-body">
+      {/* remarkDirective가 `:::` 문법을 노드로 만들고 remarkColumns가 그걸 div로 매핑한다 —
+        * 순서가 뒤바뀌면 매핑할 노드가 아직 없다. */}
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkAlerts]}
+        remarkPlugins={[remarkGfm, remarkDirective, remarkColumns, remarkAlerts]}
         rehypePlugins={[rehypeSlug, [rehypeHighlight, { detect: false }]]}
         components={{ pre: CodeCopyBlock, ...(wikiMode ? { a: WikiAnchor } : {}) }}
       >
