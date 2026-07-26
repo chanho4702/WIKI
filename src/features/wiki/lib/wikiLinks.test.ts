@@ -5,6 +5,8 @@ import { resolveWikiLinks, WIKI_LINK_SOURCE, WIKI_LINK_OPEN_SOURCE } from "./wik
 const base = {
   spaceId: "sp1",
   parentId: null,
+  type: "page" as const,
+  status: "published" as const,
   body: "",
   version: 1,
   position: 1,

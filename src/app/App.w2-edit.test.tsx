@@ -83,20 +83,24 @@ describe("W2 페이지 편집·생성", () => {
     expect(within(tree).queryByRole("link", { name: "새 하위 문서" })).not.toBeInTheDocument();
   });
 
-  it("헤더 '만들기 → 새 페이지'는 루트 생성으로 이동하고, 취소하면 스페이스 인덱스를 거쳐 첫 페이지로 돌아간다", async () => {
+  it("헤더 '만들기 → 새 페이지'는 루트 생성으로 이동하고, 취소하면 스페이스 개요로 돌아간다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg1");
     await screen.findByRole("heading", { level: 1, name: "시작하기" });
     await user.click(screen.getByRole("button", { name: "만들기" }));
-    await user.click(await screen.findByRole("menuitem", { name: "새 페이지" }));
+    // 만들기 메뉴는 폴더 도입 후 "페이지 / 폴더 / 새 스페이스" 구성이다
+    await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/new");
     });
     await user.click(screen.getByRole("button", { name: "닫기" }));
-    // 루트 생성 취소 → /spaces/sp1 → SpaceIndexPage가 첫 루트 페이지로 이어서 redirect
+    // 루트 생성 취소 → /spaces/sp1(스페이스 개요). 예전엔 개요가 없어 첫 루트 페이지로 이어서
+    // redirect됐지만, 이제 개요에서 멈추고 콘텐츠 구조를 보여준다.
     await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg1");
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1");
     });
+    expect(screen.getByTestId("location")).not.toHaveTextContent("/pages/");
+    expect(await screen.findByRole("heading", { level: 1, name: "개발 위키" })).toBeInTheDocument();
   });
 
   it("트리 항목의 '하위 페이지 추가' 버튼은 parent 쿼리를 담은 생성 화면으로 이동한다", async () => {

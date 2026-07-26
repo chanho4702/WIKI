@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
-import { Avatar, EmptyState, Spinner, TextField } from "@chanho/react";
-import { Clock, Compass, ExternalLink, Grid3x3, House, Star } from "lucide-react";
+import { Avatar, EmptyState, Spinner, TextField, useToast } from "@chanho/react";
+import { Clock, Compass, ExternalLink, Grid3x3, House, Plus, Star } from "lucide-react";
 import type { Page, Space } from "../store/types";
 import { PageTree } from "./PageTree";
+import { createPage } from "../store/wikiStore";
 import { SidebarResizer } from "./SidebarResizer";
 import { SpaceFlyout } from "./SpaceFlyout";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
@@ -73,6 +74,32 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
     open: spaceFlyoutOpen,
     onClose: closeSpaceFlyout,
   });
+
+  // 콘텐츠 "+" — 초안을 즉시 만들고 편집 화면으로 보낸다. 제목을 먼저 묻지 않는 이유는
+  // 캡처의 흐름이 "빈 문서가 트리에 초안으로 생기고 거기서 채운다"이기 때문이다.
+  const [creatingDraft, setCreatingDraft] = useState(false);
+  const toast = useToast();
+  const createDraft = useCallback(async () => {
+    if (!space || creatingDraft) return;
+    setCreatingDraft(true);
+    try {
+      const created = await createPage({
+        spaceId: space.id,
+        title: "제목 없음",
+        status: "draft",
+      });
+      await reloadPages();
+      navigate(`/spaces/${space.id}/pages/${created.id}/edit`);
+    } catch (error) {
+      toast({
+        title: "초안 만들기 실패",
+        description: error instanceof Error ? error.message : String(error),
+        appearance: "danger",
+      });
+    } finally {
+      setCreatingDraft(false);
+    }
+  }, [space, creatingDraft, reloadPages, navigate, toast]);
 
   const inSpace = space !== null;
   const searching = query.trim().length > 0;
@@ -165,7 +192,21 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
             {/* 스페이스 컨텍스트는 순수 스페이스 스코프 — "콘텐츠"(페이지 트리)만. 별표 목록/디렉토리
              * 링크는 홈·디렉토리 컨텍스트로 이동(컨플루언스 스페이스 사이드바 충실 복제). */}
             <section className="wiki-sidebar-content" aria-label="콘텐츠">
-              <h3 className="wiki-sidebar-section-title">콘텐츠</h3>
+              <div className="wiki-sidebar-content-head">
+                <h3 className="wiki-sidebar-section-title">콘텐츠</h3>
+                {/* 캡처(07-26-폴더.png)의 콘텐츠 헤더 "+" — 편집 화면을 먼저 띄우는 대신
+                  * 초안 문서를 즉시 만들어 트리에 "초안" 배지와 함께 세운다(기획 P3). */}
+                <button
+                  type="button"
+                  className="wiki-sidebar-content-add"
+                  aria-label="초안 만들기"
+                  title="초안 만들기"
+                  disabled={creatingDraft}
+                  onClick={() => void createDraft()}
+                >
+                  <Plus size={16} aria-hidden="true" />
+                </button>
+              </div>
               <TextField
                 label="페이지 검색"
                 value={query}

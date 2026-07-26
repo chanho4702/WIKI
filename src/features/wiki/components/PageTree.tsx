@@ -10,8 +10,9 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useToast } from "@chanho/react";
-import { ChevronRight, FileText, Plus } from "lucide-react";
+import { Lozenge, useToast } from "@chanho/react";
+import { ChevronRight, FileText, Folder, Plus } from "lucide-react";
+import { contentPathIn } from "../lib/contentPath";
 import type { ReactNode } from "react";
 import type { Page } from "../store/types";
 import { movePage } from "../store/wikiStore";
@@ -176,9 +177,21 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved }: PageT
               ) : (
                 <span className="page-tree-toggle-spacer" aria-hidden="true" />
               )}
-              <NavLink to={`/spaces/${spaceId}/pages/${page.id}`}>
-                <FileText className="page-tree-icon" size={16} aria-hidden="true" />
+              <NavLink to={contentPathIn(spaceId, page)}>
+                {/* 폴더/문서 구분 — 아이콘만으로는 색약·저시력 사용자가 구분하기 어려우므로
+                  * 접근 이름에도 "폴더"를 넣는다(WCAG 1.4.1 색·형태 단독 의존 금지). */}
+                {page.type === "folder" ? (
+                  <Folder className="page-tree-icon" size={16} aria-hidden="true" />
+                ) : (
+                  <FileText className="page-tree-icon" size={16} aria-hidden="true" />
+                )}
                 <span className="page-tree-label">{page.title}</span>
+                {page.type === "folder" ? (
+                  <span className="wiki-visually-hidden"> (폴더)</span>
+                ) : null}
+                {/* 아직 게시되지 않은 문서 — 캡처(07-26-편집구조_레이아웃.png)의 "초안" 배지.
+                  * 링크의 접근 이름에 포함되므로 스크린리더에도 함께 읽힌다. */}
+                {page.status === "draft" ? <Lozenge appearance="info">초안</Lozenge> : null}
               </NavLink>
               {/* NavLink의 형제 — 링크 안에 버튼 중첩 금지 */}
               <button

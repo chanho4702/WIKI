@@ -9,6 +9,8 @@ describe("ChildPages", () => {
     id: "pg-test",
     spaceId: "sp1",
     parentId: null,
+    type: "page",
+    status: "published",
     title: "테스트 페이지",
     body: "# 테스트",
     version: 1,

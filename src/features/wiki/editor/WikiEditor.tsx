@@ -25,6 +25,12 @@ export interface WikiEditorProps {
   initialMarkdown: string;
   /** [[링크]] 존재/부재 판별 + 자동완성 후보 */
   pages: Page[];
+  /**
+   * 본문이 처음 수정될 때 한 번 호출된다 — 편집 크롬의 저장 상태 표시용.
+   * dirtyRef는 ref라 렌더를 유발하지 않으므로, 상태 표시가 필요한 호출부는 이 콜백을 쓴다.
+   * (매 키 입력마다 부모를 리렌더시키지 않기 위해 "false → true" 전이에서만 알린다.)
+   */
+  onDirty?: () => void;
 }
 
 /** 파싱 실패 시 원문 전체를 플레인 문단으로 — 편집이 막히지 않게 한다 (스펙 에러 처리) */
@@ -44,7 +50,10 @@ export function safeParse(md: string): JSONContent {
 }
 
 export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
-  function WikiEditor({ initialMarkdown, pages }, ref) {
+  function WikiEditor({ initialMarkdown, pages, onDirty }, ref) {
+    // onUpdate는 useEditor 설정 시점에 캡처되므로 콜백을 ref로 최신화한다(재구독 없이).
+    const onDirtyRef = useRef(onDirty);
+    onDirtyRef.current = onDirty;
     const pagesRef = useRef(pages);
     pagesRef.current = pages;
     const dirtyRef = useRef(false);
@@ -92,7 +101,9 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
         editorRegistry.current = editor;
       },
       onUpdate() {
+        const wasClean = !dirtyRef.current;
         dirtyRef.current = true;
+        if (wasClean) onDirtyRef.current?.();
       },
       onDestroy() {
         if (editorRegistry.current === selfEditorRef.current) {
