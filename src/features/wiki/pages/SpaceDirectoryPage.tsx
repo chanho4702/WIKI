@@ -75,62 +75,65 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
   ];
 
   return (
-    <main className="space-directory-content">
+    /* AppShell의 .wiki-content가 이미 <main> 랜드마크다 — 중첩하면 스크린리더의 "본문" 지목이
+     * 모호해지고 HTML 규격도 위반한다(HomePage와 동일 이유로 div). */
+    <div className="space-directory-content">
       <h1>스페이스</h1>
 
-        {starredSpaces.length > 0 && (
-          <section className="space-directory-starred" aria-label="자주 찾는 스페이스">
-            <h2>자주 찾는 스페이스</h2>
-            <ul className="space-directory-cards">
-              {starredSpaces.map((space) => (
-                // 캡처(space 페이지.png): [정사각 아이콘 타일 좌상단 ↔ 별표 우상단] + [이름] 세로 배치
-                <li key={space.id} className="space-directory-card">
-                  <div className="space-directory-card-top">
-                    <Avatar
-                      className="space-directory-card-icon"
-                      name={space.name}
-                      color="auto"
-                      size="large"
-                      aria-hidden="true"
-                    />
-                    <button
-                      type="button"
-                      className="space-directory-star"
-                      aria-pressed={true}
-                      aria-label={`${space.name} 별표`}
-                      onClick={() => toggle(space.id)}
-                    >
-                      <Star size={16} aria-hidden="true" fill="currentColor" />
-                    </button>
-                  </div>
+      {starredSpaces.length > 0 && (
+        <section className="space-directory-starred" aria-label="자주 찾는 스페이스">
+          <h2>자주 찾는 스페이스</h2>
+          <ul className="space-directory-cards">
+            {starredSpaces.map((space) => (
+              // 캡처(space 페이지.png): [정사각 아이콘 타일 좌상단 ↔ 별표 우상단] + [이름] 세로 배치
+              <li key={space.id} className="space-directory-card">
+                <div className="space-directory-card-top">
+                  <Avatar
+                    className="space-directory-card-icon"
+                    name={space.name}
+                    color="auto"
+                    size="large"
+                    aria-hidden="true"
+                  />
                   <button
                     type="button"
-                    className="space-directory-card-name"
-                    aria-label={`${space.name} (${space.key})`}
-                    onClick={() => navigate(`/spaces/${space.id}`)}
+                    className="space-directory-star"
+                    aria-pressed={true}
+                    aria-label={`${space.name} 별표`}
+                    onClick={() => toggle(space.id)}
                   >
-                    {space.name}
+                    <Star size={16} aria-hidden="true" fill="currentColor" />
                   </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+                </div>
+                <button
+                  type="button"
+                  className="space-directory-card-name"
+                  aria-label={`${space.name} (${space.key})`}
+                  onClick={() => navigate(`/spaces/${space.id}`)}
+                >
+                  {space.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-        <section className="space-directory-all" aria-label="모든 스페이스">
-          <h2>모든 스페이스</h2>
-          <TextField
-            label="제목으로 필터링"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="스페이스 이름 또는 키"
-          />
-          {filtered.length === 0 ? (
-            <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
-          ) : (
-            <Table columns={columns} rows={filtered} aria-label="모든 스페이스" />
-          )}
+      <section className="space-directory-all" aria-label="모든 스페이스">
+        <h2>모든 스페이스</h2>
+        <TextField
+          className="space-directory-filter"
+          label="제목으로 필터링"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="스페이스 이름 또는 키"
+        />
+        {filtered.length === 0 ? (
+          <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
+        ) : (
+          <Table columns={columns} rows={filtered} aria-label="모든 스페이스" />
+        )}
       </section>
-    </main>
+    </div>
   );
 }
