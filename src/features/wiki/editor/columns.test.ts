@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { Editor } from "@tiptap/core";
 import { parseMarkdown, serializeMarkdown } from "./markdown";
+import { buildBaseExtensions } from "./extensions/base";
+import { COLUMN_NAME } from "./extensions/columns";
 
 const normalize = (s: string) => s.replace(/\r\n/g, "\n").trim();
 const roundtrip = (md: string) => normalize(serializeMarkdown(parseMarkdown(md)));
@@ -89,5 +92,60 @@ describe("레이어 분할 — 마크다운 왕복", () => {
   it("컬럼이 없는 기존 문서는 영향을 받지 않는다", () => {
     const md = "# 제목\n\n일반 문단입니다.\n\n- 항목";
     expect(roundtrip(md)).toBe(md);
+  });
+});
+
+/**
+ * setColumns 명령의 커서 위치 — 브라우저에서 실제로 잡힌 회귀다. 삽입 직후 커서는 레이아웃의
+ * 끝(마지막 열)에 놓여서, 2열을 만들면 오른쪽 열부터 타이핑되고 있었다.
+ * 직렬화 결과만 검증하던 위 테스트들은 이 문제를 잡지 못했다.
+ */
+describe("레이어 분할 — 삽입 직후 커서", () => {
+  const withEditor = (fn: (editor: Editor) => void) => {
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("") });
+    try {
+      fn(editor);
+    } finally {
+      editor.destroy();
+    }
+  };
+
+  it("2열을 만들면 커서가 첫 번째 열 안에 놓인다", () => {
+    withEditor((editor) => {
+      editor.commands.setColumns(2);
+      const $pos = editor.state.selection.$from;
+      // 커서를 감싼 조상 중 column을 찾아, 그게 부모(columnBlock)의 첫 자식인지 본다
+      let columnDepth: number | null = null;
+      for (let d = $pos.depth; d > 0; d -= 1) {
+        if ($pos.node(d).type.name === COLUMN_NAME) {
+          columnDepth = d;
+          break;
+        }
+      }
+      expect(columnDepth).not.toBeNull();
+      expect($pos.index(columnDepth! - 1)).toBe(0); // 첫 번째 열
+    });
+  });
+
+  it("타이핑한 내용이 오른쪽이 아니라 왼쪽 열에 들어간다", () => {
+    withEditor((editor) => {
+      editor.commands.setColumns(2);
+      editor.commands.insertContent("왼쪽부터");
+      const md = serializeMarkdown(editor.getJSON());
+      expect(md).toContain([":::column", "왼쪽부터", ":::"].join("\n"));
+    });
+  });
+
+  it("3열에서도 첫 번째 열에 놓인다", () => {
+    withEditor((editor) => {
+      editor.commands.setColumns(3);
+      editor.commands.insertContent("첫칸");
+      // 줄 단위로 본다 — `::::columns`가 `:::column`을 부분 문자열로 포함하므로
+      // 문자열 split으로 열을 가르면 바깥 마커까지 잘린다.
+      const lines = serializeMarkdown(editor.getJSON()).trim().split("\n");
+      const firstColumnStart = lines.indexOf(":::column");
+      expect(firstColumnStart).toBeGreaterThan(-1);
+      expect(lines[firstColumnStart + 1]).toBe("첫칸");
+    });
   });
 });

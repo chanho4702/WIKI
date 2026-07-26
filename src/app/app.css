@@ -112,7 +112,11 @@ body {
   transition: transform var(--chanho-transition-base);
 }
 
-.wiki-skip-link:focus-visible {
+/* :focus-visible이 아니라 :focus를 쓴다. focus-visible은 "키보드로 온 포커스인가"를 브라우저
+ * 휴리스틱으로 판단하므로, 프로그램적 focus()(건너뛰기 스크립트·보조기기 도구)에서는 걸리지
+ * 않을 수 있다. 그러면 링크가 포커스는 받았는데 화면 밖에 숨어 있어 사용자가 어디 있는지 모른다.
+ * 스킵 링크는 포커스를 받으면 무조건 보여야 하므로 휴리스틱에 기대지 않는다. */
+.wiki-skip-link:focus {
   transform: translateY(0);
   outline: none;
   box-shadow: var(--chanho-focus-ring);
@@ -1970,7 +1974,10 @@ body {
   color: var(--chanho-color-text-subtle);
 }
 
+/* flex: 1이 없으면 제목 블록이 콘텐츠 폭으로 줄어들어 "제목 없는 폴/더"처럼 잘린다
+ * (.folder-banner-body가 flex라 자식 기본값이 shrink-to-fit). */
 .folder-banner-heading {
+  flex: 1;
   min-width: 0;
 }
 

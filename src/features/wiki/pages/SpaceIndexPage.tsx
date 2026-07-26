@@ -201,8 +201,16 @@ export function SpaceIndexPage() {
             return (
               <li key={page.id} className="space-overview-recent-item">
                 <Link to={contentPathIn(space.id, page)} className="space-overview-recent-link">
-                  <FileText size={16} aria-hidden="true" />
+                  {/* 아이콘이 콘텐츠 트리와 달라지면 같은 항목이 화면마다 다른 종류로 보인다 */}
+                  {page.type === "folder" ? (
+                    <Folder size={16} aria-hidden="true" />
+                  ) : (
+                    <FileText size={16} aria-hidden="true" />
+                  )}
                   <span>{page.title}</span>
+                  {page.type === "folder" ? (
+                    <span className="wiki-visually-hidden"> (폴더)</span>
+                  ) : null}
                 </Link>
                 {/* 백엔드 모드에선 시각·작성자가 비어 올 수 있다 — 둘 다 없으면 메타 줄을 숨긴다.
                   * relativeTime은 7일이 지나면 절대일자를 돌려주므로 여기선 쓰지 않는다(중복 표기). */}

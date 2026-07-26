@@ -184,8 +184,11 @@ describe("W10 전역 CSS 계약 (소스 검사)", () => {
     expect(block![1]).not.toMatch(/display:\s*none/);
     expect(block![1]).not.toMatch(/visibility:\s*hidden/);
     expect(block![1]).toContain("transform: translateY(");
-    // 포커스 시 화면으로 들어와야 한다
-    expect(css).toMatch(/\.wiki-skip-link:focus-visible \{[^}]*transform: translateY\(0\)/);
+    // 포커스 시 화면으로 들어와야 한다. :focus-visible이 아니라 :focus여야 한다 —
+    // focus-visible은 "키보드로 온 포커스인가"를 휴리스틱으로 판단해서, 프로그램적 focus()로는
+    // 걸리지 않을 수 있고 그러면 링크가 숨은 채 포커스만 받는다.
+    expect(css).toMatch(/\.wiki-skip-link:focus \{[^}]*transform: translateY\(0\)/);
+    expect(css).not.toContain(".wiki-skip-link:focus-visible");
   });
 
   it("포커스 링·트랜지션은 하드코딩이 아니라 DS 토큰을 참조한다", () => {

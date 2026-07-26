@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
 
 /**
  * 레이어 분할(컬럼 레이아웃) — 한 줄을 여러 열로 나눠 편집한다.
@@ -234,16 +235,40 @@ export const ColumnBlock = Node.create({
     return {
       setColumns:
         (count = DEFAULT_COLUMN_COUNT) =>
-        ({ commands, editor }) => {
+        ({ chain, editor }) => {
           const columns = Array.from({ length: Math.max(2, count) }, () => ({
             type: COLUMN_NAME,
             content: [{ type: "paragraph" }],
           }));
-          // insertContent는 현재 선택을 대체한다 — 빈 문단 위에서 실행하면 그 문단이 레이아웃이 된다
-          const inserted = commands.insertContent({ type: COLUMN_BLOCK_NAME, content: columns });
-          if (!inserted) return false;
-          // 첫 열 안으로 커서를 옮겨 바로 타이핑할 수 있게 한다
-          return editor.commands.focus();
+          // 삽입 위치 기준점 — 삽입 후 문서에서 "방금 넣은" 레이아웃을 찾을 때 쓴다
+          const from = editor.state.selection.from;
+
+          return (
+            chain()
+              // insertContent는 현재 선택을 대체한다 — 빈 문단 위에서 실행하면 그 문단이 레이아웃이 된다
+              .insertContent({ type: COLUMN_BLOCK_NAME, content: columns })
+              .command(({ tr, dispatch }) => {
+                if (!dispatch) return true;
+                // 삽입 직후 커서는 레이아웃의 끝(마지막 열)에 놓인다 — 사용자는 왼쪽부터 쓰므로
+                // 첫 열의 첫 문단 안으로 옮긴다. columnBlock(pos) → column(pos+1) →
+                // paragraph(pos+2) → 그 안쪽 = pos+3.
+                let target: number | null = null;
+                tr.doc.descendants((node, pos) => {
+                  if (target !== null) return false;
+                  if (node.type.name === COLUMN_BLOCK_NAME && pos + 1 >= from - 1) {
+                    target = pos + 3;
+                    return false;
+                  }
+                  return true;
+                });
+                if (target !== null && target <= tr.doc.content.size) {
+                  tr.setSelection(TextSelection.create(tr.doc, target));
+                }
+                return true;
+              })
+              .focus()
+              .run()
+          );
         },
     };
   },
