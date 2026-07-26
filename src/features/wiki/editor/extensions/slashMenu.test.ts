@@ -10,8 +10,24 @@ describe("슬래시 메뉴", () => {
     expect(SLASH_ITEMS.map((i) => i.id)).toEqual([
       "h1", "h2", "h3", "bullet", "ordered", "task", "quote",
       "note", "tip", "warning", "caution",
-      "code", "divider", "table", "image", "emoji",
+      "code", "divider", "table", "columns2", "columns3", "image", "emoji",
     ]);
+  });
+
+  it("레이어 분할 항목이 실제로 열 구조를 만든다", () => {
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("") });
+    SLASH_ITEMS.find((i) => i.id === "columns2")!.run(editor);
+    const md = serializeMarkdown(editor.getJSON());
+    expect(md).toContain("::::columns");
+    expect(md.match(/:::column$/gm)).toHaveLength(2);
+    editor.destroy();
+  });
+
+  it("3열 항목은 열을 세 개 만든다", () => {
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("") });
+    SLASH_ITEMS.find((i) => i.id === "columns3")!.run(editor);
+    expect(serializeMarkdown(editor.getJSON()).match(/:::column$/gm)).toHaveLength(3);
+    editor.destroy();
   });
 
   it("한글 라벨 필터", () => {

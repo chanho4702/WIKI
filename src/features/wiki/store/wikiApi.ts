@@ -6,7 +6,7 @@ export {
 
 import { sharedApiFetch } from "./apiClient";
 import { mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError } from "./mapping";
-import type { Space, Page, PageVersion, User, Attachment } from "./types";
+import type { Space, Page, PageVersion, User, Attachment, PageStatus, PageType } from "./types";
 
 /** 백엔드 응답(JSON) 파싱 + 4xx/5xx를 한국어 에러로 변환. 이후 태스크(pages/versions/attachments)도 재사용. */
 async function json<T>(res: Response): Promise<T> {
@@ -52,7 +52,12 @@ export async function getPage(id: string): Promise<Page | null> {
   if (res.status === 404) return null;
   return mapPage(await json(res));
 }
-export async function createPage(input: { spaceId: string; parentId?: string | null; title: string; body?: string }): Promise<Page> {
+/**
+ * 폴더(type)·초안(status)은 목업 선행 기능이다 — 백엔드 계약이 아직 두 필드를 받지 않으므로
+ * 요청 본문에 싣지 않고, 응답도 mapPage가 전부 "page"/"published"로 읽는다(기획 P1·P3의
+ * "백엔드 컬럼 추가" 대기 항목). 시그니처만 목업과 맞춰 화면이 분기 없이 동작하게 한다.
+ */
+export async function createPage(input: { spaceId: string; parentId?: string | null; title: string; body?: string; type?: PageType; status?: PageStatus }): Promise<Page> {
   const res = await sharedApiFetch("/api/wiki/pages", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -76,6 +81,13 @@ export async function updatePage(id: string, patch: { title?: string; body?: str
     }),
   });
   return mapPage(await json(res));
+}
+/**
+ * 게시 — 백엔드에 상태 컬럼이 없어 지원할 수 없다. 조용히 성공한 척하면 사용자는 게시된 줄 알고
+ * 나가지만 문서는 초안으로 남는다. 명시적으로 거부해 화면이 에러를 노출하게 한다.
+ */
+export async function publishPage(_id: string): Promise<Page> {
+  throw new Error("이 서버는 아직 초안/게시를 지원하지 않습니다");
 }
 export async function deletePage(id: string): Promise<void> {
   await json(await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}`, { method: "DELETE" }));

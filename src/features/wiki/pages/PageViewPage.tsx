@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
-import { Avatar, Button, ConfirmDialog, Dropdown, PageHeader, Spinner, Tooltip, useToast } from "@chanho/react";
+import { Avatar, Button, ConfirmDialog, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
 import { Maximize2, Minimize2, MoreHorizontal, Trash2 } from "lucide-react";
 import type { Page, User } from "../store/types";
@@ -41,6 +41,30 @@ function ancestorsOf(page: Page, pages: Page[]): Page[] {
   return chain;
 }
 
+/**
+ * 페이지 로딩 자리표시 — 제목·메타·본문 문단의 자리를 미리 잡아 콘텐츠가 들어올 때 화면이
+ * 밀리지 않게 한다. 마지막 줄을 짧게 두어 문단의 끝처럼 보이게 한다.
+ * 시각 장식이라 aria-hidden이고, 진행 상황은 role=status 문구가 담당한다.
+ */
+function PageViewSkeleton() {
+  return (
+    <div className="page-view">
+      <span className="wiki-visually-hidden" role="status">
+        페이지 로딩 중
+      </span>
+      <div className="page-view-skeleton" aria-hidden="true">
+        <span className="wiki-skeleton page-view-skeleton-title" />
+        <span className="wiki-skeleton wiki-skeleton-line" style={{ width: "180px" }} />
+        <div className="page-view-skeleton-body">
+          {["92%", "100%", "86%", "97%", "54%"].map((width, i) => (
+            <span key={i} className="wiki-skeleton wiki-skeleton-line" style={{ width }} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PageViewPage() {
   const { spaceId, pageId } = useParams();
   const { pages, space, reloadPages } = useOutletContext<WikiOutletContext>();
@@ -69,7 +93,7 @@ export function PageViewPage() {
   }, [pageId]);
 
   if (page === undefined || pages === null) {
-    return <Spinner label="페이지 로딩 중" />;
+    return <PageViewSkeleton />;
   }
   if (page === null) {
     return <p>페이지를 찾을 수 없습니다</p>;

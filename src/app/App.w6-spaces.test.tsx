@@ -14,6 +14,8 @@ function seedTwoSpaces() {
     id: "pg9",
     spaceId: "sp2",
     parentId: null,
+    type: "page",
+    status: "published",
     title: "운영 시작하기",
     body: "# 운영 위키",
     version: 1,

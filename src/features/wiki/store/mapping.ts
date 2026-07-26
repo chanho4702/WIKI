@@ -35,6 +35,10 @@ export function mapPage(dto: PageDto): Page {
     id: toClientId(dto.id),
     spaceId: toClientId(dto.spaceId),
     parentId: dto.parentId === null ? null : toClientId(dto.parentId),
+    // 백엔드 PageResponse엔 콘텐츠 타입이 없다 → 전부 일반 페이지로 읽는다.
+    // 폴더는 목업 모드 선행 기능이며, 백엔드 컬럼 추가 시 여기만 dto.type으로 바꾼다(P1).
+    type: "page",
+    status: "published", // 백엔드에 초안/게시 상태가 없다 — 전부 게시된 것으로 읽는다
     title: dto.title,
     body: dto.content,
     version: dto.version,
@@ -50,6 +54,8 @@ export function mapPageTree(items: TreeItemDto[]): Page[] {
     id: toClientId(it.id),
     spaceId: "",
     parentId: it.parentId === null ? null : toClientId(it.parentId),
+    type: "page", // 백엔드 트리에도 타입/상태가 없다 — mapPage와 같은 이유
+    status: "published",
     title: it.title,
     body: "",
     version: 1,

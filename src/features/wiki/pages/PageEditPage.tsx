@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { Button, Spinner, useToast } from "@chanho/react";
-import { createPage, getPage, updatePage } from "../store/wikiStore";
+import { createPage, deletePage, getPage, publishPage, updatePage } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
+import { DRAFT_TITLE } from "../lib/useCreateDraft";
 
 /**
  * 페이지 편집 화면 — 생성(/pages/new?parent=<id|없음>)과 수정(/pages/:pageId/edit) 공용.
@@ -32,6 +33,12 @@ export function PageEditPage() {
   // Task 18: 페이지 너비 토글 — 생성 화면(pageId 없음)은 항상 기본 폭, toggle은 무동작
   const { width, toggle: toggleWidth } = usePageWidth(pageId);
 
+  // 본문 수정 여부(상태) — dirtyRef만으로는 렌더가 갱신되지 않아 저장 상태 표시가 멈춘다.
+  // 진실의 원천은 여전히 에디터의 isDirty()이고, 이건 표시 전용 미러다.
+  const [bodyDirty, setBodyDirty] = useState(false);
+  // 편집 중인 문서가 초안인지 — 초안이면 "업데이트" 대신 "게시"가 주 액션이다(기획 P3).
+  const [isDraft, setIsDraft] = useState(false);
+
   // Task 5: 이탈 가드 — 제목·본문 미저장 변경 감지
   const isDirty = () => titleDirty || (editorRef.current?.isDirty() ?? false);
 
@@ -56,6 +63,7 @@ export function PageEditPage() {
         setTitle(page.title);
         setInitialBody(page.body);
         setPageSpaceId(page.spaceId);
+        setIsDraft(page.status === "draft");
       }
     });
   }, [isEdit, pageId]);
@@ -92,7 +100,13 @@ export function PageEditPage() {
     try {
       if (isEdit && pageId) {
         const saved = await updatePage(pageId, { title, body });
-        toast({ title: "페이지를 저장했습니다", appearance: "success" });
+        // 초안은 "저장"만으로 공개되지 않는다 — 이 버튼이 곧 게시다(라벨도 "게시").
+        // 저장을 먼저 하는 이유: 게시 후 저장이 실패하면 빈 문서가 공개된 채 남는다.
+        if (isDraft) await publishPage(saved.id);
+        toast({
+          title: isDraft ? "페이지를 게시했습니다" : "페이지를 저장했습니다",
+          appearance: "success",
+        });
         await reloadPages();
         navigate(`/spaces/${spaceId}/pages/${saved.id}`);
       } else {
@@ -112,10 +126,23 @@ export function PageEditPage() {
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     // Task 5: dirty 이탈 가드
     if (isDirty() && !window.confirm("저장하지 않은 변경이 있습니다. 나가시겠습니까?")) {
       return;
+    }
+    // 손대지 않은 초안은 닫을 때 지운다. 생성 버튼이 초안을 즉시 만들어 트리에 세우는 구조라,
+    // 정리하지 않으면 실수로 누른 만큼 "제목 없음"이 트리에 쌓인다. 제목이나 본문을 건드렸으면
+    // 사용자의 작업물이므로 남긴다(초안 상태로).
+    if (isEdit && pageId && isDraft && !isDirty() && title === DRAFT_TITLE && !initialBody) {
+      try {
+        await deletePage(pageId);
+        await reloadPages();
+        navigate(`/spaces/${spaceId}`);
+        return;
+      } catch {
+        // 삭제 실패는 조용히 넘긴다 — 취소 동작 자체를 막을 이유가 없다(초안은 그대로 남는다)
+      }
     }
     if (isEdit) {
       navigate(`/spaces/${spaceId}/pages/${pageId}`); // 수정 취소 → 보기
@@ -131,6 +158,19 @@ export function PageEditPage() {
       {/* W6: 컨플식 편집 크롬 — 최상단 고정 바. 좌측은 title state를 비편집으로 미리보기만 한다. */}
       <div className="edit-chrome">
         <span className="edit-chrome-title">{title.trim() ? title : "제목 없음"}</span>
+        {/* 캡처(07-26-편집구조_레이아웃.png)의 "저장됨" 자리 — 저장 여부를 항상 보이게 한다.
+          * 이 앱은 자동 저장이 아니라 명시적 저장이므로 "저장 중"이 아니라 "저장되지 않은 변경"이
+          * 기본 경고 문구다(사용자가 직접 눌러야 저장된다는 사실을 숨기지 않는다). */}
+        <span
+          className={`edit-chrome-status${titleDirty || bodyDirty ? " edit-chrome-status--dirty" : ""}`}
+          role="status"
+        >
+          {titleDirty || bodyDirty
+            ? "저장되지 않은 변경"
+            : isDraft
+              ? "초안 — 아직 게시되지 않음"
+              : "저장됨"}
+        </span>
         <div className="edit-chrome-actions">
           {isEdit && pageId ? (
             <Button
@@ -144,9 +184,9 @@ export function PageEditPage() {
             </Button>
           ) : null}
           <Button onClick={handleSave} disabled={!title.trim()} loading={saving}>
-            업데이트
+            {isDraft ? "게시" : "업데이트"}
           </Button>
-          <Button variant="subtle" onClick={handleCancel}>
+          <Button variant="subtle" onClick={() => void handleCancel()}>
             닫기
           </Button>
         </div>
@@ -161,7 +201,12 @@ export function PageEditPage() {
         placeholder="제목 없음"
         aria-label="페이지 제목"
       />
-      <WikiEditor ref={editorRef} initialMarkdown={initialBody} pages={pages ?? []} />
+      <WikiEditor
+        ref={editorRef}
+        initialMarkdown={initialBody}
+        pages={pages ?? []}
+        onDirty={() => setBodyDirty(true)}
+      />
     </div>
   );
 }

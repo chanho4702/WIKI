@@ -22,9 +22,16 @@
   --wiki-hljs-number: #a64d79; /* number/literal — 자주색 */
   --wiki-hljs-comment: #5b6472; /* comment — 회색 */
   --wiki-hljs-title: #6f42c1; /* title/attr/attribute — 보라색 */
+
+  /* 브라우저 네이티브 UI(스크롤바, select 드롭다운 목록, 체크박스 기본형, autofill 배경)에
+   * 테마를 알린다. 이게 없으면 다크 테마에서 앱 표면만 어두워지고 네이티브 위젯은 흰색으로
+   * 남아 명도가 튄다 — .top-toolbar select와 .wiki-content 스크롤바가 실제 사례. */
+  color-scheme: light;
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
+
   /* W7 T4: 다크 코드블록 배경은 --chanho-color-background-subtle(다크 값 #0B0F15)이다
    * (.markdown-body pre, .wiki-editor .ProseMirror pre가 이미 이 토큰을 참조 — 자동으로 테마 전환).
    * hljs 값은 전부 그 배경 기준 WCAG AA(4.5:1) 이상 — 계산 수치는 task-4-report.md 참고. */
@@ -48,6 +55,107 @@ body {
   background: var(--chanho-color-background-default);
 }
 
+/* ── 접근성 전역 규칙 ─────────────────────────────────────
+ * 개별 컴포넌트가 아니라 문서 전체에 걸리는 규칙이라 레이아웃보다 앞에 둔다. */
+
+/* WCAG 2.2 2.3.3(Animation from Interactions) — OS의 "동작 줄이기" 설정을 존중한다.
+ *
+ * 상태 전환(transition)만 전역으로 없앤다. DS 컴포넌트(Card/Switch/Select/Table 등 11개)까지
+ * 덮어야 하므로 전역 셀렉터 + !important가 필요하다. 0이 아니라 0.01ms인 이유: transitionend에
+ * 의존하는 코드가 콜백을 못 받아 멈추는 것을 막기 위해서다.
+ *
+ * animation은 일부러 전역에서 건드리지 않는다 — 이 앱에서 keyframe 애니메이션은 전부 "진행
+ * 중"을 알리는 표시(DS Spinner·Button 로딩 스피너, 아래 스켈레톤 펄스)뿐이고, 이걸 멈추면
+ * 로딩이 정지·중단된 것처럼 보여 정보가 사라진다(2.3.3이 대상으로 하는 "장식적" 동작이 아니다).
+ * 대신 각 표시를 개별적으로 감속한다 — DS Spinner/Button은 자체 규칙(0.8s → 1.6s)이 있고,
+ * 스켈레톤은 아래에서 늦춘다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 시각적으로는 숨기되 스크린리더에는 읽히는 텍스트 — 스켈레톤처럼 화면상으로는 상태를 전달하지만
+ * 접근성 트리에는 아무 문구가 없는 경우에 짝지어 쓴다. display: none / visibility: hidden은
+ * 낭독에서도 제외되므로 쓸 수 없다(1px 클립 방식이 표준 관용구). */
+.wiki-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* WCAG 2.2 2.4.1(Bypass Blocks) — 사이드바 글로벌 네비 + 페이지 트리(수십 항목)를 Tab으로
+ * 전부 지나야 본문에 닿는 문제를 우회한다. 포커스를 받을 때만 화면에 나타난다
+ * (display: none이면 포커스를 못 받으므로 위치 이동으로 숨긴다). AppShell의 #wiki-main 대상. */
+.wiki-skip-link {
+  position: absolute;
+  top: var(--chanho-space-100);
+  left: var(--chanho-space-100);
+  z-index: var(--chanho-z-toast, 600);
+  padding: var(--chanho-space-100) var(--chanho-space-200);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-brand);
+  color: var(--chanho-color-text-inverse);
+  font-size: var(--chanho-font-size-100);
+  font-weight: var(--chanho-font-weight-semibold);
+  text-decoration: none;
+  transform: translateY(calc(-100% - var(--chanho-space-200)));
+  transition: transform var(--chanho-transition-base);
+}
+
+/* :focus-visible이 아니라 :focus를 쓴다. focus-visible은 "키보드로 온 포커스인가"를 브라우저
+ * 휴리스틱으로 판단하므로, 프로그램적 focus()(건너뛰기 스크립트·보조기기 도구)에서는 걸리지
+ * 않을 수 있다. 그러면 링크가 포커스는 받았는데 화면 밖에 숨어 있어 사용자가 어디 있는지 모른다.
+ * 스킵 링크는 포커스를 받으면 무조건 보여야 하므로 휴리스틱에 기대지 않는다. */
+.wiki-skip-link:focus {
+  transform: translateY(0);
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
+/* 스킵 링크 대상인 .wiki-content는 tabIndex={-1}로 포커스를 받는다 — 스크롤 컨테이너 전체에
+ * 포커스 링을 그리면 화면을 두르는 테두리가 되므로 링은 생략한다(포커스 이동은 스크린리더
+ * 낭독 위치를 옮기는 것이 목적이고, 시각적 위치는 스크롤 상단으로 이미 표현된다). */
+.wiki-content:focus-visible {
+  outline: none;
+}
+
+/* 앱 로컬 커스텀 컨트롤(생 button/a)의 포커스 링을 DS 컴포넌트와 같은 토큰으로 통일한다.
+ * 이것이 없으면 브라우저 기본 outline이 떠서 DS 버튼과 링 모양·색이 달라진다. */
+.global-nav-item:focus-visible,
+.space-switcher-trigger:focus-visible,
+.wiki-sidebar-starred-item:focus-visible,
+.wiki-sidebar-starred-name:focus-visible,
+.wiki-sidebar-all-spaces-link:focus-visible,
+.wiki-sidebar-footer-link:focus-visible,
+.space-flyout-item-name:focus-visible,
+.space-flyout-star:focus-visible,
+.space-directory-row-name:focus-visible,
+.space-directory-star:focus-visible,
+.space-directory-card-name:focus-visible,
+.page-toc a:focus-visible,
+.child-pages a:focus-visible,
+.top-toolbar button:focus-visible,
+.top-toolbar select:focus-visible,
+.bubble-toolbar button:focus-visible,
+.insert-menu-trigger:focus-visible,
+.insert-menu-list button:focus-visible,
+.emoji-picker-trigger:focus-visible,
+.emoji-picker-tabs button:focus-visible,
+.emoji-picker-item:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
 /* ── 레이아웃 ─────────────────────────────────────────── */
 
 /* TopBar(상단) + 본문(사이드바 | 콘텐츠) 수직 배치
@@ -58,6 +166,10 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /* dvh는 모바일 브라우저의 주소창 노출/숨김에 따라 실제 보이는 높이를 따라간다 — 100vh는
+   * 주소창을 뺀 높이로 고정돼 사이드바 푸터가 화면 밖으로 밀린다. 위 100vh는 dvh 미지원
+   * 브라우저용 폴백이라 함께 둔다. */
+  height: 100dvh;
 }
 
 .wiki-body {
@@ -118,6 +230,7 @@ body {
   color: var(--chanho-color-text-default);
   font: inherit;
   text-decoration: none;
+  transition: background var(--chanho-transition-base), color var(--chanho-transition-base);
 }
 
 .global-nav-item:hover {
@@ -289,6 +402,7 @@ body {
   border-radius: var(--chanho-radius-small, 4px);
   cursor: pointer;
   color: var(--chanho-color-text-default);
+  transition: background var(--chanho-transition-base), color var(--chanho-transition-base);
 }
 
 /* 스페이스명은 아이콘 옆에서 남는 폭만큼만 쓰고 넘치면 … 처리 */
@@ -320,6 +434,51 @@ body {
   gap: var(--chanho-space-100, 8px);
 }
 
+/* 섹션 제목 ↔ "+"(초안 만들기)를 한 줄에 — 캡처 07-26-폴더.png의 콘텐츠 헤더 */
+.wiki-sidebar-content-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-100);
+}
+
+.wiki-sidebar-content-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* WCAG 2.2 2.5.8 타겟 최소 24×24 CSS px를 만족시킨다 */
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--chanho-radius-medium);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  cursor: pointer;
+  transition: background var(--chanho-transition-base), color var(--chanho-transition-base);
+}
+
+.wiki-sidebar-content-add:hover:not(:disabled) {
+  background: var(--chanho-color-background-neutral-hovered);
+  color: var(--chanho-color-text-default);
+}
+
+.wiki-sidebar-content-add:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.wiki-sidebar-content-add:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
+/* 트리 항목의 "초안" 배지 — 제목이 길어도 배지가 먼저 찌그러지지 않게 고정 */
+.page-tree-row a > span:last-child {
+  flex-shrink: 0;
+}
+
 /* 3단 푸터 — 컨텍스트 본문 아래 고정. 크로스앱 링크(Jira 등). */
 .wiki-sidebar-footer {
   display: flex;
@@ -338,6 +497,7 @@ body {
   color: var(--chanho-color-text-subtle);
   text-decoration: none;
   font-size: var(--chanho-font-size-100);
+  transition: background var(--chanho-transition-base), color var(--chanho-transition-base);
 }
 
 .wiki-sidebar-footer-link:hover {
@@ -408,6 +568,7 @@ body {
   background: transparent;
   color: var(--chanho-color-text-subtle);
   cursor: pointer;
+  transition: background var(--chanho-transition-base), color var(--chanho-transition-base);
 }
 
 .page-tree-toggle:hover {
@@ -417,7 +578,7 @@ body {
 
 /* CSS 회전 트랜지션 — 접힘(오른쪽) → 펼침(아래) */
 .page-tree-toggle-icon {
-  transition: transform 0.15s ease;
+  transition: transform var(--chanho-transition-base);
 }
 
 .page-tree-toggle[aria-expanded="true"] .page-tree-toggle-icon {
@@ -443,6 +604,7 @@ body {
   color: var(--chanho-color-text-default);
   text-decoration: none;
   font-size: var(--chanho-font-size-100);
+  transition: background var(--chanho-transition-base), color var(--chanho-transition-base);
 }
 
 /* 페이지 문서 아이콘 — 링크 텍스트 앞. 활성/기본 색은 링크의 currentColor를 따른다. */
@@ -488,7 +650,8 @@ body {
   color: var(--chanho-color-text-subtle);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.12s ease, background 0.12s ease;
+  transition: opacity var(--chanho-transition-fast), background var(--chanho-transition-fast),
+    color var(--chanho-transition-fast);
 }
 
 .page-tree-row:hover .page-tree-add,
@@ -571,6 +734,8 @@ body {
   color: var(--chanho-color-text-subtle);
   font-size: var(--chanho-font-size-100);
   text-decoration: none;
+  border-radius: var(--chanho-radius-small);
+  transition: color var(--chanho-transition-base);
 }
 
 .page-toc a:hover {
@@ -919,6 +1084,8 @@ body {
 .child-pages a {
   color: var(--chanho-color-text-link);
   text-decoration: none;
+  border-radius: var(--chanho-radius-small);
+  transition: color var(--chanho-transition-base);
 }
 
 .child-pages a:hover {
@@ -1034,6 +1201,8 @@ body {
   color: var(--chanho-color-text-default);
   text-align: left;
   cursor: pointer;
+  transition: background var(--chanho-transition-base), border-color var(--chanho-transition-base),
+    color var(--chanho-transition-base);
 }
 
 .history-item:hover {
@@ -1260,6 +1429,8 @@ body {
   font-weight: var(--chanho-font-weight-semibold, 600);
   color: var(--chanho-color-text-default);
   min-width: 30px;
+  transition: background var(--chanho-transition-fast), color var(--chanho-transition-fast),
+    opacity var(--chanho-transition-fast);
 }
 .top-toolbar button:hover:not(:disabled) {
   background: var(--chanho-color-background-neutral-hovered);
@@ -1308,6 +1479,7 @@ body {
   cursor: pointer;
   font-weight: var(--chanho-font-weight-semibold, 600);
   color: var(--chanho-color-text-default);
+  transition: background var(--chanho-transition-fast), color var(--chanho-transition-fast);
 }
 .bubble-toolbar button:hover {
   background: var(--chanho-color-background-neutral-hovered);
@@ -1374,6 +1546,7 @@ body {
   border-radius: var(--chanho-radius-small, 4px);
   cursor: pointer;
   color: var(--chanho-color-text-default);
+  transition: background var(--chanho-transition-fast), color var(--chanho-transition-fast);
 }
 .insert-menu-list button:hover,
 .insert-menu-list button.is-highlighted {
@@ -1451,6 +1624,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: background var(--chanho-transition-base), color var(--chanho-transition-base);
 }
 .space-flyout-item-name:hover {
   background: var(--chanho-color-background-neutral-hovered);
@@ -1528,6 +1702,7 @@ body {
   cursor: pointer;
   font-size: var(--chanho-font-size-75, 12px);
   color: var(--chanho-color-text-subtle, #626f86);
+  transition: background var(--chanho-transition-fast), color var(--chanho-transition-fast);
 }
 .emoji-picker-tabs button:hover {
   background: var(--chanho-color-background-neutral-hovered);
@@ -1557,6 +1732,7 @@ body {
   cursor: pointer;
   font-size: var(--chanho-font-size-200, 18px);
   line-height: 1;
+  transition: background var(--chanho-transition-fast);
 }
 .emoji-picker-item:hover,
 .emoji-picker-item.is-highlighted {
@@ -1604,7 +1780,7 @@ body {
 .drag-handle {
   position: fixed;
   opacity: 1;
-  transition: opacity 0.2s ease-in;
+  transition: opacity var(--chanho-transition-slow);
   border-radius: 4px;
   width: 20px;
   height: 20px;
@@ -1632,10 +1808,33 @@ body {
   gap: var(--chanho-space-400, 24px);
 }
 
+/* 섹션 내부도 세로 리듬을 gap으로 잡는다 — h2에만 margin-bottom을 주던 방식은 제목 아래 간격만
+ * 만들고 그 뒤 형제들(필터 입력 ↔ 테이블)은 맞닿게 둔다. DS TextField(.field)와 Table(.wrap)
+ * 둘 다 자체 margin이 없어서, 컨테이너가 간격을 책임지지 않으면 붙어버린다. */
+.space-directory-starred,
+.space-directory-all {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200, 12px);
+}
+
 .space-directory-starred h2,
 .space-directory-all h2 {
-  margin: 0 0 var(--chanho-space-200, 12px);
+  margin: 0;
   font-size: var(--chanho-font-size-200, 16px);
+}
+
+/* 페이지 제목 — 기본 UA margin(0.67em)이 .space-directory-content의 gap 위에 더해져 h1 주변만
+ * 과하게 벌어졌다. 간격은 컨테이너 gap 하나로 통일한다. */
+.space-directory-content h1 {
+  margin: 0;
+  font-size: var(--chanho-font-size-400, 24px);
+  line-height: var(--chanho-font-lineHeight-400);
+}
+
+/* 필터 입력과 테이블 사이는 섹션 gap보다 조금 더 벌려 "필터 → 결과" 관계를 시각적으로 끊는다. */
+.space-directory-all .space-directory-filter {
+  margin-bottom: var(--chanho-space-100, 8px);
 }
 
 /* 스페이스 카드 그리드 — 반응형 auto-fill. 캡처는 고정 6열이나 본문 폭(max 960px)에선 안 맞아
@@ -1735,6 +1934,363 @@ body {
   color: var(--chanho-color-text-warning, #b38600);
 }
 
+/* ── 폴더 상세 (/spaces/:spaceId/folder/:folderId) ───────────
+ * 캡처 07-26-폴더2.png 구조: 배너(아트 + 아이콘/이름/작성자) → 액션 → 자식 표.
+ * 배너 이미지는 파일 스토리지 선행이라 이번 범위 밖 — 브랜드 톤의 단색 면으로 대체한다. */
+.folder-page {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--chanho-space-400) var(--chanho-space-400) var(--chanho-space-600);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-400);
+}
+
+.folder-banner {
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  overflow: hidden;
+  background: var(--chanho-color-background-surface);
+}
+
+/* 캡처의 일러스트 자리 — 이미지 없이도 배너의 높이·리듬이 유지되게 고정 높이를 준다 */
+.folder-banner-art {
+  height: 120px;
+  background: var(--chanho-color-background-brand-subtle);
+}
+
+.folder-banner-body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--chanho-space-200);
+  padding: var(--chanho-space-300);
+}
+
+.folder-banner-icon {
+  flex-shrink: 0;
+  margin-top: var(--chanho-space-50, 4px);
+  color: var(--chanho-color-text-subtle);
+}
+
+/* flex: 1이 없으면 제목 블록이 콘텐츠 폭으로 줄어들어 "제목 없는 폴/더"처럼 잘린다
+ * (.folder-banner-body가 flex라 자식 기본값이 shrink-to-fit). */
+.folder-banner-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.folder-banner-title {
+  font-size: var(--chanho-font-size-400);
+  font-weight: var(--chanho-font-weight-bold);
+  line-height: var(--chanho-font-lineHeight-400);
+}
+
+/* 삭제가 왜 막혔는지 — 비활성 메뉴 항목만으로는 이유를 알 수 없다 */
+.folder-banner-hint {
+  margin: 0;
+  padding: 0 var(--chanho-space-300) var(--chanho-space-300);
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+
+.folder-banner-meta {
+  margin: var(--chanho-space-50, 4px) 0 0;
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+
+.folder-contents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+
+.folder-contents-actions {
+  display: flex;
+  gap: var(--chanho-space-100);
+}
+
+.folder-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--chanho-font-size-100);
+}
+
+.folder-table th {
+  text-align: left;
+  padding: var(--chanho-space-100) var(--chanho-space-150);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+  color: var(--chanho-color-text-subtle);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.folder-table td {
+  padding: var(--chanho-space-150);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+  vertical-align: middle;
+}
+
+.folder-table tbody tr:hover td {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.folder-table-name {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  color: var(--chanho-color-text-default);
+  text-decoration: none;
+  border-radius: var(--chanho-radius-small);
+  transition: color var(--chanho-transition-base);
+}
+
+.folder-table-name:hover {
+  color: var(--chanho-color-text-link-hovered);
+  text-decoration: underline;
+}
+
+.folder-table-name:focus-visible,
+.folder-table-action:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
+.folder-table-meta {
+  color: var(--chanho-color-text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.folder-table-muted {
+  color: var(--chanho-color-text-subtle);
+}
+
+.folder-table-action {
+  color: var(--chanho-color-text-link);
+  text-decoration: none;
+  border-radius: var(--chanho-radius-small);
+}
+
+.folder-table-action:hover {
+  text-decoration: underline;
+}
+
+/* 좁은 화면 — 표가 가로 스크롤을 만들지 않도록 보조 열을 숨기고 이름만 남긴다 */
+@media (max-width: 700px) {
+  .folder-table th:nth-child(2),
+  .folder-table td:nth-child(2) {
+    display: none;
+  }
+}
+
+/* 편집 크롬의 저장 상태 — 캡처의 "저장됨" 자리 */
+.edit-chrome-status {
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+  white-space: nowrap;
+}
+
+.edit-chrome-status--dirty {
+  color: var(--chanho-color-text-warning, #b38600);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+/* ── 레이어 분할(컬럼) ──────────────────────────────────────
+ * 보기(.markdown-body .md-columns)와 편집(.ProseMirror [data-type="column-block"])이 같은
+ * 배치를 써야 편집 화면과 저장 후 화면이 같아 보인다 — 한쪽만 고치지 않는다.
+ * 열 수는 자식 수에 따라 자동으로 나뉜다(1fr 균등) — 문서마다 열 수가 다르므로 CSS에
+ * 고정 개수를 박지 않는다. */
+.markdown-body .md-columns,
+.wiki-editor .ProseMirror [data-type="column-block"] {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--chanho-space-300);
+  margin: var(--chanho-space-300) 0;
+}
+
+.markdown-body .md-column,
+.wiki-editor .ProseMirror [data-type="column"] {
+  min-width: 0; /* grid 자식 기본값(auto)이면 긴 코드/표가 열을 밀어 넓힌다 */
+}
+
+/* 열 안의 첫/마지막 블록 여백을 죽여 열 상단이 나란히 맞게 한다 */
+.markdown-body .md-column > :first-child,
+.wiki-editor .ProseMirror [data-type="column"] > :first-child {
+  margin-top: 0;
+}
+.markdown-body .md-column > :last-child,
+.wiki-editor .ProseMirror [data-type="column"] > :last-child {
+  margin-bottom: 0;
+}
+
+/* 편집 중에는 열 경계가 보여야 어디를 편집 중인지 안다(보기 화면에는 테두리 없음) */
+.wiki-editor .ProseMirror [data-type="column"] {
+  padding: var(--chanho-space-150);
+  border: 1px dashed var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+}
+
+/* 좁은 화면에서는 열을 세로로 쌓는다 — 2열을 그대로 두면 한 열이 읽을 수 없이 좁아지고
+ * 표·코드블록이 가로 스크롤을 만든다. */
+@media (max-width: 700px) {
+  .markdown-body .md-columns,
+  .wiki-editor .ProseMirror [data-type="column-block"] {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+  }
+}
+
+/* ── 스페이스 개요 (/spaces/:spaceId) ────────────────────────
+ * 이전엔 이 라우트가 첫 페이지로 redirect해서 화면이 없었다. 사이드바 트리가 "탐색"이라면
+ * 이 화면은 "조망" — 스페이스 전체 계층을 펼친 상태로 보여준다. */
+.space-overview {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--chanho-space-400) var(--chanho-space-400) var(--chanho-space-600);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-500);
+}
+
+.space-overview-header {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-200);
+  padding-bottom: var(--chanho-space-300);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
+
+/* 제목 블록이 남는 폭을 차지해 "새 페이지" 버튼이 오른쪽 끝에 붙는다 */
+.space-overview-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.space-overview-heading h1 {
+  margin: 0;
+  font-size: var(--chanho-font-size-400);
+  line-height: var(--chanho-font-lineHeight-400);
+}
+
+.space-overview-key {
+  margin: var(--chanho-space-25, 2px) 0 0;
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.space-overview-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-150);
+}
+
+.space-overview-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  margin: 0;
+  font-size: var(--chanho-font-size-200);
+  font-weight: var(--chanho-font-weight-semibold);
+  color: var(--chanho-color-text-subtle);
+}
+
+/* 콘텐츠 트리 — 최상위는 들여쓰기 0, 중첩 단계마다 좌측 가이드선 + 들여쓰기 */
+.space-overview-tree {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.space-overview-tree .space-overview-tree {
+  margin-left: var(--chanho-space-200);
+  padding-left: var(--chanho-space-150);
+  border-left: 1px solid var(--chanho-color-border-default);
+}
+
+.space-overview-tree-link {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  min-height: 32px;
+  padding: 0 var(--chanho-space-100);
+  border-radius: var(--chanho-radius-medium);
+  color: var(--chanho-color-text-default);
+  text-decoration: none;
+  transition: background var(--chanho-transition-base), color var(--chanho-transition-base);
+}
+
+.space-overview-tree-link:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.space-overview-tree-link:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
+.space-overview-tree-icon {
+  flex-shrink: 0;
+  color: var(--chanho-color-text-subtle);
+}
+
+.space-overview-tree-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.space-overview-tree-count {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 최근 업데이트 — 제목 링크 + 날짜·작성자 메타 두 줄 */
+.space-overview-recent {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-150);
+}
+
+.space-overview-recent-link {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  color: var(--chanho-color-text-link);
+  text-decoration: none;
+  border-radius: var(--chanho-radius-small);
+  transition: color var(--chanho-transition-base);
+}
+
+.space-overview-recent-link:hover {
+  color: var(--chanho-color-text-link-hovered);
+  text-decoration: underline;
+}
+
+.space-overview-recent-link:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
+.space-overview-recent-meta {
+  margin: var(--chanho-space-25, 2px) 0 0 var(--chanho-space-300);
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── 홈 대시보드 (/home) ─────────────────────────────────── */
 /* 글로벌 셸(AppShell)의 .wiki-content 안에 렌더되므로 별도 화면 래퍼가 없다(설계 §2). */
 .home-content {
@@ -1803,4 +2359,83 @@ body {
 .home-resume-meta {
   font-size: var(--chanho-font-size-75);
   color: var(--chanho-color-text-subtle);
+}
+
+/* ── 숫자 정렬 ─────────────────────────────────────────────
+ * 날짜·버전·시각처럼 세로로 쌓여 비교되는 숫자는 tabular(고정폭) 자형을 쓴다. 기본 비례
+ * 자형에서는 "1"이 좁아 목록 항목마다 글자폭이 달라져 열이 흔들려 보인다. */
+.page-view-meta,
+.home-resume-meta,
+.history-item-meta,
+.diff-view,
+.markdown-body td {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 스켈레톤 로딩 ──────────────────────────────────────────
+ * 첫 로드에서 Spinner만 띄우면 화면이 비어 있다가 콘텐츠가 통째로 나타나 레이아웃이 튄다.
+ * 실제 콘텐츠와 같은 자리·크기의 회색 블록을 먼저 그려 위치를 예약한다(CLS 방지).
+ * shimmer 애니메이션은 상단 prefers-reduced-motion 전역 규칙이 함께 무력화한다. */
+.wiki-skeleton {
+  /* span에 붙여도 height가 먹게 한다 — 현재 사용처는 모두 flex 자식이라 자동 블록화되지만,
+   * 클래스만 재사용했을 때 높이가 0으로 무너지는 것을 막는다. */
+  display: block;
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-neutral);
+  animation: wiki-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+/* "동작 줄이기"에서도 펄스를 멈추지는 않는다 — 멈추면 로딩이 중단된 것처럼 보인다. 이동 없는
+ * 불투명도 변화라 감속만으로 충분하다(DS Spinner의 0.8s → 1.6s와 같은 처리). */
+@media (prefers-reduced-motion: reduce) {
+  .wiki-skeleton {
+    animation-duration: 2.8s;
+  }
+}
+
+@keyframes wiki-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* 홈 "다시 시작" 카드 자리표시 — .home-resume-card와 같은 테두리/패딩/그리드 셀을 유지해야
+ * 로드 완료 시 카드가 제자리에 나타난다. */
+.home-resume-card-skeleton {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+  padding: var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-surface);
+}
+
+.wiki-skeleton-line {
+  height: 12px;
+}
+
+/* 페이지 보기 자리표시 — 제목 1줄 + 메타 1줄 + 본문 여러 줄. 마지막 줄은 짧게 해서
+ * 문단의 끝처럼 보이게 한다(실제 텍스트 리듬 모사). */
+.page-view-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+
+.page-view-skeleton-title {
+  height: 28px;
+  width: min(60%, 380px);
+}
+
+.page-view-skeleton-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-150);
+  margin-top: var(--chanho-space-200);
 }

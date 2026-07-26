@@ -83,33 +83,54 @@ describe("W2 페이지 편집·생성", () => {
     expect(within(tree).queryByRole("link", { name: "새 하위 문서" })).not.toBeInTheDocument();
   });
 
-  it("헤더 '만들기 → 새 페이지'는 루트 생성으로 이동하고, 취소하면 스페이스 인덱스를 거쳐 첫 페이지로 돌아간다", async () => {
+  it("헤더 '만들기 → 페이지'는 초안을 만들어 트리에 세우고 그 편집 화면을 연다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg1");
     await screen.findByRole("heading", { level: 1, name: "시작하기" });
     await user.click(screen.getByRole("button", { name: "만들기" }));
-    await user.click(await screen.findByRole("menuitem", { name: "새 페이지" }));
+    // 만들기 메뉴는 폴더 도입 후 "페이지 / 폴더 / 새 스페이스" 구성이다
+    await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
+
+    // 예전엔 /pages/new(아직 없는 문서)로 이동만 해서 트리에 아무것도 안 나타났다 —
+    // 뭘 만들고 있는지 확인할 방법이 없었다. 이제 실제 문서(초안)로 만들어 편집 화면을 연다.
     await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/new");
+      expect(screen.getByTestId("location").textContent).toMatch(
+        /^\/spaces\/sp1\/pages\/[^/]+\/edit$/,
+      );
     });
-    await user.click(screen.getByRole("button", { name: "닫기" }));
-    // 루트 생성 취소 → /spaces/sp1 → SpaceIndexPage가 첫 루트 페이지로 이어서 redirect
-    await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg1");
-    });
+    const tree = screen.getByRole("navigation", { name: "페이지 트리" });
+    expect(within(tree).getByRole("link", { name: "제목 없음 초안" })).toBeInTheDocument();
   });
 
-  it("트리 항목의 '하위 페이지 추가' 버튼은 parent 쿼리를 담은 생성 화면으로 이동한다", async () => {
+  it("손대지 않은 초안을 닫으면 트리에서 사라진다 — '제목 없음'이 쌓이지 않는다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1");
+    await screen.findByRole("heading", { level: 1, name: "시작하기" });
+    await user.click(screen.getByRole("button", { name: "만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
+    await screen.findByRole("button", { name: "게시" });
+
+    await user.click(screen.getByRole("button", { name: "닫기" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1");
+    });
+    const tree = screen.getByRole("navigation", { name: "페이지 트리" });
+    expect(within(tree).queryByRole("link", { name: /제목 없음/ })).not.toBeInTheDocument();
+  });
+
+  it("트리 항목의 '하위 페이지 추가'는 그 항목의 하위 초안을 만든다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg1");
     const tree = await screen.findByRole("navigation", { name: "페이지 트리" });
     await user.click(within(tree).getByRole("button", { name: "팀 규칙 하위 페이지 추가" }));
     await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/new");
+      expect(screen.getByTestId("location").textContent).toMatch(/\/edit$/);
     });
-    // parent=pg2가 실제로 적용되는지 — 저장 후 pg2를 접으면 새 항목이 사라진다
-    await user.type(screen.getByPlaceholderText("제목 없음"), "회의록 규칙");
-    await user.click(screen.getByRole("button", { name: "업데이트" }));
+    // 실제로 pg2(팀 규칙)의 하위인지 — 제목을 채워 게시한 뒤 pg2를 접으면 사라져야 한다
+    const title = screen.getByRole("textbox", { name: "페이지 제목" });
+    await user.clear(title);
+    await user.type(title, "회의록 규칙");
+    await user.click(screen.getByRole("button", { name: "게시" }));
     await screen.findByRole("heading", { level: 1, name: "회의록 규칙" });
     await user.click(within(tree).getByRole("button", { name: "팀 규칙 하위 접기" }));
     expect(within(tree).queryByRole("link", { name: "회의록 규칙" })).not.toBeInTheDocument();
@@ -130,10 +151,13 @@ describe("W2 페이지 편집·생성", () => {
     renderApp("/spaces/sp9");
     await user.click(await screen.findByRole("button", { name: "첫 페이지 만들기" }));
     await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp9/pages/new");
+      expect(screen.getByTestId("location").textContent).toMatch(/^\/spaces\/sp9\/pages\/[^/]+\/edit$/);
     });
-    await user.type(screen.getByPlaceholderText("제목 없음"), "홈");
-    await user.click(screen.getByRole("button", { name: "업데이트" })); // 본문 없이 저장 가능 (body="")
+    // 편집 화면은 본문을 비동기로 불러오므로(그 전엔 로딩 표시) findBy로 기다린다
+    const newTitle = await screen.findByRole("textbox", { name: "페이지 제목" });
+    await user.clear(newTitle);
+    await user.type(newTitle, "홈");
+    await user.click(screen.getByRole("button", { name: "게시" })); // 본문 없이 게시 가능 (body="")
     expect(await screen.findByRole("heading", { level: 1, name: "홈" })).toBeInTheDocument();
     const tree = screen.getByRole("navigation", { name: "페이지 트리" });
     expect(within(tree).getByRole("link", { name: "홈" })).toBeInTheDocument();

@@ -9,6 +9,7 @@ import { SpaceIndexPage } from "../features/wiki/pages/SpaceIndexPage";
 import { SpaceDirectoryPage } from "../features/wiki/pages/SpaceDirectoryPage";
 import { HomePage } from "../features/wiki/pages/HomePage";
 import { PageViewPage } from "../features/wiki/pages/PageViewPage";
+import { FolderPage } from "../features/wiki/pages/FolderPage";
 import { PageEditPage } from "../features/wiki/pages/PageEditPage";
 
 export function App() {
@@ -65,8 +66,10 @@ export function App() {
           <Route path="pages/new" element={<PageEditPage key="new" />} />
           <Route path="pages/:pageId" element={<PageViewPage />} />
           <Route path="pages/:pageId/edit" element={<PageEditPage key="edit" />} />
+          {/* 폴더는 본문이 없어 페이지와 다른 화면을 연다(기획 P1) — 경로도 분리한다 */}
+          <Route path="folder/:folderId" element={<FolderPage />} />
         </Route>
-        {/* "/" 포함 그 외 전부 → 첫 스페이스 (index가 첫 루트 페이지로 이어서 redirect) */}
+        {/* "/" 포함 그 외 전부 → 첫 스페이스 (index는 스페이스 개요를 보여준다) */}
         <Route path="*" element={<Navigate to={`/spaces/${spaces[0].id}`} replace />} />
       </Route>
     </Routes>

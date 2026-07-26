@@ -1,5 +1,5 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
-import type { Attachment, Comment, Page, PageVersion, Space, User, WikiData } from "./types";
+import type { Attachment, Comment, Page, PageStatus, PageType, PageVersion, Space, User, WikiData } from "./types";
 import { CURRENT_USER_ID } from "../../../mock/users";
 import { createSeedData } from "../../../mock/seed";
 
@@ -21,6 +21,11 @@ function normalize(data: WikiData): WikiData {
   for (const comment of data.comments) {
     comment.parentId ??= null;
     comment.updatedAt ??= null;
+  }
+  // type/status 도입(2026-07-26) 이전에 저장된 문서 — 전부 게시된 일반 페이지였다.
+  for (const page of data.pages) {
+    page.type ??= "page";
+    page.status ??= "published";
   }
   return data;
 }
@@ -131,6 +136,10 @@ export async function createPage(input: {
   parentId?: string | null;
   title: string;
   body?: string;
+  /** 생략 시 일반 페이지. 폴더는 body를 쓰지 않는다(P1 결정). */
+  type?: PageType;
+  /** 생략 시 게시됨. 사이드바 "+"로 만드는 임시 문서만 "draft"로 만든다(P3 결정). */
+  status?: PageStatus;
 }): Promise<Page> {
   const data = load();
   if (!data.spaces.some((s) => s.id === input.spaceId)) {
@@ -155,6 +164,9 @@ export async function createPage(input: {
     id: nextId(),
     spaceId: input.spaceId,
     parentId,
+    type: input.type ?? "page",
+    // 폴더는 게시 개념이 없다 — status를 넘겨도 무시하고 항상 게시 상태로 둔다.
+    status: input.type === "folder" ? "published" : (input.status ?? "published"),
     title,
     body: input.body ?? "",
     version: 1, // 목업은 낙관적 락을 쓰지 않으므로 항상 1 고정
@@ -199,6 +211,21 @@ export async function updatePage(
   page.updatedBy = CURRENT_USER_ID;
   page.updatedAt = new Date().toISOString();
   snapshotVersion(data, page, page.updatedAt); // 적용 후 내용을 새 버전(max+1)으로
+  persist();
+  return clone(page);
+}
+
+/**
+ * 초안을 게시한다. 이미 게시된 문서면 no-op(버전·updatedAt 불변) — updatePage의 무변경 no-op과
+ * 같은 규칙이다. 게시는 "내용 변경"이 아니므로 버전 스냅샷을 쌓지 않는다(movePage와 같은 취급).
+ */
+export async function publishPage(id: string): Promise<Page> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === id);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  if (page.status === "published") return clone(page);
+  if (!page.title.trim()) throw new Error("제목을 입력해야 게시할 수 있습니다");
+  page.status = "published";
   persist();
   return clone(page);
 }
