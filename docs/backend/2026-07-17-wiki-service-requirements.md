@@ -30,7 +30,7 @@
 | 엔티티 | 필드 | 비고 |
 |---|---|---|
 | Space | id, key, name, createdAt | key: 대문자 접두어, **유니크** |
-| Page | id, spaceId, parentId(null=루트), title, body(마크다운 원문), position, createdBy, updatedBy, createdAt, updatedAt | parentId 인접 리스트, 깊이 제한 없음 |
+| Page | id, spaceId, parentId(null=루트), **type**, **status**, title, body(마크다운 원문), position, createdBy, updatedBy, createdAt, updatedAt | parentId 인접 리스트, 깊이 제한 없음. type=`page`\|`folder`(기획 P1), status=`draft`\|`published`(P3) — **구현됨**(V2, JSON은 소문자). 폴더는 항상 published |
 | PageVersion | id, pageId, version(1부터), title, body, savedBy, savedAt | 페이지당 version 연속 증가 |
 | Comment | id, pageId, authorId, body, parentId(null=최상위), createdAt, updatedAt(null=미수정) | **답글 중첩 1단** |
 
@@ -46,9 +46,10 @@
 | createSpace({key, name}) | POST /api/wiki/spaces | 키 대문자 정규화+중복 409 |
 | listPages(spaceId) | GET /api/wiki/spaces/{spaceId}/pages | 전체 목록(트리 구성은 프론트) |
 | getPage(id) | GET /api/wiki/pages/{id} | 없으면 404 |
-| createPage({spaceId, parentId?, title, body?}) | POST /api/wiki/pages | **v1 스냅샷 자동 생성** |
+| createPage({spaceId, parentId?, title, body?, type?, status?}) | POST /api/wiki/pages | **v1 스냅샷 자동 생성**. type/status 미지정 시 page/published |
 | updatePage(id, {title?, body?}) | PATCH /api/wiki/pages/{id} | 실변경 시만 새 버전 스냅샷, 무변경 no-op |
-| deletePage(id) | DELETE /api/wiki/pages/{id} | 하위 존재 시 409, 버전·코멘트 연쇄 삭제 |
+| deletePage(id, {children?}) | DELETE /api/wiki/pages/{id}**?children=promote\|cascade** | 옵션 없이 하위 존재 시 409. promote=자식을 대상의 부모로 승격 후 대상만 삭제, cascade=후손 전부. 어느 쪽이든 지워지는 페이지의 버전·첨부 연쇄 삭제 — **구현됨** |
+| publishPage(id) | POST /api/wiki/pages/{id}/publish | 초안→게시. 멱등, version·리비전 불변(내용 변경이 아님) — **구현됨** |
 | movePage(id, {parentId, beforeId?}) | PUT /api/wiki/pages/{id}/position | 아래 이동 규칙 참조 |
 | listVersions(pageId) | GET /api/wiki/pages/{pageId}/versions | version 내림차순 |
 | restoreVersion(pageId, versionId) | POST /api/wiki/pages/{pageId}/restore | updatePage 경로 재사용(새 버전으로 쌓임) |
@@ -67,7 +68,8 @@
 **페이지**
 - 제목 trim 후 비어 있으면 거부. 부모는 같은 스페이스의 페이지여야 함.
 - position은 형제(같은 spaceId+parentId) 내 정렬값. 생성 시 max+1.
-- 삭제: 하위 페이지 존재 시 거부. 성공 시 그 페이지의 버전·코멘트 연쇄 삭제.
+- 삭제: `children` 미지정 + 하위 존재 시 409로 거부(호출 실수로 트리가 통째로 사라지지 않게 하는 기본값). `promote`면 자식을 대상의 부모로 올리고 대상만, `cascade`면 후손 전부. 지워지는 페이지의 버전·첨부는 연쇄 삭제. promote로 옮겨진 자식마다 `PageUpdated` 이벤트를 발행한다(색인 스테일 방지).
+- 순환 가드: 재귀 삭제·조상 순회 모두 visited 셋을 쓴다 — `parent_id` 손상 데이터에서 무한 루프하지 않는다.
 
 **버전(스냅샷은 저장의 부수효과 — 프론트는 스냅샷 로직을 모른다)**
 - createPage → v1 스냅샷. updatePage → **title/body 실변경 시에만** 적용 후 내용을 version=max+1로 스냅샷,

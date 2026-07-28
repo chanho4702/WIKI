@@ -174,7 +174,7 @@ And 화면이 좁으면 열이 세로로 쌓여 가로 스크롤이 생기지 �
 | 대상 | 영향 |
 |---|---|
 | `wiki-front` | 주 구현. store 계약 확장, 라우트 1개 추가(`/spaces/:spaceId/folder/:folderId`), 트리·에디터 변경 |
-| `wiki-backend` | **계약 확장 필요** — 콘텐츠 타입 구분 필드. 프론트는 store 어댑터에서 흡수하고, 목업 모드는 선행 가능 |
+| `wiki-backend` | **완료(2026-07-28)** — `page.type`·`page.status`(V2), `?children=promote\|cascade` 삭제 옵션, `/publish` 엔드포인트 |
 | `design-system` | 확장 불필요 예상 — Table/Badge/Avatar/EmptyState 기존 컴포넌트로 충족. 폴더 화면 배너만 앱 로컬 CSS ⚠️ 확인필요 |
 | gateway / keycloak / org-service | 영향 없음(새 외부 경로·권한 없음) |
 
@@ -212,7 +212,7 @@ And 화면이 좁으면 열이 세로로 쌓여 가로 스크롤이 생기지 �
 | P4 | 폴더에 본문·댓글·버전을 허용할지(레퍼런스는 목록만) | ❓ 정책대기 |
 | P5 | "공동 작업자" 열 데이터 출처 — 백엔드가 편집 참여자 목록을 주는지 | ❓ 정책대기 |
 
-**백엔드 계약 대기**: `type`·`status` 두 필드는 목업에서만 산다. `wikiApi`의 `createPage`는 두 값을 요청에 싣지 않고, `mapPage`는 응답을 전부 `page`/`published`로 읽는다. `publishPage`는 백엔드 모드에서 "이 서버는 아직 초안/게시를 지원하지 않습니다"로 명시적으로 거부한다 — 조용히 성공한 척하면 사용자가 게시된 줄 알고 나가지만 문서는 초안으로 남기 때문이다. 백엔드에 컬럼이 붙으면 이 세 지점만 바꾼다.
+**백엔드 계약 — 완료(2026-07-28)**: wiki-backend V2가 `page.type`·`page.status` 컬럼과 `POST /api/wiki/pages/{id}/publish`를 제공한다. 어댑터의 세 지점(`createPage` 요청 필드 · `mapPage`/`mapPageTree` 응답 · `publishPage`)을 실제 계약으로 교체했다 — 목업 전용 기능이 아니다. 폴더는 게시 개념이 없어 draft로 요청해도 서버가 published로 고정한다.
 
 ---
 
@@ -231,4 +231,4 @@ MVP 전부 구현 완료 — `pnpm typecheck` / `pnpm test`(508) / `pnpm build` 
 
 **A4 완료(2026-07-26~28)**: 폴더로 드래그 이동(movePage가 타입을 가리지 않음, 회귀 테스트 추가) + 자식 있는 폴더/페이지 삭제(P2 결정 반영 — `DeleteContentDialog`가 처리 방식을 묻고 스토어 `deletePage(id, { children })`가 promote/cascade를 수행).
 
-**남은 것**: 폴더 배너 이미지(파일 스토리지 선행), "공동 작업자" 열(P5), 백엔드 계약 확장(`type`·`status` 컬럼 — 붙으면 `wikiApi.createPage`/`mapPage`/`publishPage` 세 지점만 수정).
+**남은 것**: 폴더 배너 이미지(파일 스토리지 선행), "공동 작업자" 열(P5).

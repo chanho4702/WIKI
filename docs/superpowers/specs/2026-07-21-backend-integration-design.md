@@ -80,3 +80,5 @@
 3. **HistoryModal 복원이 항상 "변경 없음"** — no-op 판정 `restored.updatedAt === page.updatedAt`가 backend 모드에선 둘 다 `""` → 실제 복원돼도 "현재 내용과 동일합니다" 토스트. → 판정 기준 보강 후속.
 4. **작성자 이름/아바타 부재** — updatedBy/createdBy가 숫자 id(빈 문자열) → `사용자 #{id}` 폴백 배선 필요(§4-1, org-service users 연동).
 5. Minor: `/api/me` 중복 호출(AuthGate + getCurrentUser), `mapVersionFull` 미사용(향후 단일 버전 미리보기용).
+
+**해소됨(2026-07-28, wiki-backend V2)**: 폴더(`type`)·초안(`status`)·게시는 더 이상 목업 전용이 아니다 — 서버가 컬럼과 `/publish`를 제공하고 어댑터가 실제 계약을 쓴다. 자식 처리 선택(`?children=promote|cascade`)도 서버가 한 트랜잭션에서 수행한다. 위 1~5(락·시각·복원 판정·작성자·중복 호출)는 그대로 남아 있다.

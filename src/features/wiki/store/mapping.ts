@@ -1,5 +1,5 @@
 // 백엔드(wiki-backend) DTO ↔ 프론트 도메인 타입 순수 변환. 부수효과 없음.
-import type { Page, PageVersion, Space } from "./types";
+import type { Page, PageStatus, PageType, PageVersion, Space } from "./types";
 
 export function toClientId(n: number): string {
   return String(n);
@@ -24,7 +24,11 @@ export function mapSpace(dto: SpaceDto): Space {
   };
 }
 
-interface PageDto { id: number; spaceId: number; parentId: number | null; title: string; content: string; version: number }
+interface PageDto {
+  id: number; spaceId: number; parentId: number | null; title: string; content: string; version: number;
+  /** 백엔드 V2에서 추가. 없던 시절 응답 호환을 위해 optional로 둔다. */
+  type?: PageType; status?: PageStatus;
+}
 export function mapPage(dto: PageDto): Page {
   // 백엔드 PageResponse엔 시각/작성자가 없다 → 빈 문자열. ⚠️ 백엔드 모드에서 PageView 메타의
   // "N이 수정"(작성자)·수정일(new Date("")→"Invalid Date")과 HistoryModal의 no-op 판정
@@ -35,10 +39,10 @@ export function mapPage(dto: PageDto): Page {
     id: toClientId(dto.id),
     spaceId: toClientId(dto.spaceId),
     parentId: dto.parentId === null ? null : toClientId(dto.parentId),
-    // 백엔드 PageResponse엔 콘텐츠 타입이 없다 → 전부 일반 페이지로 읽는다.
-    // 폴더는 목업 모드 선행 기능이며, 백엔드 컬럼 추가 시 여기만 dto.type으로 바꾼다(P1).
-    type: "page",
-    status: "published", // 백엔드에 초안/게시 상태가 없다 — 전부 게시된 것으로 읽는다
+    // 백엔드 V2(page.type/status)가 주는 값을 그대로 쓴다. 필드가 없는 구버전 응답은
+    // 도입 이전 기본값(page/published)으로 읽는다.
+    type: dto.type ?? "page",
+    status: dto.status ?? "published",
     title: dto.title,
     body: dto.content,
     version: dto.version,
@@ -47,15 +51,15 @@ export function mapPage(dto: PageDto): Page {
   };
 }
 
-interface TreeItemDto { id: number; parentId: number | null; title: string }
+interface TreeItemDto { id: number; parentId: number | null; title: string; type?: PageType; status?: PageStatus }
 export function mapPageTree(items: TreeItemDto[]): Page[] {
   // 백엔드 트리엔 position/본문/시각이 없다. index+1을 position으로 부여(형제 순서는 서버 미보장 — 설계 §4-3).
   return items.map((it, i) => ({
     id: toClientId(it.id),
     spaceId: "",
     parentId: it.parentId === null ? null : toClientId(it.parentId),
-    type: "page", // 백엔드 트리에도 타입/상태가 없다 — mapPage와 같은 이유
-    status: "published",
+    type: it.type ?? "page",
+    status: it.status ?? "published",
     title: it.title,
     body: "",
     version: 1,

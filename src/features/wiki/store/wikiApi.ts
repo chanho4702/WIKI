@@ -52,11 +52,7 @@ export async function getPage(id: string): Promise<Page | null> {
   if (res.status === 404) return null;
   return mapPage(await json(res));
 }
-/**
- * 폴더(type)·초안(status)은 목업 선행 기능이다 — 백엔드 계약이 아직 두 필드를 받지 않으므로
- * 요청 본문에 싣지 않고, 응답도 mapPage가 전부 "page"/"published"로 읽는다(기획 P1·P3의
- * "백엔드 컬럼 추가" 대기 항목). 시그니처만 목업과 맞춰 화면이 분기 없이 동작하게 한다.
- */
+/** 폴더(type)·초안(status)은 백엔드 V2가 받는다 — 목업과 같은 의미론이다. */
 export async function createPage(input: { spaceId: string; parentId?: string | null; title: string; body?: string; type?: PageType; status?: PageStatus }): Promise<Page> {
   const res = await sharedApiFetch("/api/wiki/pages", {
     method: "POST", headers: { "Content-Type": "application/json" },
@@ -64,6 +60,8 @@ export async function createPage(input: { spaceId: string; parentId?: string | n
       spaceId: toBackendId(input.spaceId),
       parentId: input.parentId ? toBackendId(input.parentId) : null,
       title: input.title.trim(), content: input.body ?? "",
+      // 백엔드 V2 계약. 미지정이면 서버가 page/published로 채운다(폴더는 항상 published).
+      type: input.type, status: input.status,
     }),
   });
   return mapPage(await json(res));
@@ -82,33 +80,18 @@ export async function updatePage(id: string, patch: { title?: string; body?: str
   });
   return mapPage(await json(res));
 }
-/**
- * 게시 — 백엔드에 상태 컬럼이 없어 지원할 수 없다. 조용히 성공한 척하면 사용자는 게시된 줄 알고
- * 나가지만 문서는 초안으로 남는다. 명시적으로 거부해 화면이 에러를 노출하게 한다.
- */
-export async function publishPage(_id: string): Promise<Page> {
-  throw new Error("이 서버는 아직 초안/게시를 지원하지 않습니다");
+/** 초안 게시(백엔드 V2). 이미 게시됐으면 서버가 멱등 처리하고 같은 문서를 돌려준다. */
+export async function publishPage(id: string): Promise<Page> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/publish`, { method: "POST" });
+  return mapPage(await json(res));
 }
 /**
- * 백엔드 DELETE는 자식을 조건 없이 재귀 삭제한다 — 목업의 "옵션 없으면 거부" 계약과 어긋난다.
- * 모드에 따라 지워지는 범위가 달라지면 안 되므로 옵션이 없을 때는 여기서 먼저 막는다.
- * cascade일 때만 백엔드의 재귀 삭제에 그대로 맡긴다(추가 왕복 없음).
+ * 자식 처리는 서버가 한 트랜잭션에서 수행한다(백엔드 V2 `?children=`).
+ * 옵션 없이 자식이 있으면 서버가 409 + "하위 페이지가 있어 삭제할 수 없습니다" — 목업과 같은 계약이다.
  */
 export async function deletePage(id: string, options?: DeletePageOptions): Promise<void> {
-  if (options?.children !== "cascade") {
-    const page = await getPage(id);
-    if (!page) throw new Error("페이지를 찾을 수 없습니다");
-    const children = (await listPages(page.spaceId)).filter((p) => p.parentId === id);
-    if (children.length > 0) {
-      if (!options?.children) throw new Error("하위 페이지가 있어 삭제할 수 없습니다");
-      // promote: 백엔드에 원자적 연산이 없어 자식을 하나씩 옮긴 뒤 대상을 지운다.
-      // 중간에 실패하면 이미 옮겨진 자식은 옮겨진 채로 남고 대상은 남는다 — 재시도하면 이어서 진행된다.
-      for (const child of children) {
-        await movePage(child.id, { parentId: page.parentId });
-      }
-    }
-  }
-  await json(await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}`, { method: "DELETE" }));
+  const query = options?.children ? `?children=${options.children}` : "";
+  await json(await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}${query}`, { method: "DELETE" }));
 }
 export async function movePage(id: string, target: { parentId: string | null; beforeId?: string | null }): Promise<Page> {
   // 백엔드는 순서(beforeId)를 지원하지 않는다 — parentId만 PUT으로 반영(설계 §4-3).
