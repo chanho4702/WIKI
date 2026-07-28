@@ -99,15 +99,65 @@ describe("W2 페이지 보기", () => {
     await user.click(within(dialog).getByRole("button", { name: "삭제" }));
   }
 
-  it("하위가 있는 페이지 삭제는 거부되고 Toast로 안내한다", async () => {
+  /** 하위가 있는 페이지는 삭제 전에 처리 방식을 고른다(기획 P2). */
+  async function confirmDeleteWith(
+    user: ReturnType<typeof userEvent.setup>,
+    choice: RegExp,
+  ) {
+    await user.click(screen.getByRole("button", { name: "더 보기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "삭제" }));
+    const dialog = await screen.findByRole("dialog", { name: "페이지 삭제" });
+    await user.click(within(dialog).getByRole("radio", { name: choice }));
+    await user.click(within(dialog).getByRole("button", { name: "삭제" }));
+  }
+
+  it("하위가 있는 페이지는 삭제 시 자식 처리 방식을 물어본다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg1"); // pg1은 pg3·pg4의 부모
     await screen.findByRole("heading", { level: 1, name: "시작하기" });
-    await confirmDelete(user);
-    expect(await screen.findByText("하위 페이지가 있어 삭제할 수 없습니다")).toBeInTheDocument();
-    // 페이지와 URL은 그대로
-    expect(screen.getByRole("heading", { level: 1, name: "시작하기" })).toBeInTheDocument();
-    expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg1");
+
+    await user.click(screen.getByRole("button", { name: "더 보기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "삭제" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "페이지 삭제" });
+    expect(within(dialog).getByRole("radiogroup", { name: /하위 항목 2개/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole("radio", { name: /상위로 올리기/ })).toBeChecked();
+  });
+
+  it("'상위로 올리기'로 지우면 하위 페이지가 조부모 자리로 올라온다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1"); // pg1(루트) → pg3·pg4
+    await screen.findByRole("heading", { level: 1, name: "시작하기" });
+
+    await confirmDeleteWith(user, /상위로 올리기/);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1");
+    });
+    const tree = within(screen.getByRole("navigation", { name: "페이지 트리" }));
+    expect(tree.queryByRole("link", { name: /시작하기/ })).not.toBeInTheDocument();
+    // 루트로 승격된 자식들은 트리에 남는다
+    expect(await tree.findByRole("link", { name: /개발 환경 설정/ })).toBeInTheDocument();
+    expect(tree.getByRole("link", { name: /배포 가이드/ })).toBeInTheDocument();
+  });
+
+  it("'함께 삭제'로 지우면 하위 페이지도 손자까지 사라진다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1"); // pg1 → pg3 → pg5, pg1 → pg4
+    await screen.findByRole("heading", { level: 1, name: "시작하기" });
+
+    await confirmDeleteWith(user, /함께 삭제/);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1");
+    });
+    const tree = within(screen.getByRole("navigation", { name: "페이지 트리" }));
+    for (const name of [/시작하기/, /개발 환경 설정/, /배포 가이드/, /로컬 DB 설정/]) {
+      expect(tree.queryByRole("link", { name })).not.toBeInTheDocument();
+    }
+    // 다른 루트는 남는다. 이 단언은 "삭제 후에도 트리가 접근성 트리에 있다"까지 고정한다 —
+    // 다이얼로그가 열린 채 언마운트되면 Radix의 배경 aria-hidden이 남아 role 쿼리가 전부 실패한다.
+    expect(tree.getByRole("link", { name: /팀 규칙/ })).toBeInTheDocument();
   });
 
   it("하위가 없는 페이지는 삭제 후 부모로 이동하고 트리에서 사라진다", async () => {

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router";
-import { Button, ConfirmDialog, Dropdown, EmptyState, InlineEdit, useToast } from "@chanho/react";
+import { Button, Dropdown, EmptyState, InlineEdit, useToast } from "@chanho/react";
 import { FileText, Folder, FolderPlus, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import type { Page, User } from "../store/types";
 import { createPage, deletePage, listUsers, updatePage } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
+import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { contentPathIn } from "../lib/contentPath";
 import { useCreateDraft } from "../lib/useCreateDraft";
 import { displayUserName } from "../lib/userName";
@@ -146,35 +147,29 @@ export function FolderPage() {
                 label: "폴더 삭제",
                 danger: true,
                 icon: <Trash2 size={16} aria-hidden="true" />,
-                // 자식이 있으면 스토어가 거부한다(P2 정책 미정 — 안전한 기본값).
-                // 눌러서 실패 토스트를 보게 하는 대신 비활성으로 미리 막고 이유를 아래에 적는다.
-                disabled: children.length > 0,
+                // 자식이 있어도 막지 않는다 — 다이얼로그가 처리 방식을 묻는다(기획 P2).
                 onSelect: () => setConfirmOpen(true),
               },
             ]}
           />
         </div>
-        {children.length > 0 ? (
-          <p className="folder-banner-hint">
-            비어 있지 않은 폴더는 삭제할 수 없습니다. 안의 항목을 먼저 옮기거나 지우세요.
-          </p>
-        ) : null}
       </header>
 
-      <ConfirmDialog
+      <DeleteContentDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="폴더 삭제"
-        description={`"${folder.title}" 폴더를 삭제합니다. 이 작업은 되돌릴 수 없습니다.`}
-        confirmLabel="삭제"
-        cancelLabel="취소"
-        danger
+        title={folder.title}
+        type="folder"
+        childCount={children.length}
         loading={deleting}
-        onConfirm={async () => {
+        onConfirm={async (options) => {
           setDeleting(true);
           try {
-            await deletePage(folder.id);
+            await deletePage(folder.id, options);
             toast({ title: `"${folder.title}" 폴더를 삭제했습니다`, appearance: "success" });
+            // 이동 전에 닫는다 — 열린 채 언마운트되면 Radix의 배경 aria-hidden이 남는다
+            // (PageViewPage와 동일 이유).
+            setConfirmOpen(false);
             await reloadPages();
             navigate(`/spaces/${space.id}`);
           } catch (error) {

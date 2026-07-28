@@ -73,6 +73,16 @@ export interface Attachment {
   sizeBytes: number;
 }
 
+/**
+ * 자식이 있는 페이지·폴더를 지울 때 자식을 어떻게 할지 (기획 P2 결정, 2026-07-28).
+ * - `promote`: 자식을 삭제 대상의 부모로 올리고 대상만 지운다(삭제 대상의 자리·순서를 이어받는다).
+ * - `cascade`: 후손 전부를 함께 지운다.
+ * 옵션을 주지 않으면 자식이 있을 때 거부한다 — 어느 쪽인지는 화면이 사용자에게 물어 정한다.
+ */
+export interface DeletePageOptions {
+  children?: "promote" | "cascade";
+}
+
 /** localStorage `wiki.v1`에 저장되는 루트 구조 */
 export interface WikiData {
   users: User[];

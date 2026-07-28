@@ -1,5 +1,5 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
-import type { Attachment, Comment, Page, PageStatus, PageType, PageVersion, Space, User, WikiData } from "./types";
+import type { Attachment, Comment, DeletePageOptions, Page, PageStatus, PageType, PageVersion, Space, User, WikiData } from "./types";
 import { CURRENT_USER_ID } from "../../../mock/users";
 import { createSeedData } from "../../../mock/seed";
 
@@ -230,16 +230,58 @@ export async function publishPage(id: string): Promise<Page> {
   return clone(page);
 }
 
-export async function deletePage(id: string): Promise<void> {
+export async function deletePage(id: string, options?: DeletePageOptions): Promise<void> {
   const data = load();
   const index = data.pages.findIndex((p) => p.id === id);
   if (index === -1) throw new Error("페이지를 찾을 수 없습니다");
-  if (data.pages.some((p) => p.parentId === id)) {
+  const target = data.pages[index];
+  const hasChildren = data.pages.some((p) => p.parentId === id);
+  // 옵션이 없으면 기존 계약 그대로 거부한다 — 자식을 어떻게 할지는 호출측이 명시할 때만 정해진다.
+  if (hasChildren && !options?.children) {
     throw new Error("하위 페이지가 있어 삭제할 수 없습니다");
   }
-  data.pages.splice(index, 1);
-  data.versions = data.versions.filter((v) => v.pageId !== id); // 버전 연쇄 삭제
-  data.comments = data.comments.filter((c) => c.pageId !== id); // 코멘트 연쇄 삭제
+
+  // 지울 대상 집합: promote면 자기 자신만, cascade면 후손 전부.
+  // visited: 손상 데이터(parentId 순환)에서도 무한 루프하지 않는다 (movePage 순환 가드와 같은 방어)
+  const doomed = new Set<string>([id]);
+  if (hasChildren && options?.children === "cascade") {
+    const queue = [id];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      for (const child of data.pages) {
+        if (child.parentId === current && !doomed.has(child.id)) {
+          doomed.add(child.id);
+          queue.push(child.id);
+        }
+      }
+    }
+  }
+
+  if (hasChildren && options?.children === "promote") {
+    // 자식을 삭제 대상의 부모로 올린다. 대상이 있던 자리(position)를 이어받게 해
+    // 트리에서 보이던 위치가 유지되게 한다 — 승격이 곧 순서 뒤섞임이 되면 안 된다.
+    const promoted = data.pages
+      .filter((p) => p.parentId === id)
+      .sort((a, b) => a.position - b.position);
+    const siblings = data.pages
+      .filter(
+        (p) =>
+          p.spaceId === target.spaceId && p.parentId === target.parentId && !doomed.has(p.id),
+      )
+      .sort((a, b) => a.position - b.position);
+    const insertAt = siblings.filter((p) => p.position < target.position).length;
+    siblings.splice(insertAt, 0, ...promoted);
+    promoted.forEach((p) => {
+      p.parentId = target.parentId;
+    });
+    siblings.forEach((p, i) => {
+      p.position = i + 1; // 형제 내 1..n 연속 재부여
+    });
+  }
+
+  data.pages = data.pages.filter((p) => !doomed.has(p.id));
+  data.versions = data.versions.filter((v) => !doomed.has(v.pageId)); // 버전 연쇄 삭제
+  data.comments = data.comments.filter((c) => !doomed.has(c.pageId)); // 코멘트 연쇄 삭제
   persist();
 }
 

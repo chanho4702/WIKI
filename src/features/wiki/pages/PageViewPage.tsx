@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
-import { Avatar, Button, ConfirmDialog, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
+import { Avatar, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
 import { Maximize2, Minimize2, MoreHorizontal, Trash2 } from "lucide-react";
-import type { Page, User } from "../store/types";
+import type { DeletePageOptions, Page, User } from "../store/types";
 import { deletePage, getPage, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
 import { TableOfContents } from "../components/TableOfContents";
 import { HistoryModal } from "../components/HistoryModal";
 import { ChildPages } from "../components/ChildPages";
+import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { CommentSection } from "../components/CommentSection";
 import { usePageWidth } from "../lib/pageWidth";
 import { displayUserName } from "../lib/userName";
@@ -113,11 +114,14 @@ export function PageViewPage() {
     { label: page.title },
   ];
 
-  const handleDelete = async () => {
+  const handleDelete = async (options?: DeletePageOptions) => {
     setDeleting(true);
     try {
-      await deletePage(page.id);
+      await deletePage(page.id, options);
       toast({ title: `"${page.title}" 페이지를 삭제했습니다`, appearance: "success" });
+      // 이동 전에 다이얼로그를 닫는다 — 열린 채로 언마운트되면 Radix가 배경에 걸어둔
+      // aria-hidden이 해제되지 않아 삭제 후 사이드바·본문이 접근성 트리에서 통째로 사라진다.
+      setConfirmOpen(false);
       await reloadPages();
       navigate(
         page.parentId ? `/spaces/${space.id}/pages/${page.parentId}` : `/spaces/${space.id}`,
@@ -200,14 +204,12 @@ export function PageViewPage() {
           </>
         }
       />
-      <ConfirmDialog
+      <DeleteContentDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="페이지 삭제"
-        description={`"${page.title}" 페이지를 삭제합니다. 이 작업은 되돌릴 수 없습니다.`}
-        confirmLabel="삭제"
-        cancelLabel="취소"
-        danger
+        title={page.title}
+        type={page.type}
+        childCount={pages.filter((p) => p.parentId === page.id).length}
         loading={deleting}
         onConfirm={handleDelete}
       />

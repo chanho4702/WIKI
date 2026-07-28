@@ -287,22 +287,64 @@ describe("W12 폴더 이동·삭제 (A4)", () => {
     expect(tree().queryByRole("link", { name: /운영 문서/ })).not.toBeInTheDocument();
   });
 
-  it("비어 있지 않은 폴더는 삭제를 막고 이유를 알려준다", async () => {
+  /** 비어 있지 않은 폴더 삭제: "…" → "폴더 삭제" → 선택지 고르기 → "삭제". (기획 P2) */
+  async function deleteFolderWith(
+    user: ReturnType<typeof userEvent.setup>,
+    choice: RegExp,
+  ) {
+    await user.click(screen.getByRole("button", { name: "더 보기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "폴더 삭제" }));
+    const dialog = await screen.findByRole("dialog", { name: "폴더 삭제" });
+    await user.click(within(dialog).getByRole("radio", { name: choice }));
+    await user.click(within(dialog).getByRole("button", { name: "삭제" }));
+  }
+
+  it("비어 있지 않은 폴더는 자식 처리 방식을 물어본다 — 막지 않는다", async () => {
     const user = userEvent.setup();
     localStorage.setItem("wiki.v1", JSON.stringify(seedWithFolder()));
     renderApp("/spaces/sp1/folder/fd1");
     await screen.findByRole("table");
 
-    // 왜 안 되는지 화면에 적혀 있어야 한다 — 비활성 메뉴 항목만으로는 알 수 없다
-    expect(
-      screen.getByText(/비어 있지 않은 폴더는 삭제할 수 없습니다/),
-    ).toBeInTheDocument();
-
     await user.click(screen.getByRole("button", { name: "더 보기" }));
-    // Radix 메뉴 항목은 div(role=menuitem)라 disabled 속성이 아니라 aria-disabled로 표현된다
-    expect(await screen.findByRole("menuitem", { name: "폴더 삭제" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    const item = await screen.findByRole("menuitem", { name: "폴더 삭제" });
+    expect(item).not.toHaveAttribute("aria-disabled", "true"); // 더 이상 비활성이 아니다
+    await user.click(item);
+
+    // 몇 개가 영향을 받는지와 두 선택지가 모두 보여야 한다
+    const dialog = await screen.findByRole("dialog", { name: "폴더 삭제" });
+    expect(within(dialog).getByRole("radiogroup", { name: /하위 항목 1개/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole("radio", { name: /상위로 올리기/ })).toBeChecked();
+    expect(within(dialog).getByRole("radio", { name: /함께 삭제/ })).toBeInTheDocument();
+  });
+
+  it("'상위로 올리기'로 지우면 폴더만 사라지고 안의 문서는 트리에 남는다", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("wiki.v1", JSON.stringify(seedWithFolder()));
+    renderApp("/spaces/sp1/folder/fd1");
+    await screen.findByRole("table");
+
+    await deleteFolderWith(user, /상위로 올리기/);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1");
+    });
+    expect(tree().queryByRole("link", { name: /운영 문서/ })).not.toBeInTheDocument();
+    // fd1은 루트 폴더였으므로 자식은 루트로 올라온다 — 트리에 그대로 보인다
+    expect(await tree().findByRole("link", { name: /장애 대응 절차/ })).toBeInTheDocument();
+  });
+
+  it("'함께 삭제'로 지우면 폴더와 안의 문서가 같이 사라진다", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("wiki.v1", JSON.stringify(seedWithFolder()));
+    renderApp("/spaces/sp1/folder/fd1");
+    await screen.findByRole("table");
+
+    await deleteFolderWith(user, /함께 삭제/);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1");
+    });
+    expect(tree().queryByRole("link", { name: /운영 문서/ })).not.toBeInTheDocument();
+    expect(tree().queryByRole("link", { name: /장애 대응 절차/ })).not.toBeInTheDocument();
   });
 });

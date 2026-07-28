@@ -6,7 +6,7 @@ export {
 
 import { sharedApiFetch } from "./apiClient";
 import { mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError } from "./mapping";
-import type { Space, Page, PageVersion, User, Attachment, PageStatus, PageType } from "./types";
+import type { Space, Page, PageVersion, User, Attachment, PageStatus, PageType, DeletePageOptions } from "./types";
 
 /** 백엔드 응답(JSON) 파싱 + 4xx/5xx를 한국어 에러로 변환. 이후 태스크(pages/versions/attachments)도 재사용. */
 async function json<T>(res: Response): Promise<T> {
@@ -89,7 +89,25 @@ export async function updatePage(id: string, patch: { title?: string; body?: str
 export async function publishPage(_id: string): Promise<Page> {
   throw new Error("이 서버는 아직 초안/게시를 지원하지 않습니다");
 }
-export async function deletePage(id: string): Promise<void> {
+/**
+ * 백엔드 DELETE는 자식을 조건 없이 재귀 삭제한다 — 목업의 "옵션 없으면 거부" 계약과 어긋난다.
+ * 모드에 따라 지워지는 범위가 달라지면 안 되므로 옵션이 없을 때는 여기서 먼저 막는다.
+ * cascade일 때만 백엔드의 재귀 삭제에 그대로 맡긴다(추가 왕복 없음).
+ */
+export async function deletePage(id: string, options?: DeletePageOptions): Promise<void> {
+  if (options?.children !== "cascade") {
+    const page = await getPage(id);
+    if (!page) throw new Error("페이지를 찾을 수 없습니다");
+    const children = (await listPages(page.spaceId)).filter((p) => p.parentId === id);
+    if (children.length > 0) {
+      if (!options?.children) throw new Error("하위 페이지가 있어 삭제할 수 없습니다");
+      // promote: 백엔드에 원자적 연산이 없어 자식을 하나씩 옮긴 뒤 대상을 지운다.
+      // 중간에 실패하면 이미 옮겨진 자식은 옮겨진 채로 남고 대상은 남는다 — 재시도하면 이어서 진행된다.
+      for (const child of children) {
+        await movePage(child.id, { parentId: page.parentId });
+      }
+    }
+  }
   await json(await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}`, { method: "DELETE" }));
 }
 export async function movePage(id: string, target: { parentId: string | null; beforeId?: string | null }): Promise<Page> {

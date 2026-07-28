@@ -4,6 +4,7 @@ import {
   addComment,
   deletePage,
   getPage,
+  listPages,
   listVersions,
   restoreVersion,
   updatePage,
@@ -13,6 +14,15 @@ beforeEach(() => {
   localStorage.clear();
   __resetForTest();
 });
+
+/** 저장소 원본 — 조회 API의 필터가 아니라 실제로 지워졌는지 보려고 읽는다. */
+function readRaw() {
+  return JSON.parse(localStorage.getItem("wiki.v1")!) as {
+    pages: { id: string }[];
+    versions: { pageId: string }[];
+    comments: { pageId: string }[];
+  };
+}
 
 describe("updatePage", () => {
   it("body 실변경 시 새 버전(max+1)을 스냅샷하고 updatedBy/updatedAt을 갱신한다", async () => {
@@ -83,6 +93,82 @@ describe("deletePage", () => {
 
   it("없는 페이지면 거부한다", async () => {
     await expect(deletePage("없는id")).rejects.toThrow("페이지를 찾을 수 없습니다");
+  });
+});
+
+// P2 결정(2026-07-28): 자식이 있으면 거부하는 대신, 호출측이 처리 방식을 고른다.
+// 옵션을 주지 않으면 기존 거부 그대로 — 화면이 명시적으로 고를 때만 자식을 건드린다.
+describe("deletePage — 자식 처리 선택", () => {
+  it("promote: 자식을 삭제 대상의 부모로 올리고 대상만 지운다", async () => {
+    // 시드 트리 pg1 → pg3 → pg5. pg3을 지우면 pg5는 pg1의 자식이 된다.
+    await deletePage("pg3", { children: "promote" });
+
+    expect(await getPage("pg3")).toBeNull();
+    const pg5 = await getPage("pg5");
+    expect(pg5).not.toBeNull();
+    expect(pg5!.parentId).toBe("pg1"); // 조부모에게 승격
+  });
+
+  it("promote: 승격된 자식이 삭제된 자리의 position을 이어받고 형제가 1..n으로 재부여된다", async () => {
+    // 시드: pg1 아래 pg3(1) · pg4(2), pg3 아래 pg5. pg3을 지우면 pg5가 pg3의 자리로 올라온다.
+    await deletePage("pg3", { children: "promote" });
+
+    const children = (await listPages("sp1"))
+      .filter((p) => p.parentId === "pg1")
+      .sort((a, b) => a.position - b.position);
+    expect(children.map((p) => p.id)).toEqual(["pg5", "pg4"]); // 뒤 형제 pg4는 뒤에 남는다
+    expect(children.map((p) => p.position)).toEqual([1, 2]); // 1..n 연속
+  });
+
+  it("promote: 대상의 버전·코멘트만 지우고 승격된 자식의 것은 보존한다", async () => {
+    await addComment("pg5", "자식 코멘트는 남아야 한다");
+    await addComment("pg3", "대상 코멘트는 지워져야 한다");
+
+    await deletePage("pg3", { children: "promote" });
+
+    const raw = readRaw();
+    expect(raw.comments.some((c) => c.pageId === "pg3")).toBe(false);
+    expect(raw.versions.some((v) => v.pageId === "pg3")).toBe(false);
+    expect(raw.comments.some((c) => c.pageId === "pg5")).toBe(true);
+    expect(raw.versions.some((v) => v.pageId === "pg5")).toBe(true);
+  });
+
+  it("cascade: 후손 전부와 각자의 버전·코멘트를 지운다", async () => {
+    await addComment("pg5", "손자 코멘트");
+
+    // 시드: pg1 → {pg3 → pg5, pg4}. 손자까지 전부 후손이다.
+    await deletePage("pg1", { children: "cascade" });
+
+    const doomed = ["pg1", "pg3", "pg4", "pg5"];
+    for (const id of doomed) {
+      expect(await getPage(id)).toBeNull();
+    }
+    const raw = readRaw();
+    expect(raw.pages.some((p) => doomed.includes(p.id))).toBe(false);
+    expect(raw.versions.some((v) => doomed.includes(v.pageId))).toBe(false);
+    expect(raw.comments.some((c) => doomed.includes(c.pageId))).toBe(false);
+    // 다른 가지(루트 pg2)는 손대지 않는다
+    expect(await getPage("pg2")).not.toBeNull();
+  });
+
+  it("자식이 없으면 두 옵션 다 리프 삭제와 같다", async () => {
+    await deletePage("pg5", { children: "promote" });
+    expect(await getPage("pg5")).toBeNull();
+    await deletePage("pg4", { children: "cascade" });
+    expect(await getPage("pg4")).toBeNull();
+  });
+
+  it("cascade: parentId가 순환하는 손상 데이터에서도 무한 루프하지 않는다", async () => {
+    // movePage 순환 가드와 같은 방어 — 저장소를 직접 손상시켜 재현한다
+    await listPages("sp1"); // 시드를 localStorage에 내려놓는다
+    const raw = readRaw() as unknown as { pages: { id: string; parentId: string | null }[] };
+    const byId = new Map(raw.pages.map((p) => [p.id, p]));
+    byId.get("pg1")!.parentId = "pg5"; // pg1 → pg3 → pg5 → pg1 순환
+    localStorage.setItem("wiki.v1", JSON.stringify(raw));
+    __resetForTest();
+
+    await deletePage("pg3", { children: "cascade" });
+    expect(await getPage("pg3")).toBeNull();
   });
 });
 
