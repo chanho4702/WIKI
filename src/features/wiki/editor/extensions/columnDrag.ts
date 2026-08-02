@@ -272,7 +272,22 @@ function startResize(
   dragState.kind = "resize";
   document.body.classList.add("is-column-resizing");
 
+  // 해제는 한 곳에서만 한다 — 등록한 이름과 해제하는 이름이 갈리면 리스너가 남는다(실제로 겪음)
+  const stop = () => {
+    document.removeEventListener("pointermove", move);
+    document.removeEventListener("pointerup", finish);
+    document.removeEventListener("pointercancel", stop);
+    document.body.classList.remove("is-column-resizing");
+    dragState.kind = null;
+  };
+
   const move = (e: PointerEvent) => {
+    // 드래그 중 문서가 바뀌어(실행취소·외부 변경) 레이아웃이 사라졌으면 즉시 그만둔다 —
+    // 캡처해둔 found.pos가 다른 노드를 가리키게 되면 엉뚱한 곳의 속성을 바꾼다
+    if (!isStillSameBlock(view, found.pos)) {
+      stop();
+      return;
+    }
     const deltaPercent = ((e.clientX - startX) / totalWidth) * 100;
     const left = startWidths[index - 1] + deltaPercent;
     const right = startWidths[index] - deltaPercent;
@@ -285,17 +300,24 @@ function startResize(
     applyWidths(view, found.pos, next, false);
   };
 
-  const up = () => {
-    document.removeEventListener("pointermove", move);
-    document.removeEventListener("pointerup", up);
-    document.body.classList.remove("is-column-resizing");
-    dragState.kind = null;
+  const finish = () => {
     // 마지막 상태 하나만 실행취소 대상으로 남긴다
-    applyWidths(view, found.pos, currentWidths(view.state.doc.nodeAt(found.pos)!, blockDom), true);
+    const block = view.state.doc.nodeAt(found.pos);
+    if (block && block.type.name === COLUMN_BLOCK_NAME) {
+      applyWidths(view, found.pos, currentWidths(block, blockDom), true);
+    }
+    stop();
   };
 
   document.addEventListener("pointermove", move);
-  document.addEventListener("pointerup", up);
+  document.addEventListener("pointerup", finish);
+  document.addEventListener("pointercancel", stop);
+}
+
+/** 캡처해둔 위치가 아직 같은 레이아웃을 가리키는지 — 드래그 중 문서가 바뀔 수 있다. */
+function isStillSameBlock(view: EditorView, pos: number): boolean {
+  const node = view.state.doc.nodeAt(pos);
+  return !!node && node.type.name === COLUMN_BLOCK_NAME;
 }
 
 function applyWidths(view: EditorView, blockPos: number, widths: number[], addToHistory: boolean) {

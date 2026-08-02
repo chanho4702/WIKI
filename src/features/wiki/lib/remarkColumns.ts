@@ -53,6 +53,13 @@ export function remarkColumns() {
       // `:::column{width=30}` — remark-directive가 attributes로 넘겨준 값을 편집 화면과 같은
       // CSS 변수로 흘린다. 편집(`--wiki-column-width` 인라인 스타일)과 값이 갈리면
       // 저장 후 화면이 편집 중과 달라진다.
+      if (directive.name === "columns") {
+        // 편집 화면의 ColumnBlock.renderHTML과 같은 값 — 열 너비에서 gap 몫을 빼는 데 쓴다
+        const count = (directive as { children?: unknown[] }).children?.length ?? 0;
+        data.hProperties = { className: [className], style: `--wiki-column-count:${count}` };
+        return;
+      }
+
       const width = parseColumnWidth(directive.attributes?.width);
       data.hProperties =
         width === null

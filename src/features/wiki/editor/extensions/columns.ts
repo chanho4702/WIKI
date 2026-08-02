@@ -250,8 +250,17 @@ export const ColumnBlock = Node.create({
     return [{ tag: 'div[data-type="column-block"]' }];
   },
 
-  renderHTML({ HTMLAttributes }) {
-    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "column-block" }), 0];
+  renderHTML({ node, HTMLAttributes }) {
+    // 열 개수를 CSS에 알린다 — 열 너비(%)에서 gap 몫을 정확히 빼려면 개수가 필요하다.
+    // 개수를 모르면 각 열에서 gap을 통째로 빼게 되고, 5열에서 그 오차가 눈에 띈다.
+    return [
+      "div",
+      mergeAttributes(HTMLAttributes, {
+        "data-type": "column-block",
+        style: `--wiki-column-count:${node.childCount}`,
+      }),
+      0,
+    ];
   },
 
   addStorage() {

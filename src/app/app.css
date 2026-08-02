@@ -2228,10 +2228,21 @@ body {
 .wiki-editor .ProseMirror [data-type="column"] {
   flex: 1 1 var(--wiki-column-min);
   min-width: 0; /* 기본값(auto)이면 긴 코드/표가 열을 밀어 넓힌다 */
+  /* 이 리포엔 전역 border-box 리셋이 없다. 편집 화면 열에는 padding과 점선 테두리가 있어서,
+   * content-box로 두면 지정 너비 + padding + border가 컨테이너를 넘겨 flex-wrap이 열을
+   * 다음 줄로 내려보낸다 — 실제로 "너비 조절하면 두 줄로 넘어간다"로 나타났던 원인이다. */
+  box-sizing: border-box;
 }
+/* 지정 너비 — 열 사이 gap의 제 몫만큼만 뺀다.
+ * N열이면 gap은 (N-1)개이고 각 열이 (N-1)/N씩 나눠 진다. 열마다 gap을 통째로 빼면
+ * 합이 100%에 못 미쳐 오른쪽에 빈 공간이 남는다(5열에서 특히 눈에 띈다). */
 .markdown-body .md-column[data-width],
 .wiki-editor .ProseMirror [data-type="column"][data-width] {
-  flex: 0 1 calc(var(--wiki-column-width) - var(--chanho-space-200));
+  flex: 0 1
+    calc(
+      var(--wiki-column-width) - var(--chanho-space-200) *
+        (var(--wiki-column-count, 1) - 1) / var(--wiki-column-count, 1)
+    );
 }
 
 /* 열 안의 첫/마지막 블록 여백을 죽여 열 상단이 나란히 맞게 한다 */
@@ -2254,22 +2265,35 @@ body {
 
 /* ── 열 드래그 조작 (extensions/columnDrag.ts) ──────────────
  * 평소엔 숨기고 레이아웃에 마우스를 올렸을 때만 드러낸다 — 편집 중 계속 보이면 소음이다. */
+/* 히트 영역(18px)은 넉넉하게, 보이는 선은 얇게(3px).
+ * 처음엔 7px였는데 실사용에서 "너무 얇아 잡기 어렵다"는 지적을 받았다 — WCAG 2.2의
+ * 타겟 크기 기준(24px)에는 여전히 못 미치지만 gap 폭 안에 들어가야 해서 18px로 절충하고,
+ * 세로로는 열 전체 높이라 실제 타겟 면적은 충분하다. */
 .wiki-editor .ProseMirror .column-resize-handle {
   position: absolute;
   top: 0;
   bottom: 0;
-  /* 열 사이 gap의 한가운데 — 열 왼쪽 바깥으로 gap의 절반만큼 나간다 */
-  left: calc(var(--chanho-space-200) / -2 - 3px);
-  width: 7px;
+  left: calc(var(--chanho-space-200) / -2 - 9px);
+  width: 18px;
   cursor: col-resize;
   opacity: 0;
   transition: opacity var(--chanho-transition-base);
+  z-index: 1; /* 열 테두리 위로 — 아래 깔리면 가장자리에서 안 잡힌다 */
 }
 .wiki-editor .ProseMirror .column-resize-handle::after {
   content: "";
   position: absolute;
-  inset: 0 3px;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 3px;
+  transform: translateX(-50%);
   border-radius: 2px;
+  background: var(--chanho-color-border-default);
+  transition: background var(--chanho-transition-base);
+}
+.wiki-editor .ProseMirror .column-resize-handle:hover::after,
+body.is-column-resizing .wiki-editor .ProseMirror .column-resize-handle::after {
   background: var(--chanho-color-text-brand);
 }
 .wiki-editor .ProseMirror .column-grip {
