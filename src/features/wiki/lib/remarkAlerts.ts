@@ -8,15 +8,31 @@ import { visit } from "unist-util-visit";
  * Confluence Info/Tip/Note/Warning 패널과 동등한 결과를 만든다.
  */
 
-const LABELS = {
-  NOTE: "노트",
-  TIP: "팁",
-  IMPORTANT: "중요",
+/**
+ * 저장 마커 ↔ 화면 명칭 매핑 (기획 P7 확정, 레퍼런스 `기능들.png`).
+ *
+ * 저장은 GitHub Alerts 마커 그대로 두고 **표시 명칭만** 컨플루언스 패널 이름에 맞춘다 —
+ * 저장 문자열을 바꾸면 기존 문서가 전부 깨지고, GFM 표준에서 벗어난다.
+ *
+ * | 마커 | 화면 | 색 | 근거 |
+ * |---|---|---|---|
+ * | NOTE | 정보 | 파랑 | 캡처의 파란 ℹ 패널 |
+ * | TIP | 성공 | 초록 | 캡처의 초록 ✓ 패널 |
+ * | IMPORTANT | 노트 | 보라 | 캡처의 보라 패널 |
+ * | WARNING | 경고 | 노랑 | 캡처의 노란 ⚠ 패널 |
+ * | CAUTION | 주의 | 빨강 | 캡처에 없으나 마커가 존재해 유지(GitHub CAUTION=위험) |
+ */
+export const ALERT_LABELS = {
+  NOTE: "정보",
+  TIP: "성공",
+  IMPORTANT: "노트",
   WARNING: "경고",
   CAUTION: "주의",
 } as const;
 
-type AlertType = keyof typeof LABELS;
+export type AlertType = keyof typeof ALERT_LABELS;
+
+const LABELS = ALERT_LABELS;
 
 /** 마커는 대문자 타입 + `]` + (선택) 공백 한 칸까지만 소비한다 — 개행(\n)은 소비하지 않아 다음 줄 콘텐츠를 보존한다 */
 const MARKER_RE = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\] ?/;

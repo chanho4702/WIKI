@@ -20,9 +20,10 @@ const run = (tree: Root) => {
 
 describe("remarkAlerts", () => {
   const TYPES: Array<{ marker: string; className: string; label: string }> = [
-    { marker: "NOTE", className: "md-alert-note", label: "노트" },
-    { marker: "TIP", className: "md-alert-tip", label: "팁" },
-    { marker: "IMPORTANT", className: "md-alert-important", label: "중요" },
+    // 라벨은 저장 마커 이름이 아니라 화면 명칭이다(기획 P7 매핑표)
+    { marker: "NOTE", className: "md-alert-note", label: "정보" },
+    { marker: "TIP", className: "md-alert-tip", label: "성공" },
+    { marker: "IMPORTANT", className: "md-alert-important", label: "노트" },
     { marker: "WARNING", className: "md-alert-warning", label: "경고" },
     { marker: "CAUTION", className: "md-alert-caution", label: "주의" },
   ];
@@ -79,7 +80,7 @@ describe("remarkAlerts", () => {
     run(tree);
 
     expect(blockquote.children).toHaveLength(1);
-    expect(((blockquote.children[0] as Paragraph).children[0] as Text).value).toBe("노트");
+    expect(((blockquote.children[0] as Paragraph).children[0] as Text).value).toBe("정보");
   });
 
   it("마커 뒤 같은 줄의 인라인 서식(굵게 등)을 보존한다", () => {
@@ -108,7 +109,7 @@ describe("remarkAlerts", () => {
     expect(inner.data?.hName).toBe("div");
     expect(inner.data?.hProperties).toEqual({ className: ["md-alert", "md-alert-note"] });
     const [labelNode, contentNode] = inner.children as Paragraph[];
-    expect((labelNode.children[0] as Text).value).toBe("노트");
+    expect((labelNode.children[0] as Text).value).toBe("정보");
     expect((contentNode.children[0] as Text).value).toBe("내용");
   });
 

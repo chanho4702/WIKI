@@ -10,7 +10,8 @@ import {
   ListChecks,
   Quote,
   Info,
-  Lightbulb,
+  CircleCheck,
+  StickyNote,
   TriangleAlert,
   OctagonAlert,
   SquareCode,
@@ -139,20 +140,30 @@ export const SLASH_ITEMS: SlashItem[] = [
   // GitHub-style alerts — 저장 문법은 순수 blockquote(`> [!TYPE] `)뿐이라 신규 노드 타입이 필요 없다.
   // insertContent("> [!NOTE] ")는 TipTap에서 마크다운으로 재해석되지 않으므로
   // toggleBlockquote()로 blockquote를 먼저 만들고 그 안에 마커 텍스트만 삽입한다.
-  // IMPORTANT는 문법(렌더)은 지원하되 슬래시 메뉴에는 노출하지 않는다(브리프 지시).
+  //
+  // 라벨은 저장 마커가 아니라 **화면 명칭**을 따른다(기획 P7 매핑표 — lib/remarkAlerts.ts).
+  // 예전엔 마커 이름을 그대로 써서 화면에 "정보"로 렌더되는 패널을 메뉴에서는 "노트 패널"로
+  // 부르고 있었다. IMPORTANT는 렌더만 되고 삽입 경로가 없어 보라 패널을 만들 방법이 없었다.
   {
     id: "note",
-    label: "노트 패널",
+    label: "정보 패널",
     description: "파란색 정보 패널을 추가합니다",
     icon: Info,
     run: (e) => insertAlertMarker(e, "[!NOTE] "),
   },
   {
     id: "tip",
-    label: "팁 패널",
-    description: "초록색 팁 패널을 추가합니다",
-    icon: Lightbulb,
+    label: "성공 패널",
+    description: "초록색 성공 패널을 추가합니다",
+    icon: CircleCheck,
     run: (e) => insertAlertMarker(e, "[!TIP] "),
+  },
+  {
+    id: "important",
+    label: "노트 패널",
+    description: "보라색 노트 패널을 추가합니다",
+    icon: StickyNote,
+    run: (e) => insertAlertMarker(e, "[!IMPORTANT] "),
   },
   {
     id: "warning",

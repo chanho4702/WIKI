@@ -974,6 +974,25 @@ body {
    변환하고(div.md-alert + md-alert-label 노드), 에디터에서는 alertDecoration.ts가 blockquote에
    같은 클래스만 데코레이션으로 얹는다(마커 텍스트는 편집 가능해야 하므로 지우지 않는다 — Task 20).
    저장 문법은 항상 순수 blockquote이며, 이 클래스들은 두 화면 모두 렌더 전용 스타일이다. */
+/* 캡처(기능들.png)는 아이콘 + 색 배경 블록이다 — 보기 화면은 MarkdownDiv가 아이콘을 얹고
+   여기서 가로 배치를 잡는다. 에디터는 데코레이션이라 아이콘이 없고 색만 공유한다. */
+.markdown-body .md-alert {
+  display: flex;
+  gap: var(--chanho-space-150);
+  align-items: flex-start;
+}
+.markdown-body .md-alert-icon {
+  flex: none;
+  margin-top: 2px; /* 첫 줄 텍스트의 광학 중심에 맞춘다 */
+}
+.markdown-body .md-alert-content {
+  min-width: 0;
+  flex: 1;
+}
+.markdown-body .md-alert-content > :last-child {
+  margin-bottom: 0;
+}
+
 .markdown-body .md-alert,
 .wiki-editor .ProseMirror .md-alert {
   margin: 0 0 var(--chanho-space-200);
@@ -999,7 +1018,8 @@ body {
   border-left-color: var(--chanho-color-text-info);
   background: var(--chanho-color-background-info-subtle);
 }
-.markdown-body .md-alert-note .md-alert-label {
+.markdown-body .md-alert-note .md-alert-label,
+.markdown-body .md-alert-note .md-alert-icon {
   color: var(--chanho-color-text-info);
 }
 
@@ -1008,7 +1028,8 @@ body {
   border-left-color: var(--chanho-color-text-success);
   background: var(--chanho-color-background-success-subtle);
 }
-.markdown-body .md-alert-tip .md-alert-label {
+.markdown-body .md-alert-tip .md-alert-label,
+.markdown-body .md-alert-tip .md-alert-icon {
   color: var(--chanho-color-text-success);
 }
 
@@ -1017,7 +1038,8 @@ body {
   border-left-color: var(--chanho-color-text-brand);
   background: var(--chanho-color-background-brand-subtle);
 }
-.markdown-body .md-alert-important .md-alert-label {
+.markdown-body .md-alert-important .md-alert-label,
+.markdown-body .md-alert-important .md-alert-icon {
   color: var(--chanho-color-text-brand);
 }
 
@@ -1026,7 +1048,8 @@ body {
   border-left-color: var(--chanho-color-text-warning);
   background: var(--chanho-color-background-warning-subtle);
 }
-.markdown-body .md-alert-warning .md-alert-label {
+.markdown-body .md-alert-warning .md-alert-label,
+.markdown-body .md-alert-warning .md-alert-icon {
   color: var(--chanho-color-text-warning);
 }
 
@@ -1035,7 +1058,8 @@ body {
   border-left-color: var(--chanho-color-border-danger);
   background: var(--chanho-color-background-danger-subtle);
 }
-.markdown-body .md-alert-caution .md-alert-label {
+.markdown-body .md-alert-caution .md-alert-label,
+.markdown-body .md-alert-caution .md-alert-icon {
   color: var(--chanho-color-text-danger);
 }
 
@@ -2175,7 +2199,9 @@ body {
    * 넓어도 열은 그만큼만 넓어진다. 뷰포트로 판단하면 5열이 데스크톱에서도 130px까지 좁아지는데
    * 스택 규칙이 발동하지 않는다(그게 실제로 났던 문제다). */
   grid-template-columns: repeat(auto-fit, minmax(min(var(--wiki-column-min), 100%), 1fr));
-  gap: var(--chanho-space-300);
+  /* 열 사이 간격 — space-300은 열 자체를 눈에 띄게 좁혔다(특히 4·5열).
+   * 좁은 본문(760px)에서는 간격보다 열 폭을 지키는 게 읽기에 낫다. */
+  gap: var(--chanho-space-200);
   margin: var(--chanho-space-300) 0;
 }
 

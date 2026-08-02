@@ -36,7 +36,7 @@ describe("MarkdownView", () => {
     const panel = container.querySelector(".md-alert.md-alert-note");
     expect(panel).not.toBeNull();
     expect(panel?.tagName).toBe("DIV");
-    expect(panel).toHaveTextContent("노트");
+    expect(panel).toHaveTextContent("정보");
     expect(panel).toHaveTextContent("참고할 내용");
   });
 
@@ -64,7 +64,7 @@ describe("MarkdownView", () => {
     const { container } = render(<MarkdownView markdown={escaped} />);
     const panel = container.querySelector(".md-alert.md-alert-note");
     expect(panel).not.toBeNull();
-    expect(panel).toHaveTextContent("노트");
+    expect(panel).toHaveTextContent("정보");
     expect(panel).toHaveTextContent("내용");
   });
 
@@ -80,7 +80,7 @@ describe("MarkdownView", () => {
     const { container } = render(<MarkdownView markdown={roundTripped} />);
     const panel = container.querySelector(".md-alert.md-alert-note");
     expect(panel).not.toBeNull();
-    expect(panel).toHaveTextContent("노트");
+    expect(panel).toHaveTextContent("정보");
     expect(panel).toHaveTextContent("내용");
   });
 

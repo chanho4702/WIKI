@@ -1,12 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import type { AnchorHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkDirective from "remark-directive";
 import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
 import { Link } from "react-router";
-import { Check, Copy } from "lucide-react";
+import {
+  Check,
+  CircleCheck,
+  Copy,
+  Info,
+  OctagonAlert,
+  StickyNote,
+  TriangleAlert,
+} from "lucide-react";
 import type { Page } from "../store/types";
 import { resolveWikiLinks } from "../lib/wikiLinks";
 import { remarkAlerts } from "../lib/remarkAlerts";
@@ -42,6 +50,48 @@ function WikiAnchor({
     <a href={href} {...rest}>
       {children}
     </a>
+  );
+}
+
+/**
+ * 패널 아이콘 — 저장 마커별로 고정한다(기획 P7 매핑표, `lib/remarkAlerts.ts`).
+ * 라벨 텍스트가 이미 접근성 이름을 제공하므로 아이콘은 `aria-hidden`이다.
+ */
+const ALERT_ICONS: Record<string, typeof Info> = {
+  "md-alert-note": Info, // 정보(파랑)
+  "md-alert-tip": CircleCheck, // 성공(초록)
+  "md-alert-important": StickyNote, // 노트(보라)
+  "md-alert-warning": TriangleAlert, // 경고(노랑)
+  "md-alert-caution": OctagonAlert, // 주의(빨강)
+};
+
+/**
+ * div 렌더 가로채기 — 패널이면 아이콘을 얹고, 그 외(컬럼 레이아웃의 md-columns/md-column 등)는
+ * 그대로 통과시킨다. remarkAlerts가 만든 클래스만 보고 판단한다.
+ *
+ * 에디터 쪽(alertDecoration)은 blockquote에 클래스만 얹는 데코레이션이라 아이콘이 없다 —
+ * 편집 화면에는 `[!NOTE]` 마커 텍스트가 그대로 보이는 게 편집 어포던스이기 때문이다.
+ */
+function MarkdownDiv({
+  className,
+  children,
+  node: _node,
+  ...rest
+}: HTMLAttributes<HTMLDivElement> & { node?: unknown }) {
+  const alertClass = className?.split(/\s+/).find((c) => c in ALERT_ICONS);
+  if (!alertClass) {
+    return (
+      <div className={className} {...rest}>
+        {children}
+      </div>
+    );
+  }
+  const Icon = ALERT_ICONS[alertClass];
+  return (
+    <div className={className} {...rest}>
+      <Icon className="md-alert-icon" size={16} aria-hidden="true" />
+      <div className="md-alert-content">{children}</div>
+    </div>
   );
 }
 
@@ -116,7 +166,7 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkDirective, remarkColumns, remarkAlerts]}
         rehypePlugins={[rehypeSlug, [rehypeHighlight, { detect: false }]]}
-        components={{ pre: CodeCopyBlock, ...(wikiMode ? { a: WikiAnchor } : {}) }}
+        components={{ pre: CodeCopyBlock, div: MarkdownDiv, ...(wikiMode ? { a: WikiAnchor } : {}) }}
       >
         {source}
       </ReactMarkdown>
