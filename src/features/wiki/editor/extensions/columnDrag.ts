@@ -166,8 +166,11 @@ export const ColumnDrag = Extension.create({
               return false;
             },
 
-            dragleave() {
+            dragleave(view) {
+              // 비우기만 하면 다음 트랜잭션까지 예고선이 화면에 남는다 — 다시 그리게 한다
+              if (dropHint === null) return false;
               dropHint = null;
+              view.dispatch(view.state.tr.setMeta(columnDragPluginKey, { hint: null }));
               return false;
             },
           },
@@ -181,6 +184,17 @@ export const ColumnDrag = Extension.create({
             // 레이아웃을 레이아웃 안에 넣지 않는다 — 중첩은 편집·직렬화 양쪽에서 다루기 어렵다
             if (!dragged || dragged.type.name === COLUMN_BLOCK_NAME) return false;
             if (slice.content.childCount !== 1) return false;
+
+            const sel = view.state.selection;
+            if (moved) {
+              // 이동인데 무엇을 옮기는지 특정할 수 없으면(텍스트 선택 드래그 등) 우리가 처리하지
+              // 않는다. 원본을 못 지우면 같은 내용이 원래 자리와 열 양쪽에 남는다 —
+              // PM 기본 처리에 맡기는 편이 낫다.
+              if (!(sel instanceof NodeSelection)) return false;
+              // 자기 자신 위에 떨군 경우: 원본을 지우면 hint.pos가 다음 블록으로 매핑돼
+              // 엉뚱한 블록과 2열이 만들어진다
+              if (sel.from === hint.pos) return false;
+            }
 
             return splitIntoColumns(view, hint, dragged, moved);
           },
@@ -199,7 +213,9 @@ function computeDropHint(
   const found = view.posAtCoords(coords);
   if (!found) return null;
 
-  const $pos = view.state.doc.resolve(found.inside >= 0 ? found.inside : found.pos);
+  // `inside`가 아니라 `pos`를 쓴다. `inside`는 그 블록 **앞** 위치라 resolve하면 depth가 0이 되고,
+  // 최상위 문단·제목이 전부 걸러졌다(끌어서 분할이 가장 흔한 경우에 동작하지 않던 원인).
+  const $pos = view.state.doc.resolve(found.pos);
   // 최상위 블록(문서 직계 자식)만 대상 — 열 안의 블록에 또 열을 만들면 중첩이 된다
   if ($pos.depth < 1) return null;
   const blockPos = $pos.before(1);
@@ -210,6 +226,10 @@ function computeDropHint(
   if (!(dom instanceof HTMLElement)) return null;
   const rect = dom.getBoundingClientRect();
   if (rect.width <= 0) return null;
+  // 좁은 블록 좌우 바깥 여백에서도 posAtCoords가 그 블록으로 스냅한다 —
+  // 사각형 밖이면 ratio가 음수/1초과가 되어 항상 좌 또는 우로 판정됐다
+  if (event.clientX < rect.left || event.clientX > rect.right) return null;
+  if (event.clientY < rect.top || event.clientY > rect.bottom) return null;
 
   const ratio = (event.clientX - rect.left) / rect.width;
   if (ratio <= EDGE_RATIO) return { pos: blockPos, side: "left" };
@@ -281,10 +301,14 @@ function startResize(
     dragState.kind = null;
   };
 
+  /** 드래그 중 반영된 마지막 너비 — 손을 뗄 때 이 값을 "한 스텝"으로 기록한다. */
+  let latest: number[] | null = null;
+
   const move = (e: PointerEvent) => {
-    // 드래그 중 문서가 바뀌어(실행취소·외부 변경) 레이아웃이 사라졌으면 즉시 그만둔다 —
-    // 캡처해둔 found.pos가 다른 노드를 가리키게 되면 엉뚱한 곳의 속성을 바꾼다
-    if (!isStillSameBlock(view, found.pos)) {
+    // 드래그 중 문서가 바뀌어(실행취소·외부 변경) 레이아웃이 사라지거나 **다른 레이아웃으로
+    // 교체되면** 즉시 그만둔다. 타입만 보면 열 수가 같은 다른 columnBlock에 예전 너비를
+    // 덮어쓰게 되므로 DOM 동일성까지 확인한다.
+    if (!isSameBlock(view, found.pos, blockDom)) {
       stop();
       return;
     }
@@ -297,16 +321,22 @@ function startResize(
     next[index - 1] = left;
     next[index] = right;
     // 드래그 중엔 실행취소 기록을 쌓지 않는다 — 그러지 않으면 한 번 끈 것이 수십 스텝이 된다
-    applyWidths(view, found.pos, next, false);
+    if (applyWidths(view, found.pos, next, false)) latest = next;
   };
 
   const finish = () => {
-    // 마지막 상태 하나만 실행취소 대상으로 남긴다
-    const block = view.state.doc.nodeAt(found.pos);
-    if (block && block.type.name === COLUMN_BLOCK_NAME) {
-      applyWidths(view, found.pos, currentWidths(block, blockDom), true);
+    try {
+      if (latest && isSameBlock(view, found.pos, blockDom)) {
+        // Ctrl+Z가 "드래그 전 너비"로 돌아가게 만드는 부분.
+        // 중간 변경이 전부 addToHistory:false라 그냥 두면 되돌릴 스텝이 없다 —
+        // 먼저 원래 값으로 조용히 되돌린 뒤, 최종 값을 기록 남기며 한 번에 적용한다.
+        applyWidths(view, found.pos, startWidths, false);
+        applyWidths(view, found.pos, latest, true);
+      }
+    } finally {
+      // 예외가 나도 리스너와 body 클래스는 반드시 정리한다
+      stop();
     }
-    stop();
   };
 
   document.addEventListener("pointermove", move);
@@ -314,15 +344,25 @@ function startResize(
   document.addEventListener("pointercancel", stop);
 }
 
-/** 캡처해둔 위치가 아직 같은 레이아웃을 가리키는지 — 드래그 중 문서가 바뀔 수 있다. */
-function isStillSameBlock(view: EditorView, pos: number): boolean {
+/**
+ * 캡처해둔 위치가 아직 **같은** 레이아웃인지 — 드래그 중 문서가 바뀔 수 있다.
+ * 타입만 보면 열 수가 같은 다른 레이아웃으로 교체됐을 때를 걸러내지 못한다.
+ */
+function isSameBlock(view: EditorView, pos: number, blockDom: HTMLElement): boolean {
   const node = view.state.doc.nodeAt(pos);
-  return !!node && node.type.name === COLUMN_BLOCK_NAME;
+  if (!node || node.type.name !== COLUMN_BLOCK_NAME) return false;
+  return blockDom.isConnected && view.nodeDOM(pos) === blockDom;
 }
 
-function applyWidths(view: EditorView, blockPos: number, widths: number[], addToHistory: boolean) {
+/** 적용했으면 true — 실패(열 수 불일치 등)를 호출부가 알아야 제스처를 멈출 수 있다. */
+function applyWidths(
+  view: EditorView,
+  blockPos: number,
+  widths: number[],
+  addToHistory: boolean,
+): boolean {
   const block = view.state.doc.nodeAt(blockPos);
-  if (!block || block.childCount !== widths.length) return;
+  if (!block || block.childCount !== widths.length) return false;
   const tr = view.state.tr;
   if (!addToHistory) tr.setMeta("addToHistory", false);
   let offset = blockPos + 1;
@@ -335,6 +375,7 @@ function applyWidths(view: EditorView, blockPos: number, widths: number[], addTo
     offset += child.nodeSize;
   });
   view.dispatch(tr);
+  return true;
 }
 
 /** 열 재배치 — 그립을 놓은 지점의 열 인덱스로 옮긴다. */
@@ -348,23 +389,34 @@ function startReorder(view: EditorView, grip: HTMLElement, dragState: DragState)
   dragState.kind = "reorder";
   document.body.classList.add("is-column-reordering");
 
-  const up = (e: PointerEvent) => {
+  const stop = () => {
     document.removeEventListener("pointerup", up);
+    document.removeEventListener("pointercancel", stop);
     document.body.classList.remove("is-column-reordering");
     dragState.kind = null;
+  };
 
-    const columnDoms = Array.from(blockDom.children).filter(
-      (el): el is HTMLElement => el instanceof HTMLElement && el.dataset.type === COLUMN_NAME,
-    );
-    const to = columnDoms.findIndex((el) => {
-      const r = el.getBoundingClientRect();
-      return e.clientX >= r.left && e.clientX <= r.right;
-    });
-    if (to < 0 || to === from) return;
-    moveColumn(view, found.pos, from, to);
+  const up = (e: PointerEvent) => {
+    try {
+      // 드래그 도중 레이아웃이 교체·삭제됐으면 아무것도 하지 않는다
+      if (!isSameBlock(view, found.pos, blockDom)) return;
+      const columnDoms = Array.from(blockDom.children).filter(
+        (el): el is HTMLElement => el instanceof HTMLElement && el.dataset.type === COLUMN_NAME,
+      );
+      const to = columnDoms.findIndex((el) => {
+        const r = el.getBoundingClientRect();
+        return e.clientX >= r.left && e.clientX <= r.right;
+      });
+      if (to < 0 || to === from) return;
+      moveColumn(view, found.pos, from, to);
+    } finally {
+      // 예외가 나도 리스너와 body 클래스는 반드시 정리한다
+      stop();
+    }
   };
 
   document.addEventListener("pointerup", up);
+  document.addEventListener("pointercancel", stop);
 }
 
 /** 열 순서 교체 — 내용과 너비를 함께 옮긴다(너비만 남으면 배치가 뒤바뀐 것처럼 보인다). */

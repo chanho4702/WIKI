@@ -86,6 +86,42 @@ describe("열 재배치 (moveColumn)", () => {
   });
 });
 
+/**
+ * 드롭 판정의 위치 계산 회귀.
+ *
+ * Codex 교차검증에서 잡힌 Critical: `posAtCoords().inside`를 쓰면 그 값이 블록 **앞** 위치라
+ * `resolve` 시 depth가 0이 되고, 최상위 문단·제목이 전부 걸러져 끌어서 분할이 가장 흔한
+ * 경우에 동작하지 않았다. jsdom은 좌표를 계산하지 못해 `posAtCoords`를 직접 부를 수 없으므로,
+ * 그 판정이 의존하는 **문서 위치 해석**을 같은 방식으로 검증한다.
+ */
+describe("드롭 대상 위치 해석", () => {
+  it("문단 안쪽 위치에서 최상위 블록 시작점을 얻는다", () => {
+    const editor = makeEditor("첫 문단\n\n둘째 문단");
+    try {
+      const doc = editor.state.doc;
+      // 첫 문단 텍스트 안의 위치(= posAtCoords가 주는 pos)
+      const $inside = doc.resolve(2);
+      expect($inside.depth).toBeGreaterThanOrEqual(1);
+      const blockPos = $inside.before(1);
+      expect(doc.nodeAt(blockPos)?.type.name).toBe("paragraph");
+      expect(doc.nodeAt(blockPos)?.textContent).toBe("첫 문단");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("블록 '앞' 위치(inside)는 depth 0이라 그대로 쓰면 안 된다", () => {
+    // 이 성질이 Critical의 원인이었다 — 회귀로 고정해 둔다
+    const editor = makeEditor("첫 문단\n\n둘째 문단");
+    try {
+      const $before = editor.state.doc.resolve(0);
+      expect($before.depth).toBe(0);
+    } finally {
+      editor.destroy();
+    }
+  });
+});
+
 describe("열 너비 설정 (setColumnWidths)", () => {
   it("너비가 문서에 저장돼 직렬화된다", () => {
     const editor = makeEditor(columnsMd([{ text: "왼쪽" }, { text: "오른쪽" }]));
