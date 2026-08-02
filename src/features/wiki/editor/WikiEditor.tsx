@@ -144,13 +144,18 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
         )}
         <EditorContent editor={editor} />
         {editor && <BubbleToolbar editor={editor} />}
+        {/* 위치 보정(아래 공간 부족 시 캐럿 위로 뒤집기·가로 clamp)은 SuggestionPopup이 한다 —
+            캐럿 rect만 넘기고 어디에 그릴지는 팝업이 스스로 정한다. */}
         {linkMenu && linkMenu.clientRect && (
           <SuggestionPopup
             ariaLabel="페이지 링크 자동완성"
             items={linkMenu.items.map((p) => ({ id: p.id, label: p.title }))}
             highlight={linkMenu.highlight}
-            left={linkMenu.clientRect.left}
-            top={linkMenu.clientRect.bottom + 4}
+            anchor={{
+              top: linkMenu.clientRect.top,
+              bottom: linkMenu.clientRect.bottom,
+              left: linkMenu.clientRect.left,
+            }}
             onPick={(i) => linkMenu.command(linkMenu.items[i])}
           />
         )}
@@ -159,8 +164,11 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
             ariaLabel="블록 삽입 메뉴"
             items={slashMenu.items}
             highlight={slashMenu.highlight}
-            left={slashMenu.clientRect.left}
-            top={slashMenu.clientRect.bottom + 4}
+            anchor={{
+              top: slashMenu.clientRect.top,
+              bottom: slashMenu.clientRect.bottom,
+              left: slashMenu.clientRect.left,
+            }}
             onPick={(i) => slashMenu.command(slashMenu.items[i])}
           />
         )}

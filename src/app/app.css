@@ -1334,6 +1334,10 @@ body {
   border-radius: var(--chanho-radius-medium);
   box-shadow: var(--chanho-shadow-overlay);
   min-width: 220px;
+  /* 항목이 많아도 뷰포트를 넘지 않게 — 위로 뒤집어도 안 들어가는 길이가 되면
+     팝업 자체가 스크롤한다(SuggestionPopup의 위치 보정과 한 쌍). */
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
 }
 
 .editor-suggestions [aria-selected="true"] button {
