@@ -2,10 +2,18 @@ import { describe, expect, it } from "vitest";
 import { Editor } from "@tiptap/core";
 import { parseMarkdown, serializeMarkdown } from "./markdown";
 import { buildBaseExtensions } from "./extensions/base";
-import { COLUMN_NAME } from "./extensions/columns";
+import { COLUMN_NAME, SUPPORTED_COLUMN_COUNTS } from "./extensions/columns";
 
 const normalize = (s: string) => s.replace(/\r\n/g, "\n").trim();
 const roundtrip = (md: string) => normalize(serializeMarkdown(parseMarkdown(md)));
+
+/** N열 마크다운 — 열마다 내용을 달리 둬야 열이 뒤섞이거나 합쳐진 걸 잡아낸다. */
+const columnsMarkdown = (count: number) =>
+  [
+    "::::columns",
+    ...Array.from({ length: count }, (_, i) => [":::column", `내용 ${i + 1}`, ":::"]).flat(),
+    "::::",
+  ].join("\n");
 
 const TWO_COLUMNS = [
   "::::columns",
@@ -93,6 +101,20 @@ describe("레이어 분할 — 마크다운 왕복", () => {
     const md = "# 제목\n\n일반 문단입니다.\n\n- 항목";
     expect(roundtrip(md)).toBe(md);
   });
+
+  // 1·4·5열 확장(기획 A1) — 예전엔 2·3열만 검증돼 있어서 "왕복이 된다"고 말할 근거가 없었다.
+  it.each(SUPPORTED_COLUMN_COUNTS)("%i열 레이아웃이 문자 단위로 보존된다", (count) => {
+    const md = columnsMarkdown(count);
+    expect(roundtrip(md)).toBe(md);
+  });
+
+  it("열 개수가 자식 :::column 수로 그대로 읽힌다", () => {
+    for (const count of SUPPORTED_COLUMN_COUNTS) {
+      const block = parseMarkdown(columnsMarkdown(count)).content?.[0];
+      expect(block?.type).toBe("columnBlock");
+      expect(block?.content).toHaveLength(count);
+    }
+  });
 });
 
 /**
@@ -136,6 +158,19 @@ describe("레이어 분할 — 삽입 직후 커서", () => {
     });
   });
 
+  it("지원 범위 밖 열 수는 잘라낸다 — 문서에 6열이 저장되는 경로를 만들지 않는다", () => {
+    withEditor((editor) => {
+      editor.commands.setColumns(9);
+      const lines = serializeMarkdown(editor.getJSON()).trim().split("\n");
+      expect(lines.filter((l) => l === ":::column")).toHaveLength(5);
+    });
+    withEditor((editor) => {
+      editor.commands.setColumns(0);
+      const lines = serializeMarkdown(editor.getJSON()).trim().split("\n");
+      expect(lines.filter((l) => l === ":::column")).toHaveLength(1);
+    });
+  });
+
   it("3열에서도 첫 번째 열에 놓인다", () => {
     withEditor((editor) => {
       editor.commands.setColumns(3);
@@ -147,5 +182,75 @@ describe("레이어 분할 — 삽입 직후 커서", () => {
       expect(firstColumnStart).toBeGreaterThan(-1);
       expect(lines[firstColumnStart + 1]).toBe("첫칸");
     });
+  });
+});
+
+/**
+ * 열 수 변경(기획 A3). 1열은 그 자체로 쓸모가 있다기보다 여기서 열 수를 바꾸는 시작점이라
+ * 이 명령이 없으면 1열을 넣을 이유가 없다(기획 P2).
+ *
+ * 가장 중요한 계약은 **줄일 때 내용을 잃지 않는 것**이다 — 그냥 버리면 3열로 쓰다 2열로 바꾼
+ * 순간 오른쪽 내용이 조용히 사라지고 되돌릴 수 없다.
+ */
+describe("레이어 분할 — 열 수 변경", () => {
+  const editorWith = (md: string) =>
+    new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown(md) });
+
+  const columnLines = (editor: Editor) =>
+    serializeMarkdown(editor.getJSON())
+      .trim()
+      .split("\n")
+      .filter((l) => l === ":::column");
+
+  it("늘리면 빈 열이 뒤에 붙고 기존 내용은 그대로다", () => {
+    const editor = editorWith(columnsMarkdown(2));
+    try {
+      editor.commands.setTextSelection(3); // 첫 열 안
+      editor.commands.setColumnCount(4);
+      expect(columnLines(editor)).toHaveLength(4);
+      const md = serializeMarkdown(editor.getJSON());
+      expect(md).toContain("내용 1");
+      expect(md).toContain("내용 2");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("줄이면 잘린 열의 내용이 마지막 남는 열로 합쳐진다 — 사라지지 않는다", () => {
+    const editor = editorWith(columnsMarkdown(3));
+    try {
+      editor.commands.setTextSelection(3);
+      editor.commands.setColumnCount(2);
+      expect(columnLines(editor)).toHaveLength(2);
+      const md = serializeMarkdown(editor.getJSON());
+      // 3열의 "내용 3"이 버려지지 않고 남아 있어야 한다
+      expect(md).toContain("내용 1");
+      expect(md).toContain("내용 2");
+      expect(md).toContain("내용 3");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("1열로 줄여도 전체 내용이 한 열에 남는다", () => {
+    const editor = editorWith(columnsMarkdown(3));
+    try {
+      editor.commands.setTextSelection(3);
+      editor.commands.setColumnCount(1);
+      expect(columnLines(editor)).toHaveLength(1);
+      const md = serializeMarkdown(editor.getJSON());
+      for (const text of ["내용 1", "내용 2", "내용 3"]) expect(md).toContain(text);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("레이아웃 밖에서 부르면 아무것도 하지 않는다", () => {
+    const editor = editorWith("그냥 문단");
+    try {
+      expect(editor.commands.setColumnCount(3)).toBe(false);
+    } finally {
+      editor.destroy();
+    }
   });
 });

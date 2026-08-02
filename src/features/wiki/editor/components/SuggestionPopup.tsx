@@ -1,5 +1,15 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import type { LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
+
+/**
+ * 항목 아이콘 — lucide 아이콘이 기본이지만, lucide에 없는 것(열 N개 레이아웃)은 같은 규격의
+ * 자체 SVG를 쓴다. 그래서 LucideIcon으로 좁히지 않고 렌더에 실제로 쓰는 props만 요구한다.
+ */
+export type SuggestionIcon = ComponentType<{
+  size?: number;
+  className?: string;
+  "aria-hidden"?: boolean | "true" | "false";
+}>;
 
 /** 캐럿 위치 — 팝업을 아래에 둘지 위로 뒤집을지 판단하려면 위/아래 경계가 둘 다 필요하다. */
 export interface SuggestionAnchor {
@@ -9,7 +19,7 @@ export interface SuggestionAnchor {
 }
 
 export interface SuggestionPopupProps {
-  items: Array<{ id: string; label: string; description?: string; icon?: LucideIcon }>;
+  items: Array<{ id: string; label: string; description?: string; icon?: SuggestionIcon }>;
   highlight: number;
   anchor: SuggestionAnchor;
   onPick: (index: number) => void;

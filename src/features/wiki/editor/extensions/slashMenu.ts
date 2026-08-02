@@ -16,24 +16,28 @@ import {
   SquareCode,
   Minus,
   Table,
-  Columns2,
-  Columns3,
   Image,
   Smile,
-  type LucideIcon,
 } from "lucide-react";
 import { WIKI_LINK_OPEN_SOURCE } from "../../lib/wikiLinks";
+import { COLUMN_LAYOUT_ICONS } from "../components/ColumnLayoutIcon";
+import type { SuggestionIcon } from "../components/SuggestionPopup";
+import { SUPPORTED_COLUMN_COUNTS } from "./columns";
 
 const slashMenuPluginKey = new PluginKey("slashMenu");
+
+/** 한글 수사 — 레퍼런스 설명문 "N개의 동일한 열 삽입"을 그대로 쓰기 위한 표기. */
+const COUNT_WORDS: Record<number, string> = { 1: "한", 2: "두", 3: "세", 4: "네", 5: "다섯" };
 
 export interface SlashItem {
   id: string;
   label: string;
   /** 요소 브라우저(InsertMenu)·슬래시 메뉴 팝업에 라벨 아래 한 줄로 노출하는 설명 */
   description: string;
-  /** 슬래시 메뉴 팝업(SuggestionPopup)에서 라벨 앞에 그리는 lucide 아이콘 컴포넌트 —
-   * 데이터 객체라 JSX가 아니라 컴포넌트 참조를 저장하고, 렌더는 SuggestionPopup이 담당한다. */
-  icon: LucideIcon;
+  /** 슬래시 메뉴 팝업(SuggestionPopup)에서 라벨 앞에 그리는 아이콘 컴포넌트 —
+   * 데이터 객체라 JSX가 아니라 컴포넌트 참조를 저장하고, 렌더는 SuggestionPopup이 담당한다.
+   * lucide 아이콘이 기본이고, lucide에 없는 것(열 N개 레이아웃)은 같은 규격의 자체 SVG를 쓴다. */
+  icon: SuggestionIcon;
   /**
    * 항목 선택이 일반 편집 명령이 아니라 UI를 열어야 하는 경우의 마커(W6 T4) — 현재는
    * "이모지" 항목만 해당한다. SlashItem.run은 editor만 받으므로 팝오버를 직접 열 수 없다.
@@ -68,7 +72,20 @@ function insertAlertMarker(editor: Editor, marker: string): void {
     .run();
 }
 
-/** 화이트리스트 15개 블록 — 순서가 곧 기본 노출 순서다 */
+/**
+ * 열 N개 레이아웃 1~5 — 지원 열 수에서 생성한다.
+ * 손으로 5개를 나열하지 않는 이유: `SUPPORTED_COLUMN_COUNTS`와 메뉴가 갈리면
+ * "메뉴엔 있는데 만들면 다른 열 수가 나오는" 상태가 된다(예전 2·3열 하드코딩이 그랬다).
+ */
+const COLUMN_LAYOUT_ITEMS: SlashItem[] = SUPPORTED_COLUMN_COUNTS.map((count) => ({
+  id: `columns${count}`,
+  label: `열 ${count}개 레이아웃`,
+  description: `${COUNT_WORDS[count]}개의 동일한 열 삽입`,
+  icon: COLUMN_LAYOUT_ICONS[count],
+  run: (e) => e.chain().focus().setColumns(count).run(),
+}));
+
+/** 화이트리스트 블록 — 순서가 곧 기본 노출 순서다 */
 export const SLASH_ITEMS: SlashItem[] = [
   {
     id: "h1",
@@ -172,22 +189,10 @@ export const SLASH_ITEMS: SlashItem[] = [
     icon: Table,
     run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
-  // 레이어 분할 — 저장 포맷은 `:::` 확장 문법(extensions/columns.ts). 열 수별로 항목을 나눠
-  // 두는 이유: 삽입 후 열을 더하고 빼는 UI가 아직 없어서, 만들 때 고르는 게 유일한 선택 지점이다.
-  {
-    id: "columns2",
-    label: "레이어 분할 (2열)",
-    description: "본문을 좌우 두 개의 열로 나눕니다",
-    icon: Columns2,
-    run: (e) => e.chain().focus().setColumns(2).run(),
-  },
-  {
-    id: "columns3",
-    label: "레이어 분할 (3열)",
-    description: "본문을 세 개의 열로 나눕니다",
-    icon: Columns3,
-    run: (e) => e.chain().focus().setColumns(3).run(),
-  },
+  // 열 레이아웃 — 저장 포맷은 `:::` 확장 문법(extensions/columns.ts).
+  // 항목명·설명은 레퍼런스(`레이아웃.png`)의 "열 N개 레이아웃 / N개의 동일한 열 삽입"을 그대로 쓴다.
+  // 열 수별로 항목을 나누는 것도 레퍼런스와 같다 — 하나의 항목에서 개수를 되묻지 않는다.
+  ...COLUMN_LAYOUT_ITEMS,
   {
     id: "image",
     label: "이미지 (URL)",

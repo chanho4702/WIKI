@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -11,6 +11,8 @@ import type { Page } from "../store/types";
 import { resolveWikiLinks } from "../lib/wikiLinks";
 import { remarkAlerts } from "../lib/remarkAlerts";
 import { remarkColumns } from "../lib/remarkColumns";
+import { showsLineNumbers, useCodeBlockPrefs } from "../lib/codeBlockPrefs";
+import { CodeLineNumbers } from "./CodeLineNumbers";
 
 export interface MarkdownViewProps {
   /** 마크다운 원문 (Page.body 또는 편집 중인 입력값) */
@@ -46,10 +48,24 @@ function WikiAnchor({
 /**
  * 코드블록 래퍼 — `<pre>`를 relative 컨테이너로 감싸고 우상단에 복사 버튼을 얹는다.
  * 복사 텍스트는 렌더된 pre의 textContent에서 읽는다(하이라이트 토큰 분할과 무관하게 원문 확보).
+ *
+ * 줄 번호는 편집 화면(CodeBlockView)에만 있으면 안 된다 — 문서를 "열었을 때" 보여야 하고,
+ * 보기는 여기가 유일한 경로다. 거터는 `<pre>` **바깥**에 둔다: 복사가 `pre.textContent`라
+ * 안에 넣으면 번호까지 복사된다(드래그 복사도 마찬가지).
  */
 function CodeCopyBlock({ children }: { children?: ReactNode }) {
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
+  const [code, setCode] = useState("");
+  const { prefs } = useCodeBlockPrefs();
+  const numbered = showsLineNumbers(prefs);
+
+  // 하이라이트 토큰 트리라 children에서 텍스트를 뽑기 어렵다 — 렌더된 DOM에서 읽는다.
+  // 줄 수만 필요하므로 레이아웃 전에 확정할 필요가 없다(useEffect로 충분).
+  useEffect(() => {
+    setCode(ref.current?.textContent ?? "");
+  }, [children]);
+
   const handleCopy = async () => {
     const text = ref.current?.textContent ?? "";
     try {
@@ -61,8 +77,15 @@ function CodeCopyBlock({ children }: { children?: ReactNode }) {
     }
   };
   return (
-    <div className="markdown-pre">
-      <pre ref={ref}>{children}</pre>
+    <div
+      className={`markdown-pre${numbered ? " markdown-pre--numbered" : ""}${
+        prefs.wrap ? " markdown-pre--wrap" : ""
+      }`}
+    >
+      <div className="code-block-body">
+        {numbered && <CodeLineNumbers code={code} />}
+        <pre ref={ref}>{children}</pre>
+      </div>
       <button
         type="button"
         className="markdown-code-copy"

@@ -16,6 +16,10 @@
   --wiki-chip-accent-red-subtle-bg: #ffedeb; /* wiki-chip-missing */
   --wiki-chip-accent-red-text: #c9372c;
 
+  /* 코드 블록의 줄 높이 — <pre>와 줄 번호 거터가 반드시 공유해야 하는 값(기획 B1).
+   * 테마와 무관한 레이아웃 값이므로 :root에만 둔다(다크 블록에 넣으면 라이트에서 정렬이 깨진다). */
+  --wiki-code-line-height: 1.6;
+
   /* hljs 토큰 색 — 라이트 값(기존 유지) */
   --wiki-hljs-keyword: #0c66e4; /* keyword/built_in/tag — 파란색 */
   --wiki-hljs-string: #256e25; /* string/variable — 초록색 */
@@ -832,6 +836,9 @@ body {
   border-radius: var(--chanho-radius-medium);
   background: var(--chanho-color-background-subtle);
   overflow-x: auto;
+  /* 줄 번호 거터가 <pre> 바깥에 있어(복사 오염 방지) 정렬을 CSS로 맞춘다 —
+   * 이 값이 거터와 어긋나면 번호가 줄과 어긋나고, 어긋난 번호는 없느니만 못하다. */
+  line-height: var(--wiki-code-line-height);
 }
 
 .markdown-body pre code,
@@ -1752,13 +1759,73 @@ body {
 .code-block-view {
   position: relative;
 }
+/* 툴바는 블록 아래 — 예전엔 우상단 절대 배치라 코드 첫 줄을 가렸다(기획 P4, 캡처 기능들.png).
+ * hover/focus에서만 드러나 평소엔 코드에 집중하게 한다. */
 .code-block-toolbar {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 4px;
-  position: absolute;
-  top: 4px;
-  right: 4px;
+  margin-top: calc(var(--chanho-space-200) * -1 + 2px);
+  margin-bottom: var(--chanho-space-200);
+  opacity: 0;
+  transition: opacity var(--chanho-transition-base);
+}
+.code-block-view:hover .code-block-toolbar,
+.code-block-view:focus-within .code-block-toolbar {
+  opacity: 1;
+}
+.code-block-toolbar button[aria-pressed="true"] {
+  color: var(--chanho-color-text-brand);
+}
+
+/* ── 코드 블록 줄 번호 (기획 B1) ─────────────────────────────
+ * 거터는 <pre> 바깥이다 — 복사(보기: pre.textContent, 드래그: pre 내부 텍스트)에 번호가
+ * 섞이지 않게 하려는 구조적 이유다. 대신 정렬을 CSS로 맞춰야 한다:
+ * 거터와 code가 같은 font/line-height를 쓰고, pre의 세로 padding만큼 거터도 띄운다. */
+.code-block-body {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+.code-block-body > pre {
+  flex: 1;
+  min-width: 0;
+}
+.code-line-numbers {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  padding: var(--chanho-space-200) var(--chanho-space-100) var(--chanho-space-200) 0;
+  margin: 0 0 var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-right: none;
+  border-radius: var(--chanho-radius-medium) 0 0 var(--chanho-radius-medium);
+  background: var(--chanho-color-background-subtle);
+  color: var(--wiki-text-subtlest);
+  text-align: right;
+  user-select: none; /* 드래그로 코드를 긁을 때 번호가 함께 잡히지 않게 */
+  font-family: var(--chanho-font-family-mono, monospace);
+  font-size: var(--chanho-font-size-100);
+  line-height: var(--wiki-code-line-height); /* pre와 같은 값 — 어긋나면 번호가 줄과 안 맞는다 */
+  min-width: 2.5em;
+}
+/* 번호가 붙으면 코드 쪽 왼쪽 모서리를 펴 거터와 한 덩어리로 보이게 한다 */
+.code-block-view--numbered .code-block-body > pre,
+.markdown-pre--numbered .code-block-body > pre {
+  border-left: none;
+  border-radius: 0 var(--chanho-radius-medium) var(--chanho-radius-medium) 0;
+}
+
+/* 줄바꿈 — 켜면 줄 번호는 표시하지 않는다(codeBlockPrefs 주석 참조: 접힌 줄과 번호가 어긋난다) */
+.code-block-view--wrap .code-block-body > pre,
+.markdown-pre--wrap .code-block-body > pre {
+  overflow-x: hidden;
+}
+.code-block-view--wrap .code-block-body > pre code,
+.markdown-pre--wrap .code-block-body > pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* W5: 이미지 NodeView — 로드 실패 placeholder */
@@ -2097,11 +2164,17 @@ body {
  * 배치를 써야 편집 화면과 저장 후 화면이 같아 보인다 — 한쪽만 고치지 않는다.
  * 열 수는 자식 수에 따라 자동으로 나뉜다(1fr 균등) — 문서마다 열 수가 다르므로 CSS에
  * 고정 개수를 박지 않는다. */
+/* 열 하나가 읽을 수 있는 최소 폭. 이 아래로 좁아지면 auto-fit이 열을 줄여 자동으로 쌓인다.
+ * 160px 근거: 본문 폭 760px에서 4열(가로 여백·gap 제외 ≈ 172px/열)까지는 나란히 유지되고,
+ * 5열(≈133px/열)은 쌓인다 — 5열을 가로로 유지하려면 전체 너비 토글(.page-view--full)을 쓴다. */
 .markdown-body .md-columns,
 .wiki-editor .ProseMirror [data-type="column-block"] {
+  --wiki-column-min: 160px;
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
+  /* 뷰포트 미디어쿼리가 아니라 컨테이너 기준이다 — 본문 폭은 760px로 고정이라 화면이 아무리
+   * 넓어도 열은 그만큼만 넓어진다. 뷰포트로 판단하면 5열이 데스크톱에서도 130px까지 좁아지는데
+   * 스택 규칙이 발동하지 않는다(그게 실제로 났던 문제다). */
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--wiki-column-min), 100%), 1fr));
   gap: var(--chanho-space-300);
   margin: var(--chanho-space-300) 0;
 }
@@ -2128,15 +2201,9 @@ body {
   border-radius: var(--chanho-radius-medium);
 }
 
-/* 좁은 화면에서는 열을 세로로 쌓는다 — 2열을 그대로 두면 한 열이 읽을 수 없이 좁아지고
- * 표·코드블록이 가로 스크롤을 만든다. */
-@media (max-width: 700px) {
-  .markdown-body .md-columns,
-  .wiki-editor .ProseMirror [data-type="column-block"] {
-    grid-auto-flow: row;
-    grid-auto-columns: auto;
-  }
-}
+/* 좁은 화면 스택은 위의 auto-fit/minmax가 이미 처리한다(컨테이너 폭 기준) —
+ * 예전의 @media (max-width: 700px) 규칙은 제거했다. 뷰포트 기준이라 본문 폭이 760px로
+ * 고정인 상황에서 4·5열이 좁아져도 발동하지 않았다. */
 
 /* ── 스페이스 개요 (/spaces/:spaceId) ────────────────────────
  * 이전엔 이 라우트가 첫 페이지로 redirect해서 화면이 없었다. 사이드바 트리가 "탐색"이라면

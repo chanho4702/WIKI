@@ -1,4 +1,5 @@
-import { Node, mergeAttributes } from "@tiptap/core";
+import { Node, mergeAttributes, type JSONContent } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 
 /**
@@ -40,8 +41,26 @@ export const COLUMN_NAME = "column";
 /** 새로 만들 때의 기본 열 수 — 컨플루언스 기본 레이아웃과 동일하게 2열. */
 export const DEFAULT_COLUMN_COUNT = 2;
 
-/** 지원 열 수. 3열을 넘으면 본문 폭(760px)에서 한 열이 읽을 수 없이 좁아진다. */
-export const SUPPORTED_COLUMN_COUNTS = [2, 3] as const;
+/**
+ * 지원 열 수 — 레퍼런스(`레이아웃.png`)의 "열 N개 레이아웃" 1~5.
+ *
+ * 예전엔 2·3열뿐이었다. "3열을 넘으면 본문 폭(760px)에서 한 열이 읽을 수 없이 좁아진다"는
+ * 이유였는데, 그건 열 수가 아니라 **좁아졌을 때 쌓지 않는 CSS**의 문제였다 — 스택 기준이
+ * 뷰포트(700px)라 본문 폭이 760px로 고정인 이상 발동하지 않았다. 최소 열 폭 기준으로
+ * 바꾸면서(app.css의 auto-fit/minmax) 열 수 제한을 풀었다.
+ *
+ * 1열은 그 자체로 쓸모가 있다기보다 `setColumnCount`로 열 수를 바꾸는 시작점이다(기획 P2).
+ */
+export const SUPPORTED_COLUMN_COUNTS = [1, 2, 3, 4, 5] as const;
+
+export const MIN_COLUMN_COUNT = SUPPORTED_COLUMN_COUNTS[0];
+export const MAX_COLUMN_COUNT = SUPPORTED_COLUMN_COUNTS[SUPPORTED_COLUMN_COUNTS.length - 1];
+
+/** 지원 범위 밖 요청을 잘라낸다 — 문서에 6열이 저장돼 들어오는 경로를 만들지 않는다. */
+export function clampColumnCount(count: number): number {
+  if (!Number.isFinite(count)) return DEFAULT_COLUMN_COUNT;
+  return Math.min(MAX_COLUMN_COUNT, Math.max(MIN_COLUMN_COUNT, Math.trunc(count)));
+}
 
 /** markdown-it 토큰/규칙에 넘길 최소 타입 — markdown-it을 직접 의존하지 않기 위해 좁게 선언한다. */
 interface MarkdownItLike {
@@ -189,6 +208,8 @@ declare module "@tiptap/core" {
     wikiColumns: {
       /** 현재 위치를 N열 레이아웃으로 감싼다(빈 열들을 만들고 첫 열에 커서를 둔다). */
       setColumns: (count?: number) => ReturnType;
+      /** 커서가 놓인 레이아웃의 열 수를 바꾼다. 내용은 보존한다. */
+      setColumnCount: (count: number) => ReturnType;
     };
   }
 }
@@ -236,7 +257,7 @@ export const ColumnBlock = Node.create({
       setColumns:
         (count = DEFAULT_COLUMN_COUNT) =>
         ({ chain, editor }) => {
-          const columns = Array.from({ length: Math.max(2, count) }, () => ({
+          const columns = Array.from({ length: clampColumnCount(count) }, () => ({
             type: COLUMN_NAME,
             content: [{ type: "paragraph" }],
           }));
@@ -269,6 +290,63 @@ export const ColumnBlock = Node.create({
               .focus()
               .run()
           );
+        },
+
+      /**
+       * 열 수 변경 — 내용을 잃지 않는 게 계약이다.
+       *
+       * 늘릴 때는 빈 열을 뒤에 붙이고, 줄일 때는 **잘려나가는 열들의 내용을 마지막 남는 열
+       * 뒤에 이어붙인다**. 그냥 버리면 3열로 쓰다 2열로 바꾼 순간 오른쪽 내용이 조용히
+       * 사라진다 — 되돌릴 수 없는 데이터 손실이라 기본 동작으로 둘 수 없다.
+       */
+      setColumnCount:
+        (count: number) =>
+        ({ state, chain }) => {
+          const next = clampColumnCount(count);
+
+          // 커서를 감싸는 가장 가까운 columnBlock을 찾는다
+          const { $from } = state.selection;
+          let blockPos: number | null = null;
+          let block: ProseMirrorNode | null = null;
+          for (let depth = $from.depth; depth > 0; depth--) {
+            const node = $from.node(depth);
+            if (node.type.name === COLUMN_BLOCK_NAME) {
+              blockPos = $from.before(depth);
+              block = node;
+              break;
+            }
+          }
+          if (blockPos === null || block === null) return false;
+
+          const current: JSONContent[] = [];
+          block.forEach((child) => current.push(child.toJSON()));
+          if (current.length === next) return false;
+
+          let columns: JSONContent[];
+          if (next > current.length) {
+            columns = [
+              ...current,
+              ...Array.from({ length: next - current.length }, () => ({
+                type: COLUMN_NAME,
+                content: [{ type: "paragraph" }],
+              })),
+            ];
+          } else {
+            const kept = current.slice(0, next);
+            // 마지막 남는 열 뒤로 잘린 열들의 블록을 이어붙인다
+            const merged = current.slice(next).flatMap((col) => col.content ?? []);
+            const last = kept[next - 1];
+            kept[next - 1] = { ...last, content: [...(last.content ?? []), ...merged] };
+            columns = kept;
+          }
+
+          return chain()
+            .insertContentAt(
+              { from: blockPos, to: blockPos + block.nodeSize },
+              { type: COLUMN_BLOCK_NAME, content: columns },
+            )
+            .focus()
+            .run();
         },
     };
   },

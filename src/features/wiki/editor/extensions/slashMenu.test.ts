@@ -4,29 +4,33 @@ import type { SlashItem } from "./slashMenu";
 import { parseMarkdown, serializeMarkdown } from "../markdown";
 import { Editor } from "@tiptap/core";
 import { buildBaseExtensions } from "./base";
+import { SUPPORTED_COLUMN_COUNTS } from "./columns";
 
 describe("슬래시 메뉴", () => {
   it("전체 항목 — 화이트리스트 블록과 일치", () => {
+    // 열 레이아웃은 1~5 (레퍼런스 `레이아웃.png`) — 예전엔 2·3열뿐이었다
     expect(SLASH_ITEMS.map((i) => i.id)).toEqual([
       "h1", "h2", "h3", "bullet", "ordered", "task", "quote",
       "note", "tip", "warning", "caution",
-      "code", "divider", "table", "columns2", "columns3", "image", "emoji",
+      "code", "divider", "table",
+      "columns1", "columns2", "columns3", "columns4", "columns5",
+      "image", "emoji",
     ]);
   });
 
-  it("레이어 분할 항목이 실제로 열 구조를 만든다", () => {
-    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("") });
-    SLASH_ITEMS.find((i) => i.id === "columns2")!.run(editor);
-    const md = serializeMarkdown(editor.getJSON());
-    expect(md).toContain("::::columns");
-    expect(md.match(/:::column$/gm)).toHaveLength(2);
-    editor.destroy();
+  it("열 레이아웃 항목의 라벨·설명이 레퍼런스와 같다", () => {
+    const item = SLASH_ITEMS.find((i) => i.id === "columns4")!;
+    expect(item.label).toBe("열 4개 레이아웃");
+    expect(item.description).toBe("네개의 동일한 열 삽입");
   });
 
-  it("3열 항목은 열을 세 개 만든다", () => {
+  it.each(SUPPORTED_COLUMN_COUNTS)("열 %i개 항목이 실제로 그만큼 열을 만든다", (count) => {
     const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("") });
-    SLASH_ITEMS.find((i) => i.id === "columns3")!.run(editor);
-    expect(serializeMarkdown(editor.getJSON()).match(/:::column$/gm)).toHaveLength(3);
+    SLASH_ITEMS.find((i) => i.id === `columns${count}`)!.run(editor);
+    const md = serializeMarkdown(editor.getJSON());
+    expect(md).toContain("::::columns");
+    // 메뉴 항목 수와 실제 생성 열 수가 갈리면 "메뉴엔 있는데 다른 게 나오는" 상태가 된다
+    expect(md.match(/:::column$/gm)).toHaveLength(count);
     editor.destroy();
   });
 
