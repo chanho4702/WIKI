@@ -108,6 +108,37 @@ describe("레이어 분할 — 마크다운 왕복", () => {
     expect(roundtrip(md)).toBe(md);
   });
 
+  // 열 너비(기획: 사용자 요청) — 레이아웃은 문서의 일부라 뷰어 설정이 아니라 본문에 저장한다
+  it("열 너비가 `{width=N}`으로 저장되고 그대로 복원된다", () => {
+    const md = [
+      "::::columns",
+      ":::column{width=30}",
+      "왼쪽",
+      ":::",
+      ":::column{width=70}",
+      "오른쪽",
+      ":::",
+      "::::",
+    ].join("\n");
+    expect(roundtrip(md)).toBe(md);
+
+    const block = parseMarkdown(md).content?.[0];
+    expect(block?.content?.map((c) => c.attrs?.width)).toEqual([30, 70]);
+  });
+
+  it("너비가 없는 열은 속성 없이 직렬화된다 — 기존 문서가 바뀌지 않는다", () => {
+    // 회귀 가드: 너비 기능을 넣었다고 기존 2·3열 문서의 저장 문자열이 달라지면 안 된다
+    expect(roundtrip(TWO_COLUMNS)).toBe(TWO_COLUMNS);
+    const block = parseMarkdown(TWO_COLUMNS).content?.[0];
+    expect(block?.content?.map((c) => c.attrs?.width)).toEqual([null, null]);
+  });
+
+  it("범위를 벗어난 너비는 무시하고 균등 분배로 떨어진다", () => {
+    const md = ["::::columns", ":::column{width=0}", "a", ":::", ":::column{width=150}", "b", ":::", "::::"].join("\n");
+    const block = parseMarkdown(md).content?.[0];
+    expect(block?.content?.map((c) => c.attrs?.width)).toEqual([null, null]);
+  });
+
   it("열 개수가 자식 :::column 수로 그대로 읽힌다", () => {
     for (const count of SUPPORTED_COLUMN_COUNTS) {
       const block = parseMarkdown(columnsMarkdown(count)).content?.[0];

@@ -14,6 +14,14 @@ import { visit } from "unist-util-visit";
  * 이름이 columns/column이 아닌 지시자는 손대지 않는다: 그러면 mdast-util-to-hast가
  * 알 수 없는 노드로 두어 렌더에서 조용히 빠지므로, 아래에서 원문 텍스트로 되돌려 준다.
  */
+/** `{width=30}` 속성값 → 30. 범위를 벗어나거나 숫자가 아니면 null(균등 분배). */
+function parseColumnWidth(raw: string | null | undefined): number | null {
+  if (raw == null) return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0 || value >= 100) return null;
+  return Math.round(value * 10) / 10;
+}
+
 export function remarkColumns() {
   return (tree: Root) => {
     visit(tree, (node) => {
@@ -22,6 +30,7 @@ export function remarkColumns() {
       // mdast의 directive 노드 타입은 remark-directive가 확장한 것이라 여기서만 좁힌다
       const directive = node as typeof node & {
         name: string;
+        attributes?: Record<string, string | null | undefined>;
         data?: { hName?: string; hProperties?: Record<string, unknown> };
       };
 
@@ -36,7 +45,23 @@ export function remarkColumns() {
       // 내용이 조용히 증발하는 것이 사용자에게 가장 나쁜 실패다.
       const data = (directive.data ??= {});
       data.hName = "div";
-      data.hProperties = className ? { className: [className] } : {};
+      if (!className) {
+        data.hProperties = {};
+        return;
+      }
+
+      // `:::column{width=30}` — remark-directive가 attributes로 넘겨준 값을 편집 화면과 같은
+      // CSS 변수로 흘린다. 편집(`--wiki-column-width` 인라인 스타일)과 값이 갈리면
+      // 저장 후 화면이 편집 중과 달라진다.
+      const width = parseColumnWidth(directive.attributes?.width);
+      data.hProperties =
+        width === null
+          ? { className: [className] }
+          : {
+              className: [className],
+              "data-width": String(width),
+              style: `--wiki-column-width:${width}%`,
+            };
     });
   };
 }

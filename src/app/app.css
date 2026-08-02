@@ -2205,20 +2205,33 @@ body {
 .markdown-body .md-columns,
 .wiki-editor .ProseMirror [data-type="column-block"] {
   --wiki-column-min: 160px;
-  display: grid;
-  /* 뷰포트 미디어쿼리가 아니라 컨테이너 기준이다 — 본문 폭은 760px로 고정이라 화면이 아무리
-   * 넓어도 열은 그만큼만 넓어진다. 뷰포트로 판단하면 5열이 데스크톱에서도 130px까지 좁아지는데
-   * 스택 규칙이 발동하지 않는다(그게 실제로 났던 문제다). */
-  grid-template-columns: repeat(auto-fit, minmax(min(var(--wiki-column-min), 100%), 1fr));
+  /* grid가 아니라 flex인 이유: 균등 분배와 사용자가 드래그로 정한 가중 너비를 **한 규칙으로**
+   * 처리하려는 것이다. grid로 하면 너비가 있을 때 grid-template-columns를 따로 계산해 부모에
+   * 인라인으로 박아야 하고, 그러면 자동 스택(auto-fit)을 잃는다.
+   * flex-wrap이 auto-fit 역할을 대신한다 — 열이 min 폭 아래로 눌리면 줄바꿈해 세로로 쌓인다.
+   * 뷰포트 미디어쿼리가 아니라 컨테이너 기준이라는 점이 핵심이다: 본문 폭은 760px로 고정이라
+   * 화면이 아무리 넓어도 열은 그만큼만 넓어진다(뷰포트로 판단하던 예전 규칙은 5열이
+   * 데스크톱에서 130px까지 좁아져도 발동하지 않았다). */
+  display: flex;
+  flex-wrap: wrap;
   /* 열 사이 간격 — space-300은 열 자체를 눈에 띄게 좁혔다(특히 4·5열).
    * 좁은 본문(760px)에서는 간격보다 열 폭을 지키는 게 읽기에 낫다. */
   gap: var(--chanho-space-200);
   margin: var(--chanho-space-300) 0;
 }
 
+/* 기본은 균등 — 남는 폭을 똑같이 나눠 갖고, min 아래로 눌리면 부모의 flex-wrap이 쌓는다.
+ * 너비가 지정된 열은 --wiki-column-width(인라인 스타일)로 그 값을 flex-basis에 넣는다.
+ * gap 때문에 퍼센트 합이 100%를 넘으므로 열 수만큼 gap을 빼준다(--wiki-column-count는
+ * 부모에 인라인으로 실린다). */
 .markdown-body .md-column,
 .wiki-editor .ProseMirror [data-type="column"] {
-  min-width: 0; /* grid 자식 기본값(auto)이면 긴 코드/표가 열을 밀어 넓힌다 */
+  flex: 1 1 var(--wiki-column-min);
+  min-width: 0; /* 기본값(auto)이면 긴 코드/표가 열을 밀어 넓힌다 */
+}
+.markdown-body .md-column[data-width],
+.wiki-editor .ProseMirror [data-type="column"][data-width] {
+  flex: 0 1 calc(var(--wiki-column-width) - var(--chanho-space-200));
 }
 
 /* 열 안의 첫/마지막 블록 여백을 죽여 열 상단이 나란히 맞게 한다 */

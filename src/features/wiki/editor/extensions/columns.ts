@@ -106,8 +106,22 @@ interface MarkdownItToken {
   attrs?: [string, string][];
 }
 
-/** `:::name` 여는 줄. 마커는 3개 이상, 이름은 columns 또는 column. */
-const OPEN_RE = /^(:{3,})[ \t]*(columns|column)[ \t]*$/;
+/**
+ * `:::name` 여는 줄. 마커는 3개 이상, 이름은 columns 또는 column.
+ * 선택 속성 `{width=30}` — 열 너비(%)를 문서에 저장한다(remark-directive의 속성 문법과 같은 형태라
+ * 보기 경로가 별도 파싱 없이 같은 값을 읽는다).
+ */
+const OPEN_RE = /^(:{3,})[ \t]*(columns|column)[ \t]*(\{[^}]*\})?[ \t]*$/;
+
+/** `{width=30}` → 30. 없거나 범위를 벗어나면 null(균등 분배로 떨어진다). */
+export function parseWidthAttr(raw: string | undefined | null): number | null {
+  if (!raw) return null;
+  const m = /width\s*=\s*"?(\d+(?:\.\d+)?)"?/.exec(raw);
+  if (!m) return null;
+  const value = Number(m[1]);
+  if (!Number.isFinite(value) || value <= 0 || value >= 100) return null;
+  return Math.round(value * 10) / 10;
+}
 
 /**
  * `:::` 컨테이너 블록 규칙(직접 구현 — markdown-it-container 의존성 없이).
@@ -132,6 +146,7 @@ function containerRule(state: MarkdownItState, startLine: number, endLine: numbe
 
   const markerLen = opening[1].length;
   const name = opening[2];
+  const width = parseWidthAttr(opening[3]);
 
   let nextLine = startLine;
   let autoClosed = false;
@@ -164,6 +179,7 @@ function containerRule(state: MarkdownItState, startLine: number, endLine: numbe
   openToken.block = true;
   openToken.info = name;
   openToken.map = [startLine, nextLine];
+  if (width !== null) openToken.attrs = [["data-width", String(width)]];
 
   state.md.block.tokenize(state, startLine + 1, nextLine);
 
@@ -180,7 +196,13 @@ function containerRule(state: MarkdownItState, startLine: number, endLine: numbe
 
 /** data-type 속성이 붙은 div를 열고 닫는 렌더러 — TipTap의 parseHTML이 이 속성으로 노드를 복원한다. */
 function registerRenderers(md: MarkdownItLike) {
-  const open = (dataType: string) => () => `<div data-type="${dataType}">`;
+  // 여는 토큰에 실린 data-width를 그대로 흘려보낸다 — parseHTML이 이 속성으로 너비를 복원한다
+  const open =
+    (dataType: string) =>
+    (tokens: MarkdownItToken[], idx: number) => {
+      const width = tokens[idx].attrs?.find(([k]) => k === "data-width")?.[1];
+      return `<div data-type="${dataType}"${width ? ` data-width="${width}"` : ""}>`;
+    };
   const close = () => () => `</div>`;
   md.renderer.rules.container_columns_open = open("column-block");
   md.renderer.rules.container_columns_close = close();
@@ -210,6 +232,8 @@ declare module "@tiptap/core" {
       setColumns: (count?: number) => ReturnType;
       /** 커서가 놓인 레이아웃의 열 수를 바꾼다. 내용은 보존한다. */
       setColumnCount: (count: number) => ReturnType;
+      /** 레이아웃(문서 내 위치 pos)의 열 너비(%)를 한 번에 설정한다. 드래그 리사이즈가 호출한다. */
+      setColumnWidths: (blockPos: number, widths: number[]) => ReturnType;
     };
   }
 }
@@ -348,6 +372,32 @@ export const ColumnBlock = Node.create({
             .focus()
             .run();
         },
+
+      /**
+       * 열 너비 일괄 설정 — 드래그 리사이즈가 매 프레임 호출한다.
+       *
+       * `setNodeMarkup`으로 속성만 바꾼다(내용 재삽입 금지) — 재삽입하면 드래그 중 커서와
+       * 선택이 매 프레임 튀고, 실행취소 기록도 프레임 수만큼 쌓인다.
+       */
+      setColumnWidths:
+        (blockPos: number, widths: number[]) =>
+        ({ tr, state, dispatch }) => {
+          const block = state.doc.nodeAt(blockPos);
+          if (!block || block.type.name !== COLUMN_BLOCK_NAME) return false;
+          if (block.childCount !== widths.length) return false;
+          if (!dispatch) return true;
+
+          let offset = blockPos + 1;
+          block.forEach((child, _o, index) => {
+            const width = Math.round(widths[index] * 10) / 10;
+            tr.setNodeMarkup(offset, undefined, {
+              ...child.attrs,
+              width: width > 0 && width < 100 ? width : null,
+            });
+            offset += child.nodeSize;
+          });
+          return true;
+        },
     };
   },
 });
@@ -357,6 +407,29 @@ export const Column = Node.create({
   name: COLUMN_NAME,
   content: "block+",
   isolating: true,
+
+  addAttributes() {
+    return {
+      /**
+       * 열 너비(%). null이면 균등 분배.
+       * 문서에 저장하는 값이다 — 레이아웃은 문서의 일부라 보는 사람마다 달라지면 안 된다
+       * (줄 번호·줄바꿈이 뷰어 설정인 것과 반대다).
+       */
+      width: {
+        default: null as number | null,
+        parseHTML: (element) => {
+          const raw = element.getAttribute("data-width");
+          if (raw === null) return null;
+          const value = Number(raw);
+          return Number.isFinite(value) && value > 0 && value < 100 ? value : null;
+        },
+        renderHTML: (attrs) =>
+          attrs.width == null
+            ? {}
+            : { "data-width": String(attrs.width), style: `--wiki-column-width:${attrs.width}%` },
+      },
+    };
+  },
 
   parseHTML() {
     return [{ tag: 'div[data-type="column"]' }];
@@ -370,7 +443,8 @@ export const Column = Node.create({
     return {
       markdown: {
         serialize(state: MarkdownSerializerStateLike, node: ProseMirrorNodeLike) {
-          state.write(":::column");
+          const width = (node as { attrs?: { width?: number | null } }).attrs?.width;
+          state.write(width == null ? ":::column" : `:::column{width=${width}}`);
           state.ensureNewLine();
           state.renderContent(node);
           // 열 안의 마지막 블록이 닫히며 예약한 빈 줄을 줄바꿈 하나로 줄인다
