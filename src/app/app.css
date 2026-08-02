@@ -2249,6 +2249,77 @@ body {
   padding: var(--chanho-space-150);
   border: 1px dashed var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-medium);
+  position: relative; /* 리사이즈 핸들·그립의 기준 */
+}
+
+/* ── 열 드래그 조작 (extensions/columnDrag.ts) ──────────────
+ * 평소엔 숨기고 레이아웃에 마우스를 올렸을 때만 드러낸다 — 편집 중 계속 보이면 소음이다. */
+.wiki-editor .ProseMirror .column-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* 열 사이 gap의 한가운데 — 열 왼쪽 바깥으로 gap의 절반만큼 나간다 */
+  left: calc(var(--chanho-space-200) / -2 - 3px);
+  width: 7px;
+  cursor: col-resize;
+  opacity: 0;
+  transition: opacity var(--chanho-transition-base);
+}
+.wiki-editor .ProseMirror .column-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 0 3px;
+  border-radius: 2px;
+  background: var(--chanho-color-text-brand);
+}
+.wiki-editor .ProseMirror .column-grip {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--chanho-color-border-default);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity var(--chanho-transition-base);
+}
+.wiki-editor .ProseMirror [data-type="column-block"]:hover .column-resize-handle,
+.wiki-editor .ProseMirror [data-type="column-block"]:hover .column-grip {
+  opacity: 1;
+}
+.wiki-editor .ProseMirror .column-grip:hover {
+  background: var(--chanho-color-text-brand);
+}
+/* 드래그 중에는 커서가 문서 위 어디에 있든 유지된다 — 텍스트 선택도 막는다 */
+body.is-column-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+body.is-column-reordering {
+  cursor: grabbing;
+  user-select: none;
+}
+
+/* 끌어서 분할 예고선 — 어느 쪽에 붙을지 미리 보여준다 */
+.wiki-editor .ProseMirror .column-drop-target {
+  position: relative;
+}
+.wiki-editor .ProseMirror .column-drop-target::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--chanho-color-text-brand);
+}
+.wiki-editor .ProseMirror .column-drop-target--left::before {
+  left: -6px;
+}
+.wiki-editor .ProseMirror .column-drop-target--right::before {
+  right: -6px;
 }
 
 /* 좁은 화면 스택은 위의 auto-fit/minmax가 이미 처리한다(컨테이너 폭 기준) —
