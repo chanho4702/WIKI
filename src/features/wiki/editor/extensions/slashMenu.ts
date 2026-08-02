@@ -16,6 +16,7 @@ import {
   OctagonAlert,
   SquareCode,
   Minus,
+  ListTree,
   Table,
   Image,
   Smile,
@@ -199,6 +200,15 @@ export const SLASH_ITEMS: SlashItem[] = [
     description: "행과 열로 콘텐츠를 구성합니다",
     icon: Table,
     run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+  },
+  {
+    id: "toc",
+    label: "목차",
+    description: "문서의 제목으로 목차를 만듭니다",
+    icon: ListTree,
+    // 저장은 `::toc` 한 줄(remark-directive 리프 지시자, lib/remarkToc.ts).
+    // 편집 화면에는 마커가 그대로 보이고 보기 화면에서 목차로 렌더된다 — 패널(`[!NOTE]`)과 같은 방식이다.
+    run: (e) => e.chain().focus().insertContent({ type: "paragraph", content: [{ type: "text", text: "::toc" }] }).run(),
   },
   // 열 레이아웃 — 저장 포맷은 `:::` 확장 문법(extensions/columns.ts).
   // 항목명·설명은 레퍼런스(`레이아웃.png`)의 "열 N개 레이아웃 / N개의 동일한 열 삽입"을 그대로 쓴다.

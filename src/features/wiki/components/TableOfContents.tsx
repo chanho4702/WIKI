@@ -88,18 +88,34 @@ export function extractHeadings(markdown: string): TocHeading[] {
 export interface TableOfContentsProps {
   /** 페이지 본문 원문 마크다운 */
   markdown: string;
+  /**
+   * `"aside"`(기본) — 화면이 자동으로 붙이는 사이드 목차. 짧은 문서에서는 소음이라 숨긴다.
+   * `"inline"` — 사용자가 본문에 `::toc`로 **직접 심은** 목차. 숨기지 않는다:
+   * 넣었는데 아무것도 안 보이면 고장으로 읽힌다.
+   */
+  variant?: "aside" | "inline";
 }
 
 /**
- * 본문에서 heading 1~3을 뽑아 목차를 렌더한다. heading이 3개 미만이면 짧은 문서로 보고
- * 목차 소음을 피하기 위해 아무것도 렌더하지 않는다(null).
+ * 본문에서 heading 1~3을 뽑아 목차를 렌더한다.
+ * 자동 사이드 목차(aside)는 heading이 3개 미만이면 렌더하지 않는다(짧은 문서의 목차 소음 방지).
  */
-export function TableOfContents({ markdown }: TableOfContentsProps) {
+export function TableOfContents({ markdown, variant = "aside" }: TableOfContentsProps) {
   const headings = extractHeadings(markdown);
-  if (headings.length < 3) return null;
+  const inline = variant === "inline";
+  if (!inline && headings.length < 3) return null;
+
+  if (inline && headings.length === 0) {
+    // 심어는 뒀는데 제목이 없는 상태 — 왜 비어 있는지 알려준다
+    return (
+      <nav className="page-toc page-toc--inline" aria-label="목차">
+        <p className="page-toc-empty">제목을 추가하면 목차가 만들어집니다.</p>
+      </nav>
+    );
+  }
 
   return (
-    <nav className="page-toc" aria-label="목차">
+    <nav className={`page-toc${inline ? " page-toc--inline" : ""}`} aria-label="목차">
       <ul>
         {headings.map((h) => (
           <li key={h.slug} className={`page-toc-level-${h.level}`}>

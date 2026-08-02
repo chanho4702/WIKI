@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AnchorHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -19,8 +19,10 @@ import type { Page } from "../store/types";
 import { resolveWikiLinks } from "../lib/wikiLinks";
 import { remarkAlerts } from "../lib/remarkAlerts";
 import { remarkColumns } from "../lib/remarkColumns";
+import { remarkToc } from "../lib/remarkToc";
 import { showsLineNumbers, useCodeBlockPrefs } from "../lib/codeBlockPrefs";
 import { CodeLineNumbers } from "./CodeLineNumbers";
+import { TableOfContents } from "./TableOfContents";
 
 export interface MarkdownViewProps {
   /** 마크다운 원문 (Page.body 또는 편집 중인 입력값) */
@@ -76,8 +78,14 @@ function MarkdownDiv({
   className,
   children,
   node: _node,
+  source,
   ...rest
-}: HTMLAttributes<HTMLDivElement> & { node?: unknown }) {
+}: HTMLAttributes<HTMLDivElement> & { node?: unknown; source?: string }) {
+  // 본문 목차(`::toc`) — remarkToc가 표시한 자리에 실제 목차를 그린다.
+  // heading은 본문 전체에서 뽑으므로 사이드 목차와 같은 추출기를 쓴다(slug 계산도 동일).
+  if (className?.split(/\s+/).includes("md-toc")) {
+    return <TableOfContents markdown={source ?? ""} variant="inline" />;
+  }
   const alertClass = className?.split(/\s+/).find((c) => c in ALERT_ICONS);
   if (!alertClass) {
     return (
@@ -159,14 +167,27 @@ function CodeCopyBlock({ children }: { children?: ReactNode }) {
 export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
   const wikiMode = pages !== undefined && spaceId !== undefined;
   const source = wikiMode ? resolveWikiLinks(markdown, pages, spaceId) : markdown;
+
+  // 목차는 본문 전체를 봐야 만들 수 있다 — div 렌더러가 source를 알아야 해서 여기서 닫는다.
+  const components = useMemo(
+    () => ({
+      pre: CodeCopyBlock,
+      div: (props: HTMLAttributes<HTMLDivElement> & { node?: unknown }) => (
+        <MarkdownDiv {...props} source={source} />
+      ),
+      ...(wikiMode ? { a: WikiAnchor } : {}),
+    }),
+    [source, wikiMode],
+  );
+
   return (
     <div className="markdown-body">
-      {/* remarkDirective가 `:::` 문법을 노드로 만들고 remarkColumns가 그걸 div로 매핑한다 —
-        * 순서가 뒤바뀌면 매핑할 노드가 아직 없다. */}
+      {/* remarkDirective가 `:::`·`::` 문법을 노드로 만들고 remarkColumns/remarkToc가 그걸 div로
+        * 매핑한다 — 순서가 뒤바뀌면 매핑할 노드가 아직 없다. */}
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkDirective, remarkColumns, remarkAlerts]}
+        remarkPlugins={[remarkGfm, remarkDirective, remarkColumns, remarkAlerts, remarkToc]}
         rehypePlugins={[rehypeSlug, [rehypeHighlight, { detect: false }]]}
-        components={{ pre: CodeCopyBlock, div: MarkdownDiv, ...(wikiMode ? { a: WikiAnchor } : {}) }}
+        components={components}
       >
         {source}
       </ReactMarkdown>

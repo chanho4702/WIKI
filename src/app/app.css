@@ -724,6 +724,17 @@ body {
   border-radius: var(--chanho-radius-small);
 }
 
+/* 본문에 직접 심은 목차(`::toc`) — 자동 사이드 목차와 달리 본문 흐름 안에 놓이므로
+   위아래 여백을 대칭으로 준다. 자동 목차는 본문 위에 붙어 아래 여백만 있으면 된다. */
+.markdown-body .page-toc--inline {
+  margin: var(--chanho-space-300) 0;
+}
+.page-toc-empty {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+}
+
 .page-toc ul {
   margin: 0;
   padding: 0;
