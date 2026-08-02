@@ -14,9 +14,10 @@ import { Lozenge, useToast } from "@chanho/react";
 import { ChevronRight, FileText, Folder, Plus } from "lucide-react";
 import { contentPathIn } from "../lib/contentPath";
 import type { ReactNode } from "react";
-import type { Page } from "../store/types";
+import type { Page, PageType } from "../store/types";
 import { movePage } from "../store/wikiStore";
 import { projectDrop, type FlatDropNode } from "./pageTreeDnd";
+import { CreateContentMenu } from "./CreateContentMenu";
 
 export interface PageTreeProps {
   spaceId: string;
@@ -25,8 +26,9 @@ export interface PageTreeProps {
   forceExpand?: boolean;
   /** 드래그로 페이지를 이동한 뒤 호출 — 주어지지 않으면 드래그 비활성 */
   onMoved?: () => void | Promise<void>;
-  /** 행의 "+" — 해당 항목의 하위 초안을 만든다. 없으면 기존처럼 생성 화면으로 이동한다. */
-  onCreateChild?: (parentId: string) => void | Promise<void>;
+  /** 행의 "+" — 해당 항목의 하위 콘텐츠를 만든다(타입은 드롭다운에서 고른다).
+   *  없으면 기존처럼 생성 화면으로 이동한다. */
+  onCreateChild?: (type: PageType, parentId: string) => void | Promise<void>;
 }
 
 interface TreeNode {
@@ -195,19 +197,31 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
                   * 링크의 접근 이름에 포함되므로 스크린리더에도 함께 읽힌다. */}
                 {page.status === "draft" ? <Lozenge appearance="info">초안</Lozenge> : null}
               </NavLink>
-              {/* NavLink의 형제 — 링크 안에 버튼 중첩 금지 */}
-              <button
-                type="button"
-                className="page-tree-add"
-                aria-label={`${page.title} 하위 페이지 추가`}
-                onClick={() =>
-                  onCreateChild
-                    ? void onCreateChild(page.id)
-                    : navigate(`/spaces/${spaceId}/pages/new?parent=${page.id}`)
-                }
-              >
-                <Plus size={14} aria-hidden="true" />
-              </button>
+              {/* NavLink의 형제 — 링크 안에 버튼 중첩 금지.
+                * 하위로 폴더도 만들 수 있어야 해서 드롭다운으로 연다 — 전에는 페이지만 됐다. */}
+              {onCreateChild ? (
+                <CreateContentMenu
+                  trigger={
+                    <button
+                      type="button"
+                      className="page-tree-add"
+                      aria-label={`${page.title} 하위 콘텐츠 추가`}
+                    >
+                      <Plus size={14} aria-hidden="true" />
+                    </button>
+                  }
+                  onSelect={(type) => void onCreateChild(type, page.id)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="page-tree-add"
+                  aria-label={`${page.title} 하위 페이지 추가`}
+                  onClick={() => navigate(`/spaces/${spaceId}/pages/new?parent=${page.id}`)}
+                >
+                  <Plus size={14} aria-hidden="true" />
+                </button>
+              )}
             </div>
             {children.length > 0 && !isCollapsed ? renderNodes(children) : null}
           </>

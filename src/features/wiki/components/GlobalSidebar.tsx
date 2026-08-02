@@ -4,7 +4,8 @@ import { Avatar, EmptyState, Spinner, TextField } from "@chanho/react";
 import { Clock, Compass, ExternalLink, Grid3x3, House, Plus, Star } from "lucide-react";
 import type { Page, Space } from "../store/types";
 import { PageTree } from "./PageTree";
-import { useCreateDraft } from "../lib/useCreateDraft";
+import { useCreateContent } from "../lib/useCreateContent";
+import { CreateContentMenu } from "./CreateContentMenu";
 import { SidebarResizer } from "./SidebarResizer";
 import { SpaceFlyout } from "./SpaceFlyout";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
@@ -77,7 +78,7 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
 
   // 콘텐츠 "+" 및 트리 행의 "+" — 공용 훅. 진입점마다 다르게 동작하면 어디서 만들었냐에 따라
   // 트리에 보였다 안 보였다 한다.
-  const { createDraft, creating: creatingDraft } = useCreateDraft(space?.id ?? null, reloadPages);
+  const { createContent, creating } = useCreateContent(space?.id ?? null, reloadPages);
 
   const inSpace = space !== null;
   const searching = query.trim().length > 0;
@@ -173,17 +174,22 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
               <div className="wiki-sidebar-content-head">
                 <h3 className="wiki-sidebar-section-title">콘텐츠</h3>
                 {/* 캡처(07-26-폴더.png)의 콘텐츠 헤더 "+" — 편집 화면을 먼저 띄우는 대신
-                  * 초안 문서를 즉시 만들어 트리에 "초안" 배지와 함께 세운다(기획 P3). */}
-                <button
-                  type="button"
-                  className="wiki-sidebar-content-add"
-                  aria-label="초안 만들기"
-                  title="초안 만들기"
-                  disabled={creatingDraft}
-                  onClick={() => void createDraft()}
-                >
-                  <Plus size={16} aria-hidden="true" />
-                </button>
+                  * 초안 문서를 즉시 만들어 트리에 "초안" 배지와 함께 세운다(기획 P3).
+                  * 폴더도 여기서 만들 수 있어야 한다 — 전에는 헤더 "만들기"로 나가야만 했다. */}
+                <CreateContentMenu
+                  trigger={
+                    <button
+                      type="button"
+                      className="wiki-sidebar-content-add"
+                      aria-label="콘텐츠 만들기"
+                      title="콘텐츠 만들기"
+                      disabled={creating}
+                    >
+                      <Plus size={16} aria-hidden="true" />
+                    </button>
+                  }
+                  onSelect={(type) => void createContent(type)}
+                />
               </div>
               <TextField
                 label="페이지 검색"
@@ -201,7 +207,7 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
                   pages={visiblePages}
                   forceExpand={searching}
                   onMoved={reloadPages}
-                  onCreateChild={createDraft}
+                  onCreateChild={createContent}
                 />
               )}
             </section>

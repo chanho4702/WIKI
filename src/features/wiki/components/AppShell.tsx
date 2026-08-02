@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router";
-import { Button, Dropdown, useToast } from "@chanho/react";
-import { FileText, Folder, FolderPlus, Plus } from "lucide-react";
+import { Button } from "@chanho/react";
+import { FolderPlus, Plus } from "lucide-react";
 import type { Page, Space } from "../store/types";
-import { createPage, listPages } from "../store/wikiStore";
+import { listPages } from "../store/wikiStore";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { SpaceCreateModal } from "./SpaceCreateModal";
 import { WikiTopBar } from "./WikiTopBar";
 import type { WikiOutletContext } from "./wikiContext";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
 import { pruneStarredSpaces } from "../lib/starredSpaces";
-import { useCreateDraft } from "../lib/useCreateDraft";
+import { useCreateContent } from "../lib/useCreateContent";
+import { CreateContentMenu } from "./CreateContentMenu";
 
 export interface AppShellProps {
   spaces: Space[];
@@ -33,7 +34,6 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { collapsed, setCollapsed } = useSidebarPrefs();
-  const toast = useToast();
   const mainRef = useRef<HTMLElement>(null);
 
   // spaceId가 있는 라우트(/spaces/:spaceId/*)에서만 현재 스페이스를 특정한다. 홈·디렉토리는 null.
@@ -80,33 +80,9 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
     setPages(await listPages(currentId));
   }, [currentId]);
 
-  const { createDraft } = useCreateDraft(space?.id ?? null, reloadPages);
-
-  /**
-   * 폴더 만들기 — 페이지와 달리 편집 화면을 거치지 않는다. 폴더는 본문이 없어 입력받을 게
-   * 이름뿐이고, 그 이름은 폴더 화면에서 인라인으로 고치는 게 캡처(`07-26-폴더2.png`)의 흐름이다.
-   * 그래서 임시 이름으로 즉시 만들고 폴더 화면으로 보낸다.
-   *
-   * 아래 Navigate 조기 반환보다 위에 둔다 — 훅은 렌더 경로에 따라 건너뛸 수 없다.
-   */
-  const createFolder = useCallback(async () => {
-    if (!space) return;
-    try {
-      const created = await createPage({
-        spaceId: space.id,
-        title: "제목 없는 폴더",
-        type: "folder",
-      });
-      await reloadPages();
-      navigate(`/spaces/${space.id}/folder/${created.id}`);
-    } catch (error) {
-      toast({
-        title: "폴더 만들기 실패",
-        description: error instanceof Error ? error.message : String(error),
-        appearance: "danger",
-      });
-    }
-  }, [space, navigate, toast, reloadPages]);
+  // 페이지·폴더 생성은 useCreateContent 하나로 모았다 — 전에는 폴더 생성이 여기와 FolderPage에
+  // 따로 복제돼 있었고, 그 탓에 헤더에서는 하위 폴더를 만들 방법이 아예 없었다(parentId 미지원).
+  const { createContent } = useCreateContent(space?.id ?? null, reloadPages);
 
   // 존재하지 않는 스페이스 ID로 접근하면(스페이스 라우트인데 매칭 실패) 첫 스페이스로 돌린다.
   // 홈(/home)·디렉토리(/spaces)는 spaceId가 없으므로 여기에 해당하지 않는다.
@@ -116,24 +92,14 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
 
   // 헤더 "만들기" — 스페이스 안이면 페이지/폴더/새 스페이스 드롭다운, 밖(홈·디렉토리)이면 새 스페이스 버튼.
   const createControl = space ? (
-    <Dropdown
+    <CreateContentMenu
       trigger={
         <Button size="small" iconBefore={<Plus size={16} aria-hidden="true" />}>
           만들기
         </Button>
       }
-      items={[
-        {
-          label: "페이지",
-          icon: <FileText size={16} aria-hidden="true" />,
-          // 초안으로 즉시 만들어 트리에 세운다 — 빈 편집 화면만 열면 뭘 만드는지 확인이 안 된다
-          onSelect: () => void createDraft(),
-        },
-        {
-          label: "폴더",
-          icon: <Folder size={16} aria-hidden="true" />,
-          onSelect: () => void createFolder(),
-        },
+      onSelect={(type) => void createContent(type)}
+      extraItems={[
         {
           label: "새 스페이스",
           icon: <FolderPlus size={16} aria-hidden="true" />,

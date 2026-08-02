@@ -129,6 +129,42 @@ describe("W12 폴더 콘텐츠 타입", () => {
     )).toBeInTheDocument();
   });
 
+  it("트리 행 '+'에서 하위 폴더를 만들 수 있다", async () => {
+    // 전에는 트리·사이드바·개요의 "+"가 전부 페이지만 만들어서, 하위 폴더를 만들 방법이
+    // 아예 없었다(헤더 "만들기 → 폴더"는 항상 루트에 만들었다).
+    const user = userEvent.setup();
+    localStorage.setItem("wiki.v1", JSON.stringify(createSeedData()));
+    renderApp("/spaces/sp1");
+    await screen.findByRole("navigation", { name: "페이지 트리" });
+
+    await user.click(tree().getByRole("button", { name: "팀 규칙 하위 콘텐츠 추가" }));
+    await user.click(await screen.findByRole("menuitem", { name: "폴더" }));
+
+    // 폴더는 편집 화면이 없다 — 바로 폴더 화면으로 간다
+    await waitFor(() => {
+      expect(screen.getByTestId("location").textContent).toMatch(/^\/spaces\/sp1\/folder\/.+/);
+    });
+    expect(await tree().findByRole("link", { name: "제목 없는 폴더 (폴더)" })).toBeInTheDocument();
+
+    // 루트가 아니라 "팀 규칙"의 하위여야 한다 — 부모를 접으면 함께 사라진다
+    await user.click(tree().getByRole("button", { name: "팀 규칙 하위 접기" }));
+    expect(tree().queryByRole("link", { name: "제목 없는 폴더 (폴더)" })).not.toBeInTheDocument();
+  });
+
+  it("사이드바 '+'에서도 폴더를 만들 수 있다", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("wiki.v1", JSON.stringify(createSeedData()));
+    renderApp("/spaces/sp1");
+    await screen.findByRole("navigation", { name: "페이지 트리" });
+
+    await user.click(screen.getByRole("button", { name: "콘텐츠 만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "폴더" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location").textContent).toMatch(/^\/spaces\/sp1\/folder\/.+/);
+    });
+  });
+
   it("폴더 이름을 인라인으로 고치면 트리에도 반영된다", async () => {
     const user = userEvent.setup();
     localStorage.setItem("wiki.v1", JSON.stringify(seedWithFolder()));
@@ -186,7 +222,8 @@ describe("W12 초안 만들기 → 게시", () => {
     renderApp("/spaces/sp1");
     await screen.findByRole("navigation", { name: "페이지 트리" });
 
-    await user.click(screen.getByRole("button", { name: "초안 만들기" }));
+    await user.click(screen.getByRole("button", { name: "콘텐츠 만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("location").textContent).toMatch(
@@ -201,7 +238,8 @@ describe("W12 초안 만들기 → 게시", () => {
     renderApp("/spaces/sp1");
     await screen.findByRole("navigation", { name: "페이지 트리" });
 
-    await user.click(screen.getByRole("button", { name: "초안 만들기" }));
+    await user.click(screen.getByRole("button", { name: "콘텐츠 만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
 
     // 배지는 링크의 접근 이름에 포함된다 — 시각 배지와 스크린리더 안내가 갈리지 않게
     await waitFor(() => {
@@ -214,7 +252,8 @@ describe("W12 초안 만들기 → 게시", () => {
     localStorage.setItem("wiki.v1", JSON.stringify(createSeedData()));
     renderApp("/spaces/sp1");
     await screen.findByRole("navigation", { name: "페이지 트리" });
-    await user.click(screen.getByRole("button", { name: "초안 만들기" }));
+    await user.click(screen.getByRole("button", { name: "콘텐츠 만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
 
     expect(await screen.findByRole("button", { name: "게시" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "업데이트" })).not.toBeInTheDocument();
@@ -226,7 +265,8 @@ describe("W12 초안 만들기 → 게시", () => {
     localStorage.setItem("wiki.v1", JSON.stringify(createSeedData()));
     renderApp("/spaces/sp1");
     await screen.findByRole("navigation", { name: "페이지 트리" });
-    await user.click(screen.getByRole("button", { name: "초안 만들기" }));
+    await user.click(screen.getByRole("button", { name: "콘텐츠 만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
 
     const title = await screen.findByRole("textbox", { name: "페이지 제목" });
     await user.clear(title);

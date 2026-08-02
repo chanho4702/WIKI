@@ -111,8 +111,9 @@ describe("W11 스페이스 개요 (/spaces/:spaceId)", () => {
     renderApp("/spaces/sp1");
     await screen.findByRole("heading", { level: 1, name: "개발 위키" });
 
-    // 헤더(셸)의 "만들기"와 구분되는, 개요 자체의 액션
-    await user.click(screen.getByRole("button", { name: "새 페이지" }));
+    // 헤더(셸)의 "만들기"와 구분되는, 개요 자체의 액션 — 이제 페이지/폴더를 고른다
+    await user.click(screen.getByRole("button", { name: "새 콘텐츠" }));
+    await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
     await waitFor(() => {
       expect(screen.getByTestId("location").textContent).toMatch(
         /^\/spaces\/sp1\/pages\/[^/]+\/edit$/,

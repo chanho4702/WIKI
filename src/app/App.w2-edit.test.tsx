@@ -118,11 +118,13 @@ describe("W2 페이지 편집·생성", () => {
     expect(within(tree).queryByRole("link", { name: /제목 없음/ })).not.toBeInTheDocument();
   });
 
-  it("트리 항목의 '하위 페이지 추가'는 그 항목의 하위 초안을 만든다", async () => {
+  it("트리 항목의 '하위 콘텐츠 추가'는 그 항목의 하위 초안을 만든다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg1");
     const tree = await screen.findByRole("navigation", { name: "페이지 트리" });
-    await user.click(within(tree).getByRole("button", { name: "팀 규칙 하위 페이지 추가" }));
+    await user.click(within(tree).getByRole("button", { name: "팀 규칙 하위 콘텐츠 추가" }));
+    // 하위로 폴더도 만들 수 있게 드롭다운이 됐다 — 페이지를 고른다
+    await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
     await waitFor(() => {
       expect(screen.getByTestId("location").textContent).toMatch(/\/edit$/);
     });

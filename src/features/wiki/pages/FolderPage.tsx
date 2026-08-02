@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router";
 import { Button, Dropdown, EmptyState, InlineEdit, useToast } from "@chanho/react";
 import { FileText, Folder, FolderPlus, MoreHorizontal, Plus, Trash2 } from "lucide-react";
-import type { Page, User } from "../store/types";
-import { createPage, deletePage, listUsers, updatePage } from "../store/wikiStore";
+import type { Page, PageType, User } from "../store/types";
+import { deletePage, listUsers, updatePage } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { contentPathIn } from "../lib/contentPath";
-import { useCreateDraft } from "../lib/useCreateDraft";
+import { useCreateContent } from "../lib/useCreateContent";
 import { displayUserName } from "../lib/userName";
 
 /** "2026년 7월 10일" — PageViewPage/SpaceIndexPage와 같은 규칙(빈 값·무효 날짜는 빈 문자열). */
@@ -33,7 +33,7 @@ export function FolderPage() {
   const toast = useToast();
   const { pages, space, reloadPages } = useOutletContext<WikiOutletContext>();
   const [users, setUsers] = useState<User[]>([]);
-  const { createDraft } = useCreateDraft(spaceId ?? null, reloadPages);
+  const { createContent } = useCreateContent(spaceId ?? null, reloadPages);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -94,29 +94,9 @@ export function FolderPage() {
     }
   };
 
-  const createChild = async (type: "page" | "folder") => {
-    if (type === "page") {
-      // 이 폴더의 하위 초안으로 만든다 — 트리·이 화면 양쪽에 바로 나타난다
-      await createDraft(folder.id);
-      return;
-    }
-    try {
-      const created = await createPage({
-        spaceId: space.id,
-        parentId: folder.id,
-        title: "제목 없는 폴더",
-        type: "folder",
-      });
-      await reloadPages();
-      navigate(contentPathIn(space.id, created));
-    } catch (error) {
-      toast({
-        title: "폴더 만들기 실패",
-        description: error instanceof Error ? error.message : String(error),
-        appearance: "danger",
-      });
-    }
-  };
+  // 이 폴더의 하위로 만든다 — 트리·이 화면 양쪽에 바로 나타난다.
+  // 생성 로직 자체는 useCreateContent가 갖는다(전엔 여기와 AppShell에 폴더 생성이 복제돼 있었다).
+  const createChild = (type: PageType) => createContent(type, folder.id);
 
   return (
     <div className="folder-page">

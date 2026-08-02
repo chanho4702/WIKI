@@ -5,7 +5,7 @@ import { createPage, deletePage, getPage, publishPage, updatePage } from "../sto
 import type { WikiOutletContext } from "../components/wikiContext";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
-import { DRAFT_TITLE } from "../lib/useCreateDraft";
+import { DRAFT_TITLE } from "../lib/useCreateContent";
 
 /**
  * 페이지 편집 화면 — 생성(/pages/new?parent=<id|없음>)과 수정(/pages/:pageId/edit) 공용.
