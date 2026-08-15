@@ -6,7 +6,19 @@ export {
 
 import { sharedApiFetch } from "./apiClient";
 import { mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError } from "./mapping";
-import type { Space, Page, PageVersion, User, Attachment, PageStatus, PageType, DeletePageOptions } from "./types";
+import {
+  ContentSearchError,
+  type Attachment,
+  type DeletePageOptions,
+  type Page,
+  type PageStatus,
+  type PageType,
+  type PageVersion,
+  type SearchContentInput,
+  type SearchResults,
+  type Space,
+  type User,
+} from "./types";
 
 /** 백엔드 응답(JSON) 파싱 + 4xx/5xx를 한국어 에러로 변환. 이후 태스크(pages/versions/attachments)도 재사용. */
 async function json<T>(res: Response): Promise<T> {
@@ -142,4 +154,83 @@ export function attachmentUrl(id: string): string {
 }
 export async function deleteAttachment(id: string): Promise<void> {
   await json(await sharedApiFetch(`/api/wiki/attachments/${toBackendId(id)}`, { method: "DELETE" }));
+}
+
+const SEARCH_OPERATION = `
+  query WikiSearch($input: SearchInput!) {
+    search(input: $input) {
+      total
+      tookMs
+      hits {
+        id
+        docType
+        spaceId
+        spaceKey
+        spaceName
+        pageId
+        pageType
+        title
+        filename
+        highlights
+        updatedAt
+        score
+      }
+    }
+  }
+`;
+
+interface GraphQlSearchResponse {
+  data?: { search?: SearchResults };
+  errors?: Array<{
+    extensions?: { code?: string; httpStatus?: number };
+  }>;
+}
+
+function contentSearchError(status: number, code?: string): ContentSearchError {
+  if (status === 429) {
+    return new ContentSearchError("검색 요청이 너무 많습니다. 잠시 후 다시 시도하세요.", "rate-limited");
+  }
+  if (status === 503 || code === "SERVICE_UNAVAILABLE") {
+    return new ContentSearchError("검색 서비스를 사용할 수 없습니다. 잠시 후 다시 시도하세요.", "unavailable");
+  }
+  if (status === 401) {
+    return new ContentSearchError("로그인이 만료되었습니다. 다시 로그인하세요.", "unauthorized");
+  }
+  return new ContentSearchError("검색 결과를 불러올 수 없습니다. 다시 시도하세요.", "unknown");
+}
+
+/** Gateway `/api/search/graphql` 계약. HTTP 200 안의 GraphQL errors도 성공으로 삼키지 않는다. */
+export async function searchContent(input: SearchContentInput): Promise<SearchResults> {
+  const query = input.query.trim();
+  if (!query) return { total: 0, tookMs: 0, hits: [] };
+
+  const res = await sharedApiFetch("/api/search/graphql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      operationName: "WikiSearch",
+      query: SEARCH_OPERATION,
+      variables: {
+        input: {
+          query,
+          page: input.page ?? 0,
+          size: input.size ?? 20,
+          ...(input.spaceIds ? { spaceIds: input.spaceIds } : {}),
+          ...(input.docTypes ? { docTypes: input.docTypes } : {}),
+        },
+      },
+    }),
+  });
+
+  const body = (await res.json().catch(() => ({}))) as GraphQlSearchResponse;
+  if (!res.ok) throw contentSearchError(res.status);
+  const graphQlError = body.errors?.[0];
+  if (graphQlError) {
+    throw contentSearchError(
+      graphQlError.extensions?.httpStatus ?? 500,
+      graphQlError.extensions?.code,
+    );
+  }
+  if (!body.data?.search) throw contentSearchError(500);
+  return body.data.search;
 }

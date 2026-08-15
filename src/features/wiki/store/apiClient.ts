@@ -9,8 +9,11 @@ export const sharedAuthClient = createAuthClient({
   baseUrl: (import.meta.env.VITE_API_BASE as string) ?? "",
 });
 
-/** 백엔드 모드 여부 — VITE_API_PROXY(dev 프록시) 또는 VITE_API_BASE(직접)가 설정되면 실제 백엔드. */
+/**
+ * 백엔드 모드 여부 — 프로덕션은 nginx same-origin 백엔드가 항상 존재한다.
+ * dev만 VITE_API_PROXY/VITE_API_BASE가 없을 때 localStorage 목업으로 동작한다.
+ */
 export const USE_BACKEND =
-  Boolean(import.meta.env.VITE_API_PROXY) || Boolean(import.meta.env.VITE_API_BASE);
+  import.meta.env.PROD || Boolean(import.meta.env.VITE_API_PROXY) || Boolean(import.meta.env.VITE_API_BASE);
 
 export const sharedApiFetch = sharedAuthClient.apiFetch;

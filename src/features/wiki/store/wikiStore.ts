@@ -1,5 +1,5 @@
 // src/features/wiki/store/wikiStore.ts
-// 듀얼모드 진입점 — VITE_API_BASE가 있으면 백엔드 어댑터(wikiApi), 없으면 목업(wikiMock).
+// 듀얼모드 진입점 — 프로덕션 또는 API 환경변수가 있으면 백엔드 어댑터, 순수 dev/test는 목업.
 // 공개 함수 시그니처·의미론은 store/CLAUDE.md 계약 그대로. 화면·테스트는 이 모듈만 import한다.
 import * as mock from "./wikiMock";
 import * as api from "./wikiApi";
@@ -28,6 +28,7 @@ export const listAttachments = impl.listAttachments;
 export const uploadAttachment = impl.uploadAttachment;
 export const attachmentUrl = impl.attachmentUrl;
 export const deleteAttachment = impl.deleteAttachment;
+export const searchContent = impl.searchContent;
 
 // 테스트 전용 — 항상 목업 캐시를 초기화(백엔드 모드에선 테스트를 돌리지 않음).
 export const __resetForTest = mock.__resetForTest;

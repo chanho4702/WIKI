@@ -11,6 +11,7 @@ import { HomePage } from "../features/wiki/pages/HomePage";
 import { PageViewPage } from "../features/wiki/pages/PageViewPage";
 import { FolderPage } from "../features/wiki/pages/FolderPage";
 import { PageEditPage } from "../features/wiki/pages/PageEditPage";
+import { SearchPage } from "../features/wiki/pages/SearchPage";
 
 export function App() {
   const [spaces, setSpaces] = useState<Space[] | null>(null);
@@ -59,6 +60,7 @@ export function App() {
       <Route element={<AppShell spaces={spaces} onSpacesChanged={reload} />}>
         <Route path="/home" element={<HomePage />} />
         <Route path="/spaces" element={<SpaceDirectoryPage spaces={spaces} />} />
+        <Route path="/search" element={<SearchPage />} />
         {/* 스페이스 컨텍스트 — element 없이 경로만 묶는다. 하위 페이지 화면은 AppShell의 Outlet
          * 컨텍스트(pages/space/reloadPages)를 그대로 소비한다. */}
         <Route path="/spaces/:spaceId">

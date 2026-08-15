@@ -6,7 +6,7 @@
 
 ## 1. 현실 (탐색 결과)
 
-- **wiki-backend** (Spring Boot 4 / Java 24 / Postgres / Flyway, `/api/wiki/*`, 서비스 :9110 ← 게이트웨이 :8000, **모든 요청 JWT 필수**) 가 제공: **스페이스 CRUD · 페이지 CRUD+트리+이동(PUT로 parentId)+낙관적락(`expectedVersion`→409) · 버전/복원 · 첨부파일.** 그 외 전부 없음.
+- **wiki-backend** (Spring Boot 4 / Java 24 / Postgres / Flyway, `/api/wiki/*`, 서비스 :9110 ← 게이트웨이 :8000, **모든 요청 JWT 필수**) 가 제공: **스페이스 CRUD · 페이지 CRUD+트리+이동(PUT로 parentId)+낙관적락(`expectedVersion`→409) · 버전/복원 · 첨부파일.** 전문 검색은 별도 search-service(`/api/search/graphql`)가 제공한다.
 - **프론트**: `wikiStore.ts`는 localStorage 목업. 인증은 `src/auth/client.ts`의 `apiFetch`(JWT bearer + 401 refresh, `credentials: include`)가 이미 존재하나 **AuthGate가 `import.meta.env.PROD` 전용** → dev/test는 인증 OFF.
 
 ## 2. 백엔드↔프론트 계약 대조 & 매핑
@@ -53,6 +53,7 @@
 6. **attachments**(신규 capability; 에디터 첨부 배선은 후속 별도).
 7. **comments** 목업 유지 분리.
 8. **dev 인증/토큰 구성** 문서화 + 스모크(빈 DB에 스페이스 1개 생성→트리→편집→버전 왕복).
+9. **통합 검색(완료 2026-08-15)** — `wikiStore.searchContent` 듀얼모드 + GraphQL `pageType` 계약 + `/search?q=` 화면.
 
 각 단계는 목업 모드 테스트 green 유지 + 백엔드 모드 수동 스모크.
 

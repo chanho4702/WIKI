@@ -73,6 +73,54 @@ export interface Attachment {
   sizeBytes: number;
 }
 
+export type SearchDocType = "PAGE" | "ATTACHMENT";
+export type SearchPageType = "PAGE" | "FOLDER";
+
+export interface SearchHit {
+  id: string;
+  docType: SearchDocType;
+  spaceId: string;
+  spaceKey: string;
+  spaceName: string;
+  /** 첨부파일이면 소속 페이지 ID, 페이지·폴더면 null. */
+  pageId: string | null;
+  /** 페이지·폴더 hit의 실제 콘텐츠 타입, 첨부파일이면 null. */
+  pageType: SearchPageType | null;
+  title: string | null;
+  filename: string | null;
+  /** OpenSearch가 `<em>`으로 매치를 표시한 안전한 텍스트 조각. 화면은 raw HTML로 렌더하지 않는다. */
+  highlights: string[];
+  updatedAt: string | null;
+  score: number;
+}
+
+export interface SearchResults {
+  total: number;
+  tookMs: number;
+  hits: SearchHit[];
+}
+
+export interface SearchContentInput {
+  query: string;
+  page?: number;
+  size?: number;
+  spaceIds?: string[];
+  docTypes?: SearchDocType[];
+}
+
+export type ContentSearchErrorKind = "rate-limited" | "unavailable" | "unauthorized" | "unknown";
+
+/** 검색 화면이 429·503을 서로 다른 복구 안내로 표현하기 위한 안정적인 스토어 오류. */
+export class ContentSearchError extends Error {
+  constructor(
+    message: string,
+    public readonly kind: ContentSearchErrorKind,
+  ) {
+    super(message);
+    this.name = "ContentSearchError";
+  }
+}
+
 /**
  * 자식이 있는 페이지·폴더를 지울 때 자식을 어떻게 할지 (기획 P2 결정, 2026-07-28).
  * - `promote`: 자식을 삭제 대상의 부모로 올리고 대상만 지운다(삭제 대상의 자리·순서를 이어받는다).

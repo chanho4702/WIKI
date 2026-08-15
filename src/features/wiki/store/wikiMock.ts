@@ -1,5 +1,19 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
-import type { Attachment, Comment, DeletePageOptions, Page, PageStatus, PageType, PageVersion, Space, User, WikiData } from "./types";
+import type {
+  Attachment,
+  Comment,
+  DeletePageOptions,
+  Page,
+  PageStatus,
+  PageType,
+  PageVersion,
+  SearchContentInput,
+  SearchHit,
+  SearchResults,
+  Space,
+  User,
+  WikiData,
+} from "./types";
 import { CURRENT_USER_ID } from "../../../mock/users";
 import { createSeedData } from "../../../mock/seed";
 
@@ -417,6 +431,60 @@ export function attachmentUrl(_id: string): string {
 
 export async function deleteAttachment(_id: string): Promise<void> {
   // no-op
+}
+
+function highlightSnippet(text: string, query: string): string | null {
+  const index = text.toLocaleLowerCase("ko-KR").indexOf(query.toLocaleLowerCase("ko-KR"));
+  if (index < 0) return null;
+  const start = Math.max(0, index - 60);
+  const end = Math.min(text.length, index + query.length + 100);
+  const prefix = start > 0 ? "…" : "";
+  const suffix = end < text.length ? "…" : "";
+  return `${prefix}${text.slice(start, index)}<em>${text.slice(index, index + query.length)}</em>${text.slice(index + query.length, end)}${suffix}`;
+}
+
+/** 목업 모드도 화면과 같은 검색 계약을 제공한다. 첨부파일은 목업 스토리지가 없어 PAGE만 검색한다. */
+export async function searchContent(input: SearchContentInput): Promise<SearchResults> {
+  const query = input.query.trim();
+  if (!query) return { total: 0, tookMs: 0, hits: [] };
+
+  const data = load();
+  const spaces = new Map(data.spaces.map((space) => [space.id, space]));
+  const allowedSpaces = input.spaceIds ? new Set(input.spaceIds) : null;
+  const pagesRequested = !input.docTypes || input.docTypes.length === 0 || input.docTypes.includes("PAGE");
+  const pageHits: SearchHit[] = !pagesRequested
+    ? []
+    : data.pages.flatMap((page): SearchHit[] => {
+        if (page.status === "draft" || (allowedSpaces && !allowedSpaces.has(page.spaceId))) return [];
+        const space = spaces.get(page.spaceId);
+        if (!space) return [];
+        const titleHighlight = highlightSnippet(page.title, query);
+        const bodyHighlight = page.type === "page" ? highlightSnippet(page.body, query) : null;
+        if (!titleHighlight && !bodyHighlight) return [];
+        return [{
+          id: page.id,
+          docType: "PAGE",
+          spaceId: page.spaceId,
+          spaceKey: space.key,
+          spaceName: space.name,
+          pageId: null,
+          pageType: page.type === "folder" ? "FOLDER" : "PAGE",
+          title: page.title,
+          filename: null,
+          highlights: [titleHighlight, bodyHighlight].filter((value): value is string => value !== null),
+          updatedAt: page.updatedAt,
+          score: (titleHighlight ? 3 : 0) + (bodyHighlight ? 1 : 0),
+        }];
+      });
+
+  pageHits.sort((a, b) => b.score - a.score || (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+  const page = Math.max(input.page ?? 0, 0);
+  const size = Math.max(0, Math.min(input.size ?? 20, 100));
+  return {
+    total: pageHits.length,
+    tookMs: 0,
+    hits: pageHits.slice(page * size, (page + 1) * size),
+  };
 }
 
 export async function deleteComment(id: string): Promise<void> {
