@@ -12,7 +12,7 @@ MSA_TEMPLATE의 **위키(컨플루언스 클론) 프론트엔드**. 3개 프론�
 
 ---
 
-## 스택 (실측)
+## 기술 스택
 
 | 영역 | 사용 |
 |---|---|
@@ -28,7 +28,7 @@ UI는 100% `@chanho` 디자인 시스템으로 구성한다 — 타 UI 라이브
 
 ---
 
-## 주요 기능 (실측)
+## 주요 기능
 
 - **스페이스 다중** — 생성/전환. 키는 자동 대문자·중복 거부.
 - **페이지 계층 트리** — `parentId` 트리, 사이드바 접이식(현재 페이지 하이라이트). `@dnd-kit` 드래그로 이동/정렬,
@@ -51,7 +51,7 @@ UI는 100% `@chanho` 디자인 시스템으로 구성한다 — 타 UI 라이브
 
 ---
 
-## 실행 (실측 — package.json)
+## 빠른 시작
 
 ```bash
 pnpm install     # ../design-system/artifacts 의 tarball 필요
@@ -73,11 +73,12 @@ pnpm build       # vite build
 | `VITE_API_BASE` | 백엔드 직접 오리진. 프로덕션은 nginx same-origin이라 빈 문자열을 사용한다. |
 | `VITE_API_PROXY` | dev에서 Vite same-origin 프록시와 백엔드 모드를 함께 켠다. 미설정 dev/test는 목업 모드다. |
 
-repo에 `.env*` 파일은 커밋돼 있지 않다.
+`.env.example`을 복사해 로컬 `.env`를 만들 수 있다. 실제 `.env`는 git에서 제외하며,
+아무 변수도 설정하지 않으면 localStorage 목업 모드로 동작한다.
 
 ---
 
-## 인증 / SSO 흐름 (실측)
+## 인증 / SSO 흐름
 
 로그인 게이트는 `src/auth/`에 있으며 **프로덕션 또는 백엔드 모드 dev에서 활성**된다. 순수 목업 dev/vitest만
 게이트를 꺼 네트워크 없이 동작한다.
@@ -114,7 +115,7 @@ src/
 
 ---
 
-## 라우트 (실측 — `App.tsx`, `basename="/wiki"`)
+## 라우트 (`App.tsx`, `basename="/wiki"`)
 
 | 경로 | 화면 | 비고 |
 |---|---|---|
@@ -127,3 +128,12 @@ src/
 | `/spaces/:spaceId/pages/:pageId/edit` | `PageEditPage` (수정) | |
 | `/spaces/:spaceId/folder/:folderId` | `FolderPage` | 폴더 자식 목록 |
 | `*` | 첫 스페이스로 `Navigate` | 스페이스가 하나도 없으면 `EmptySpaces` |
+
+---
+
+## 관련 문서
+
+- [wiki-backend](https://github.com/chanho4702/wiki-backend) — REST·권한·이벤트·색인용 gRPC 계약
+- [Chanho Design System](https://github.com/chanho4702/design-system) — 토큰과 UI 컴포넌트
+- [`docs/roadmap`](docs/roadmap/) — 기능 로드맵과 저장 포맷 결정
+- [`docs/backend`](docs/backend/) — 프론트 store와 백엔드 API 매핑
