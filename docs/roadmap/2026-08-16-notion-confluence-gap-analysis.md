@@ -369,7 +369,9 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
   sync 전 제목·본문 잠금과 원격 제목 dirty 상태 UX.
 - 6차 완료: 실제 nginx→gateway→Hocuspocus 경로에서 두 클라이언트가 단절 중 제목·굵게·표 행을
   동시에 수정한 뒤 재연결 수렴하고, collaboration-service 재기동 후 PostgreSQL snapshot으로 복구.
-- 다음 증분: 실제 2인 브라우저의 selection/caret·충돌 UI 시각 검증과 collaboration 다중 노드 Redis fan-out.
+- 7차 완료: 두 클라이언트를 서로 다른 collaboration 노드에 고정해 Redis update·awareness fan-out과
+  분산 store lock을 통과하고, 양 노드 재기동 후 PostgreSQL snapshot으로 동일 상태 복구.
+- 다음 증분: 실제 2인 브라우저의 selection/caret·충돌 UI 시각 검증과 fan-out/연결 메트릭.
 - 완료: 2인 동시 편집·네트워크 단절·노드 재기동 테스트에서 내용이 수렴하고 승인된 편집이 유실되지 않음
 
 ### W18 — 권한·거버넌스

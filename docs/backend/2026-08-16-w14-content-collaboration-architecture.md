@@ -96,8 +96,9 @@ W15 이미지 저장, W17 실시간 공동 편집, W19 Notion·Confluence DC 가
 - 제목은 같은 Y.Doc의 `Y.Text`로 동기화하고, input 전체 replace 대신 실제 변경 구간만 CRDT operation으로
   만들어 동시 접두·접미 편집도 수렴시킨다. 동기화 전에는 제목 input과 본문 편집기를 함께 잠근다.
 - nginx→gateway 실제 경로의 두 headless Tiptap 클라이언트로 단절 중 제목·서식·표 편집 수렴과
-  collaboration-service 재기동 후 PostgreSQL 복구를 검증했다. 실제 2인 브라우저의 caret·충돌 UI와
-  collaboration 다중 노드 fan-out 검증은 아직 남아 있으므로
+  collaboration-service 재기동 후 PostgreSQL 복구를 검증했다. 클라이언트를 서로 다른 두 노드에
+  고정한 Redis fan-out·분산 store lock·양 노드 재기동 복구도 통과했다. 실제 2인 브라우저의
+  caret·충돌 UI와 fan-out/연결 메트릭은 아직 남아 있으므로
   `VITE_WIKI_COLLABORATION_ENABLED` 기본값은 false를 유지한다.
 
 공식 Hocuspocus 문서는 Yjs binary를 primary 형태로 저장하고, Redis extension은 노드 간 동기화용이지

@@ -16,6 +16,7 @@ const gateway = (import.meta.env.VITE_COLLABORATION_LIVE_GATEWAY as string | und
 const pageId = (import.meta.env.VITE_COLLABORATION_LIVE_PAGE_ID as string | undefined)
   ?? "987654321";
 const rawTickets = import.meta.env.VITE_COLLABORATION_LIVE_TICKETS as string | undefined;
+const rawWebsocketUrls = import.meta.env.VITE_COLLABORATION_LIVE_WEBSOCKET_URLS as string | undefined;
 const enabled = phase === "seed" || phase === "recover";
 const room = `page:${pageId}`;
 const websocketUrl = `${gateway.replace(/^http/, "ws")}/api/wiki/collaboration`;
@@ -41,7 +42,24 @@ function tickets(): string[] {
   return parsed;
 }
 
-function waitForSync(document: Y.Doc, ticket: string): Promise<HocuspocusProvider> {
+function websocketUrls(): [string, string] {
+  if (!rawWebsocketUrls) return [websocketUrl, websocketUrl];
+  const parsed: unknown = JSON.parse(rawWebsocketUrls);
+  if (
+    !Array.isArray(parsed)
+    || parsed.length !== 2
+    || parsed.some((url) => typeof url !== "string" || !/^wss?:\/\//.test(url))
+  ) {
+    throw new Error("live collaboration WebSocket URL 형식이 올바르지 않습니다");
+  }
+  return [parsed[0], parsed[1]];
+}
+
+function waitForSync(
+  document: Y.Doc,
+  ticket: string,
+  url: string,
+): Promise<HocuspocusProvider> {
   return new Promise((resolve, reject) => {
     let provider: HocuspocusProvider;
     let lastStatus = "created";
@@ -51,7 +69,7 @@ function waitForSync(document: Y.Doc, ticket: string): Promise<HocuspocusProvide
       reject(new Error(`공동 편집 동기화 시간이 초과되었습니다 (${lastStatus}, ${lastClose})`));
     }, 15_000);
     const configuration = {
-      url: websocketUrl,
+      url,
       WebSocketPolyfill: NodeWebSocket,
       name: room,
       document,
@@ -135,6 +153,7 @@ async function bootstrap(ticket: string): Promise<void> {
 describe.skipIf(!enabled)("collaboration live smoke", () => {
   it("동시 제목·서식·표 편집을 수렴시키고 프로세스 재기동 뒤 복구한다", async () => {
     const issued = tickets();
+    const clientUrls = websocketUrls();
 
     if (phase === "seed") {
       expect(issued).toHaveLength(5);
@@ -142,8 +161,8 @@ describe.skipIf(!enabled)("collaboration live smoke", () => {
       const aliceDocument = new Y.Doc();
       const bobDocument = new Y.Doc();
       const firstProviders = await Promise.all([
-        waitForSync(aliceDocument, issued[1]),
-        waitForSync(bobDocument, issued[2]),
+        waitForSync(aliceDocument, issued[1], clientUrls[0]),
+        waitForSync(bobDocument, issued[2], clientUrls[1]),
       ]);
       const aliceEditor = editor(aliceDocument);
       const bobEditor = editor(bobDocument);
@@ -168,8 +187,8 @@ describe.skipIf(!enabled)("collaboration live smoke", () => {
         bobEditor.chain().setTextSelection(textRange(bobEditor, "Bob")).addRowAfter().run();
 
         secondProviders = await Promise.all([
-          waitForSync(aliceDocument, issued[3]),
-          waitForSync(bobDocument, issued[4]),
+          waitForSync(aliceDocument, issued[3], clientUrls[0]),
+          waitForSync(bobDocument, issued[4], clientUrls[1]),
         ]);
         await waitUntil(
           () => aliceDocument.getText(COLLABORATION_TITLE_FIELD).toString() === expectedTitle
@@ -197,8 +216,8 @@ describe.skipIf(!enabled)("collaboration live smoke", () => {
     const aliceDocument = new Y.Doc();
     const bobDocument = new Y.Doc();
     const providers = await Promise.all([
-      waitForSync(aliceDocument, issued[0]),
-      waitForSync(bobDocument, issued[1]),
+      waitForSync(aliceDocument, issued[0], clientUrls[0]),
+      waitForSync(bobDocument, issued[1], clientUrls[1]),
     ]);
     const aliceEditor = editor(aliceDocument);
     const bobEditor = editor(bobDocument);
