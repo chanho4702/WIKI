@@ -12,7 +12,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import GlobalDragHandle from "tiptap-extension-global-drag-handle";
 import type { Editor, JSONContent } from "@tiptap/core";
-import type { Page } from "../store/types";
+import type { Attachment, Page } from "../store/types";
 import { buildBaseExtensions } from "./extensions/base";
 import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
 import { SlashMenu, type SlashItem } from "./extensions/slashMenu";
@@ -21,11 +21,24 @@ import { ColumnDrag } from "./extensions/columnDrag";
 import { SuggestionPopup } from "./components/SuggestionPopup";
 import { BubbleToolbar } from "./components/BubbleToolbar";
 import { TopToolbar } from "./components/TopToolbar";
+import {
+  UploadRail,
+  type ImageUploadTaskView,
+} from "./components/UploadRail";
 import { parseMarkdown, serializeMarkdown } from "./markdown";
 import { editorRegistry } from "./editorTestRegistry";
-import { deleteAttachment, inlineAttachmentUrl, uploadAttachment } from "../store/wikiStore";
+import {
+  confirmAttachments,
+  deleteAttachment,
+  inlineAttachmentUrl,
+  uploadAttachment,
+} from "../store/wikiStore";
 
 const INLINE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+interface ImageUploadTask extends ImageUploadTaskView {
+  file: File;
+}
 
 export interface WikiEditorHandle {
   /** 현재 문서를 마크다운으로 직렬화 — 저장 시점에만 호출한다 */
@@ -83,7 +96,12 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     const imageInputRef = useRef<HTMLInputElement>(null);
     // 이번 편집 세션에서 업로드한 attachment id→본문 URL. 저장 성공/취소 시 정리 정책의 근거다.
     const pendingUploadsRef = useRef(new Map<string, string>());
-    const [uploadsInFlight, setUploadsInFlight] = useState(0);
+    const activeUploadControllersRef = useRef(new Map<string, AbortController>());
+    const uploadSequenceRef = useRef(0);
+    const acceptingUploadsRef = useRef(true);
+    const [uploadTasks, setUploadTasks] = useState<ImageUploadTask[]>([]);
+    const uploadTasksRef = useRef(uploadTasks);
+    uploadTasksRef.current = uploadTasks;
     const [uploadError, setUploadError] = useState<string | null>(null);
     // [[ 자동완성 팝업 상태 — WikiLinkSuggestion이 onStateChange로 밀어넣는다
     const [linkMenu, setLinkMenu] = useState<{
@@ -148,19 +166,141 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
       getMarkdown: () => serializeMarkdown(editor.getJSON()),
       isDirty: () => dirtyRef.current,
       finalizePendingUploads: async () => {
+        acceptingUploadsRef.current = false;
         const markdown = serializeMarkdown(editor.getJSON());
-        const unused = [...pendingUploadsRef.current]
+        const pending = [...pendingUploadsRef.current];
+        const retained = pending
+          .filter(([, url]) => markdown.includes(url))
+          .map(([id]) => id);
+        const unused = pending
           .filter(([, url]) => !markdown.includes(url))
           .map(([id]) => id);
         pendingUploadsRef.current.clear();
-        await Promise.allSettled(unused.map((id) => deleteAttachment(id)));
+        const confirmation = pageId && retained.length
+          ? confirmAttachments(pageId, retained).catch((error) => {
+              // 페이지 저장은 이미 성공했다. 여기서 저장 실패로 되돌리면 다음 저장이 version conflict가
+              // 되므로, 서버 reconciliation이 본문을 근거로 확정하도록 넘긴다.
+              console.warn("첨부 확정 요청 실패 — reconciliation에 위임합니다", error);
+            })
+          : Promise.resolve();
+        await Promise.all([
+          confirmation,
+          Promise.allSettled(unused.map((id) => deleteAttachment(id))),
+        ]);
       },
       discardPendingUploads: async () => {
+        acceptingUploadsRef.current = false;
+        activeUploadControllersRef.current.forEach((controller) => controller.abort());
+        activeUploadControllersRef.current.clear();
         const ids = [...pendingUploadsRef.current.keys()];
         pendingUploadsRef.current.clear();
         await Promise.allSettled(ids.map((id) => deleteAttachment(id)));
       },
     }));
+
+    const updateUploadTask = (
+      taskId: string,
+      update: Partial<Pick<ImageUploadTask, "progress" | "status" | "error">>,
+    ) => {
+      setUploadTasks((current) => current.map((task) => {
+        if (task.id !== taskId) return task;
+        if (
+          update.progress === task.progress
+          && update.status === undefined
+          && update.error === undefined
+        ) return task;
+        return { ...task, ...update };
+      }));
+    };
+
+    const performUpload = async (task: ImageUploadTask): Promise<Attachment | null> => {
+      if (!pageId || !editor || !acceptingUploadsRef.current) return null;
+      const controller = new AbortController();
+      activeUploadControllersRef.current.set(task.id, controller);
+      updateUploadTask(task.id, { status: "uploading", progress: 0, error: undefined });
+      try {
+        const attachment = await uploadAttachment(pageId, task.file, {
+          pending: true,
+          signal: controller.signal,
+          onProgress: (progress) => updateUploadTask(task.id, { progress }),
+        });
+        if (!acceptingUploadsRef.current || editor.isDestroyed) {
+          await deleteAttachment(attachment.id).catch(() => undefined);
+          return null;
+        }
+        updateUploadTask(task.id, { status: "placing", progress: 100 });
+        return attachment;
+      } catch (error) {
+        if (!acceptingUploadsRef.current) return null;
+        const cancelled = error instanceof DOMException && error.name === "AbortError";
+        updateUploadTask(task.id, {
+          status: cancelled ? "cancelled" : "failed",
+          error: cancelled
+            ? undefined
+            : error instanceof Error ? error.message : "이미지 업로드에 실패했습니다.",
+        });
+        return null;
+      } finally {
+        if (activeUploadControllersRef.current.get(task.id) === controller) {
+          activeUploadControllersRef.current.delete(task.id);
+        }
+      }
+    };
+
+    const placeUploadedImage = async (
+      task: ImageUploadTask,
+      attachment: Attachment,
+      position?: number,
+    ): Promise<boolean> => {
+      // 확장자·브라우저 MIME이 아니라 서버 탐지 결과로 최종 판정한다.
+      if (!INLINE_IMAGE_TYPES.has(attachment.contentType)) {
+        await deleteAttachment(attachment.id).catch(() => undefined);
+        updateUploadTask(task.id, {
+          status: "failed",
+          error: "서버가 안전한 이미지 형식으로 확인하지 못했습니다.",
+        });
+        return false;
+      }
+
+      const src = inlineAttachmentUrl(attachment.id);
+      pendingUploadsRef.current.set(attachment.id, src);
+      if (!acceptingUploadsRef.current || editor.isDestroyed) {
+        pendingUploadsRef.current.delete(attachment.id);
+        await deleteAttachment(attachment.id).catch(() => undefined);
+        return false;
+      }
+
+      const inserted = position === undefined
+        ? editor.chain().focus().setImage({ src, alt: task.file.name }).run()
+        : editor.chain().focus().insertContentAt(position, {
+            type: "image",
+            attrs: { src, alt: task.file.name },
+          }).run();
+      if (!inserted) {
+        pendingUploadsRef.current.delete(attachment.id);
+        await deleteAttachment(attachment.id).catch(() => undefined);
+        updateUploadTask(task.id, {
+          status: "failed",
+          error: "이미지를 문서에 넣지 못했습니다.",
+        });
+        return false;
+      }
+
+      setUploadTasks((current) => current.filter((candidate) => candidate.id !== task.id));
+      return true;
+    };
+
+    const runUploadTasks = async (tasks: ImageUploadTask[], position?: number) => {
+      // 전송은 독립적이므로 동시에 시작하고, 문서 삽입만 선택 순서대로 처리한다.
+      const uploads = tasks.map((task) => performUpload(task));
+      let insertAt = position;
+      for (let index = 0; index < uploads.length; index += 1) {
+        const attachment = await uploads[index];
+        if (!attachment) continue;
+        const inserted = await placeUploadedImage(tasks[index], attachment, insertAt);
+        if (inserted && insertAt !== undefined) insertAt += 1;
+      }
+    };
 
     const uploadImages = async (files: File[], position?: number) => {
       if (!editor) return;
@@ -175,45 +315,27 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
         setUploadError(null);
       }
 
-      let insertAt = position;
-      for (const file of images) {
-        setUploadsInFlight((count) => count + 1);
-        let attachmentId: string | null = null;
-        try {
-          const attachment = await uploadAttachment(pageId, file);
-          attachmentId = attachment.id;
-          // 확장자·브라우저 MIME이 아니라 서버 탐지 결과로 최종 판정한다.
-          if (!INLINE_IMAGE_TYPES.has(attachment.contentType)) {
-            await deleteAttachment(attachment.id).catch(() => undefined);
-            attachmentId = null;
-            throw new Error("서버가 안전한 이미지 형식으로 확인하지 못했습니다.");
-          }
-          const src = inlineAttachmentUrl(attachment.id);
-          if (editor.isDestroyed) {
-            await deleteAttachment(attachment.id).catch(() => undefined);
-            attachmentId = null;
-            continue;
-          }
-          const inserted = insertAt === undefined
-            ? editor.chain().focus().setImage({ src, alt: file.name }).run()
-            : editor.chain().focus().insertContentAt(insertAt, {
-                type: "image",
-                attrs: { src, alt: file.name },
-              }).run();
-          if (!inserted) {
-            await deleteAttachment(attachment.id).catch(() => undefined);
-            attachmentId = null;
-            throw new Error("이미지를 문서에 삽입하지 못했습니다.");
-          }
-          pendingUploadsRef.current.set(attachment.id, src);
-          if (insertAt !== undefined) insertAt += 1;
-        } catch (error) {
-          if (attachmentId) await deleteAttachment(attachmentId).catch(() => undefined);
-          setUploadError(error instanceof Error ? error.message : "이미지 업로드에 실패했습니다.");
-        } finally {
-          setUploadsInFlight((count) => Math.max(0, count - 1));
-        }
-      }
+      const tasks = images.map((file): ImageUploadTask => ({
+        id: `image-upload-${uploadSequenceRef.current += 1}`,
+        file,
+        filename: file.name,
+        progress: 0,
+        status: "uploading",
+      }));
+      setUploadTasks((current) => [...current, ...tasks]);
+      await runUploadTasks(tasks, position);
+    };
+
+    const cancelUpload = (taskId: string) => {
+      activeUploadControllersRef.current.get(taskId)?.abort();
+    };
+    const retryUpload = (taskId: string) => {
+      const task = uploadTasksRef.current.find((candidate) => candidate.id === taskId);
+      if (!task || (task.status !== "failed" && task.status !== "cancelled")) return;
+      void runUploadTasks([task]);
+    };
+    const dismissUpload = (taskId: string) => {
+      setUploadTasks((current) => current.filter((task) => task.id !== taskId));
     };
 
     const filesFrom = (list: FileList): File[] => Array.from(list);
@@ -254,12 +376,25 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     }, [editor]);
 
     useEffect(() => {
-      onUploadStateChange?.(uploadsInFlight > 0);
-    }, [onUploadStateChange, uploadsInFlight]);
+      return () => {
+        acceptingUploadsRef.current = false;
+        activeUploadControllersRef.current.forEach((controller) => controller.abort());
+        activeUploadControllersRef.current.clear();
+      };
+    }, []);
+
+    const activeUploadCount = uploadTasks.filter(
+      (task) => task.status === "uploading" || task.status === "placing",
+    ).length;
+    const uploading = activeUploadCount > 0;
+
+    useEffect(() => {
+      onUploadStateChange?.(uploading);
+    }, [onUploadStateChange, uploading]);
 
     return (
       <div
-        className={`wiki-editor${uploadsInFlight ? " wiki-editor--uploading" : ""}`}
+        className={`wiki-editor${uploading ? " wiki-editor--uploading" : ""}`}
         onPaste={handlePaste}
         onDragOver={(event) => {
           if (event.dataTransfer.types.includes("Files")) event.preventDefault();
@@ -284,10 +419,13 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
             onUploadImage={() => imageInputRef.current?.click()}
           />
         )}
+        <UploadRail
+          tasks={uploadTasks}
+          onCancel={cancelUpload}
+          onRetry={retryUpload}
+          onDismiss={dismissUpload}
+        />
         <EditorContent editor={editor} />
-        <div className="wiki-editor-upload-status" aria-live="polite">
-          {uploadsInFlight > 0 ? `이미지 ${uploadsInFlight}개 업로드 중…` : null}
-        </div>
         {uploadError && <div className="wiki-editor-upload-error" role="alert">{uploadError}</div>}
         {editor && <BubbleToolbar editor={editor} />}
         {/* 위치 보정(아래 공간 부족 시 캐럿 위로 뒤집기·가로 clamp)은 SuggestionPopup이 한다 —

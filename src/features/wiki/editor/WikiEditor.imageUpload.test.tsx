@@ -4,12 +4,14 @@ import { createRef } from "react";
 
 const store = vi.hoisted(() => ({
   uploadAttachment: vi.fn(),
+  confirmAttachments: vi.fn(),
   deleteAttachment: vi.fn(),
   fetchInlineAttachment: vi.fn(),
 }));
 
 vi.mock("../store/wikiStore", () => ({
   uploadAttachment: store.uploadAttachment,
+  confirmAttachments: store.confirmAttachments,
   deleteAttachment: store.deleteAttachment,
   inlineAttachmentUrl: (id: string) => `/api/wiki/attachments/${id}/inline`,
   attachmentIdFromInlineUrl: (src: string) =>
@@ -23,6 +25,7 @@ import { editorRegistry } from "./editorTestRegistry";
 describe("WikiEditor 이미지 업로드", () => {
   beforeEach(() => {
     store.uploadAttachment.mockReset();
+    store.confirmAttachments.mockReset().mockResolvedValue(undefined);
     store.deleteAttachment.mockReset().mockResolvedValue(undefined);
     store.fetchInlineAttachment.mockReset().mockResolvedValue(new Blob([new Uint8Array([1])], { type: "image/png" }));
     Object.defineProperty(URL, "createObjectURL", {
@@ -54,7 +57,15 @@ describe("WikiEditor 이미지 업로드", () => {
     const file = new File([new Uint8Array([1, 2, 3])], "diagram.png", { type: "image/png" });
     fireEvent.change(input, { target: { files: [file] } });
 
-    await waitFor(() => expect(store.uploadAttachment).toHaveBeenCalledWith("2", file));
+    await waitFor(() => expect(store.uploadAttachment).toHaveBeenCalledWith(
+      "2",
+      file,
+      expect.objectContaining({
+        pending: true,
+        signal: expect.any(AbortSignal),
+        onProgress: expect.any(Function),
+      }),
+    ));
     await waitFor(() => expect(ref.current!.getMarkdown()).toContain("/api/wiki/attachments/7/inline"));
     expect(ref.current!.getMarkdown()).not.toContain("blob:wiki-image");
     expect(ref.current!.isDirty()).toBe(true);
@@ -71,12 +82,42 @@ describe("WikiEditor 이미지 업로드", () => {
     const dropped = new File([new Uint8Array([2])], "drop.webp", { type: "image/webp" });
 
     fireEvent.paste(root, { clipboardData: { files: [pasted] } });
-    await waitFor(() => expect(store.uploadAttachment).toHaveBeenCalledWith("2", pasted));
+    await waitFor(() => expect(store.uploadAttachment).toHaveBeenCalledWith(
+      "2", pasted, expect.objectContaining({ pending: true }),
+    ));
     vi.spyOn(editorRegistry.current!.view, "posAtCoords").mockReturnValue({ pos: 1, inside: -1 });
     fireEvent.drop(root, { dataTransfer: { files: [dropped] }, clientX: 10, clientY: 10 });
 
-    await waitFor(() => expect(store.uploadAttachment).toHaveBeenCalledWith("2", dropped));
+    await waitFor(() => expect(store.uploadAttachment).toHaveBeenCalledWith(
+      "2", dropped, expect.objectContaining({ pending: true }),
+    ));
     expect(store.uploadAttachment).toHaveBeenCalledTimes(2);
+  });
+
+  it("여러 파일은 동시에 전송을 시작하고 문서에는 선택 순서대로 넣는다", async () => {
+    let finishFirst!: (value: unknown) => void;
+    let finishSecond!: (value: unknown) => void;
+    store.uploadAttachment
+      .mockReturnValueOnce(new Promise((resolve) => { finishFirst = resolve; }))
+      .mockReturnValueOnce(new Promise((resolve) => { finishSecond = resolve; }));
+    const ref = createRef<WikiEditorHandle>();
+    const { container } = render(
+      <WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />,
+    );
+    const first = new File(["first"], "first.png", { type: "image/png" });
+    const second = new File(["second"], "second.png", { type: "image/png" });
+    const input = container.querySelector("input[type='file']") as HTMLInputElement;
+
+    fireEvent.change(input, { target: { files: [first, second] } });
+    await waitFor(() => expect(store.uploadAttachment).toHaveBeenCalledTimes(2));
+
+    finishSecond({ id: "22", pageId: "2", filename: "second.png", contentType: "image/png", sizeBytes: 6 });
+    finishFirst({ id: "21", pageId: "2", filename: "first.png", contentType: "image/png", sizeBytes: 5 });
+    await waitFor(() => expect(ref.current!.getMarkdown()).toContain("/attachments/22/inline"));
+
+    const markdown = ref.current!.getMarkdown();
+    expect(markdown.indexOf("/attachments/21/inline"))
+      .toBeLessThan(markdown.indexOf("/attachments/22/inline"));
   });
 
   it("서버가 이미지로 판정하지 않으면 삽입하지 않고 업로드 객체를 삭제한다", async () => {
@@ -121,6 +162,67 @@ describe("WikiEditor 이미지 업로드", () => {
     await waitFor(() => expect(onUploadStateChange).toHaveBeenLastCalledWith(false));
   });
 
+  it("바이트 진행률을 표시하고 취소한 파일을 같은 자리에서 재시도한다", async () => {
+    store.uploadAttachment.mockImplementationOnce((
+      _pageId: string,
+      _file: File,
+      options: { signal: AbortSignal; onProgress: (progress: number) => void },
+    ) => new Promise((_resolve, reject) => {
+      options.onProgress(42);
+      options.signal.addEventListener("abort", () => {
+        reject(new DOMException("cancelled", "AbortError"));
+      }, { once: true });
+    }));
+    const ref = createRef<WikiEditorHandle>();
+    const { container } = render(
+      <WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />,
+    );
+    const input = container.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File([new Uint8Array([1, 2, 3])], "slow.png", { type: "image/png" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await screen.findByText("업로드 중 · 42%");
+    const progress = screen.getByRole("progressbar", { name: "slow.png 업로드 진행률" });
+    expect(progress).toHaveAttribute("value", "42");
+    fireEvent.click(screen.getByRole("button", { name: "slow.png 업로드 취소" }));
+    await screen.findByText("업로드 취소됨");
+
+    store.uploadAttachment.mockResolvedValueOnce({
+      id: "13",
+      pageId: "2",
+      filename: "slow.png",
+      contentType: "image/png",
+      sizeBytes: 3,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "slow.png 다시 업로드" }));
+
+    await waitFor(() => expect(store.uploadAttachment).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(ref.current!.getMarkdown()).toContain("/attachments/13/inline"));
+    expect(screen.queryByText("slow.png")).not.toBeInTheDocument();
+  });
+
+  it("저장된 본문에 남은 pending attachment를 서버에 확정한다", async () => {
+    store.uploadAttachment.mockResolvedValue({
+      id: "14",
+      pageId: "2",
+      filename: "kept.png",
+      contentType: "image/png",
+      sizeBytes: 3,
+    });
+    const ref = createRef<WikiEditorHandle>();
+    const { container } = render(<WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />);
+    const input = container.querySelector("input[type='file']") as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(["png"], "kept.png", { type: "image/png" })] },
+    });
+    await waitFor(() => expect(ref.current!.getMarkdown()).toContain("/attachments/14/inline"));
+
+    await ref.current!.finalizePendingUploads();
+
+    expect(store.confirmAttachments).toHaveBeenCalledWith("2", ["14"]);
+    expect(store.deleteAttachment).not.toHaveBeenCalledWith("14");
+  });
+
   it("저장 전 제거한 이미지와 취소한 이미지 업로드를 정리한다", async () => {
     store.uploadAttachment.mockResolvedValue({
       id: "11",
@@ -130,7 +232,8 @@ describe("WikiEditor 이미지 업로드", () => {
       sizeBytes: 3,
     });
     const ref = createRef<WikiEditorHandle>();
-    const { container } = render(<WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />);
+    const firstRender = render(<WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />);
+    const { container } = firstRender;
     const input = container.querySelector("input[type='file']") as HTMLInputElement;
     const upload = () => fireEvent.change(input, {
       target: { files: [new File(["png"], "unused.png", { type: "image/png" })] },
@@ -142,10 +245,19 @@ describe("WikiEditor 이미지 업로드", () => {
     await ref.current!.finalizePendingUploads();
     expect(store.deleteAttachment).toHaveBeenCalledWith("11");
 
+    // finalize는 저장 성공 뒤 이동하는 경로라 해당 에디터 세션을 닫는다. 취소 정리는 새 세션으로 검증한다.
+    firstRender.unmount();
     store.deleteAttachment.mockClear();
-    upload();
-    await waitFor(() => expect(ref.current!.getMarkdown()).toContain("/attachments/11/inline"));
-    await ref.current!.discardPendingUploads();
+    const cancelRef = createRef<WikiEditorHandle>();
+    const cancelRender = render(
+      <WikiEditor ref={cancelRef} initialMarkdown="본문" pages={[]} pageId="2" />,
+    );
+    const cancelInput = cancelRender.container.querySelector("input[type='file']") as HTMLInputElement;
+    fireEvent.change(cancelInput, {
+      target: { files: [new File(["png"], "unused.png", { type: "image/png" })] },
+    });
+    await waitFor(() => expect(cancelRef.current!.getMarkdown()).toContain("/attachments/11/inline"));
+    await cancelRef.current!.discardPendingUploads();
     expect(store.deleteAttachment).toHaveBeenCalledWith("11");
   });
 });

@@ -135,10 +135,10 @@ Wiki 핵심과 분리한 확장 트랙으로 진행한다.
 | 첨부 다운로드 | ✅ | 보안을 위해 `Content-Disposition: attachment`로 강제 다운로드 |
 | 본문 인라인 이미지 전달 | ✅ | 본문에는 host 없는 attachment ID 경로를 저장하고 편집·보기는 인증 fetch→Blob URL로 렌더 |
 | 공유 오브젝트 스토리지 | ⚠️ | local/S3 adapter와 S3Mock dev 구성을 구현. 운영 provider 선정·다중 노드 검증은 남음 |
-| 업로드 진행률·재시도·취소 | ⚠️ | 업로드 중 개수·오류·안전 형식 거부는 표시. 바이트 진행률·취소·재시도 UI는 남음 |
+| 업로드 진행률·재시도·취소 | ✅ | XHR 바이트 진행률, AbortSignal 취소, 401 refresh 1회 재전송, 실패/취소 인라인 재시도 레일 구현 |
 | MIME 검증·악성 파일 검사 | ⚠️ | magic byte MIME 판정과 inline allowlist는 구현. AV/CDR·이미지 decoder 검증은 남음 |
 | 썸네일·EXIF 제거·변환 | ❌ | 원본/파생 자산과 작업 상태 모델 없음 |
-| 고아 파일 정리·보존 | ⚠️ | 업로드 rollback·삭제 after-commit 보상은 구현. 실패 재시도와 주기적 reconciliation은 남음 |
+| 고아 파일 정리·보존 | ⚠️ | rollback/after-commit 보상과 PENDING→CONFIRMED·만료 reconciliation 구현. DB 행 없이 남은 storage 객체 inventory 대조는 남음 |
 | 백업·복원 검증 | ❌ | DB와 첨부 저장소를 같은 시점으로 복원하는 훈련과 무결성 검사 없음 |
 
 ### 4.7 마이그레이션·상호운용
@@ -178,7 +178,11 @@ Notion API의 업로드 파일 URL은 짧게 만료되는 signed URL이므로 �
 
 - 현재: 파일 선택·drag/drop·clipboard paste가 `uploadAttachment()` 하나를 사용하고, 본문에는
   `/api/wiki/attachments/{id}/inline`만 저장한다. VIEW 권한 fetch 결과를 Blob URL로 렌더한다.
-- 잔여 위험: 진행률·취소·재시도, 브라우저 강제 종료 때의 미확정 업로드, 주기적 reconciliation.
+- 현재 보충: 바이트 진행률·취소·재시도와 실패 placeholder를 에디터 전송 레일로 제공한다. 에디터 업로드는
+  `PENDING`으로 만들고 페이지 저장 뒤 본문에 남은 ID만 `CONFIRMED`로 바꾼다. 브라우저 강제 종료나
+  확정 요청 유실은 만료 reconciliation이 최신 본문을 다시 검사해 참조된 이미지는 확정하고 고아만 삭제한다.
+- 잔여 위험: object delete callback 자체가 계속 실패해 DB 행 없이 남은 storage 객체의 inventory 대조,
+  다중 backend node 실측, AV/CDR·파생 이미지 처리.
 - 인수조건:
   - 파일 선택, drag/drop, clipboard paste가 같은 업로드 파이프라인을 사용한다.
   - 진행률, 취소, 재시도, 실패 placeholder가 표시된다.
@@ -329,7 +333,9 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
   transaction rollback/after-commit 정리, S3Mock 5.1.0 compose·정적 smoke·versioned put/get/delete 통합 검증.
 - 2차 완료: 파일 선택/drag/drop/paste 공통 업로드, host 없는 attachment ID 저장, 메모리 AT 기반
   인증 이미지 fetch, Blob URL 수명 정리, unsafe MIME 즉시 삭제, 저장 전 제거·취소 업로드 정리.
-- 다음 증분: 바이트 진행률·취소·재시도, reconciliation job, 두 backend node 실측,
+- 3차 완료: XHR 바이트 진행률·취소·401 refresh 재전송, 실패/취소 인라인 재시도 UI, 복수 파일 병렬 전송과
+  선택 순서 삽입, PENDING→CONFIRMED 수명주기, 본문 검증 confirm API, 만료 pending reconciliation job.
+- 다음 증분: 두 backend node 실측, storage inventory reconciliation, AV/decoder·썸네일/EXIF 처리,
   운영 후보 object storage 통합 테스트와 provider·IAM·백업/복원 결정.
 
 ### W16 — 편집 정확성·서버 협업 데이터

@@ -74,6 +74,15 @@ export interface Attachment {
   checksumSha256?: string | null;
 }
 
+export interface AttachmentUploadOptions {
+  /** 호출자가 취소하면 전송을 중단한다. 서버가 이미 수신한 경계 상황은 pending reconciliation이 정리한다. */
+  signal?: AbortSignal;
+  /** 전송된 요청 바이트 기준 0~100 정수 진행률. */
+  onProgress?: (percent: number) => void;
+  /** 페이지 저장 전 에디터 임시 업로드로 기록한다. */
+  pending?: boolean;
+}
+
 export type SearchDocType = "PAGE" | "ATTACHMENT";
 export type SearchPageType = "PAGE" | "FOLDER";
 

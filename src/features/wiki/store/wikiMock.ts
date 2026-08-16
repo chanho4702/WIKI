@@ -421,8 +421,16 @@ export async function listAttachments(_pageId: string): Promise<Attachment[]> {
   return [];
 }
 
-export async function uploadAttachment(_pageId: string, _file: File): Promise<Attachment> {
+export async function uploadAttachment(
+  _pageId: string,
+  _file: File,
+  _options?: import("./types").AttachmentUploadOptions,
+): Promise<Attachment> {
   throw new Error("목업 모드에서는 첨부를 지원하지 않습니다");
+}
+
+export async function confirmAttachments(_pageId: string, _attachmentIds: string[]): Promise<void> {
+  // 목업 모드는 첨부 자체를 지원하지 않는다.
 }
 
 export function attachmentUrl(_id: string): string {

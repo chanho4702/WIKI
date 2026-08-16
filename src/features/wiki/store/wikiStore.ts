@@ -26,6 +26,7 @@ export const updateComment = impl.updateComment;
 export const deleteComment = impl.deleteComment;
 export const listAttachments = impl.listAttachments;
 export const uploadAttachment = impl.uploadAttachment;
+export const confirmAttachments = impl.confirmAttachments;
 export const attachmentUrl = impl.attachmentUrl;
 export const inlineAttachmentUrl = impl.inlineAttachmentUrl;
 export const attachmentIdFromInlineUrl = impl.attachmentIdFromInlineUrl;

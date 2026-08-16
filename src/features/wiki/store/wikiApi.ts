@@ -4,11 +4,12 @@ export {
   listComments, addComment, updateComment, deleteComment, __resetForTest,
 } from "./wikiMock";
 
-import { sharedApiFetch } from "./apiClient";
+import { sharedApiFetch, sharedApiUpload } from "./apiClient";
 import { mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError } from "./mapping";
 import {
   ContentSearchError,
   type Attachment,
+  type AttachmentUploadOptions,
   type DeletePageOptions,
   type Page,
   type PageStatus,
@@ -155,12 +156,28 @@ export async function listAttachments(pageId: string): Promise<Attachment[]> {
   const dtos = await json<AttDto[]>(await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/attachments`));
   return dtos.map((d) => mapAtt(d, pageId));
 }
-export async function uploadAttachment(pageId: string, file: File): Promise<Attachment> {
+export async function uploadAttachment(
+  pageId: string,
+  file: File,
+  options: AttachmentUploadOptions = {},
+): Promise<Attachment> {
   const form = new FormData();
   form.append("file", file);
-  // Content-Type 헤더를 직접 지정하지 않는다 — 브라우저가 multipart boundary를 채워야 한다.
-  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/attachments`, { method: "POST", body: form });
+  const path = `/api/wiki/pages/${toBackendId(pageId)}/attachments${options.pending ? "?pending=true" : ""}`;
+  // 진행률/취소가 필요한 에디터 경로는 XHR, 일반 첨부는 기존 fetch 경로를 유지한다.
+  // 둘 다 Content-Type을 직접 지정하지 않아 브라우저가 multipart boundary를 채운다.
+  const res = options.onProgress || options.signal
+    ? await sharedApiUpload(path, form, options)
+    : await sharedApiFetch(path, { method: "POST", body: form });
   return mapAtt(await json(res), pageId);
+}
+export async function confirmAttachments(pageId: string, attachmentIds: string[]): Promise<void> {
+  if (!attachmentIds.length) return;
+  await json(await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/attachments/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ attachmentIds: attachmentIds.map(toBackendId) }),
+  }));
 }
 export function attachmentUrl(id: string): string {
   return `${import.meta.env.VITE_API_BASE ?? ""}/api/wiki/attachments/${toBackendId(id)}`;

@@ -41,7 +41,7 @@ export function PageEditPage() {
   const [isDraft, setIsDraft] = useState(false);
 
   // Task 5: 이탈 가드 — 제목·본문 미저장 변경 감지
-  const isDirty = () => titleDirty || (editorRef.current?.isDirty() ?? false);
+  const isDirty = () => titleDirty || imageUploading || (editorRef.current?.isDirty() ?? false);
 
   // 브라우저 새로고침/닫기 가드 — 라우터 내비게이션은 선언형 Routes라 useBlocker 불가(스펙 각주 참조)
   // 훅은 조건부가 아닌 곳에 고정해야 함 — early return 가드 이전에 배치

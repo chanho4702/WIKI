@@ -138,7 +138,9 @@ v1이 표현하지 못하는 Notion database view와 Confluence custom macro는 
 - DB에는 원본명, detected MIME, size, SHA-256, bucket/key/version, 상태를 저장한다.
 - PNG/JPEG/GIF/WebP만 inline 허용하고 `nosniff`·same-origin 응답을 사용한다. SVG/HTML은 inline 금지한다.
 - 객체 생성 후 DB transaction 실패는 rollback callback으로 삭제하고, DB 삭제 객체는 commit 뒤 삭제한다.
-- callback 실패와 외부 장애로 남는 객체는 후속 주기적 reconciliation으로 복구한다.
+- 에디터 업로드는 `PENDING`으로 생성하고 페이지 저장 뒤 서버가 최신 본문의 durable media ID를 확인한 뒤
+  `CONFIRMED`로 전환한다. 만료된 PENDING은 주기 작업이 본문을 다시 대조해 참조 중이면 확정하고 아니면 삭제한다.
+- callback 실패로 DB 행 없이 남은 storage 객체는 후속 inventory reconciliation으로 복구한다.
 
 MinIO OSS는 공식 저장소가 archive/source-only 상태로 전환됐고 최종 community release 대상 보안 공지가
 남아 있어 새 개발 의존성으로 채택하지 않는다. S3Mock 역시 운영 저장소가 아니라 API 계약 검증용이다.

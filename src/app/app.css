@@ -186,6 +186,7 @@ body {
 .child-pages a:focus-visible,
 .top-toolbar button:focus-visible,
 .top-toolbar select:focus-visible,
+.wiki-upload-task-actions button:focus-visible,
 .bubble-toolbar button:focus-visible,
 .insert-menu-trigger:focus-visible,
 .insert-menu-list button:focus-visible,
@@ -1906,11 +1907,6 @@ body {
 .wiki-editor-image-input {
   display: none;
 }
-.wiki-editor--uploading .tiptap {
-  outline: 2px dashed var(--chanho-color-border-brand);
-  outline-offset: 4px;
-}
-.wiki-editor-upload-status,
 .wiki-editor-upload-error,
 .image-view-loading {
   margin-top: 8px;
@@ -1919,6 +1915,124 @@ body {
 }
 .wiki-editor-upload-error {
   color: var(--chanho-color-text-danger);
+}
+.wiki-upload-rail {
+  margin: calc(var(--chanho-space-150, 12px) * -1) 0 var(--chanho-space-150, 12px);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+  background: var(--chanho-color-background-surface);
+}
+.wiki-upload-rail ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wiki-upload-task {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(100px, 220px) auto;
+  align-items: center;
+  gap: var(--chanho-space-150, 12px);
+  min-height: 38px;
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100, 8px);
+  border-left: 3px solid var(--chanho-color-border-brand);
+  font-size: var(--chanho-font-size-100);
+}
+.wiki-upload-task + .wiki-upload-task {
+  border-top: 1px solid var(--chanho-color-border-subtle, var(--chanho-color-border-default));
+}
+.wiki-upload-task--failed {
+  border-left-color: var(--chanho-color-border-danger, var(--chanho-color-text-danger));
+  background: var(--chanho-color-background-danger-subtle, transparent);
+}
+.wiki-upload-task--cancelled {
+  border-left-color: var(--chanho-color-border-default);
+}
+.wiki-upload-task-copy {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  gap: var(--chanho-space-100, 8px);
+}
+.wiki-upload-task-name {
+  overflow: hidden;
+  color: var(--chanho-color-text-default);
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wiki-upload-task-state {
+  flex-shrink: 0;
+  color: var(--wiki-text-subtlest);
+}
+.wiki-upload-task--failed .wiki-upload-task-state {
+  color: var(--chanho-color-text-danger);
+}
+.wiki-upload-progress {
+  width: 100%;
+  height: 4px;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  accent-color: var(--chanho-color-background-brand-bold, var(--chanho-color-border-brand));
+}
+.wiki-upload-progress::-webkit-progress-bar {
+  background: var(--chanho-color-background-neutral, #eef0f3);
+}
+.wiki-upload-progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: var(--chanho-color-background-brand-bold, var(--chanho-color-border-brand));
+}
+.wiki-upload-task--failed .wiki-upload-progress,
+.wiki-upload-task--cancelled .wiki-upload-progress {
+  opacity: 0.35;
+}
+.wiki-upload-task-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--chanho-space-50, 4px);
+}
+.wiki-upload-task-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50, 4px);
+  min-height: 28px;
+  padding: 2px var(--chanho-space-100, 8px);
+  border: 0;
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  cursor: pointer;
+  font: inherit;
+}
+.wiki-upload-task-actions button:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+  color: var(--chanho-color-text-default);
+}
+.wiki-upload-task-actions .wiki-upload-task-dismiss {
+  min-width: 28px;
+  padding-inline: 6px;
+}
+
+@media (max-width: 700px) {
+  .wiki-upload-task {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--chanho-space-50, 4px) var(--chanho-space-100, 8px);
+  }
+  .wiki-upload-task-copy {
+    flex-direction: column;
+    gap: 0;
+  }
+  .wiki-upload-progress {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .wiki-upload-task-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
 }
 .image-view-loading {
   padding: 16px;

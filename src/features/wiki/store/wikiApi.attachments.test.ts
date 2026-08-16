@@ -56,6 +56,46 @@ describe("wikiApi attachments", () => {
     });
   });
 
+  it("pending 업로드는 진행률·취소 가능한 XHR 경로를 사용한다", async () => {
+    const response = new Response(JSON.stringify({
+      id: 5,
+      filename: "editor.png",
+      contentType: "image/png",
+      sizeBytes: 7,
+    }), { status: 201, headers: { "Content-Type": "application/json" } });
+    const spy = vi.spyOn(client, "sharedApiUpload").mockResolvedValueOnce(response);
+    const controller = new AbortController();
+    const onProgress = vi.fn();
+    const { uploadAttachment } = await import("./wikiApi");
+    const file = new File(["png"], "editor.png", { type: "image/png" });
+
+    await uploadAttachment("2", file, {
+      pending: true,
+      signal: controller.signal,
+      onProgress,
+    });
+
+    expect(spy).toHaveBeenCalledWith(
+      "/api/wiki/pages/2/attachments?pending=true",
+      expect.any(FormData),
+      expect.objectContaining({ pending: true, signal: controller.signal, onProgress }),
+    );
+  });
+
+  it("confirmAttachments → 본문에 남은 ID를 한 요청으로 확정한다", async () => {
+    const spy = vi.spyOn(client, "sharedApiFetch")
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const { confirmAttachments } = await import("./wikiApi");
+
+    await confirmAttachments("2", ["7", "8"]);
+
+    expect(spy).toHaveBeenCalledWith("/api/wiki/pages/2/attachments/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attachmentIds: [7, 8] }),
+    });
+  });
+
   it("inlineAttachmentUrl → host 없는 durable 경로를 만들고 ID를 다시 읽는다", async () => {
     const { inlineAttachmentUrl, attachmentIdFromInlineUrl } = await import("./wikiApi");
     const url = inlineAttachmentUrl("7");
