@@ -88,7 +88,7 @@ Wiki 핵심과 분리한 확장 트랙으로 진행한다.
 | 이미지 파일 드롭·붙여넣기·업로드 | ✅ | 파일 선택·drop·clipboard paste가 같은 업로드 파이프라인과 서버 MIME 판정을 사용 |
 | 자동 저장 | ❌ | 명시적 저장과 `beforeunload` 경고만 있음 |
 | 안정적인 블록 식별자 | ❌ | 인라인 댓글·CRDT·마이그레이션 참조를 위한 stable block ID가 없음 |
-| 버전이 있는 정규 문서 IR | ❌ | Markdown만으로는 Confluence 매크로와 Notion 고급 블록을 무손실 보존할 수 없음 |
+| 버전이 있는 정규 문서 IR | ⚠️ | IR v1 schema·runtime validator·golden fixture는 구현. import 계약이며 `Page.content` 대체와 전체 connector는 미완료 |
 | 오프라인 편집·재연결 병합 | ❌ | 로컬 캐시/업데이트 큐/충돌 병합 정책 없음 |
 
 ### 4.3 버전·수명주기·거버넌스
@@ -145,14 +145,14 @@ Wiki 핵심과 분리한 확장 트랙으로 진행한다.
 
 | 요구사항 | 상태 | 현재 판단과 보충 요구사항 |
 |---|---:|---|
-| Notion 페이지/블록 가져오기 | ❌ | API pagination, block tree, rate limit, 임시 파일 URL 처리 없음 |
+| Notion 페이지/블록 가져오기 | ⚠️ | `2026-03-11` snapshot normalizer가 pagination·재귀 block tree·임시 URL 제외를 검증. live API extractor/rate limit/worker는 미구현 |
 | Notion 데이터베이스 가져오기 | ⏸ | 속성·뷰·relation·rollup·formula를 별도 확장 트랙으로 분리 |
 | Confluence DC space/page 가져오기 | ❌ | REST/XML 추출기와 ancestor 트리 재구성 없음 |
-| Confluence storage XHTML/매크로 | ❌ | 정규 IR과 지원 불가 노드 보존 방식이 없음 |
-| 첨부 버전과 본문 참조 재작성 | ❌ | 외부 ID→내부 ID 매핑과 체크섬 기반 중복 제거 없음 |
+| Confluence storage XHTML/매크로 | ⚠️ | provider 중립 IR의 `opaque + sourceRef` 보존 계약은 구현. XHTML parser와 DC version matrix는 미구현 |
+| 첨부 버전과 본문 참조 재작성 | ⚠️ | 외부 object map·checksum idempotency와 durable `mediaId` 계약은 구현. 실제 media copy·2차 link rewrite는 미구현 |
 | 사용자·그룹·권한 매핑 | ❌ | 미매핑 사용자와 restriction의 안전한 기본값이 없음 |
-| dry-run·재개·멱등성 | ❌ | migration job/checkpoint/retry/DLQ/audit 모델 없음 |
-| 손실 보고서 | ❌ | 누락·대체·원문 보존 여부를 페이지별로 설명할 수 없음 |
+| dry-run·재개·멱등성 | ⚠️ | V6 job/item stage checkpoint·retry/dead-letter·source hash key는 구현. worker claim/replay와 dry-run API는 미구현 |
+| 손실 보고서 | ⚠️ | 중복 방지 issue key와 structured severity/code/path 저장 모델은 구현. 집계 report API/UI는 미구현 |
 | 우리 Wiki 내보내기 | ❌ | Markdown/HTML/PDF와 첨부 manifest를 포함한 탈출 경로 없음 |
 
 Confluence는 페이지·템플릿·댓글을 커스텀 요소가 포함된 XHTML 계열 storage format으로 저장한다.
@@ -232,13 +232,20 @@ Notion API의 업로드 파일 URL은 짧게 만료되는 signed URL이므로 �
   - 비인가 페이지는 조회·검색·첨부·이벤트·알림 모든 경로에서 노출되지 않는다.
   - 마이그레이션에서 해석할 수 없는 제한은 공개하지 않고 fail-closed + 손실 보고한다.
 
-#### WIKI-P0-007 마이그레이션 정규 모델과 실행 기반이 없음
+#### WIKI-P0-007 마이그레이션 정규 모델과 실행 기반 구현 중
 
 - 인수조건:
   - 아래 중간 모델, 외부 ID 매핑, job/checkpoint, 손실 보고서 스키마를 먼저 확정한다.
   - 같은 입력을 두 번 실행해도 페이지·첨부·댓글이 중복되지 않는다.
   - 중단 후 마지막 성공 item부터 재개할 수 있다.
   - dry-run이 개수, 예상 용량, 미지원 매크로/블록, 미매핑 사용자·권한을 출력한다.
+- 현재 구현:
+  - Document IR v1 runtime validator와 Notion/Confluence golden IR fixture
+  - V6 `migration_job/item/issue/object_map` schema와 JPA checkpoint lifecycle
+  - Notion paginated/recursive snapshot normalizer, durable media만 연결하고 미지원 항목은 opaque issue 처리
+- 남은 차단 항목:
+  - live connector, worker claim/retry 실행기, dry-run/report API, media copier와 2차 link/principal/restriction pass
+  - Confluence storage XHTML parser와 실제 DC version compatibility matrix
 
 ### P1 — P0 직후 운영 완성도
 
@@ -413,9 +420,10 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
 ## 11. 현재 검증 기준선
 
 - `wiki-front`: 88개 테스트 파일, 639개 테스트 통과(라이브 1개 별도), 기능 플래그 OFF/ON production build 통과
-- `wiki-backend`: 60개 테스트 통과
+- `wiki-backend`: 21개 suite, 108개 테스트 통과(실제 PostgreSQL Flyway V1→V6 포함)
 - 확인된 품질 부채: 중복 `plaintext` React key 경고, 약 1.44 MB 초기 JS chunk 경고
 - 검증 브랜치: `wiki-front/feat/wiki-global-search`, `wiki-backend/main`
 
-이 수치는 기능 수가 아니라 회귀 기준선이다. 특히 공동 편집·객체 저장소·마이그레이션은 현재 테스트 수에
-포함되지 않으므로, 기존 테스트가 모두 통과해도 Notion·Confluence 동등성을 의미하지 않는다.
+이 수치는 기능 수가 아니라 회귀 기준선이다. 공동 편집·객체 저장소·마이그레이션의 기반 테스트가
+포함됐지만 live connector, 실제 브라우저 시각 검수, 부하·장애·복구 검증이 남아 있으므로 기존 테스트가
+모두 통과해도 Notion·Confluence 동등성을 의미하지 않는다.

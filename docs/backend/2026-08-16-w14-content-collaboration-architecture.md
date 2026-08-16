@@ -1,7 +1,8 @@
 # W14 콘텐츠·공동편집·마이그레이션 아키텍처 결정 제안
 
 - 작성일: 2026-08-16
-- 상태: **제안됨(Proposed)** — 아래 결정 게이트 승인 전 런타임·DB 변경 금지
+- 상태: **단계적 구현 중** — G2 import prototype 범위는 구현 중이며 운영 storage·권한·DC 버전 보장은
+  아래 결정 게이트를 계속 적용
 - 적용 범위: `wiki-front`, `wiki-backend`, 후속 collaboration service, `infra`
 - 상위 요구사항: [Notion·Confluence DC 갭 분석](../roadmap/2026-08-16-notion-confluence-gap-analysis.md)
 
@@ -273,6 +274,18 @@ Redis Streams는 기존 도메인 이벤트 계약을 유지한다. collaboratio
 - migration job을 두 번 실행해도 page/media/comment 수가 증가하지 않는다.
 
 ## 8. 참고 근거
+
+### 2026-08-17 구현 현황
+
+- `wiki-backend`의 Document IR v1 runtime validator가 schema enum/pattern과 block/media 의미 계약을
+  함께 검증한다. 검증 오류는 본문을 반사하지 않고 stable code/path만 반환한다 (`f833efe`).
+- Flyway V6에 `migration_job/item/issue/object_map` checkpoint, retry/dead-letter, optimistic lock,
+  SHA-256 identity key가 추가됐다. 실제 PostgreSQL Flyway/JPA validate를 통과했다 (`2b571b9`).
+- Notion `2026-03-11` page + paginated block-children snapshot normalizer가 재귀 tree/rich text/list/link와
+  복사 완료 media를 IR로 변환한다. 임시 파일 URL은 IR에 넣지 않고, 미복사 media와 미지원 block은
+  `opaque + issue`로 남긴다 (`2fd8b69`).
+- 아직 완료되지 않은 범위는 live Notion extractor/rate-limit 처리, media copier, worker/API/dry-run report,
+  principal/restriction mapping, Confluence DC storage XHTML parser다. Confluence DC 지원 버전도 미확정이다.
 
 - [Tiptap Collaboration 설치](https://tiptap.dev/docs/collaboration/getting-started/install)
 - [Hocuspocus persistence](https://tiptap.dev/docs/hocuspocus/guides/persistence)
