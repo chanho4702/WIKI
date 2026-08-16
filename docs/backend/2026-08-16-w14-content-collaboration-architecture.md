@@ -97,8 +97,11 @@ W15 이미지 저장, W17 실시간 공동 편집, W19 Notion·Confluence DC 가
   만들어 동시 접두·접미 편집도 수렴시킨다. 동기화 전에는 제목 input과 본문 편집기를 함께 잠근다.
 - nginx→gateway 실제 경로의 두 headless Tiptap 클라이언트로 단절 중 제목·서식·표 편집 수렴과
   collaboration-service 재기동 후 PostgreSQL 복구를 검증했다. 클라이언트를 서로 다른 두 노드에
-  고정한 Redis fan-out·분산 store lock·양 노드 재기동 복구도 통과했다. 실제 2인 브라우저의
-  caret·충돌 UI와 fan-out/연결 메트릭은 아직 남아 있으므로
+  고정한 Redis fan-out·분산 store lock·양 노드 재기동 복구도 통과했다.
+- collaboration-service는 세션·저장 지연/크기·실패를 stdout JSON으로 남기고 Alloy→Loki→Grafana
+  `Wiki Collaboration` 대시보드가 이를 집계한다. 재연결 UX는 상태 badge·터치 가능한 참여자 명단,
+  단절 중 로컬 편집/게시 차단, 수동 재연결 snapshot 복원을 갖췄다.
+- 실제 2인 브라우저의 caret·selection 충돌과 좁은 화면·다크 테마 시각 검증은 아직 남아 있으므로
   `VITE_WIKI_COLLABORATION_ENABLED` 기본값은 false를 유지한다.
 
 공식 Hocuspocus 문서는 Yjs binary를 primary 형태로 저장하고, Redis extension은 노드 간 동기화용이지

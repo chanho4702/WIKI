@@ -1254,9 +1254,19 @@ body {
   align-items: center;
   gap: var(--chanho-space-50, 4px);
   min-width: 0;
-  color: var(--chanho-color-text-subtle);
   font-size: var(--chanho-font-size-75);
   white-space: nowrap;
+}
+
+.collaboration-status-signal {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50, 4px);
+  min-width: 0;
+  padding: var(--chanho-space-25, 2px) var(--chanho-space-75, 6px);
+  border-radius: var(--chanho-radius-full);
+  background: var(--chanho-color-background-neutral);
+  color: var(--chanho-color-text-subtle);
 }
 
 .collaboration-status-dot {
@@ -1264,29 +1274,68 @@ body {
   height: 7px;
   flex: none;
   border-radius: var(--chanho-radius-full);
-  background: var(--chanho-color-text-subtlest, #626f86);
+  background: currentColor;
 }
 
-.collaboration-status--synced .collaboration-status-dot {
-  background: var(--chanho-color-text-success, #216e4e);
+.collaboration-status--synced .collaboration-status-signal {
+  background: var(--chanho-color-background-success-subtle, #dcfff1);
+  color: var(--chanho-color-text-success, #216e4e);
+}
+
+.collaboration-status--connecting .collaboration-status-signal,
+.collaboration-status--syncing .collaboration-status-signal,
+.collaboration-status--reconnecting .collaboration-status-signal {
+  background: var(--chanho-color-background-info-subtle, #e9f2ff);
+  color: var(--chanho-color-text-info, #0c66e4);
 }
 
 .collaboration-status--connecting .collaboration-status-dot,
 .collaboration-status--syncing .collaboration-status-dot,
 .collaboration-status--reconnecting .collaboration-status-dot {
-  background: var(--chanho-color-text-info, #0c66e4);
   animation: collaboration-pulse 1.4s ease-in-out infinite;
 }
 
-.collaboration-status--offline .collaboration-status-dot,
-.collaboration-status--error .collaboration-status-dot {
-  background: var(--chanho-color-text-danger, #ae2a19);
+.collaboration-status--offline .collaboration-status-signal {
+  background: var(--chanho-color-background-warning-subtle, #fff7d6);
+  color: var(--chanho-color-text-warning, #7f5f01);
+}
+
+.collaboration-status--error .collaboration-status-signal {
+  background: var(--chanho-color-background-danger-subtle, #ffedeb);
+  color: var(--chanho-color-text-danger, #ae2a19);
+}
+
+.collaboration-status-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collaboration-presence {
+  position: relative;
+  flex: none;
 }
 
 .collaboration-avatars {
   display: inline-flex;
+  align-items: center;
   margin-inline-start: var(--chanho-space-50, 4px);
-  padding-inline-start: 4px;
+  padding: var(--chanho-space-25, 2px) var(--chanho-space-50, 4px)
+    var(--chanho-space-25, 2px) 8px;
+  border: 0;
+  border-radius: var(--chanho-radius-full);
+  background: transparent;
+  cursor: pointer;
+}
+
+.collaboration-avatars:hover,
+.collaboration-avatars[aria-expanded="true"] {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.collaboration-avatars:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
 }
 
 .collaboration-avatar {
@@ -1309,6 +1358,78 @@ body {
 .collaboration-avatar--overflow {
   background: var(--chanho-color-background-neutral-bold, #44546f);
   letter-spacing: 0;
+}
+
+.collaboration-presence-panel {
+  position: absolute;
+  top: calc(100% + var(--chanho-space-100, 8px));
+  inset-inline-end: 0;
+  z-index: 40;
+  width: min(260px, calc(100vw - var(--chanho-space-400, 32px)));
+  max-height: 300px;
+  padding: var(--chanho-space-150, 12px);
+  box-sizing: border-box;
+  overflow: auto;
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-large, 8px);
+  background: var(--chanho-color-background-surface, #fff);
+  box-shadow: var(--chanho-shadow-overlay);
+  color: var(--chanho-color-text-default);
+}
+
+.collaboration-presence-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-100, 8px);
+  margin-bottom: var(--chanho-space-100, 8px);
+}
+
+.collaboration-presence-heading strong {
+  font-size: var(--chanho-font-size-100);
+}
+
+.collaboration-presence-heading span {
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.collaboration-presence-panel ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-50, 4px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.collaboration-presence-panel li {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100, 8px);
+  min-width: 0;
+  padding: var(--chanho-space-50, 4px);
+  border-radius: var(--chanho-radius-small, 4px);
+}
+
+.collaboration-participant-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--chanho-radius-full);
+  background: var(--collaboration-avatar-color);
+  color: #fff;
+  font-size: 10px;
+  font-weight: var(--chanho-font-weight-bold, 700);
+}
+
+.collaboration-participant-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .collaboration-retry {
@@ -1373,6 +1494,7 @@ body {
 
 .collaboration-cursor__caret {
   position: relative;
+  z-index: 3;
   border-inline-start: 2px solid;
   border-inline-end: 0;
   margin-inline-start: -1px;
@@ -1387,11 +1509,16 @@ body {
   border-radius: var(--chanho-radius-small, 4px) var(--chanho-radius-small, 4px)
     var(--chanho-radius-small, 4px) 0;
   color: #fff;
+  max-width: min(180px, 50vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--chanho-font-family-sans);
   font-size: 10px;
   font-weight: var(--chanho-font-weight-semibold, 600);
   line-height: 1.45;
   white-space: nowrap;
+  box-shadow: var(--chanho-shadow-100);
+  user-select: none;
 }
 
 @keyframes collaboration-spin {
@@ -1409,7 +1536,7 @@ body {
 
 @media (max-width: 760px) {
   .edit-chrome-title,
-  .collaboration-status-label {
+  .edit-chrome-status {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1418,6 +1545,22 @@ body {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  .edit-chrome {
+    gap: var(--chanho-space-100, 8px);
+  }
+
+  .edit-chrome-width-toggle {
+    display: none;
+  }
+
+  .collaboration-status {
+    margin-inline-end: auto;
+  }
+
+  .collaboration-status-label {
+    max-width: 148px;
   }
 }
 

@@ -371,7 +371,9 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
   동시에 수정한 뒤 재연결 수렴하고, collaboration-service 재기동 후 PostgreSQL snapshot으로 복구.
 - 7차 완료: 두 클라이언트를 서로 다른 collaboration 노드에 고정해 Redis update·awareness fan-out과
   분산 store lock을 통과하고, 양 노드 재기동 후 PostgreSQL snapshot으로 동일 상태 복구.
-- 다음 증분: 실제 2인 브라우저의 selection/caret·충돌 UI 시각 검증과 fan-out/연결 메트릭.
+- 8차 완료: 세션·인증 거부·Yjs 저장 지연/크기·의존성 오류 stdout JSON과 Loki/Grafana 8패널
+  대시보드. 상태 badge·참여자 명단, 단절 중 게시 차단, 수동 재연결 Yjs snapshot 복원 UX.
+- 다음 증분: 실제 2인 브라우저의 selection/caret·충돌 UI, 좁은 화면·다크 테마 시각 검증.
 - 완료: 2인 동시 편집·네트워크 단절·노드 재기동 테스트에서 내용이 수렴하고 승인된 편집이 유실되지 않음
 
 ### W18 — 권한·거버넌스
@@ -410,7 +412,7 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
 
 ## 11. 현재 검증 기준선
 
-- `wiki-front`: 77개 테스트 파일, 593개 테스트 통과, production build 통과
+- `wiki-front`: 88개 테스트 파일, 639개 테스트 통과(라이브 1개 별도), 기능 플래그 OFF/ON production build 통과
 - `wiki-backend`: 60개 테스트 통과
 - 확인된 품질 부채: 중복 `plaintext` React key 경고, 약 1.44 MB 초기 JS chunk 경고
 - 검증 브랜치: `wiki-front/feat/wiki-global-search`, `wiki-backend/main`

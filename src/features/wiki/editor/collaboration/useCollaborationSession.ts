@@ -52,6 +52,8 @@ export function useCollaborationSession({
   const [generation, setGeneration] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
   const sessionActiveRef = useRef(false);
+  const bindingRef = useRef<CollaborationBinding | null>(null);
+  const recoveryStateRef = useRef<Uint8Array | null>(null);
   const pagesRef = useRef(pages);
   pagesRef.current = pages;
 
@@ -86,6 +88,8 @@ export function useCollaborationSession({
       setCandidate(null);
       setGeneration(null);
       setReady(false);
+      bindingRef.current = null;
+      recoveryStateRef.current = null;
       return;
     }
     setError(null);
@@ -99,6 +103,7 @@ export function useCollaborationSession({
 
     let cancelled = false;
     let destroy: (() => void) | undefined;
+    let activeBinding: CollaborationBinding | null = null;
     setStatus("connecting");
 
     // Hocuspocus/Yjs는 편집 기능 플래그가 켜진 세션에서만 내려받는다. 일반 조회·편집의 초기
@@ -131,6 +136,7 @@ export function useCollaborationSession({
           pageId,
           user,
           initialTicket: socketTicket,
+          initialState: recoveryStateRef.current ?? undefined,
           issueTicket: requestCollaborationTicket,
           getPages: () => pagesRef.current,
           onStatus: (nextStatus) => {
@@ -145,7 +151,10 @@ export function useCollaborationSession({
           onParticipants: setParticipants,
           onError: setError,
         });
+        recoveryStateRef.current = null;
         liveBinding = session;
+        activeBinding = session;
+        bindingRef.current = session;
         sessionActiveRef.current = true;
         setCandidate(session);
         destroy = session.destroy;
@@ -161,12 +170,15 @@ export function useCollaborationSession({
     return () => {
       cancelled = true;
       sessionActiveRef.current = false;
+      if (bindingRef.current === activeBinding) bindingRef.current = null;
       destroy?.();
     };
   }, [basePageVersion, enabled, initialMarkdown, initialTitle, pageId, retryKey]);
 
   const retry = useCallback(() => {
-    if (navigator.onLine) setRetryKey((key) => key + 1);
+    if (!navigator.onLine) return;
+    recoveryStateRef.current = bindingRef.current?.snapshot() ?? null;
+    setRetryKey((key) => key + 1);
   }, []);
 
   return {

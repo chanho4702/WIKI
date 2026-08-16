@@ -38,6 +38,7 @@ export interface CreateCollaborationSessionOptions extends CollaborationSessionC
   pageId: string;
   user: User;
   initialTicket: CollaborationTicket;
+  initialState?: Uint8Array;
   issueTicket: (pageId: string) => Promise<CollaborationTicket>;
   getPages?: () => Page[];
 }
@@ -47,6 +48,7 @@ export interface CollaborationBinding {
   provider: HocuspocusProvider;
   extensions: Extensions;
   title: Y.Text;
+  snapshot: () => Uint8Array;
 }
 
 const WEBSOCKET_PATH = "/api/wiki/collaboration";
@@ -133,6 +135,13 @@ export function createTicketTokenProvider(
   };
 }
 
+/** 수동 재연결 때 기존 탭의 미동기화 update까지 새 transport에 이어 붙인다. */
+export function createCollaborationDocument(initialState?: Uint8Array): Y.Doc {
+  const document = new Y.Doc();
+  if (initialState) Y.applyUpdate(document, initialState);
+  return document;
+}
+
 /** 원자적으로 bootstrap된 Y.Doc transport와 Tiptap/cursor 확장을 한 생명주기로 묶는다. */
 export function createCollaborationSession(
   options: CreateCollaborationSessionOptions,
@@ -141,6 +150,7 @@ export function createCollaborationSession(
     pageId,
     user,
     initialTicket,
+    initialState,
     issueTicket,
     onStatus,
     onParticipants,
@@ -150,7 +160,7 @@ export function createCollaborationSession(
   assertTicket(initialTicket, pageId);
 
   const url = collaborationWebsocketUrl(initialTicket.websocketPath);
-  const document = new Y.Doc();
+  const document = createCollaborationDocument(initialState);
   let hasSynced = false;
   let destroyed = false;
   const nextToken = createTicketTokenProvider(initialTicket, pageId, issueTicket);
@@ -213,6 +223,7 @@ export function createCollaborationSession(
     document,
     extensions,
     title: document.getText(COLLABORATION_TITLE_FIELD),
+    snapshot: () => Y.encodeStateAsUpdate(document),
     destroy: () => {
       destroyed = true;
       provider.destroy();

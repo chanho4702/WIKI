@@ -3,6 +3,7 @@ import {
   collaborationWebsocketUrl,
   createTicketTokenProvider,
   createCollaborationBootstrapState,
+  createCollaborationDocument,
   participantColor,
   participantsFromAwareness,
 } from "./session";
@@ -82,5 +83,17 @@ describe("collaboration session helpers", () => {
 
     editor.destroy();
     document.destroy();
+  });
+
+  it("수동 재연결 문서에 이전 탭의 미동기화 Yjs state를 복원한다", () => {
+    const previous = createCollaborationDocument();
+    previous.getText("title").insert(0, "오프라인에서 바꾼 제목");
+    const snapshot = Y.encodeStateAsUpdate(previous);
+
+    const recovered = createCollaborationDocument(snapshot);
+    expect(recovered.getText("title").toString()).toBe("오프라인에서 바꾼 제목");
+
+    previous.destroy();
+    recovered.destroy();
   });
 });

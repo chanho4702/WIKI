@@ -21,6 +21,7 @@ import {
   useCollaborationSession,
 } from "../editor/collaboration/useCollaborationSession";
 import { replaceCollaborativeTitle } from "../editor/collaboration/title";
+import { canCommitCollaborationDraft } from "../editor/collaboration/availability";
 
 interface EditConflict {
   serverPage: Page | null;
@@ -79,6 +80,11 @@ export function PageEditPage() {
   const collaborationRequired = COLLABORATION_ENABLED && isEdit;
   const collaborationReady = !collaborationRequired
     || (collaboration.binding !== null && collaboration.generation !== null);
+  const collaborationCommitReady = !collaborationRequired || canCommitCollaborationDraft(
+    collaboration.status,
+    collaboration.binding !== null,
+    collaboration.generation,
+  );
 
   // 제목도 본문과 같은 Y.Doc의 Y.Text를 사용한다. 원격 update가 오면 controlled input과 dirty 표시를
   // 함께 갱신하고, 재연결 뒤에는 마지막 published title과 비교해 미게시 변경을 숨기지 않는다.
@@ -167,6 +173,14 @@ export function PageEditPage() {
   const handleSave = async () => {
     if (!collaborationReady) {
       toast({ title: "공동 편집 문서를 준비한 뒤 저장해 주세요", appearance: "info" });
+      return;
+    }
+    if (!collaborationCommitReady) {
+      toast({
+        title: "연결이 복구되고 동기화된 뒤 저장해 주세요",
+        description: "현재 편집 내용은 이 탭에 임시 보관되어 있습니다.",
+        appearance: "info",
+      });
       return;
     }
     if (imageUploading) {
@@ -327,6 +341,7 @@ export function PageEditPage() {
         <CollaborationStatus
           status={collaboration.status}
           participants={collaboration.participants}
+          hasLocalDocument={collaboration.binding !== null}
           error={collaboration.error}
           onRetry={collaboration.retry}
         />
@@ -335,6 +350,7 @@ export function PageEditPage() {
             <Button
               size="small"
               variant="subtle"
+              className="edit-chrome-width-toggle"
               aria-label="전체 너비"
               aria-pressed={width === "full"}
               onClick={toggleWidth}
@@ -344,7 +360,7 @@ export function PageEditPage() {
           ) : null}
           <Button
             onClick={handleSave}
-            disabled={!title.trim() || imageUploading || !collaborationReady}
+            disabled={!title.trim() || imageUploading || !collaborationCommitReady}
             loading={saving}
           >
             {isDraft ? "게시" : "업데이트"}
