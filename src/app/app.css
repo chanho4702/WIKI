@@ -1903,6 +1903,29 @@ body {
 .image-view img {
   max-width: 100%;
 }
+.wiki-editor-image-input {
+  display: none;
+}
+.wiki-editor--uploading .tiptap {
+  outline: 2px dashed var(--chanho-color-border-brand);
+  outline-offset: 4px;
+}
+.wiki-editor-upload-status,
+.wiki-editor-upload-error,
+.image-view-loading {
+  margin-top: 8px;
+  color: var(--wiki-text-subtlest);
+  font-size: var(--chanho-font-size-100);
+}
+.wiki-editor-upload-error {
+  color: var(--chanho-color-text-danger);
+}
+.image-view-loading {
+  padding: 16px;
+  border: 1px dashed var(--chanho-color-border-default);
+  border-radius: 6px;
+  background: var(--chanho-color-background-subtle);
+}
 .image-view-broken {
   display: flex;
   flex-direction: column;

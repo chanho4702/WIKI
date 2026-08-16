@@ -71,6 +71,7 @@ export interface Attachment {
   filename: string;
   contentType: string;
   sizeBytes: number;
+  checksumSha256?: string | null;
 }
 
 export type SearchDocType = "PAGE" | "ATTACHMENT";

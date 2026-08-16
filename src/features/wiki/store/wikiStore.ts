@@ -27,6 +27,9 @@ export const deleteComment = impl.deleteComment;
 export const listAttachments = impl.listAttachments;
 export const uploadAttachment = impl.uploadAttachment;
 export const attachmentUrl = impl.attachmentUrl;
+export const inlineAttachmentUrl = impl.inlineAttachmentUrl;
+export const attachmentIdFromInlineUrl = impl.attachmentIdFromInlineUrl;
+export const fetchInlineAttachment = impl.fetchInlineAttachment;
 export const deleteAttachment = impl.deleteAttachment;
 export const searchContent = impl.searchContent;
 

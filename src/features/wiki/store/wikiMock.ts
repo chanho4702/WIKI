@@ -429,6 +429,18 @@ export function attachmentUrl(_id: string): string {
   return "";
 }
 
+export function inlineAttachmentUrl(id: string): string {
+  return `/api/wiki/attachments/${id}/inline`;
+}
+
+export function attachmentIdFromInlineUrl(src: string): string | null {
+  return /^\/api\/wiki\/attachments\/(\d+)\/inline$/.exec(src)?.[1] ?? null;
+}
+
+export async function fetchInlineAttachment(_id: string, _signal?: AbortSignal): Promise<Blob> {
+  throw new Error("목업 모드에서는 첨부를 지원하지 않습니다");
+}
+
 export async function deleteAttachment(_id: string): Promise<void> {
   // no-op
 }

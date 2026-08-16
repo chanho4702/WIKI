@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AnchorHTMLAttributes, HTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, HTMLAttributes, ImgHTMLAttributes, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkDirective from "remark-directive";
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { Page } from "../store/types";
 import { resolveWikiLinks } from "../lib/wikiLinks";
+import { useResolvedWikiImage } from "../lib/useResolvedWikiImage";
 import { remarkAlerts } from "../lib/remarkAlerts";
 import { remarkColumns } from "../lib/remarkColumns";
 import { remarkToc } from "../lib/remarkToc";
@@ -157,6 +158,23 @@ function CodeCopyBlock({ children }: { children?: ReactNode }) {
   );
 }
 
+function MarkdownImage({ src = "", alt = "", ...props }: ImgHTMLAttributes<HTMLImageElement>) {
+  const resolved = useResolvedWikiImage(src);
+  if (resolved.loading) return <span role="status">이미지 불러오는 중…</span>;
+  if (resolved.error || !resolved.resolvedSrc) {
+    return <span className="image-view-broken">{alt || "이미지를 불러올 수 없습니다"}</span>;
+  }
+  return (
+    <img
+      {...props}
+      src={resolved.resolvedSrc}
+      alt={alt}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+    />
+  );
+}
+
 /**
  * 마크다운 렌더러 — react-markdown + remark-gfm(표) 래핑.
  * raw HTML은 렌더하지 않는다(react-markdown 기본값) — rehype-raw 추가 금지.
@@ -172,6 +190,7 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
   const components = useMemo(
     () => ({
       pre: CodeCopyBlock,
+      img: MarkdownImage,
       div: (props: HTMLAttributes<HTMLDivElement> & { node?: unknown }) => (
         <MarkdownDiv {...props} source={source} />
       ),

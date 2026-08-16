@@ -133,9 +133,22 @@ export async function restoreVersion(pageId: string, versionId: string): Promise
   return mapPage(await json(res));
 }
 
-interface AttDto { id: number; filename: string; contentType: string; sizeBytes: number }
+interface AttDto {
+  id: number;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  checksumSha256?: string | null;
+}
 function mapAtt(d: AttDto, pageId: string): Attachment {
-  return { id: String(d.id), pageId, filename: d.filename, contentType: d.contentType, sizeBytes: d.sizeBytes };
+  return {
+    id: String(d.id),
+    pageId,
+    filename: d.filename,
+    contentType: d.contentType,
+    sizeBytes: d.sizeBytes,
+    checksumSha256: d.checksumSha256,
+  };
 }
 
 export async function listAttachments(pageId: string): Promise<Attachment[]> {
@@ -151,6 +164,22 @@ export async function uploadAttachment(pageId: string, file: File): Promise<Atta
 }
 export function attachmentUrl(id: string): string {
   return `${import.meta.env.VITE_API_BASE ?? ""}/api/wiki/attachments/${toBackendId(id)}`;
+}
+/** 본문에 저장하는 durable 내부 참조. 절대 host·presigned URL을 저장하지 않는다. */
+export function inlineAttachmentUrl(id: string): string {
+  return `/api/wiki/attachments/${toBackendId(id)}/inline`;
+}
+export function attachmentIdFromInlineUrl(src: string): string | null {
+  return /^\/api\/wiki\/attachments\/(\d+)\/inline$/.exec(src)?.[1] ?? null;
+}
+/** 메모리 AT를 붙여 받은 뒤 화면이 Blob URL로 변환한다. `<img src>` 직접 호출은 인증되지 않는다. */
+export async function fetchInlineAttachment(id: string, signal?: AbortSignal): Promise<Blob> {
+  const res = await sharedApiFetch(`/api/wiki/attachments/${toBackendId(id)}/inline`, { signal });
+  if (!res.ok) {
+    const body: unknown = await res.json().catch(() => null);
+    throw new Error(extractError(res.status, body));
+  }
+  return res.blob();
 }
 export async function deleteAttachment(id: string): Promise<void> {
   await json(await sharedApiFetch(`/api/wiki/attachments/${toBackendId(id)}`, { method: "DELETE" }));

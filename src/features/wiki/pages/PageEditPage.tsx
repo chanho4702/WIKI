@@ -30,6 +30,7 @@ export function PageEditPage() {
   const [titleDirty, setTitleDirty] = useState(false);
   // 저장 진행 상태 — 업데이트 버튼 로딩 표시 + 중복 저장 차단
   const [saving, setSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   // Task 18: 페이지 너비 토글 — 생성 화면(pageId 없음)은 항상 기본 폭, toggle은 무동작
   const { width, toggle: toggleWidth } = usePageWidth(pageId);
 
@@ -94,12 +95,17 @@ export function PageEditPage() {
   }
 
   const handleSave = async () => {
+    if (imageUploading) {
+      toast({ title: "이미지 업로드가 끝난 뒤 저장해 주세요", appearance: "info" });
+      return;
+    }
     // 본문 불변 보장 — 본문 미수정이면 직렬화 대신 원문 그대로 (버전 diff 노이즈 방지)
     const body = editorRef.current?.isDirty() ? editorRef.current.getMarkdown() : initialBody;
     setSaving(true);
     try {
       if (isEdit && pageId) {
         const saved = await updatePage(pageId, { title, body });
+        await editorRef.current?.finalizePendingUploads();
         // 초안은 "저장"만으로 공개되지 않는다 — 이 버튼이 곧 게시다(라벨도 "게시").
         // 저장을 먼저 하는 이유: 게시 후 저장이 실패하면 빈 문서가 공개된 채 남는다.
         if (isDraft) await publishPage(saved.id);
@@ -131,6 +137,7 @@ export function PageEditPage() {
     if (isDirty() && !window.confirm("저장하지 않은 변경이 있습니다. 나가시겠습니까?")) {
       return;
     }
+    await editorRef.current?.discardPendingUploads();
     // 손대지 않은 초안은 닫을 때 지운다. 생성 버튼이 초안을 즉시 만들어 트리에 세우는 구조라,
     // 정리하지 않으면 실수로 누른 만큼 "제목 없음"이 트리에 쌓인다. 제목이나 본문을 건드렸으면
     // 사용자의 작업물이므로 남긴다(초안 상태로).
@@ -183,7 +190,7 @@ export function PageEditPage() {
               {width === "full" ? "기본 너비" : "전체 너비"}
             </Button>
           ) : null}
-          <Button onClick={handleSave} disabled={!title.trim()} loading={saving}>
+          <Button onClick={handleSave} disabled={!title.trim() || imageUploading} loading={saving}>
             {isDraft ? "게시" : "업데이트"}
           </Button>
           <Button variant="subtle" onClick={() => void handleCancel()}>
@@ -205,7 +212,9 @@ export function PageEditPage() {
         ref={editorRef}
         initialMarkdown={initialBody}
         pages={pages ?? []}
+        pageId={pageId}
         onDirty={() => setBodyDirty(true)}
+        onUploadStateChange={setImageUploading}
       />
     </div>
   );

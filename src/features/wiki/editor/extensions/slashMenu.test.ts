@@ -15,7 +15,7 @@ describe("슬래시 메뉴", () => {
       "note", "tip", "important", "warning", "caution",
       "code", "divider", "table", "toc",
       "columns1", "columns2", "columns3", "columns4", "columns5",
-      "image", "emoji",
+      "imageUpload", "image", "emoji",
     ]);
   });
 

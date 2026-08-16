@@ -43,10 +43,12 @@ export interface TopToolbarProps {
    */
   emojiPickerOpen?: boolean;
   onEmojiPickerOpenChange?: (open: boolean) => void;
+  /** 파일 선택 이미지 업로드. 없으면 기존 URL 프롬프트로 폴백한다(단독 사용/테스트 호환). */
+  onUploadImage?: () => void;
 }
 
 /** 컨플식 상단 고정 툴바 — 마크다운 표현 가능 컨트롤만. 정렬은 저장 포맷 제약으로 제외(로드맵 3단계) */
-export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange }: TopToolbarProps) {
+export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange, onUploadImage }: TopToolbarProps) {
   // emojiPickerOpen/onEmojiPickerOpenChange 쌍 판정(W7 T2) — 둘 다 있으면 controlled, 둘 다 없으면
   // 내부 state, 한쪽만 있으면 dev 경고 + 내부 state 폴백. 이렇게 정규화한 [open, setOpen]을
   // EmojiPicker에 항상 "완전한 쌍"으로 넘기므로, EmojiPicker 자신은 반쪽 프롭을 볼 일이 없다 —
@@ -126,10 +128,14 @@ export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange }:
       {btn("표", <Table size={16} aria-hidden />, () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
       <span className="top-toolbar-divider" />
       {btn("링크", <Link size={16} aria-hidden />, () => promptSetLink(editor), editor.isActive("link"))}
-      {btn("이미지", <Image size={16} aria-hidden />, () => insertImage(editor))}
+      {btn("이미지", <Image size={16} aria-hidden />, () => onUploadImage ? onUploadImage() : insertImage(editor))}
       <span className="top-toolbar-divider" />
       <EmojiPicker editor={editor} open={emojiOpen} onOpenChange={setEmojiOpen} />
-      <InsertMenu editor={editor} onOpenEmoji={() => setEmojiOpen(true)} />
+      <InsertMenu
+        editor={editor}
+        onOpenEmoji={() => setEmojiOpen(true)}
+        onUploadImage={onUploadImage}
+      />
     </div>
   );
 }

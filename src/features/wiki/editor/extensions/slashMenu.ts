@@ -46,7 +46,7 @@ export interface SlashItem {
    * action이 있으면 호출부(이 파일의 Suggestion command, InsertMenu.tsx의 select)가 run 대신
    * 등록된 오픈 콜백을 호출한다 — run은 그 경우 아무 것도 하지 않는 no-op으로 둔다.
    */
-  action?: "openEmoji";
+  action?: "openEmoji" | "uploadImage";
   run: (editor: Editor) => void;
 }
 
@@ -215,6 +215,14 @@ export const SLASH_ITEMS: SlashItem[] = [
   // 열 수별로 항목을 나누는 것도 레퍼런스와 같다 — 하나의 항목에서 개수를 되묻지 않는다.
   ...COLUMN_LAYOUT_ITEMS,
   {
+    id: "imageUpload",
+    label: "이미지 업로드",
+    description: "파일을 업로드해 이미지를 삽입합니다",
+    icon: Image,
+    action: "uploadImage",
+    run: () => {},
+  },
+  {
     id: "image",
     label: "이미지 (URL)",
     description: "URL로 이미지를 삽입합니다",
@@ -275,17 +283,19 @@ export interface SlashMenuOptions {
   } | null) => void;
   /** action: "openEmoji" 항목이 선택됐을 때 호출 — WikiEditor가 EmojiPicker의 open 상태를 연다 */
   onOpenEmoji: () => void;
+  /** action: "uploadImage" 항목이 선택됐을 때 숨은 파일 선택기를 연다 */
+  onUploadImage: () => void;
 }
 
 export const SlashMenu = Extension.create<SlashMenuOptions>({
   name: "slashMenu",
 
   addOptions() {
-    return { onStateChange: () => {}, onOpenEmoji: () => {} };
+    return { onStateChange: () => {}, onOpenEmoji: () => {}, onUploadImage: () => {} };
   },
 
   addProseMirrorPlugins() {
-    const { onStateChange, onOpenEmoji } = this.options;
+    const { onStateChange, onOpenEmoji, onUploadImage } = this.options;
     let items: SlashItem[] = [];
     let highlight = 0;
     let clientRect: (() => DOMRect | null) | null = null;
@@ -314,6 +324,10 @@ export const SlashMenu = Extension.create<SlashMenuOptions>({
           const item = props as SlashItem;
           if (item.action === "openEmoji") {
             onOpenEmoji();
+            return;
+          }
+          if (item.action === "uploadImage") {
+            onUploadImage();
             return;
           }
           item.run(editor);

@@ -24,9 +24,10 @@ export interface InsertMenuProps {
    * slashMenu.ts의 Suggestion command와 동일한 분기를 여기서도 둔다(InsertMenu는 SLASH_ITEMS를
    * 그대로 재사용하므로 "이모지" 항목이 이 팝오버에도 그대로 노출되기 때문). */
   onOpenEmoji?: () => void;
+  onUploadImage?: () => void;
 }
 
-export function InsertMenu({ editor, onOpenEmoji }: InsertMenuProps) {
+export function InsertMenu({ editor, onOpenEmoji, onUploadImage }: InsertMenuProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -58,6 +59,10 @@ export function InsertMenu({ editor, onOpenEmoji }: InsertMenuProps) {
     close();
     if (item.action === "openEmoji") {
       onOpenEmoji?.();
+      return;
+    }
+    if (item.action === "uploadImage") {
+      onUploadImage?.();
       return;
     }
     // 슬래시 메뉴의 command 핸들러와 동일하게, item.run 전에 에디터 포커스를 보장한다 —
