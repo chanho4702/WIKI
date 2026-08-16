@@ -1242,6 +1242,133 @@ body {
   flex-shrink: 0;
 }
 
+/* 오래된 편집본 저장 충돌 — 로컬 에디터를 덮지 않고 복구 선택지를 같은 흐름 안에 둔다. */
+.edit-conflict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-150, 12px);
+  padding: var(--chanho-space-200);
+  border-inline-start: 3px solid var(--chanho-color-text-warning, #b38600);
+  background: var(--chanho-color-background-warning-subtle, #fff7d6);
+  color: var(--chanho-color-text-default);
+}
+
+.edit-conflict-summary,
+.edit-conflict-pane-heading,
+.edit-conflict-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-150, 12px);
+}
+
+.edit-conflict-summary h2,
+.edit-conflict-pane-heading h3 {
+  margin: 0;
+  color: inherit;
+}
+
+.edit-conflict-summary h2 {
+  font-size: var(--chanho-font-size-200);
+}
+
+.edit-conflict-summary p,
+.edit-conflict-merge p {
+  margin: var(--chanho-space-50) 0 0;
+  font-size: var(--chanho-font-size-100);
+  color: var(--chanho-color-text-subtle);
+}
+
+.edit-conflict-version {
+  flex: none;
+  font-size: var(--chanho-font-size-75);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.edit-conflict-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.edit-conflict-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--chanho-color-border-default);
+  padding-top: var(--chanho-space-150, 12px);
+}
+
+.edit-conflict-compare > section {
+  min-width: 0;
+  padding: 0 var(--chanho-space-150, 12px);
+}
+
+.edit-conflict-compare > section:first-child {
+  padding-inline-start: 0;
+  border-inline-end: 1px solid var(--chanho-color-border-default);
+}
+
+.edit-conflict-compare > section:nth-child(2) {
+  padding-inline-end: 0;
+}
+
+.edit-conflict-pane-heading h3 {
+  font-size: var(--chanho-font-size-100);
+}
+
+.edit-conflict-compare strong {
+  display: block;
+  margin-top: var(--chanho-space-100);
+  font-size: var(--chanho-font-size-100);
+}
+
+.edit-conflict-compare pre {
+  max-height: 220px;
+  margin: var(--chanho-space-100) 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+
+.edit-conflict-merge {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-200);
+  margin-top: var(--chanho-space-150, 12px);
+  padding-top: var(--chanho-space-150, 12px);
+  border-top: 1px solid var(--chanho-color-border-default);
+}
+
+.edit-conflict-merge p {
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .edit-conflict-summary,
+  .edit-conflict-merge {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .edit-conflict-compare {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-conflict-compare > section {
+    padding: var(--chanho-space-150, 12px) 0;
+  }
+
+  .edit-conflict-compare > section:first-child {
+    padding-top: 0;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--chanho-color-border-default);
+  }
+}
+
 /* ── 버전 히스토리 모달 (W3) ──────────────────────────── */
 
 /* Modal 기본 패널 폭(480px)을 넓힌다 — 속성 선택자로 특이도를 올려 로드 순서와 무관하게 이긴다 */

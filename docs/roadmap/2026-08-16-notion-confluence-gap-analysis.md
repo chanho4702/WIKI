@@ -168,6 +168,9 @@ Notion API의 업로드 파일 URL은 짧게 만료되는 signed URL이므로 �
 - 근거: `wikiApi.updatePage()`가 저장 직전에 `getPage()`를 호출하고 그 응답의 `version`을 PUT한다.
 - 실패 시나리오: A와 B가 v3을 열고 B가 v4를 저장한 뒤 A가 저장하면, A도 v4를 다시 조회해 보내므로
   서버 409가 나지 않고 B의 변경을 덮어쓴다.
+- 현재 보충: 편집 화면이 load-time version을 세션 기준으로 유지해 PUT하고, 409에서 로컬 에디터를
+  보존한다. 최신 서버본과 내 저장 시도 본문을 나란히 비교하고 양쪽 복사, 서버본 재로드, 최신 버전을
+  기준으로 한 명시적 수동 병합을 선택할 수 있다. mock 두 세션과 API 요청 계약 테스트가 stale 저장을 고정한다.
 - 인수조건:
   - 편집 시작 또는 마지막 성공 저장 시 받은 버전을 편집 세션이 유지한다.
   - 409 시 로컬 편집 내용은 사라지지 않는다.
@@ -182,7 +185,7 @@ Notion API의 업로드 파일 URL은 짧게 만료되는 signed URL이므로 �
   `PENDING`으로 만들고 페이지 저장 뒤 본문에 남은 ID만 `CONFIRMED`로 바꾼다. 브라우저 강제 종료나
   확정 요청 유실은 만료 reconciliation이 최신 본문을 다시 검사해 참조된 이미지는 확정하고 고아만 삭제한다.
 - 잔여 위험: object delete callback 자체가 계속 실패해 DB 행 없이 남은 storage 객체의 inventory 대조,
-  다중 backend node 실측, AV/CDR·파생 이미지 처리.
+  인증 포함 node A upload→node B inline black-box 검증, AV/CDR·파생 이미지 처리.
 - 인수조건:
   - 파일 선택, drag/drop, clipboard paste가 같은 업로드 파이프라인을 사용한다.
   - 진행률, 취소, 재시도, 실패 placeholder가 표시된다.
@@ -193,7 +196,10 @@ Notion API의 업로드 파일 URL은 짧게 만료되는 signed URL이므로 �
 #### WIKI-P0-003 첨부가 로컬 단일 노드에 묶임
 
 - 현재: DB 행별 `LOCAL`/`S3` routing, bucket/key/version/checksum, S3 adapter와 S3Mock 개발 구성이 구현됐다.
-- 잔여 위험: 운영 provider/IAM/백업이 미결정이고 두 backend node 실측과 객체 reconciliation이 없다.
+  Compose에서 실제 wiki-backend 2개가 healthy/Eureka `UP`으로 등록됐고, 독립 writer/reader S3 client가
+  같은 versioned object를 저장·조회·삭제하는 통합 테스트가 통과한다.
+- 잔여 위험: 운영 provider/IAM/백업이 미결정이고 인증 REST를 통한 노드 강제 전환 검증과 객체
+  inventory reconciliation이 없다.
 - 인수조건:
   - 개발은 고정 버전 S3Mock, 운영은 승인된 S3 호환 오브젝트 스토리지를 같은 인터페이스로 사용한다.
   - DB에는 bucket/key/version/checksum/size/detected MIME을 저장한다.
@@ -303,7 +309,7 @@ Notion 파일 수집 제약은 [Notion API 파일 조회](https://developers.not
 | collaboration service | WebSocket, CRDT update, presence, snapshot | 없음 |
 | PostgreSQL | 문서/버전/댓글/권한/마이그레이션 상태 | 준비됨 |
 | Redis | presence TTL, fan-out, 임시 세션 조정 | Streams 기반 있음; 용도 분리 필요 |
-| S3 호환 저장소 | 원본 첨부, 이미지, import 원본, export 결과 | 없음 |
+| S3 호환 저장소 | 원본 첨부, 이미지, import 원본, export 결과 | S3 adapter·S3Mock·공유 metadata 준비; 운영 provider 미선정 |
 | migration worker | Notion/DC 추출, 변환, 검증, 재시도 | 없음 |
 | OpenSearch | 권한 필터가 적용된 페이지·첨부·댓글 검색 | 페이지·첨부 기반 있음 |
 | Gateway/nginx | REST와 WebSocket 라우팅, 인증 전달 | REST 기반 있음; WS 설정 없음 |
@@ -335,13 +341,17 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
   인증 이미지 fetch, Blob URL 수명 정리, unsafe MIME 즉시 삭제, 저장 전 제거·취소 업로드 정리.
 - 3차 완료: XHR 바이트 진행률·취소·401 refresh 재전송, 실패/취소 인라인 재시도 UI, 복수 파일 병렬 전송과
   선택 순서 삽입, PENDING→CONFIRMED 수명주기, 본문 검증 confirm API, 만료 pending reconciliation job.
-- 다음 증분: 두 backend node 실측, storage inventory reconciliation, AV/decoder·썸네일/EXIF 처리,
+- 4차 완료: Compose scale 제약 제거, wiki docker Eureka 등록과 gateway `lb://` 라우팅, 실제 2개 노드
+  healthy/Eureka UP 스모크, 독립 S3 client 간 versioned object 읽기·삭제 통합 검증.
+- 다음 증분: 인증 포함 노드 교차 REST 스모크, storage inventory reconciliation, AV/decoder·썸네일/EXIF 처리,
   운영 후보 object storage 통합 테스트와 provider·IAM·백업/복원 결정.
 
 ### W16 — 편집 정확성·서버 협업 데이터
 
 - 실제 stale version 처리, 서버 형제 순서, 댓글/답글 API, 사용자 표시정보
 - 완료: 두 브라우저 stale 저장, 댓글 재접속, 동시 재정렬 테스트 통과
+- 1차 완료: load-time expectedVersion 전달, typed conflict와 최신 서버본 재조회, 로컬 편집 보존,
+  서버/로컬 비교·복사·서버본 재로드·명시적 수동 병합 UI, 두 세션 stale 저장 회귀 테스트.
 
 ### W17 — 실시간 공동 편집
 

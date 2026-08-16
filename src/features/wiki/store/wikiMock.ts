@@ -1,4 +1,5 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
+import { PageConflictError } from "./types";
 import type {
   Attachment,
   Comment,
@@ -11,6 +12,7 @@ import type {
   SearchHit,
   SearchResults,
   Space,
+  UpdatePageOptions,
   User,
   WikiData,
 } from "./types";
@@ -134,10 +136,12 @@ function snapshotVersion(data: WikiData, page: Page, at: string): void {
   const maxVersion = data.versions
     .filter((v) => v.pageId === page.id)
     .reduce((max, v) => Math.max(max, v.version), 0);
+  const version = maxVersion + 1;
+  page.version = version;
   data.versions.push({
     id: nextId(),
     pageId: page.id,
-    version: maxVersion + 1,
+    version,
     title: page.title,
     body: page.body,
     savedBy: CURRENT_USER_ID,
@@ -183,7 +187,7 @@ export async function createPage(input: {
     status: input.type === "folder" ? "published" : (input.status ?? "published"),
     title,
     body: input.body ?? "",
-    version: 1, // 목업은 낙관적 락을 쓰지 않으므로 항상 1 고정
+    version: 1,
     position: maxPosition + 1,
     createdBy: CURRENT_USER_ID,
     updatedBy: CURRENT_USER_ID,
@@ -209,10 +213,14 @@ export async function listVersions(pageId: string): Promise<PageVersion[]> {
 export async function updatePage(
   id: string,
   patch: { title?: string; body?: string },
+  options: UpdatePageOptions = {},
 ): Promise<Page> {
   const data = load();
   const page = data.pages.find((p) => p.id === id);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  if (options.expectedVersion !== undefined && options.expectedVersion !== page.version) {
+    throw new PageConflictError(clone(page));
+  }
   const nextTitle = patch.title !== undefined ? patch.title.trim() : page.title;
   if (!nextTitle) throw new Error("페이지 제목을 입력하세요");
   const nextBody = patch.body !== undefined ? patch.body : page.body;

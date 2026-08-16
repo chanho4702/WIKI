@@ -18,7 +18,7 @@ describe("wikiApi pages", () => {
     expect(pages[0]).toMatchObject({ id: "1", parentId: null, position: 1 });
   });
 
-  it("updatePage는 getPage로 version을 읽어 PUT expectedVersion에 넣는다", async () => {
+  it("비대화형 updatePage는 getPage로 version을 읽어 PUT expectedVersion에 넣는다", async () => {
     const spy = mockSeq([
       { status: 200, body: { id: 1, spaceId: 5, parentId: null, title: "T", content: "old", version: 4 } }, // getPage
       { status: 200, body: { id: 1, spaceId: 5, parentId: null, title: "T2", content: "new", version: 5 } }, // put
@@ -30,10 +30,37 @@ describe("wikiApi pages", () => {
     expect(JSON.parse(putInit.body as string)).toMatchObject({ expectedVersion: 4 });
   });
 
+  it("편집 세션 expectedVersion은 저장 직전 조회한 최신 version으로 바꾸지 않는다", async () => {
+    const spy = mockSeq([
+      { status: 200, body: { id: 1, spaceId: 5, parentId: null, title: "서버", content: "server", version: 5 } },
+      { status: 409, body: { error: "버전 충돌" } },
+      { status: 200, body: { id: 1, spaceId: 5, parentId: null, title: "서버", content: "server", version: 5 } },
+    ]);
+    const { updatePage } = await import("./wikiApi");
+    const { PageConflictError } = await import("./types");
+
+    let conflict: unknown;
+    try {
+      await updatePage("1", { title: "내 편집", body: "local" }, { expectedVersion: 4 });
+    } catch (error) {
+      conflict = error;
+    }
+
+    expect(conflict).toBeInstanceOf(PageConflictError);
+    const putBody = JSON.parse(spy.mock.calls[1][1]!.body as string);
+    expect(putBody).toMatchObject({ expectedVersion: 4, title: "내 편집", content: "local" });
+    expect((conflict as InstanceType<typeof PageConflictError>).serverPage).toMatchObject({
+      title: "서버",
+      body: "server",
+      version: 5,
+    });
+  });
+
   it("PUT 409는 충돌 한국어 에러", async () => {
     mockSeq([
       { status: 200, body: { id: 1, spaceId: 5, parentId: null, title: "T", content: "o", version: 4 } },
       { status: 409, body: { error: "" } },
+      { status: 200, body: { id: 1, spaceId: 5, parentId: null, title: "T", content: "o", version: 4 } },
     ]);
     const { updatePage } = await import("./wikiApi");
     await expect(updatePage("1", { title: "X", body: "y" })).rejects.toThrow(/다른 사용자/);

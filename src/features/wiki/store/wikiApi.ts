@@ -12,12 +12,14 @@ import {
   type AttachmentUploadOptions,
   type DeletePageOptions,
   type Page,
+  PageConflictError,
   type PageStatus,
   type PageType,
   type PageVersion,
   type SearchContentInput,
   type SearchResults,
   type Space,
+  type UpdatePageOptions,
   type User,
 } from "./types";
 
@@ -79,7 +81,11 @@ export async function createPage(input: { spaceId: string; parentId?: string | n
   });
   return mapPage(await json(res));
 }
-export async function updatePage(id: string, patch: { title?: string; body?: string }): Promise<Page> {
+export async function updatePage(
+  id: string,
+  patch: { title?: string; body?: string },
+  options: UpdatePageOptions = {},
+): Promise<Page> {
   const current = await getPage(id);
   if (!current) throw new Error("페이지를 찾을 수 없습니다");
   const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}`, {
@@ -88,9 +94,15 @@ export async function updatePage(id: string, patch: { title?: string; body?: str
       title: (patch.title ?? current.title).trim(),
       content: patch.body ?? current.body,
       parentId: current.parentId ? toBackendId(current.parentId) : null,
-      expectedVersion: current.version,
+      // 편집 화면은 load-time version을 넘긴다. 저장 직전 조회한 current.version으로 바꾸면
+      // stale 편집도 통과해 다른 사용자의 저장을 조용히 덮어쓴다.
+      expectedVersion: options.expectedVersion ?? current.version,
     }),
   });
+  if (res.status === 409) {
+    const serverPage = await getPage(id).catch(() => null);
+    throw new PageConflictError(serverPage);
+  }
   return mapPage(await json(res));
 }
 /** 초안 게시(백엔드 V2). 이미 게시됐으면 서버가 멱등 처리하고 같은 문서를 돌려준다. */

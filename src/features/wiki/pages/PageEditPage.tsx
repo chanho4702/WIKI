@@ -6,6 +6,14 @@ import type { WikiOutletContext } from "../components/wikiContext";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
 import { DRAFT_TITLE } from "../lib/useCreateContent";
+import { EditConflictPanel } from "../components/EditConflictPanel";
+import { PageConflictError, type Page } from "../store/types";
+
+interface EditConflict {
+  serverPage: Page | null;
+  localTitle: string;
+  localBody: string;
+}
 
 /**
  * 페이지 편집 화면 — 생성(/pages/new?parent=<id|없음>)과 수정(/pages/:pageId/edit) 공용.
@@ -31,6 +39,12 @@ export function PageEditPage() {
   // 저장 진행 상태 — 업데이트 버튼 로딩 표시 + 중복 저장 차단
   const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  // 편집 시작 시점의 버전 — 저장 직전 최신값으로 바꾸면 stale 편집을 감지할 수 없다.
+  const [baseVersion, setBaseVersion] = useState<number | null>(null);
+  const [conflict, setConflict] = useState<EditConflict | null>(null);
+  const [conflictComparisonOpen, setConflictComparisonOpen] = useState(false);
+  // 서버본 재로드 때 TipTap 인스턴스를 명시적으로 새로 만들어 initialMarkdown을 다시 적용한다.
+  const [editorGeneration, setEditorGeneration] = useState(0);
   // Task 18: 페이지 너비 토글 — 생성 화면(pageId 없음)은 항상 기본 폭, toggle은 무동작
   const { width, toggle: toggleWidth } = usePageWidth(pageId);
 
@@ -57,16 +71,28 @@ export function PageEditPage() {
     if (!isEdit || !pageId) return;
     // edit(A) → edit(B) 재사용 시 이전 페이지의 본문이 새 페이지 로딩 중 잠깐 노출되는 것을 방지
     setInitialBody(null);
+    setNotFound(false);
+    setBaseVersion(null);
+    setConflict(null);
+    setConflictComparisonOpen(false);
+    setTitleDirty(false);
+    setBodyDirty(false);
+    let cancelled = false;
     void getPage(pageId).then((page) => {
+      if (cancelled) return;
       if (page === null) {
         setNotFound(true);
       } else {
         setTitle(page.title);
         setInitialBody(page.body);
+        setBaseVersion(page.version);
         setPageSpaceId(page.spaceId);
         setIsDraft(page.status === "draft");
       }
     });
+    return () => {
+      cancelled = true;
+    };
   }, [isEdit, pageId]);
 
   // 같은 create 라우트 안에서 ?title=만 바뀌는 네비게이션(미리보기의 빨간 링크 클릭)도 프리필 반영
@@ -104,7 +130,10 @@ export function PageEditPage() {
     setSaving(true);
     try {
       if (isEdit && pageId) {
-        const saved = await updatePage(pageId, { title, body });
+        const saved = await updatePage(pageId, { title, body }, {
+          expectedVersion: baseVersion ?? undefined,
+        });
+        setBaseVersion(saved.version);
         await editorRef.current?.finalizePendingUploads();
         // 초안은 "저장"만으로 공개되지 않는다 — 이 버튼이 곧 게시다(라벨도 "게시").
         // 저장을 먼저 하는 이유: 게시 후 저장이 실패하면 빈 문서가 공개된 채 남는다.
@@ -122,6 +151,17 @@ export function PageEditPage() {
         navigate(`/spaces/${spaceId}/pages/${created.id}`);
       }
     } catch (error) {
+      if (error instanceof PageConflictError) {
+        setConflict({ serverPage: error.serverPage, localTitle: title, localBody: body });
+        setConflictComparisonOpen(Boolean(error.serverPage));
+        toast({
+          title: "저장하지 않았습니다",
+          description: error.message,
+          appearance: "danger",
+        });
+        setSaving(false);
+        return;
+      }
       toast({
         title: "저장 실패",
         description: error instanceof Error ? error.message : String(error),
@@ -130,6 +170,58 @@ export function PageEditPage() {
       // 성공 시엔 이동으로 언마운트되므로 실패 시에만 로딩 해제
       setSaving(false);
     }
+  };
+
+  const copyDocument = async (label: string, copyTitle: string, copyBody: string) => {
+    if (!navigator.clipboard?.writeText) {
+      toast({
+        title: `${label}을 복사할 수 없습니다`,
+        description: "브라우저 클립보드 권한을 확인해 주세요.",
+        appearance: "danger",
+      });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(`# ${copyTitle}\n\n${copyBody}`);
+      toast({ title: `${label}을 클립보드에 복사했습니다`, appearance: "success" });
+    } catch {
+      toast({
+        title: `${label}을 복사할 수 없습니다`,
+        description: "브라우저 클립보드 권한을 확인해 주세요.",
+        appearance: "danger",
+      });
+    }
+  };
+
+  const reloadServerVersion = async () => {
+    const serverPage = conflict?.serverPage;
+    if (!serverPage) return;
+    if (!window.confirm(
+      "내 편집 내용을 버리고 서버에 저장된 최신 내용으로 다시 불러오시겠습니까?",
+    )) return;
+    await editorRef.current?.discardPendingUploads();
+    setTitle(serverPage.title);
+    setInitialBody(serverPage.body);
+    setBaseVersion(serverPage.version);
+    setTitleDirty(false);
+    setBodyDirty(false);
+    setImageUploading(false);
+    setConflict(null);
+    setConflictComparisonOpen(false);
+    setEditorGeneration((generation) => generation + 1);
+  };
+
+  const continueManualMerge = () => {
+    const serverPage = conflict?.serverPage;
+    if (!serverPage) return;
+    setBaseVersion(serverPage.version);
+    setConflict(null);
+    setConflictComparisonOpen(false);
+    toast({
+      title: `서버 v${serverPage.version}을 병합 기준으로 설정했습니다`,
+      description: "서버 변경을 현재 편집 내용에 반영한 뒤 다시 저장해 주세요.",
+      appearance: "info",
+    });
   };
 
   const handleCancel = async () => {
@@ -198,6 +290,23 @@ export function PageEditPage() {
           </Button>
         </div>
       </div>
+      {conflict ? (
+        <EditConflictPanel
+          serverPage={conflict.serverPage}
+          localTitle={conflict.localTitle}
+          localBody={conflict.localBody}
+          comparisonOpen={conflictComparisonOpen}
+          onToggleComparison={() => setConflictComparisonOpen((open) => !open)}
+          onCopyLocal={() => void copyDocument("내 변경", conflict.localTitle, conflict.localBody)}
+          onCopyServer={() => {
+            if (conflict.serverPage) {
+              void copyDocument("서버본", conflict.serverPage.title, conflict.serverPage.body);
+            }
+          }}
+          onReloadServer={() => void reloadServerVersion()}
+          onContinueMerge={continueManualMerge}
+        />
+      ) : null}
       <input
         className="page-edit-title"
         value={title}
@@ -209,6 +318,7 @@ export function PageEditPage() {
         aria-label="페이지 제목"
       />
       <WikiEditor
+        key={`${pageId ?? "new"}:${editorGeneration}`}
         ref={editorRef}
         initialMarkdown={initialBody}
         pages={pages ?? []}

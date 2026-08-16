@@ -37,7 +37,7 @@ export interface Page {
   status: PageStatus;
   title: string;
   body: string; // 마크다운 원문
-  version: number; // 낙관적 락 카운터(백엔드 연동). 목업은 항상 1.
+  version: number; // 낙관적 락 카운터. 편집 세션은 로드 시 받은 값을 저장 요청까지 유지한다.
   position: number; // 형제 내 정렬 (생성순 max+1)
   createdBy: string;
   updatedBy: string;
@@ -72,6 +72,19 @@ export interface Attachment {
   contentType: string;
   sizeBytes: number;
   checksumSha256?: string | null;
+}
+
+export interface UpdatePageOptions {
+  /** 편집 시작 또는 마지막 성공 저장 때 받은 버전. 생략 시 비대화형 호출이 최신 버전을 조회한다. */
+  expectedVersion?: number;
+}
+
+/** 오래된 편집본 저장을 서버가 거부했을 때 로컬 작업과 최신 서버본을 함께 유지하기 위한 오류. */
+export class PageConflictError extends Error {
+  constructor(public readonly serverPage: Page | null) {
+    super("다른 사용자가 먼저 저장했습니다. 내 편집 내용은 그대로 유지됩니다.");
+    this.name = "PageConflictError";
+  }
 }
 
 export interface AttachmentUploadOptions {

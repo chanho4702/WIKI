@@ -129,7 +129,7 @@ v1이 표현하지 못하는 Notion database view와 Confluence custom macro는 
 
 ### ADR-W14-05 — media는 S3 호환 저장소, 본문은 durable media ID
 
-**결정 및 W15 1차 반영**
+**결정 및 W15 단계 반영**
 
 - 개발/통합 테스트는 `adobe/s3mock:5.1.0`, 운영은 별도 승인한 S3 호환 object storage를 사용한다.
 - `wiki-backend`에 storage interface와 local/S3 adapter를 두고, DB 행의 backend/bucket/key/version으로 기존 객체를 읽는다.
@@ -140,6 +140,8 @@ v1이 표현하지 못하는 Notion database view와 Confluence custom macro는 
 - 객체 생성 후 DB transaction 실패는 rollback callback으로 삭제하고, DB 삭제 객체는 commit 뒤 삭제한다.
 - 에디터 업로드는 `PENDING`으로 생성하고 페이지 저장 뒤 서버가 최신 본문의 durable media ID를 확인한 뒤
   `CONFIRMED`로 전환한다. 만료된 PENDING은 주기 작업이 본문을 다시 대조해 참조 중이면 확정하고 아니면 삭제한다.
+- Compose의 wiki-backend는 고정 container name 없이 확장되고, 각 노드가 Eureka에 등록돼 gateway의
+  `lb://wiki-backend` 후보가 된다. 신규 첨부는 노드 로컬이 아니라 모든 인스턴스가 같은 S3 API를 사용한다.
 - callback 실패로 DB 행 없이 남은 storage 객체는 후속 inventory reconciliation으로 복구한다.
 
 MinIO OSS는 공식 저장소가 archive/source-only 상태로 전환됐고 최종 community release 대상 보안 공지가
