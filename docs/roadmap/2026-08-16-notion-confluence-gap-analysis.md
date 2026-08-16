@@ -367,8 +367,9 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
   collaboration base/generation을 함께 잠그고 전진시키는 shared draft 원자 저장 계약.
 - 5차 완료: 제목을 같은 Y.Doc의 Y.Text로 결합하고 변경 구간만 operation으로 만드는 동시 편집,
   sync 전 제목·본문 잠금과 원격 제목 dirty 상태 UX.
-- 다음 증분: 2인 브라우저 동시 서식·표 편집 및 네트워크 단절/노드 재기동 장애 복구 스모크,
-  collaboration 다중 노드 Redis fan-out.
+- 6차 완료: 실제 nginx→gateway→Hocuspocus 경로에서 두 클라이언트가 단절 중 제목·굵게·표 행을
+  동시에 수정한 뒤 재연결 수렴하고, collaboration-service 재기동 후 PostgreSQL snapshot으로 복구.
+- 다음 증분: 실제 2인 브라우저의 selection/caret·충돌 UI 시각 검증과 collaboration 다중 노드 Redis fan-out.
 - 완료: 2인 동시 편집·네트워크 단절·노드 재기동 테스트에서 내용이 수렴하고 승인된 편집이 유실되지 않음
 
 ### W18 — 권한·거버넌스
