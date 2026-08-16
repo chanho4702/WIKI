@@ -8,6 +8,11 @@ import { usePageWidth } from "../lib/pageWidth";
 import { DRAFT_TITLE } from "../lib/useCreateContent";
 import { EditConflictPanel } from "../components/EditConflictPanel";
 import { PageConflictError, type Page } from "../store/types";
+import { CollaborationStatus } from "../editor/components/CollaborationStatus";
+import {
+  COLLABORATION_ENABLED,
+  useCollaborationSession,
+} from "../editor/collaboration/useCollaborationSession";
 
 interface EditConflict {
   serverPage: Page | null;
@@ -53,6 +58,10 @@ export function PageEditPage() {
   const [bodyDirty, setBodyDirty] = useState(false);
   // 편집 중인 문서가 초안인지 — 초안이면 "업데이트" 대신 "게시"가 주 액션이다(기획 P3).
   const [isDraft, setIsDraft] = useState(false);
+  const collaboration = useCollaborationSession({
+    enabled: COLLABORATION_ENABLED && isEdit && initialBody !== null && !notFound,
+    pageId: pageId ?? null,
+  });
 
   // Task 5: 이탈 가드 — 제목·본문 미저장 변경 감지
   const isDirty = () => titleDirty || imageUploading || (editorRef.current?.isDirty() ?? false);
@@ -270,6 +279,12 @@ export function PageEditPage() {
               ? "초안 — 아직 게시되지 않음"
               : "저장됨"}
         </span>
+        <CollaborationStatus
+          status={collaboration.status}
+          participants={collaboration.participants}
+          error={collaboration.error}
+          onRetry={collaboration.retry}
+        />
         <div className="edit-chrome-actions">
           {isEdit && pageId ? (
             <Button

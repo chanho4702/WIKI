@@ -74,6 +74,17 @@ export interface Attachment {
   checksumSha256?: string | null;
 }
 
+/**
+ * REST 인증을 WebSocket URL에 노출하지 않기 위한 짧은 수명의 1회용 공동 편집 ticket.
+ * raw ticket은 메모리에서 Hocuspocus 인증 메시지로만 전달하고 저장하거나 로깅하지 않는다.
+ */
+export interface CollaborationTicket {
+  ticket: string;
+  room: string;
+  websocketPath: string;
+  expiresAt: string;
+}
+
 export interface UpdatePageOptions {
   /** 편집 시작 또는 마지막 성공 저장 때 받은 버전. 생략 시 비대화형 호출이 최신 버전을 조회한다. */
   expectedVersion?: number;

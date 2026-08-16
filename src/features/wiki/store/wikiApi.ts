@@ -10,6 +10,7 @@ import {
   ContentSearchError,
   type Attachment,
   type AttachmentUploadOptions,
+  type CollaborationTicket,
   type DeletePageOptions,
   type Page,
   PageConflictError,
@@ -104,6 +105,23 @@ export async function updatePage(
     throw new PageConflictError(serverPage);
   }
   return mapPage(await json(res));
+}
+
+/** Access Token 대신 WebSocket 인증 메시지에만 실을 1회용 ticket을 발급받는다. */
+export async function requestCollaborationTicket(pageId: string): Promise<CollaborationTicket> {
+  const response = await json<CollaborationTicket>(await sharedApiFetch(
+    `/api/wiki/pages/${toBackendId(pageId)}/collaboration-ticket`,
+    { method: "POST", cache: "no-store" },
+  ));
+  if (
+    typeof response.ticket !== "string"
+    || typeof response.room !== "string"
+    || typeof response.websocketPath !== "string"
+    || typeof response.expiresAt !== "string"
+  ) {
+    throw new Error("공동 편집 연결 정보를 확인할 수 없습니다");
+  }
+  return response;
 }
 /** 초안 게시(백엔드 V2). 이미 게시됐으면 서버가 멱등 처리하고 같은 문서를 돌려준다. */
 export async function publishPage(id: string): Promise<Page> {

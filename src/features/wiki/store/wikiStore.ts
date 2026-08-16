@@ -9,6 +9,7 @@ const impl = USE_BACKEND ? api : mock;
 
 export const listUsers = impl.listUsers;
 export const getCurrentUser = impl.getCurrentUser;
+export const requestCollaborationTicket = impl.requestCollaborationTicket;
 export const listSpaces = impl.listSpaces;
 export const createSpace = impl.createSpace;
 export const listPages = impl.listPages;

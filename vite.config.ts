@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
     server: proxyTarget
       ? {
           proxy: {
-            "/api": { target: proxyTarget, changeOrigin: true },
+            "/api": { target: proxyTarget, changeOrigin: true, ws: true },
             "/oauth2": { target: proxyTarget, changeOrigin: true },
             "/login": { target: proxyTarget, changeOrigin: true },
           },

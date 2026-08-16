@@ -26,6 +26,7 @@ MSA_TEMPLATE의 **위키(컨플루언스 클론) 프론트엔드**. 3개 프론�
 | 라우팅 | react-router 7 (`BrowserRouter basename="/wiki"`) |
 | 디자인 시스템 | `@chanho/react` 0.5.0 + `@chanho/tokens` 0.3.0 (tarball `file:../design-system/artifacts/*.tgz`) |
 | 에디터 | **TipTap 2.27** — `@tiptap/react` · `starter-kit` · 확장(link, image, table/row/header/cell, task-list/item, placeholder) + `tiptap-markdown`(마크다운 왕복) |
+| 공동 편집 기반 | Yjs 13.6 · Hocuspocus Provider 4.6 — 1회용 ticket, 재연결, presence (기능 플래그) |
 | 보기 렌더 | react-markdown 10 + remark-gfm 4 (표) |
 | 트리 DnD | `@dnd-kit/core` · `sortable` · `utilities` |
 | 테스트 | Vitest 3 + Testing Library + jsdom |
@@ -78,6 +79,7 @@ pnpm build       # vite build
 |---|---|
 | `VITE_API_BASE` | 백엔드 직접 오리진. 프로덕션은 nginx same-origin이라 빈 문자열을 사용한다. |
 | `VITE_API_PROXY` | dev에서 Vite same-origin 프록시와 백엔드 모드를 함께 켠다. 미설정 dev/test는 목업 모드다. |
+| `VITE_WIKI_COLLABORATION_ENABLED` | `true`면 수정 화면의 ticket 기반 WebSocket 세션·presence UX를 켠다. 공유 문서 초기화/편집기 결합 전까지 기본 `false`. |
 
 `.env.example`을 복사해 로컬 `.env`를 만들 수 있다. 실제 `.env`는 git에서 제외하며,
 아무 변수도 설정하지 않으면 localStorage 목업 모드로 동작한다.
@@ -113,7 +115,7 @@ src/
 │   ├── pages/            # SpaceIndexPage, PageViewPage, PageEditPage, FolderPage, SearchPage
 │   ├── components/       # AppShell, GlobalSidebar, PageTree, HistoryModal, GlobalSearchField,
 │   │                     # SearchHighlights, CommentSection, MarkdownView, SpaceCreateModal
-│   ├── editor/           # WikiEditor.tsx, markdown.ts(마크다운 왕복), extensions/(base.ts, wikiLink.ts), editorTestRegistry.ts
+│   ├── editor/           # WikiEditor, Markdown 왕복, collaboration/(ticket 세션·presence), extensions/
 │   ├── lib/              # wikiLinks.ts, lineDiff.ts
 │   └── store/            # wikiStore.ts(백엔드 교체 지점), types.ts
 └── mock/                 # seed.ts, users.ts

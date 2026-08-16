@@ -73,12 +73,23 @@ W15 이미지 저장, W17 실시간 공동 편집, W19 Notion·Confluence DC 가
 **1차 호환성 spike (2026-08-16)**
 
 - `@tiptap/extension-collaboration`·`extension-collaboration-cursor` 2.27.2,
-  `yjs` 13.6.32, `y-prosemirror` 1.3.7, `y-websocket` 3.1.0으로 버전을 고정했다.
+  `yjs` 13.6.32, `y-prosemirror` 1.3.7, `@hocuspocus/provider` 4.6.0으로 버전을 고정했다.
 - 전부 MIT 라이선스인 오픈소스 경로이며 Tiptap Cloud/상용 provider는 포함하지 않는다.
 - 기존 위키 스키마를 공유하면서 StarterKit `history`를 끄고 Yjs undo manager만 쓰는 구성을 테스트로
   고정했다. 두 격리 문서에서 동시에 삽입한 update를 교환했을 때 같은 ProseMirror 문서로 수렴했다.
 - 이 결과는 에디터 런타임 호환성만 통과한 것이다. 표 동시 편집, 실제 WebSocket 재접속,
   snapshot 복구와 Markdown publish round-trip은 collaboration service spike에서 계속 검증한다.
+
+**2차 transport/presence 증분 (2026-08-16)**
+
+- wiki-backend의 EDIT 권한 기반 60초 1회용 ticket, collaboration service의 Redis `GETDEL` 인증,
+  PostgreSQL binary persistence, nginx→gateway WebSocket upgrade 경로를 연결했다.
+- 프론트는 Hocuspocus 인증 재시도마다 새 ticket을 발급하고, 연결·동기화·재연결·오프라인·실패와
+  awareness 참여자를 compact 편집 chrome에 표시한다. provider/Yjs 코드는 기능 플래그가 켜질 때만
+  동적 로드해 일반 편집 초기 번들을 늘리지 않는다.
+- 기존 Markdown을 빈 Yjs room에 정확히 한 번 넣는 원자적 bootstrap 계약 전에는 editor에 Y.Doc을
+  연결하지 않는다. 이 경계를 건너뛰면 두 최초 접속자가 같은 본문을 중복 삽입할 수 있으므로
+  `VITE_WIKI_COLLABORATION_ENABLED` 기본값은 false다.
 
 공식 Hocuspocus 문서는 Yjs binary를 primary 형태로 저장하고, Redis extension은 노드 간 동기화용이지
 영속 저장용이 아니라고 명시한다.

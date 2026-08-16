@@ -1242,6 +1242,112 @@ body {
   flex-shrink: 0;
 }
 
+/* 공동 편집 상태는 편집 흐름을 가리지 않는 compact chrome으로 둔다. 색만으로 상태를 구분하지
+ * 않고 항상 텍스트/aria-label을 함께 제공하며, 참여자가 늘어도 최대 3개 아바타만 차지한다. */
+.collaboration-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50, 4px);
+  min-width: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+  white-space: nowrap;
+}
+
+.collaboration-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: var(--chanho-radius-full);
+  background: var(--chanho-color-text-subtlest, #626f86);
+}
+
+.collaboration-status--synced .collaboration-status-dot {
+  background: var(--chanho-color-text-success, #216e4e);
+}
+
+.collaboration-status--connecting .collaboration-status-dot,
+.collaboration-status--syncing .collaboration-status-dot,
+.collaboration-status--reconnecting .collaboration-status-dot {
+  background: var(--chanho-color-text-info, #0c66e4);
+  animation: collaboration-pulse 1.4s ease-in-out infinite;
+}
+
+.collaboration-status--offline .collaboration-status-dot,
+.collaboration-status--error .collaboration-status-dot {
+  background: var(--chanho-color-text-danger, #ae2a19);
+}
+
+.collaboration-avatars {
+  display: inline-flex;
+  margin-inline-start: var(--chanho-space-50, 4px);
+  padding-inline-start: 4px;
+}
+
+.collaboration-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-inline-start: -4px;
+  box-sizing: border-box;
+  border: 2px solid var(--chanho-color-background-surface, #fff);
+  border-radius: var(--chanho-radius-full);
+  background: var(--collaboration-avatar-color);
+  color: #fff;
+  font-size: 9px;
+  font-weight: var(--chanho-font-weight-bold, 700);
+  letter-spacing: -0.04em;
+}
+
+.collaboration-avatar--overflow {
+  background: var(--chanho-color-background-neutral-bold, #44546f);
+  letter-spacing: 0;
+}
+
+.collaboration-retry {
+  border: 0;
+  padding: var(--chanho-space-25, 2px) var(--chanho-space-50, 4px);
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: var(--chanho-color-text-link, #0c66e4);
+  font: inherit;
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  cursor: pointer;
+}
+
+.collaboration-retry:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.collaboration-retry:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
+@keyframes collaboration-pulse {
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collaboration-status-dot { animation: none; }
+}
+
+@media (max-width: 760px) {
+  .edit-chrome-title,
+  .collaboration-status-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
 /* 오래된 편집본 저장 충돌 — 로컬 에디터를 덮지 않고 복구 선택지를 같은 흐름 안에 둔다. */
 .edit-conflict {
   display: flex;
