@@ -1,5 +1,11 @@
 # wiki-front — 위키 서비스 프론트엔드
 
+[![CI](https://github.com/chanho4702/WIKI/actions/workflows/ci.yml/badge.svg)](https://github.com/chanho4702/WIKI/actions/workflows/ci.yml)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
+![TipTap](https://img.shields.io/badge/TipTap-2.27-0D0D0D?logo=tiptap&logoColor=white)
+
 MSA_TEMPLATE의 **위키(컨플루언스 클론) 프론트엔드**. 3개 프론트(`myFront` · `wiki-front` · `alm-front`) 중 하나로,
 디자인 시스템(`@chanho/react`·`@chanho/tokens`)을 공유하고 게이트웨이 뒤에서 Keycloak OIDC SSO 체제에 속한다.
 
