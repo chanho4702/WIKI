@@ -70,7 +70,7 @@ describe("collaboration session helpers", () => {
   });
 
   it("기존 Markdown을 서버가 그대로 저장할 수 있는 Yjs full-state로 만든다", () => {
-    const state = createCollaborationBootstrapState("## 기존 문서\n\n본문 **강조**");
+    const state = createCollaborationBootstrapState("기존 제목", "## 기존 문서\n\n본문 **강조**");
     const document = new Y.Doc();
     Y.applyUpdate(document, state);
     const editor = new Editor({ extensions: buildCollaborationExtensions({ document }) });
@@ -78,6 +78,7 @@ describe("collaboration session helpers", () => {
     expect(editor.getText()).toContain("기존 문서");
     expect(editor.getText()).toContain("본문 강조");
     expect(editor.getJSON()).toEqual(expect.objectContaining({ type: "doc" }));
+    expect(document.getText("title").toString()).toBe("기존 제목");
 
     editor.destroy();
     document.destroy();

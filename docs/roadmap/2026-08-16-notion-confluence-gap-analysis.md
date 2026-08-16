@@ -365,7 +365,10 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
   sync 전 편집 차단·오프라인 편집 유지 UX, 협업 이미지의 확정 후 broadcast 계약.
 - 4차 완료: ticket context 기반 서버 권위 awareness identity/clientId 소유권, page revision과
   collaboration base/generation을 함께 잠그고 전진시키는 shared draft 원자 저장 계약.
-- 다음 증분: 제목 CRDT, 2인 브라우저 동시 서식·표 편집 및 네트워크 단절/노드 재기동 장애 복구 스모크.
+- 5차 완료: 제목을 같은 Y.Doc의 Y.Text로 결합하고 변경 구간만 operation으로 만드는 동시 편집,
+  sync 전 제목·본문 잠금과 원격 제목 dirty 상태 UX.
+- 다음 증분: 2인 브라우저 동시 서식·표 편집 및 네트워크 단절/노드 재기동 장애 복구 스모크,
+  collaboration 다중 노드 Redis fan-out.
 - 완료: 2인 동시 편집·네트워크 단절·노드 재기동 테스트에서 내용이 수렴하고 승인된 편집이 유실되지 않음
 
 ### W18 — 권한·거버넌스

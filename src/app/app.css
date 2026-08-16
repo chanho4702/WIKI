@@ -1205,6 +1205,11 @@ body {
 .page-edit-title::placeholder {
   color: var(--wiki-text-subtlest);
 }
+.page-edit-title:disabled {
+  color: var(--chanho-color-text-subtle);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
 
 /* W6: 컨플식 편집 크롬 — 최상단 고정 바(제목 미리보기 + 전체 너비/업데이트/닫기).
  * .top-toolbar와 같은 스크롤 컨테이너(.wiki-content) 안에서 sticky top: 0으로 고정되므로,

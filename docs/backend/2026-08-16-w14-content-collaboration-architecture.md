@@ -93,7 +93,9 @@ W15 이미지 저장, W17 실시간 공동 편집, W19 Notion·Confluence DC 가
 - awareness의 사용자 ID·이름·색상과 clientId 소유권은 인증 ticket context로 서버가 강제한다.
   page revision과 collaboration base/generation은 wiki-backend의 단일 PostgreSQL transaction에서
   함께 전진해 동시 저장 하나만 성공하며 이전 generation 요청은 409로 거부한다.
-- 제목 CRDT와 2인 브라우저 장애 복구 검증이 아직 남아 있으므로
+- 제목은 같은 Y.Doc의 `Y.Text`로 동기화하고, input 전체 replace 대신 실제 변경 구간만 CRDT operation으로
+  만들어 동시 접두·접미 편집도 수렴시킨다. 동기화 전에는 제목 input과 본문 편집기를 함께 잠근다.
+- 2인 브라우저 장애 복구와 collaboration 다중 노드 fan-out 검증이 아직 남아 있으므로
   `VITE_WIKI_COLLABORATION_ENABLED` 기본값은 false를 유지한다.
 
 공식 Hocuspocus 문서는 Yjs binary를 primary 형태로 저장하고, Redis extension은 노드 간 동기화용이지

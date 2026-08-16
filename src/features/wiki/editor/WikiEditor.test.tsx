@@ -40,7 +40,10 @@ describe("WikiEditor", () => {
 
   it("공유 Y.Doc은 initialMarkdown을 다시 넣지 않아 최초 본문이 중복되지 않는다", async () => {
     const document = new Y.Doc();
-    Y.applyUpdate(document, createCollaborationBootstrapState("## 공유 원문\n\n한 번만 표시"));
+    Y.applyUpdate(document, createCollaborationBootstrapState(
+      "공유 제목",
+      "## 공유 원문\n\n한 번만 표시",
+    ));
     const ref = createRef<WikiEditorHandle>();
     const view = render(
       <WikiEditor

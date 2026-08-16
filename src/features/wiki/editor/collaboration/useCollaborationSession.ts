@@ -18,6 +18,7 @@ interface UseCollaborationSessionOptions {
   enabled: boolean;
   pageId: string | null;
   basePageVersion: number | null;
+  initialTitle: string | null;
   initialMarkdown: string | null;
   pages: Page[];
 }
@@ -35,12 +36,13 @@ export function useCollaborationSession({
   enabled,
   pageId,
   basePageVersion,
+  initialTitle,
   initialMarkdown,
   pages,
 }: UseCollaborationSessionOptions): CollaborationSessionState {
   const [retryKey, setRetryKey] = useState(0);
   const [status, setStatus] = useState<CollaborationConnectionStatus>(
-    enabled && pageId && basePageVersion !== null && initialMarkdown !== null
+    enabled && pageId && basePageVersion !== null && initialTitle !== null && initialMarkdown !== null
       ? "connecting"
       : "disabled",
   );
@@ -71,7 +73,13 @@ export function useCollaborationSession({
   }, [enabled, pageId]);
 
   useEffect(() => {
-    if (!enabled || !pageId || basePageVersion === null || initialMarkdown === null) {
+    if (
+      !enabled
+      || !pageId
+      || basePageVersion === null
+      || initialTitle === null
+      || initialMarkdown === null
+    ) {
       setStatus("disabled");
       setParticipants([]);
       setError(null);
@@ -102,7 +110,7 @@ export function useCollaborationSession({
     ])
       .then(async ([sessionModule, user, bootstrapTicket]) => {
         if (cancelled) return;
-        const state = sessionModule.createCollaborationBootstrapState(initialMarkdown);
+        const state = sessionModule.createCollaborationBootstrapState(initialTitle, initialMarkdown);
         const bootstrap = await bootstrapCollaborationDocument(
           pageId,
           basePageVersion,
@@ -118,6 +126,7 @@ export function useCollaborationSession({
         setGeneration(bootstrap.generation);
         const socketTicket = await requestCollaborationTicket(pageId);
         if (cancelled) return;
+        let liveBinding: (CollaborationBinding & { destroy: () => void }) | null = null;
         const session = sessionModule.createCollaborationSession({
           pageId,
           user,
@@ -125,12 +134,18 @@ export function useCollaborationSession({
           issueTicket: requestCollaborationTicket,
           getPages: () => pagesRef.current,
           onStatus: (nextStatus) => {
+            if (nextStatus === "synced" && liveBinding && !liveBinding.title.toString().trim()) {
+              setStatus("error");
+              setError("공동 초안의 제목 형식이 오래되었습니다. 초안을 재설정한 뒤 다시 연결해 주세요.");
+              return;
+            }
             setStatus(nextStatus);
             if (nextStatus === "synced") setReady(true);
           },
           onParticipants: setParticipants,
           onError: setError,
         });
+        liveBinding = session;
         sessionActiveRef.current = true;
         setCandidate(session);
         destroy = session.destroy;
@@ -148,7 +163,7 @@ export function useCollaborationSession({
       sessionActiveRef.current = false;
       destroy?.();
     };
-  }, [basePageVersion, enabled, initialMarkdown, pageId, retryKey]);
+  }, [basePageVersion, enabled, initialMarkdown, initialTitle, pageId, retryKey]);
 
   const retry = useCallback(() => {
     if (navigator.onLine) setRetryKey((key) => key + 1);

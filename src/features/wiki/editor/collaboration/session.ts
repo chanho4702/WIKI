@@ -5,6 +5,7 @@ import * as Y from "yjs";
 import type { CollaborationTicket, Page, User } from "../../store/types";
 import { safeParse } from "../markdown";
 import { buildCollaborationExtensions } from "../extensions/collaboration";
+import { COLLABORATION_TITLE_FIELD } from "./title";
 
 export type CollaborationConnectionStatus =
   | "disabled"
@@ -45,6 +46,7 @@ export interface CollaborationBinding {
   document: Y.Doc;
   provider: HocuspocusProvider;
   extensions: Extensions;
+  title: Y.Text;
 }
 
 const WEBSOCKET_PATH = "/api/wiki/collaboration";
@@ -210,6 +212,7 @@ export function createCollaborationSession(
     provider,
     document,
     extensions,
+    title: document.getText(COLLABORATION_TITLE_FIELD),
     destroy: () => {
       destroyed = true;
       provider.destroy();
@@ -219,8 +222,9 @@ export function createCollaborationSession(
 }
 
 /** 현재 Markdown을 collaboration extension이 쓰는 정확한 Y.XmlFragment full-state로 만든다. */
-export function createCollaborationBootstrapState(markdown: string): Uint8Array {
+export function createCollaborationBootstrapState(title: string, markdown: string): Uint8Array {
   const document = new Y.Doc();
+  document.getText(COLLABORATION_TITLE_FIELD).insert(0, title);
   const editor = new Editor({
     extensions: buildCollaborationExtensions({ document }),
   });

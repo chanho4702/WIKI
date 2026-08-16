@@ -20,6 +20,7 @@ import {
   COLLABORATION_ENABLED,
   useCollaborationSession,
 } from "../editor/collaboration/useCollaborationSession";
+import { replaceCollaborativeTitle } from "../editor/collaboration/title";
 
 interface EditConflict {
   serverPage: Page | null;
@@ -42,6 +43,8 @@ export function PageEditPage() {
 
   const editorRef = useRef<WikiEditorHandle>(null);
   const [title, setTitle] = useState(() => (isEdit ? "" : (searchParams.get("title") ?? "")));
+  const [initialTitle, setInitialTitle] = useState<string | null>(() =>
+    (isEdit ? null : (searchParams.get("title") ?? "")));
   const [initialBody, setInitialBody] = useState<string | null>(isEdit ? null : "");
   const [notFound, setNotFound] = useState(false);
   // 수정 모드에서 로드한 페이지의 실제 spaceId (URL 불일치 가드용)
@@ -69,12 +72,28 @@ export function PageEditPage() {
     enabled: COLLABORATION_ENABLED && isEdit && !notFound,
     pageId: pageId ?? null,
     basePageVersion: baseVersion,
+    initialTitle,
     initialMarkdown: initialBody,
     pages: pages ?? [],
   });
   const collaborationRequired = COLLABORATION_ENABLED && isEdit;
   const collaborationReady = !collaborationRequired
     || (collaboration.binding !== null && collaboration.generation !== null);
+
+  // 제목도 본문과 같은 Y.Doc의 Y.Text를 사용한다. 원격 update가 오면 controlled input과 dirty 표시를
+  // 함께 갱신하고, 재연결 뒤에는 마지막 published title과 비교해 미게시 변경을 숨기지 않는다.
+  useEffect(() => {
+    const sharedTitle = collaboration.binding?.title;
+    if (!sharedTitle || initialTitle === null) return;
+    const syncTitle = () => {
+      const nextTitle = sharedTitle.toString();
+      setTitle(nextTitle);
+      setTitleDirty(nextTitle !== initialTitle);
+    };
+    syncTitle();
+    sharedTitle.observe(syncTitle);
+    return () => sharedTitle.unobserve(syncTitle);
+  }, [collaboration.binding?.title, initialTitle]);
 
   // Task 5: 이탈 가드 — 제목·본문 미저장 변경 감지
   const isDirty = () => titleDirty || imageUploading || (editorRef.current?.isDirty() ?? false);
@@ -92,6 +111,7 @@ export function PageEditPage() {
   useEffect(() => {
     if (!isEdit || !pageId) return;
     // edit(A) → edit(B) 재사용 시 이전 페이지의 본문이 새 페이지 로딩 중 잠깐 노출되는 것을 방지
+    setInitialTitle(null);
     setInitialBody(null);
     setNotFound(false);
     setBaseVersion(null);
@@ -106,6 +126,7 @@ export function PageEditPage() {
         setNotFound(true);
       } else {
         setTitle(page.title);
+        setInitialTitle(page.title);
         setInitialBody(page.body);
         setBaseVersion(page.version);
         setPageSpaceId(page.spaceId);
@@ -123,6 +144,7 @@ export function PageEditPage() {
     const prefill = searchParams.get("title");
     if (prefill !== null) {
       setTitle(prefill);
+      setInitialTitle(prefill);
       setTitleDirty(false); // Task 5: 프리필은 사용자 변경이 아님
     }
   }, [isEdit, searchParams]);
@@ -232,6 +254,7 @@ export function PageEditPage() {
     )) return;
     await editorRef.current?.discardPendingUploads();
     setTitle(serverPage.title);
+    setInitialTitle(serverPage.title);
     setInitialBody(serverPage.body);
     setBaseVersion(serverPage.version);
     setTitleDirty(false);
@@ -352,9 +375,15 @@ export function PageEditPage() {
         className="page-edit-title"
         value={title}
         onChange={(e) => {
-          setTitle(e.target.value);
-          setTitleDirty(true); // Task 5: 제목 변경 감지
+          const nextTitle = e.target.value;
+          if (collaboration.binding) {
+            replaceCollaborativeTitle(collaboration.binding.title, nextTitle);
+          } else {
+            setTitle(nextTitle);
+            setTitleDirty(nextTitle !== initialTitle);
+          }
         }}
+        disabled={!collaborationReady || saving}
         placeholder="제목 없음"
         aria-label="페이지 제목"
       />
