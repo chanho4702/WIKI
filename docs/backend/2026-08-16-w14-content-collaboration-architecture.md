@@ -87,9 +87,11 @@ W15 이미지 저장, W17 실시간 공동 편집, W19 Notion·Confluence DC 가
 - 프론트는 Hocuspocus 인증 재시도마다 새 ticket을 발급하고, 연결·동기화·재연결·오프라인·실패와
   awareness 참여자를 compact 편집 chrome에 표시한다. provider/Yjs 코드는 기능 플래그가 켜질 때만
   동적 로드해 일반 편집 초기 번들을 늘리지 않는다.
-- 기존 Markdown을 빈 Yjs room에 정확히 한 번 넣는 원자적 bootstrap 계약 전에는 editor에 Y.Doc을
-  연결하지 않는다. 이 경계를 건너뛰면 두 최초 접속자가 같은 본문을 중복 삽입할 수 있으므로
-  `VITE_WIKI_COLLABORATION_ENABLED` 기본값은 false다.
+- 기존 Markdown을 collaboration service의 빈 Yjs room에 정확히 한 번 넣는 원자적 bootstrap과
+  Tiptap Y.Doc·공동 커서 결합까지 연결했다. 동기화 전에는 편집기를 열지 않고, 연결이 끊긴 뒤에도
+  이미 열린 로컬 편집기는 유지한다. 협업 이미지도 객체 확정 뒤에만 CRDT update를 broadcast한다.
+- shared draft publish/version generation과 제목 CRDT가 아직 남아 있으므로
+  `VITE_WIKI_COLLABORATION_ENABLED` 기본값은 false를 유지한다.
 
 공식 Hocuspocus 문서는 Yjs binary를 primary 형태로 저장하고, Redis extension은 노드 간 동기화용이지
 영속 저장용이 아니라고 명시한다.

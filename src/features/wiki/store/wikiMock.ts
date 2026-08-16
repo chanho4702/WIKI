@@ -443,6 +443,15 @@ export async function requestCollaborationTicket(
   throw new Error("목업 모드에서는 공동 편집을 지원하지 않습니다");
 }
 
+export async function bootstrapCollaborationDocument(
+  _pageId: string,
+  _basePageVersion: number,
+  _ticket: string,
+  _state: Uint8Array,
+): Promise<import("./types").CollaborationBootstrap> {
+  throw new Error("목업 모드에서는 공동 편집을 지원하지 않습니다");
+}
+
 export async function confirmAttachments(_pageId: string, _attachmentIds: string[]): Promise<void> {
   // 목업 모드는 첨부 자체를 지원하지 않는다.
 }

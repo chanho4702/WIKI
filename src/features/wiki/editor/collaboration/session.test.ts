@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   collaborationWebsocketUrl,
   createTicketTokenProvider,
+  createCollaborationBootstrapState,
   participantColor,
   participantsFromAwareness,
 } from "./session";
+import * as Y from "yjs";
+import { Editor } from "@tiptap/core";
+import { buildCollaborationExtensions } from "../extensions/collaboration";
 
 describe("collaboration session helpers", () => {
   it("same-origin HTTP(S) API 경로를 WebSocket URL로 변환하고 ticket을 query에 싣지 않는다", () => {
@@ -63,5 +67,19 @@ describe("collaboration session helpers", () => {
   it("같은 사용자 id는 항상 같은 팔레트 색을 얻는다", () => {
     expect(participantColor("user-42")).toBe(participantColor("user-42"));
     expect(participantColor("user-42")).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("기존 Markdown을 서버가 그대로 저장할 수 있는 Yjs full-state로 만든다", () => {
+    const state = createCollaborationBootstrapState("## 기존 문서\n\n본문 **강조**");
+    const document = new Y.Doc();
+    Y.applyUpdate(document, state);
+    const editor = new Editor({ extensions: buildCollaborationExtensions({ document }) });
+
+    expect(editor.getText()).toContain("기존 문서");
+    expect(editor.getText()).toContain("본문 강조");
+    expect(editor.getJSON()).toEqual(expect.objectContaining({ type: "doc" }));
+
+    editor.destroy();
+    document.destroy();
   });
 });

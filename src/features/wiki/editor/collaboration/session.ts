@@ -1,6 +1,10 @@
 import { HocuspocusProvider } from "@hocuspocus/provider";
+import { Editor, type Extensions } from "@tiptap/core";
+import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import * as Y from "yjs";
-import type { CollaborationTicket, User } from "../../store/types";
+import type { CollaborationTicket, Page, User } from "../../store/types";
+import { safeParse } from "../markdown";
+import { buildCollaborationExtensions } from "../extensions/collaboration";
 
 export type CollaborationConnectionStatus =
   | "disabled"
@@ -34,6 +38,13 @@ export interface CreateCollaborationSessionOptions extends CollaborationSessionC
   user: User;
   initialTicket: CollaborationTicket;
   issueTicket: (pageId: string) => Promise<CollaborationTicket>;
+  getPages?: () => Page[];
+}
+
+export interface CollaborationBinding {
+  document: Y.Doc;
+  provider: HocuspocusProvider;
+  extensions: Extensions;
 }
 
 const WEBSOCKET_PATH = "/api/wiki/collaboration";
@@ -120,13 +131,10 @@ export function createTicketTokenProvider(
   };
 }
 
-/**
- * 편집기와 독립된 transport/presence 세션. 아직 Y.Doc을 편집기에 연결하지 않으므로 기존 문서
- * 초기화 계약이 완성되기 전에도 본문을 비우거나 중복 삽입할 위험 없이 연결 품질을 검증할 수 있다.
- */
+/** 원자적으로 bootstrap된 Y.Doc transport와 Tiptap/cursor 확장을 한 생명주기로 묶는다. */
 export function createCollaborationSession(
   options: CreateCollaborationSessionOptions,
-): { provider: HocuspocusProvider; document: Y.Doc; destroy: () => void } {
+): CollaborationBinding & { destroy: () => void } {
   const {
     pageId,
     user,
@@ -135,6 +143,7 @@ export function createCollaborationSession(
     onStatus,
     onParticipants,
     onError,
+    getPages,
   } = options;
   assertTicket(initialTicket, pageId);
 
@@ -185,14 +194,41 @@ export function createCollaborationSession(
     name: user.name,
     color: participantColor(user.id),
   });
+  const extensions = [
+    ...buildCollaborationExtensions({ document, getPages }),
+    CollaborationCursor.configure({
+      provider,
+      user: {
+        id: user.id,
+        name: user.name,
+        color: participantColor(user.id),
+      },
+    }),
+  ];
 
   return {
     provider,
     document,
+    extensions,
     destroy: () => {
       destroyed = true;
       provider.destroy();
       document.destroy();
     },
   };
+}
+
+/** 현재 Markdown을 collaboration extension이 쓰는 정확한 Y.XmlFragment full-state로 만든다. */
+export function createCollaborationBootstrapState(markdown: string): Uint8Array {
+  const document = new Y.Doc();
+  const editor = new Editor({
+    extensions: buildCollaborationExtensions({ document }),
+  });
+  try {
+    editor.commands.setContent(safeParse(markdown));
+    return Y.encodeStateAsUpdate(document);
+  } finally {
+    editor.destroy();
+    document.destroy();
+  }
 }

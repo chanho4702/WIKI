@@ -1326,12 +1326,80 @@ body {
   box-shadow: var(--chanho-focus-ring);
 }
 
+.collaboration-editor-gate {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--chanho-space-150, 12px);
+  min-height: 240px;
+  padding: var(--chanho-space-300, 24px);
+  box-sizing: border-box;
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-large, 8px);
+  background: var(--chanho-color-background-subtle);
+  color: var(--chanho-color-text-default);
+}
+
+.collaboration-editor-gate-mark {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  flex: none;
+  border: 2px solid var(--chanho-color-border-brand, #0c66e4);
+  border-top-color: transparent;
+  border-radius: var(--chanho-radius-full);
+  animation: collaboration-spin 0.9s linear infinite;
+}
+
+.collaboration-editor-gate--offline .collaboration-editor-gate-mark,
+.collaboration-editor-gate--error .collaboration-editor-gate-mark {
+  border-color: var(--chanho-color-border-danger, #ae2a19);
+  animation: none;
+}
+
+.collaboration-editor-gate strong {
+  font-size: var(--chanho-font-size-100);
+}
+
+.collaboration-editor-gate p {
+  margin: var(--chanho-space-50, 4px) 0 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.collaboration-cursor__caret {
+  position: relative;
+  border-inline-start: 2px solid;
+  border-inline-end: 0;
+  margin-inline-start: -1px;
+  pointer-events: none;
+}
+
+.collaboration-cursor__label {
+  position: absolute;
+  top: -1.45em;
+  inset-inline-start: -2px;
+  padding: 1px 5px;
+  border-radius: var(--chanho-radius-small, 4px) var(--chanho-radius-small, 4px)
+    var(--chanho-radius-small, 4px) 0;
+  color: #fff;
+  font-family: var(--chanho-font-family-sans);
+  font-size: 10px;
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+@keyframes collaboration-spin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes collaboration-pulse {
   50% { opacity: 0.35; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .collaboration-status-dot { animation: none; }
+  .collaboration-status-dot,
+  .collaboration-editor-gate-mark { animation: none; }
 }
 
 @media (max-width: 760px) {

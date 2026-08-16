@@ -85,6 +85,12 @@ export interface CollaborationTicket {
   expiresAt: string;
 }
 
+export interface CollaborationBootstrap {
+  created: boolean;
+  basePageVersion: number;
+  generation: number;
+}
+
 export interface UpdatePageOptions {
   /** 편집 시작 또는 마지막 성공 저장 때 받은 버전. 생략 시 비대화형 호출이 최신 버전을 조회한다. */
   expectedVersion?: number;

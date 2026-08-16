@@ -32,4 +32,38 @@ describe("wikiApi collaboration ticket", () => {
       "공동 편집 연결 정보를 확인할 수 없습니다",
     );
   });
+
+  it("Yjs full-state를 bootstrap 전용 ticket 경계로 보내고 generation을 읽는다", async () => {
+    const state = Uint8Array.from([1, 2, 3]);
+    const spy = vi.spyOn(client, "sharedCollaborationFetch").mockResolvedValue(
+      new Response(JSON.stringify({ created: true, basePageVersion: 4, generation: 1 }), {
+        status: 201,
+      }),
+    );
+    const { bootstrapCollaborationDocument } = await import("./wikiApi");
+
+    await expect(bootstrapCollaborationDocument("7", 4, "one-time-ticket", state))
+      .resolves.toEqual({ created: true, basePageVersion: 4, generation: 1 });
+    expect(spy).toHaveBeenCalledWith(
+      "/api/wiki/collaboration/pages/7/bootstrap",
+      "one-time-ticket",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "X-Wiki-Page-Version": "4",
+        },
+        body: state,
+      }),
+    );
+  });
+
+  it("bootstrap metadata가 손상됐으면 공유 편집기를 열지 않는다", async () => {
+    vi.spyOn(client, "sharedCollaborationFetch").mockResolvedValue(
+      new Response(JSON.stringify({ created: true, generation: 0 }), { status: 201 }),
+    );
+    const { bootstrapCollaborationDocument } = await import("./wikiApi");
+    await expect(bootstrapCollaborationDocument("7", 4, "ticket", Uint8Array.from([1])))
+      .rejects.toThrow("공동 편집 문서 정보를 확인할 수 없습니다");
+  });
 });

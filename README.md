@@ -26,7 +26,7 @@ MSA_TEMPLATE의 **위키(컨플루언스 클론) 프론트엔드**. 3개 프론�
 | 라우팅 | react-router 7 (`BrowserRouter basename="/wiki"`) |
 | 디자인 시스템 | `@chanho/react` 0.5.0 + `@chanho/tokens` 0.3.0 (tarball `file:../design-system/artifacts/*.tgz`) |
 | 에디터 | **TipTap 2.27** — `@tiptap/react` · `starter-kit` · 확장(link, image, table/row/header/cell, task-list/item, placeholder) + `tiptap-markdown`(마크다운 왕복) |
-| 공동 편집 기반 | Yjs 13.6 · Hocuspocus Provider 4.6 — 1회용 ticket, 재연결, presence (기능 플래그) |
+| 공동 편집 | Yjs 13.6 · Hocuspocus Provider 4.6 — 원자적 bootstrap, 1회용 ticket, 공동 커서·presence, 재연결 UX (기능 플래그) |
 | 보기 렌더 | react-markdown 10 + remark-gfm 4 (표) |
 | 트리 DnD | `@dnd-kit/core` · `sortable` · `utilities` |
 | 테스트 | Vitest 3 + Testing Library + jsdom |

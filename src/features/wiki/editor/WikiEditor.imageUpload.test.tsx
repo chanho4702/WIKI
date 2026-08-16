@@ -21,6 +21,8 @@ vi.mock("../store/wikiStore", () => ({
 
 import { WikiEditor, type WikiEditorHandle } from "./WikiEditor";
 import { editorRegistry } from "./editorTestRegistry";
+import * as Y from "yjs";
+import { buildCollaborationExtensions } from "./extensions/collaboration";
 
 describe("WikiEditor 이미지 업로드", () => {
   beforeEach(() => {
@@ -69,6 +71,39 @@ describe("WikiEditor 이미지 업로드", () => {
     await waitFor(() => expect(ref.current!.getMarkdown()).toContain("/api/wiki/attachments/7/inline"));
     expect(ref.current!.getMarkdown()).not.toContain("blob:wiki-image");
     expect(ref.current!.isDirty()).toBe(true);
+  });
+
+  it("공동 편집 이미지는 broadcast 전에 durable 확정해 세션 종료가 삭제하지 못하게 한다", async () => {
+    store.uploadAttachment.mockResolvedValue({
+      id: "71",
+      pageId: "2",
+      filename: "shared.png",
+      contentType: "image/png",
+      sizeBytes: 12,
+    });
+    const document = new Y.Doc();
+    const ref = createRef<WikiEditorHandle>();
+    const view = render(
+      <WikiEditor
+        ref={ref}
+        initialMarkdown=""
+        pages={[]}
+        pageId="2"
+        collaborationExtensions={buildCollaborationExtensions({ document })}
+      />,
+    );
+    const input = view.container.querySelector("input[type='file']") as HTMLInputElement;
+    const file = new File([new Uint8Array([1])], "shared.png", { type: "image/png" });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    await waitFor(() => expect(store.confirmAttachments).toHaveBeenCalledWith("2", ["71"]));
+    await waitFor(() => expect(ref.current!.getMarkdown()).toContain("/api/wiki/attachments/71/inline"));
+    await ref.current!.discardPendingUploads();
+    expect(store.deleteAttachment).not.toHaveBeenCalledWith("71");
+    expect(store.confirmAttachments).toHaveBeenCalledOnce();
+
+    view.unmount();
+    document.destroy();
   });
 
   it("paste와 drop도 같은 업로드 파이프라인을 사용한다", async () => {

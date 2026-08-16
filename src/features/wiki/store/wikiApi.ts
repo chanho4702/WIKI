@@ -4,12 +4,13 @@ export {
   listComments, addComment, updateComment, deleteComment, __resetForTest,
 } from "./wikiMock";
 
-import { sharedApiFetch, sharedApiUpload } from "./apiClient";
+import { sharedApiFetch, sharedApiUpload, sharedCollaborationFetch } from "./apiClient";
 import { mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError } from "./mapping";
 import {
   ContentSearchError,
   type Attachment,
   type AttachmentUploadOptions,
+  type CollaborationBootstrap,
   type CollaborationTicket,
   type DeletePageOptions,
   type Page,
@@ -120,6 +121,37 @@ export async function requestCollaborationTicket(pageId: string): Promise<Collab
     || typeof response.expiresAt !== "string"
   ) {
     throw new Error("공동 편집 연결 정보를 확인할 수 없습니다");
+  }
+  return response;
+}
+
+/** 기존 page revision을 shared Y.Doc에 최초 한 번만 넣는다. ticket은 이 요청에서 소비된다. */
+export async function bootstrapCollaborationDocument(
+  pageId: string,
+  basePageVersion: number,
+  ticket: string,
+  state: Uint8Array,
+): Promise<CollaborationBootstrap> {
+  const response = await json<CollaborationBootstrap>(await sharedCollaborationFetch(
+    `/api/wiki/collaboration/pages/${toBackendId(pageId)}/bootstrap`,
+    ticket,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "X-Wiki-Page-Version": String(basePageVersion),
+      },
+      body: state as BodyInit,
+    },
+  ));
+  if (
+    typeof response.created !== "boolean"
+    || !Number.isSafeInteger(response.basePageVersion)
+    || response.basePageVersion <= 0
+    || !Number.isSafeInteger(response.generation)
+    || response.generation <= 0
+  ) {
+    throw new Error("공동 편집 문서 정보를 확인할 수 없습니다");
   }
   return response;
 }

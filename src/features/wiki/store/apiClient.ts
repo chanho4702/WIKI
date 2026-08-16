@@ -20,6 +20,26 @@ export const USE_BACKEND =
 
 export const sharedApiFetch = sharedAuthClient.apiFetch;
 
+/**
+ * collaboration-service 전용 1회 ticket 경계. 일반 apiFetch를 쓰면 메모리 Access Token이
+ * Authorization을 덮어쓰고, 401 refresh가 이미 소비된 ticket을 재전송하므로 별도 함수로 둔다.
+ */
+export function sharedCollaborationFetch(
+  path: string,
+  ticket: string,
+  init: Omit<RequestInit, "headers"> & { headers?: HeadersInit } = {},
+): Promise<Response> {
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Collaboration ${ticket}`);
+  return fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers,
+    // 이 경계의 유일한 자격 증명은 1회용 ticket이다. 같은 origin의 로그인 쿠키도 싣지 않는다.
+    credentials: "omit",
+    cache: "no-store",
+  });
+}
+
 export interface ApiUploadOptions {
   signal?: AbortSignal;
   onProgress?: (percent: number) => void;

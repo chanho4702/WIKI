@@ -11,7 +11,7 @@ import {
 import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import GlobalDragHandle from "tiptap-extension-global-drag-handle";
-import type { Editor, JSONContent } from "@tiptap/core";
+import type { Editor, Extensions } from "@tiptap/core";
 import type { Attachment, Page } from "../store/types";
 import { buildBaseExtensions } from "./extensions/base";
 import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
@@ -25,7 +25,7 @@ import {
   UploadRail,
   type ImageUploadTaskView,
 } from "./components/UploadRail";
-import { parseMarkdown, serializeMarkdown } from "./markdown";
+import { safeParse, serializeMarkdown } from "./markdown";
 import { editorRegistry } from "./editorTestRegistry";
 import {
   confirmAttachments,
@@ -64,26 +64,21 @@ export interface WikiEditorProps {
    */
   onDirty?: () => void;
   onUploadStateChange?: (uploading: boolean) => void;
+  /** 기능 플래그가 켜진 뒤 동적 로드한 Yjs/cursor 확장. 있으면 initialMarkdown을 재주입하지 않는다. */
+  collaborationExtensions?: Extensions;
 }
 
-/** 파싱 실패 시 원문 전체를 플레인 문단으로 — 편집이 막히지 않게 한다 (스펙 에러 처리) */
-export function safeParse(md: string): JSONContent {
-  try {
-    return parseMarkdown(md);
-  } catch (error) {
-    console.warn("마크다운 파싱 실패 — 플레인 텍스트로 로드합니다", error);
-    return {
-      type: "doc",
-      content: md.split(/\n{2,}/).map((para) => ({
-        type: "paragraph",
-        content: para ? [{ type: "text", text: para }] : [],
-      })),
-    };
-  }
-}
+export { safeParse } from "./markdown";
 
 export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
-  function WikiEditor({ initialMarkdown, pages, pageId, onDirty, onUploadStateChange }, ref) {
+  function WikiEditor({
+    initialMarkdown,
+    pages,
+    pageId,
+    onDirty,
+    onUploadStateChange,
+    collaborationExtensions,
+  }, ref) {
     // onUpdate는 useEditor 설정 시점에 캡처되므로 콜백을 ref로 최신화한다(재구독 없이).
     const onDirtyRef = useRef(onDirty);
     onDirtyRef.current = onDirty;
@@ -125,7 +120,8 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     const editor = useEditor({
       immediatelyRender: true,
       extensions: [
-        ...buildBaseExtensions({ getPages: () => pagesRef.current }),
+        ...(collaborationExtensions
+          ?? buildBaseExtensions({ getPages: () => pagesRef.current })),
         Placeholder.configure({ placeholder: "내용을 입력하세요. '/'로 블록을 추가합니다." }),
         WikiLinkSuggestion.configure({
           getPages: () => pagesRef.current,
@@ -145,7 +141,9 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
           scrollTreshold: 100, // 패키지 옵션명 오탈자 그대로 (upstream API)
         }),
       ],
-      content: safeParse(initialMarkdown),
+      // collaborative document는 bootstrap+server sync가 이미 채웠다. initial content를 다시 넣으면
+      // 접속자 수만큼 본문이 중복되므로 content 옵션을 완전히 생략한다.
+      content: collaborationExtensions ? undefined : safeParse(initialMarkdown),
       onCreate({ editor }) {
         selfEditorRef.current = editor;
         editorRegistry.current = editor;
@@ -263,7 +261,22 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
       }
 
       const src = inlineAttachmentUrl(attachment.id);
-      pendingUploadsRef.current.set(attachment.id, src);
+      if (collaborationExtensions && pageId) {
+        // 공유 문서에 update를 broadcast하기 전에 객체를 durable 상태로 확정한다. 로컬 세션 종료가
+        // 다른 사용자가 보고 있는 이미지를 pending 정리로 삭제하는 경쟁을 막는다.
+        try {
+          await confirmAttachments(pageId, [attachment.id]);
+        } catch (error) {
+          await deleteAttachment(attachment.id).catch(() => undefined);
+          updateUploadTask(task.id, {
+            status: "failed",
+            error: error instanceof Error ? error.message : "이미지를 확정하지 못했습니다.",
+          });
+          return false;
+        }
+      } else {
+        pendingUploadsRef.current.set(attachment.id, src);
+      }
       if (!acceptingUploadsRef.current || editor.isDestroyed) {
         pendingUploadsRef.current.delete(attachment.id);
         await deleteAttachment(attachment.id).catch(() => undefined);

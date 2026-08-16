@@ -361,8 +361,10 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
 - 2차 완료: 별도 Node collaboration service, Redis `GETDEL` ticket 인증, PostgreSQL binary snapshot,
   nginx→gateway WebSocket 프록시, 프론트 재연결별 새 ticket·presence·연결 복구 UX. 18서비스 live smoke와
   same-ticket 재사용 거부·Yjs state 저장을 실연결로 검증.
-- 다음 증분: 원자적 최초 문서 bootstrap, Tiptap Y.Doc 실제 결합·공동 커서, shared draft publish/version
-  generation 계약, 2인 브라우저 동시 서식·표 편집 및 네트워크 단절/노드 재기동 장애 복구 스모크.
+- 3차 완료: 기존 Markdown의 원자적 최초 Yjs bootstrap, Tiptap Y.Doc 실제 결합·공동 커서,
+  sync 전 편집 차단·오프라인 편집 유지 UX, 협업 이미지의 확정 후 broadcast 계약.
+- 다음 증분: 서버 권위 awareness identity, 제목 CRDT, shared draft publish/version generation 계약,
+  2인 브라우저 동시 서식·표 편집 및 네트워크 단절/노드 재기동 장애 복구 스모크.
 - 완료: 2인 동시 편집·네트워크 단절·노드 재기동 테스트에서 내용이 수렴하고 승인된 편집이 유실되지 않음
 
 ### W18 — 권한·거버넌스

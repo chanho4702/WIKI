@@ -59,9 +59,14 @@ export function PageEditPage() {
   // 편집 중인 문서가 초안인지 — 초안이면 "업데이트" 대신 "게시"가 주 액션이다(기획 P3).
   const [isDraft, setIsDraft] = useState(false);
   const collaboration = useCollaborationSession({
-    enabled: COLLABORATION_ENABLED && isEdit && initialBody !== null && !notFound,
+    enabled: COLLABORATION_ENABLED && isEdit && !notFound,
     pageId: pageId ?? null,
+    basePageVersion: baseVersion,
+    initialMarkdown: initialBody,
+    pages: pages ?? [],
   });
+  const collaborationRequired = COLLABORATION_ENABLED && isEdit;
+  const collaborationReady = !collaborationRequired || collaboration.binding !== null;
 
   // Task 5: 이탈 가드 — 제목·본문 미저장 변경 감지
   const isDirty = () => titleDirty || imageUploading || (editorRef.current?.isDirty() ?? false);
@@ -130,6 +135,10 @@ export function PageEditPage() {
   }
 
   const handleSave = async () => {
+    if (!collaborationReady) {
+      toast({ title: "공동 편집 문서를 준비한 뒤 저장해 주세요", appearance: "info" });
+      return;
+    }
     if (imageUploading) {
       toast({ title: "이미지 업로드가 끝난 뒤 저장해 주세요", appearance: "info" });
       return;
@@ -297,7 +306,11 @@ export function PageEditPage() {
               {width === "full" ? "기본 너비" : "전체 너비"}
             </Button>
           ) : null}
-          <Button onClick={handleSave} disabled={!title.trim() || imageUploading} loading={saving}>
+          <Button
+            onClick={handleSave}
+            disabled={!title.trim() || imageUploading || !collaborationReady}
+            loading={saving}
+          >
             {isDraft ? "게시" : "업데이트"}
           </Button>
           <Button variant="subtle" onClick={() => void handleCancel()}>
@@ -332,15 +345,35 @@ export function PageEditPage() {
         placeholder="제목 없음"
         aria-label="페이지 제목"
       />
-      <WikiEditor
-        key={`${pageId ?? "new"}:${editorGeneration}`}
-        ref={editorRef}
-        initialMarkdown={initialBody}
-        pages={pages ?? []}
-        pageId={pageId}
-        onDirty={() => setBodyDirty(true)}
-        onUploadStateChange={setImageUploading}
-      />
+      {collaborationRequired && !collaboration.binding ? (
+        <div
+          className={`collaboration-editor-gate collaboration-editor-gate--${collaboration.status}`}
+          role="status"
+        >
+          <span className="collaboration-editor-gate-mark" aria-hidden="true" />
+          <div>
+            <strong>
+              {collaboration.status === "error"
+                ? "공동 편집 연결을 복구해 주세요"
+                : collaboration.status === "offline"
+                  ? "네트워크 연결을 기다리고 있습니다"
+                  : "공동 편집 문서를 준비하고 있습니다"}
+            </strong>
+            <p>기존 내용을 안전하게 동기화한 뒤 편집기가 열립니다.</p>
+          </div>
+        </div>
+      ) : (
+        <WikiEditor
+          key={`${pageId ?? "new"}:${editorGeneration}:${collaborationRequired ? "shared" : "solo"}`}
+          ref={editorRef}
+          initialMarkdown={initialBody}
+          pages={pages ?? []}
+          pageId={pageId}
+          onDirty={() => setBodyDirty(true)}
+          onUploadStateChange={setImageUploading}
+          collaborationExtensions={collaboration.binding?.extensions}
+        />
+      )}
     </div>
   );
 }

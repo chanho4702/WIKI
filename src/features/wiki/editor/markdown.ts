@@ -51,6 +51,22 @@ export function parseMarkdown(md: string): JSONContent {
   return promoteWikiLinks(doc);
 }
 
+/** 파싱 실패 시 원문 전체를 플레인 문단으로 보존해 편집 진입을 막지 않는다. */
+export function safeParse(md: string): JSONContent {
+  try {
+    return parseMarkdown(md);
+  } catch (error) {
+    console.warn("마크다운 파싱 실패 — 플레인 텍스트로 로드합니다", error);
+    return {
+      type: "doc",
+      content: md.split(/\n{2,}/).map((paragraph) => ({
+        type: "paragraph",
+        content: paragraph ? [{ type: "text", text: paragraph }] : [],
+      })),
+    };
+  }
+}
+
 /** TipTap 문서 JSON → 마크다운 */
 export function serializeMarkdown(doc: JSONContent): string {
   return withEditor(doc, (editor) => editor.storage.markdown.getMarkdown());
