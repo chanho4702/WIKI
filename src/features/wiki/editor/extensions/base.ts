@@ -48,6 +48,8 @@ const ImageWithView = Image.extend({
 export interface BaseExtensionOptions {
   /** 존재/부재 페이지 판별용 — 없으면 항상 빈 목록(모두 부재 처리) */
   getPages?: () => Page[];
+  /** Yjs Collaboration이 자체 undo manager를 쓸 때 StarterKit history를 중복 등록하지 않는다. */
+  history?: boolean;
 }
 
 /**
@@ -60,6 +62,7 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
       codeBlock: false,
+      ...(options.history === false ? { history: false } : {}),
     }),
     CodeBlockWithView,
     Link.configure({ openOnClick: false }),

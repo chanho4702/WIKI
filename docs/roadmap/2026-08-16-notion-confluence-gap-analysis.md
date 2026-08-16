@@ -356,6 +356,10 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
 ### W17 — 실시간 공동 편집
 
 - collaboration service, WebSocket 프록시, CRDT, presence, shared draft, snapshot/recovery
+- 1차 완료: Tiptap 2.27.2 + Yjs 13 호환 버전·MIT 라이선스 고정, 기존 위키 스키마 공유,
+  중복 history 제거, 격리된 두 편집자의 동시 삽입 CRDT 수렴 테스트.
+- 다음 증분: 프론트 ticket/session UX, 별도 Node collaboration service의 Redis `GETDEL` 인증,
+  PostgreSQL Yjs snapshot/update 영속화, WebSocket 프록시와 2인 브라우저 장애 복구 스모크.
 - 완료: 2인 동시 편집·네트워크 단절·노드 재기동 테스트에서 내용이 수렴하고 승인된 편집이 유실되지 않음
 
 ### W18 — 권한·거버넌스
