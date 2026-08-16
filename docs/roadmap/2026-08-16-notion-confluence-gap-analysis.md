@@ -148,7 +148,7 @@ Wiki 핵심과 분리한 확장 트랙으로 진행한다.
 | Notion 페이지/블록 가져오기 | ⚠️ | `2026-03-11` snapshot normalizer가 pagination·재귀 block tree·임시 URL 제외를 검증. live API extractor/rate limit/worker는 미구현 |
 | Notion 데이터베이스 가져오기 | ⏸ | 속성·뷰·relation·rollup·formula를 별도 확장 트랙으로 분리 |
 | Confluence DC space/page 가져오기 | ❌ | REST/XML 추출기와 ancestor 트리 재구성 없음 |
-| Confluence storage XHTML/매크로 | ⚠️ | provider 중립 IR의 `opaque + sourceRef` 보존 계약은 구현. XHTML parser와 DC version matrix는 미구현 |
+| Confluence storage XHTML/매크로 | ⚠️ | 공통 XHTML fixture parser와 `opaque + sourceRef` custom macro 보존은 구현. live extractor와 DC version matrix는 미구현 |
 | 첨부 버전과 본문 참조 재작성 | ⚠️ | 외부 object map·checksum idempotency와 durable `mediaId` 계약은 구현. 실제 media copy·2차 link rewrite는 미구현 |
 | 사용자·그룹·권한 매핑 | ❌ | 미매핑 사용자와 restriction의 안전한 기본값이 없음 |
 | dry-run·재개·멱등성 | ⚠️ | V6 job/item stage checkpoint·retry/dead-letter·source hash key는 구현. worker claim/replay와 dry-run API는 미구현 |
@@ -243,9 +243,10 @@ Notion API의 업로드 파일 URL은 짧게 만료되는 signed URL이므로 �
   - Document IR v1 runtime validator와 Notion/Confluence golden IR fixture
   - V6 `migration_job/item/issue/object_map` schema와 JPA checkpoint lifecycle
   - Notion paginated/recursive snapshot normalizer, durable media만 연결하고 미지원 항목은 opaque issue 처리
+  - Confluence 공통 storage XHTML parser, XML external entity 차단과 custom macro loss issue 처리
 - 남은 차단 항목:
   - live connector, worker claim/retry 실행기, dry-run/report API, media copier와 2차 link/principal/restriction pass
-  - Confluence storage XHTML parser와 실제 DC version compatibility matrix
+  - live Confluence extractor와 실제 DC version compatibility matrix
 
 ### P1 — P0 직후 운영 완성도
 
@@ -420,7 +421,7 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
 ## 11. 현재 검증 기준선
 
 - `wiki-front`: 88개 테스트 파일, 639개 테스트 통과(라이브 1개 별도), 기능 플래그 OFF/ON production build 통과
-- `wiki-backend`: 21개 suite, 108개 테스트 통과(실제 PostgreSQL Flyway V1→V6 포함)
+- `wiki-backend`: 22개 suite, 116개 테스트 통과(실제 PostgreSQL Flyway V1→V6 포함)
 - 확인된 품질 부채: 중복 `plaintext` React key 경고, 약 1.44 MB 초기 JS chunk 경고
 - 검증 브랜치: `wiki-front/feat/wiki-global-search`, `wiki-backend/main`
 

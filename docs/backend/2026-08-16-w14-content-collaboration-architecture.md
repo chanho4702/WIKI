@@ -284,8 +284,11 @@ Redis Streams는 기존 도메인 이벤트 계약을 유지한다. collaboratio
 - Notion `2026-03-11` page + paginated block-children snapshot normalizer가 재귀 tree/rich text/list/link와
   복사 완료 media를 IR로 변환한다. 임시 파일 URL은 IR에 넣지 않고, 미복사 media와 미지원 block은
   `opaque + issue`로 남긴다 (`2fd8b69`).
+- Confluence storage XHTML/XML의 버전 공통 fixture parser가 heading/mark/list/task/panel/layout/table,
+  page link와 복사 완료 attachment를 IR로 변환한다. DOCTYPE/entity/외부 DTD를 차단하고 custom macro는
+  `opaque + sourceRef + issue`로 보존한다 (`f12b32d`).
 - 아직 완료되지 않은 범위는 live Notion extractor/rate-limit 처리, media copier, worker/API/dry-run report,
-  principal/restriction mapping, Confluence DC storage XHTML parser다. Confluence DC 지원 버전도 미확정이다.
+  principal/restriction mapping, live Confluence extractor다. Confluence DC 지원 버전도 미확정이다.
 
 - [Tiptap Collaboration 설치](https://tiptap.dev/docs/collaboration/getting-started/install)
 - [Hocuspocus persistence](https://tiptap.dev/docs/hocuspocus/guides/persistence)
