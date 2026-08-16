@@ -90,7 +90,10 @@ W15 이미지 저장, W17 실시간 공동 편집, W19 Notion·Confluence DC 가
 - 기존 Markdown을 collaboration service의 빈 Yjs room에 정확히 한 번 넣는 원자적 bootstrap과
   Tiptap Y.Doc·공동 커서 결합까지 연결했다. 동기화 전에는 편집기를 열지 않고, 연결이 끊긴 뒤에도
   이미 열린 로컬 편집기는 유지한다. 협업 이미지도 객체 확정 뒤에만 CRDT update를 broadcast한다.
-- shared draft publish/version generation과 제목 CRDT가 아직 남아 있으므로
+- awareness의 사용자 ID·이름·색상과 clientId 소유권은 인증 ticket context로 서버가 강제한다.
+  page revision과 collaboration base/generation은 wiki-backend의 단일 PostgreSQL transaction에서
+  함께 전진해 동시 저장 하나만 성공하며 이전 generation 요청은 409로 거부한다.
+- 제목 CRDT와 2인 브라우저 장애 복구 검증이 아직 남아 있으므로
   `VITE_WIKI_COLLABORATION_ENABLED` 기본값은 false를 유지한다.
 
 공식 Hocuspocus 문서는 Yjs binary를 primary 형태로 저장하고, Redis extension은 노드 간 동기화용이지

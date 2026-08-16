@@ -17,6 +17,7 @@ export const listPages = impl.listPages;
 export const getPage = impl.getPage;
 export const createPage = impl.createPage;
 export const updatePage = impl.updatePage;
+export const commitCollaborationDraft = impl.commitCollaborationDraft;
 export const publishPage = impl.publishPage;
 export const deletePage = impl.deletePage;
 export const movePage = impl.movePage;

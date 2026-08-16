@@ -27,6 +27,7 @@ export interface CollaborationSessionState {
   participants: CollaborationParticipant[];
   error: string | null;
   binding: CollaborationBinding | null;
+  generation: number | null;
   retry: () => void;
 }
 
@@ -46,6 +47,7 @@ export function useCollaborationSession({
   const [participants, setParticipants] = useState<CollaborationParticipant[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [candidate, setCandidate] = useState<CollaborationBinding | null>(null);
+  const [generation, setGeneration] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
   const sessionActiveRef = useRef(false);
   const pagesRef = useRef(pages);
@@ -74,9 +76,14 @@ export function useCollaborationSession({
       setParticipants([]);
       setError(null);
       setCandidate(null);
+      setGeneration(null);
       setReady(false);
       return;
     }
+    setError(null);
+    setCandidate(null);
+    setGeneration(null);
+    setReady(false);
     if (!navigator.onLine) {
       setStatus("offline");
       return;
@@ -85,9 +92,6 @@ export function useCollaborationSession({
     let cancelled = false;
     let destroy: (() => void) | undefined;
     setStatus("connecting");
-    setError(null);
-    setCandidate(null);
-    setReady(false);
 
     // Hocuspocus/Yjs는 편집 기능 플래그가 켜진 세션에서만 내려받는다. 일반 조회·편집의 초기
     // 번들에 공동 편집 transport를 싣지 않아 현재 사용자 UX를 희생하지 않는다.
@@ -111,6 +115,7 @@ export function useCollaborationSession({
             `공동 초안은 페이지 v${bootstrap.basePageVersion}을 기준으로 합니다. 최신 문서와 병합이 필요합니다.`,
           );
         }
+        setGeneration(bootstrap.generation);
         const socketTicket = await requestCollaborationTicket(pageId);
         if (cancelled) return;
         const session = sessionModule.createCollaborationSession({
@@ -149,5 +154,12 @@ export function useCollaborationSession({
     if (navigator.onLine) setRetryKey((key) => key + 1);
   }, []);
 
-  return { status, participants, error, binding: ready ? candidate : null, retry };
+  return {
+    status,
+    participants,
+    error,
+    binding: ready ? candidate : null,
+    generation,
+    retry,
+  };
 }

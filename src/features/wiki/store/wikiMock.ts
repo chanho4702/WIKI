@@ -2,6 +2,8 @@
 import { PageConflictError } from "./types";
 import type {
   Attachment,
+  CollaborationDraftCommit,
+  CollaborationDraftCommitOptions,
   Comment,
   DeletePageOptions,
   Page,
@@ -235,6 +237,17 @@ export async function updatePage(
   snapshotVersion(data, page, page.updatedAt); // 적용 후 내용을 새 버전(max+1)으로
   persist();
   return clone(page);
+}
+
+export async function commitCollaborationDraft(
+  id: string,
+  patch: { title: string; body: string },
+  options: CollaborationDraftCommitOptions,
+): Promise<CollaborationDraftCommit> {
+  return {
+    page: await updatePage(id, patch, { expectedVersion: options.expectedVersion }),
+    generation: options.expectedGeneration + 1,
+  };
 }
 
 /**

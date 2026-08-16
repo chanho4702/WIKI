@@ -66,4 +66,44 @@ describe("wikiApi collaboration ticket", () => {
     await expect(bootstrapCollaborationDocument("7", 4, "ticket", Uint8Array.from([1])))
       .rejects.toThrow("공동 편집 문서 정보를 확인할 수 없습니다");
   });
+
+  it("공유 projection과 page/generation 기준을 전용 commit endpoint에 보낸다", async () => {
+    const page = {
+      id: 7,
+      spaceId: 2,
+      parentId: null,
+      title: "공유 제목",
+      content: "공유 본문",
+      version: 5,
+      type: "page",
+      status: "published",
+    };
+    const spy = vi.spyOn(client, "sharedApiFetch").mockResolvedValue(
+      new Response(JSON.stringify({ page, generation: 3 }), { status: 200 }),
+    );
+    const { commitCollaborationDraft } = await import("./wikiApi");
+
+    await expect(commitCollaborationDraft("7", {
+      title: " 공유 제목 ",
+      body: "공유 본문",
+    }, {
+      expectedVersion: 4,
+      expectedGeneration: 2,
+    })).resolves.toEqual(expect.objectContaining({
+      page: expect.objectContaining({ id: "7", version: 5, body: "공유 본문" }),
+      generation: 3,
+    }));
+    expect(spy).toHaveBeenCalledWith(
+      "/api/wiki/pages/7/collaboration-draft",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          title: "공유 제목",
+          content: "공유 본문",
+          expectedPageVersion: 4,
+          expectedGeneration: 2,
+        }),
+      }),
+    );
+  });
 });

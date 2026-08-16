@@ -11,6 +11,8 @@ import {
   type Attachment,
   type AttachmentUploadOptions,
   type CollaborationBootstrap,
+  type CollaborationDraftCommit,
+  type CollaborationDraftCommitOptions,
   type CollaborationTicket,
   type DeletePageOptions,
   type Page,
@@ -106,6 +108,36 @@ export async function updatePage(
     throw new PageConflictError(serverPage);
   }
   return mapPage(await json(res));
+}
+
+/** Yjs projection과 page revision, collaboration generation을 서버의 단일 transaction으로 확정한다. */
+export async function commitCollaborationDraft(
+  id: string,
+  patch: { title: string; body: string },
+  options: CollaborationDraftCommitOptions,
+): Promise<CollaborationDraftCommit> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/collaboration-draft`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: patch.title.trim(),
+      content: patch.body,
+      expectedPageVersion: options.expectedVersion,
+      expectedGeneration: options.expectedGeneration,
+    }),
+  });
+  if (res.status === 409) {
+    const serverPage = await getPage(id).catch(() => null);
+    throw new PageConflictError(serverPage);
+  }
+  const response = await json<{
+    page: Parameters<typeof mapPage>[0];
+    generation: number;
+  }>(res);
+  if (!response.page || !Number.isSafeInteger(response.generation) || response.generation <= 0) {
+    throw new Error("공동 초안 저장 결과를 확인할 수 없습니다");
+  }
+  return { page: mapPage(response.page), generation: response.generation };
 }
 
 /** Access Token 대신 WebSocket 인증 메시지에만 실을 1회용 ticket을 발급받는다. */

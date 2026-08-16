@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { Button, Spinner, useToast } from "@chanho/react";
-import { createPage, deletePage, getPage, publishPage, updatePage } from "../store/wikiStore";
+import {
+  commitCollaborationDraft,
+  createPage,
+  deletePage,
+  getPage,
+  publishPage,
+  updatePage,
+} from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
@@ -66,7 +73,8 @@ export function PageEditPage() {
     pages: pages ?? [],
   });
   const collaborationRequired = COLLABORATION_ENABLED && isEdit;
-  const collaborationReady = !collaborationRequired || collaboration.binding !== null;
+  const collaborationReady = !collaborationRequired
+    || (collaboration.binding !== null && collaboration.generation !== null);
 
   // Task 5: 이탈 가드 — 제목·본문 미저장 변경 감지
   const isDirty = () => titleDirty || imageUploading || (editorRef.current?.isDirty() ?? false);
@@ -148,9 +156,14 @@ export function PageEditPage() {
     setSaving(true);
     try {
       if (isEdit && pageId) {
-        const saved = await updatePage(pageId, { title, body }, {
-          expectedVersion: baseVersion ?? undefined,
-        });
+        const saved = collaborationRequired
+          ? (await commitCollaborationDraft(pageId, { title, body }, {
+              expectedVersion: baseVersion!,
+              expectedGeneration: collaboration.generation!,
+            })).page
+          : await updatePage(pageId, { title, body }, {
+              expectedVersion: baseVersion ?? undefined,
+            });
         setBaseVersion(saved.version);
         await editorRef.current?.finalizePendingUploads();
         // 초안은 "저장"만으로 공개되지 않는다 — 이 버튼이 곧 게시다(라벨도 "게시").
