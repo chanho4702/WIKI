@@ -287,8 +287,15 @@ Redis Streams는 기존 도메인 이벤트 계약을 유지한다. collaboratio
 - Confluence storage XHTML/XML의 버전 공통 fixture parser가 heading/mark/list/task/panel/layout/table,
   page link와 복사 완료 attachment를 IR로 변환한다. DOCTYPE/entity/외부 DTD를 차단하고 custom macro는
   `opaque + sourceRef + issue`로 보존한다 (`f12b32d`).
-- 아직 완료되지 않은 범위는 live Notion extractor/rate-limit 처리, media copier, worker/API/dry-run report,
-  principal/restriction mapping, live Confluence extractor다. Confluence DC 지원 버전도 미확정이다.
+- migration worker 실행기와 job/report API가 붙었다. job은 원본 등록(`PENDING`)과 처리(`RUNNING`)를
+  분리하고, worker는 item을 lease로 점유해 stage를 하나씩 전진시킨다. stage 실행은 트랜잭션 밖에서
+  돌고 점유·결과 기록만 짧은 트랜잭션이라, 외부 API 호출이 DB 커넥션과 행 잠금을 붙잡지 않는다.
+  같은 item을 두 노드가 노리면 낙관적 락으로 한쪽만 이기고, 죽은 노드의 item은 lease 만료 뒤
+  회수된다. 재시도는 지수 백오프이며 상한을 넘기거나 처리기가 없는 stage는 즉시 dead letter다.
+  `DRY_RUN`은 대상 페이지를 만들지 않으므로 `migration_object_map`을 남기지 않는다.
+- 아직 완료되지 않은 범위는 live Notion extractor/rate-limit 처리, media copier, 실제 stage handler
+  구현(현재는 확장점만 있고 등록된 handler가 없다), principal/restriction mapping, live Confluence
+  extractor다. Confluence DC 지원 버전도 미확정이다.
 
 - [Tiptap Collaboration 설치](https://tiptap.dev/docs/collaboration/getting-started/install)
 - [Hocuspocus persistence](https://tiptap.dev/docs/hocuspocus/guides/persistence)

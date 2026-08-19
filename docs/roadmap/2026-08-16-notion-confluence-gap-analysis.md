@@ -151,8 +151,8 @@ Wiki 핵심과 분리한 확장 트랙으로 진행한다.
 | Confluence storage XHTML/매크로 | ⚠️ | 공통 XHTML fixture parser와 `opaque + sourceRef` custom macro 보존은 구현. live extractor와 DC version matrix는 미구현 |
 | 첨부 버전과 본문 참조 재작성 | ⚠️ | 외부 object map·checksum idempotency와 durable `mediaId` 계약은 구현. 실제 media copy·2차 link rewrite는 미구현 |
 | 사용자·그룹·권한 매핑 | ❌ | 미매핑 사용자와 restriction의 안전한 기본값이 없음 |
-| dry-run·재개·멱등성 | ⚠️ | V6 job/item stage checkpoint·retry/dead-letter·source hash key는 구현. worker claim/replay와 dry-run API는 미구현 |
-| 손실 보고서 | ⚠️ | 중복 방지 issue key와 structured severity/code/path 저장 모델은 구현. 집계 report API/UI는 미구현 |
+| dry-run·재개·멱등성 | ⚠️ | V6/V7 job·item checkpoint와 lease 기반 worker claim/재개, dry-run job·report API는 구현. 실제 stage handler(connector)는 미구현 |
+| 손실 보고서 | ⚠️ | 중복 방지 issue key, structured severity/code/path 저장과 severity/code별 집계 report API는 구현. 보고서 UI는 미구현 |
 | 우리 Wiki 내보내기 | ❌ | Markdown/HTML/PDF와 첨부 manifest를 포함한 탈출 경로 없음 |
 
 Confluence는 페이지·템플릿·댓글을 커스텀 요소가 포함된 XHTML 계열 storage format으로 저장한다.
@@ -244,8 +244,10 @@ Notion API의 업로드 파일 URL은 짧게 만료되는 signed URL이므로 �
   - V6 `migration_job/item/issue/object_map` schema와 JPA checkpoint lifecycle
   - Notion paginated/recursive snapshot normalizer, durable media만 연결하고 미지원 항목은 opaque issue 처리
   - Confluence 공통 storage XHTML parser, XML external entity 차단과 custom macro loss issue 처리
+  - lease 기반 worker claim/재개, 지수 백오프 재시도와 dead letter, job 수명주기 마감
+  - job·원본 등록·시작/취소 REST와 상태·단계·손실·dead letter를 함께 내는 dry-run/import 보고서
 - 남은 차단 항목:
-  - live connector, worker claim/retry 실행기, dry-run/report API, media copier와 2차 link/principal/restriction pass
+  - live connector(= provider별 stage handler 구현), media copier와 2차 link/principal/restriction pass
   - live Confluence extractor와 실제 DC version compatibility matrix
 
 ### P1 — P0 직후 운영 완성도
@@ -389,9 +391,16 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
 - 페이지 제한/상속, 휴지통, 라벨, 백링크, watch, 알림, 감사 이벤트
 - 완료: 페이지 이동/검색/첨부/알림을 포함한 권한 누출 테스트와 삭제 복원 테스트 통과
 
-### W19 — Notion·Confluence DC 가져오기
+### W19 — Notion·Confluence DC 가져오기 (진행 중)
 
 - connector, worker, dry-run, checkpoint, retry/DLQ, principal mapping, loss report
+- 1차 완료: Document IR v1 runtime validator와 Notion/Confluence golden fixture, V6 job/item/issue/object_map
+  checkpoint 스키마, Notion snapshot normalizer, Confluence 공통 storage parser.
+- 2차 완료: V7 lease로 다중 노드 worker claim/재개, 트랜잭션 밖 stage 실행, 지수 백오프 재시도와
+  dead letter, job 수명주기(등록→시작→마감) REST, 상태·단계·손실·dead letter dry-run/import 보고서.
+  DRY_RUN은 object map을 남기지 않는다.
+- 다음 증분: provider별 stage handler(live Notion extractor와 rate limit, media copier,
+  link/principal/restriction 2차 pass, live Confluence extractor).
 - 완료: 대표 fixture 재실행이 멱등이고 페이지 수·첨부 checksum·링크·권한 검증 보고서가 일치
 
 ### W20 — 확장 기능
@@ -421,10 +430,11 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
 ## 11. 현재 검증 기준선
 
 - `wiki-front`: 88개 테스트 파일, 639개 테스트 통과(라이브 1개 별도), 기능 플래그 OFF/ON production build 통과
-- `wiki-backend`: 22개 suite, 116개 테스트 통과(실제 PostgreSQL Flyway V1→V6 포함)
+- `wiki-backend`: 24개 suite, 132개 테스트 통과(실제 PostgreSQL Flyway V1→V7 포함)
 - 확인된 품질 부채: 중복 `plaintext` React key 경고, 약 1.44 MB 초기 JS chunk 경고
 - 검증 브랜치: `wiki-front/feat/wiki-global-search`, `wiki-backend/main`
 
 이 수치는 기능 수가 아니라 회귀 기준선이다. 공동 편집·객체 저장소·마이그레이션의 기반 테스트가
-포함됐지만 live connector, 실제 브라우저 시각 검수, 부하·장애·복구 검증이 남아 있으므로 기존 테스트가
+포함됐지만 live connector(등록된 stage handler가 아직 없다), 실제 브라우저 시각 검수, 부하·장애·복구
+검증이 남아 있으므로 기존 테스트가
 모두 통과해도 Notion·Confluence 동등성을 의미하지 않는다.
