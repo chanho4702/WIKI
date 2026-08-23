@@ -100,3 +100,52 @@ describe("W10 트리 복제·이동", () => {
     for (const title of childTitles) expect(options).not.toContain(title);
   });
 });
+
+/** 트리 행 ⋯ 메뉴 — 인라인 이름 바꾸기·별표 (2026-08-23). 모달이 아니라 행 자체가 입력으로 바뀐다. */
+describe("트리 인라인 이름 바꾸기·별표", () => {
+  it("이름 바꾸기를 누르면 행이 입력으로 바뀌고 Enter가 저장한다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1");
+    const tree = await screen.findByRole("navigation", { name: "페이지 트리" });
+
+    await user.click(within(tree).getByRole("button", { name: "시작하기 더보기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "이름 바꾸기" }));
+
+    const input = within(tree).getByRole("textbox", { name: "시작하기 이름 바꾸기" });
+    await user.clear(input);
+    await user.type(input, "온보딩 가이드{Enter}");
+
+    expect(await within(tree).findByRole("link", { name: "온보딩 가이드" })).toBeInTheDocument();
+    const renamed = (await listPages("sp1")).find((p) => p.id === "pg1")!;
+    expect(renamed.title).toBe("온보딩 가이드");
+  });
+
+  it("Escape는 취소 — 이름이 그대로다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1");
+    const tree = await screen.findByRole("navigation", { name: "페이지 트리" });
+
+    await user.click(within(tree).getByRole("button", { name: "시작하기 더보기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "이름 바꾸기" }));
+    await user.keyboard("무시될 입력{Escape}");
+
+    expect(within(tree).getByRole("link", { name: "시작하기" })).toBeInTheDocument();
+    expect((await getPage("pg1"))!.title).toBe("시작하기");
+  });
+
+  it("⋯ 메뉴의 별표 표시가 별표 목록에 스냅샷을 저장한다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1");
+    const tree = await screen.findByRole("navigation", { name: "페이지 트리" });
+
+    await user.click(within(tree).getByRole("button", { name: "시작하기 더보기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "별표 표시" }));
+
+    const raw = JSON.parse(localStorage.getItem("wiki.ui.starredPages") ?? "[]") as Array<{
+      id: string;
+      title: string;
+      spaceId: string;
+    }>;
+    expect(raw).toEqual([expect.objectContaining({ id: "pg1", title: "시작하기", spaceId: "sp1" })]);
+  });
+});

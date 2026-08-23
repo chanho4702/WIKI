@@ -113,7 +113,11 @@ describe("W2 페이지 편집·생성", () => {
     expect(confirmSpy).toHaveBeenCalledWith(
       "내 편집 내용을 버리고 서버에 저장된 최신 내용으로 다시 불러오시겠습니까?",
     );
-    await waitFor(() => expect(titleField).toHaveValue("최신 서버 제목"));
+    // 제목 입력은 에디터 콘텐츠 칼럼 안에 있어(2026-08-23 레이아웃) 재로드 시 에디터와 함께
+    // 리마운트된다 — 캡처해 둔 노드가 아니라 다시 쿼리해서 확인한다.
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "페이지 제목" })).toHaveValue("최신 서버 제목"),
+    );
     await waitFor(() => expect(editorRegistry.current?.getText()).toContain("최신 서버 본문"));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByText("저장됨")).toBeInTheDocument();

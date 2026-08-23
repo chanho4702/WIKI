@@ -1282,6 +1282,9 @@ body {
   max-width: none;
   margin: calc(-1 * var(--chanho-space-300)) calc(-1 * var(--chanho-space-400)) 0;
 }
+.page-edit--full .wiki-editor-content {
+  max-width: none;
+}
 .page-edit--full .page-edit-body {
   max-width: none;
 }
@@ -2535,9 +2538,11 @@ body {
   align-items: center;
   gap: 2px;
   flex-wrap: wrap;
-  padding: var(--chanho-space-100, 8px) 0;
+  /* 컨플 편집 레이아웃(페이지편집.png): 툴바 줄은 에디터 전체 너비를 쓴다 —
+   * 콘텐츠 칼럼(.wiki-editor-content)만 가운데 제한 폭이다. */
+  padding: var(--chanho-space-100, 8px) var(--chanho-space-300, 24px);
   border-bottom: 1px solid var(--chanho-color-border-default, #dcdfe4);
-  margin-bottom: var(--chanho-space-150, 12px);
+  margin-bottom: 0;
   position: sticky;
   /* W6: .edit-chrome이 같은 스크롤 컨테이너 안에서 top: 0으로 먼저 고정되므로,
    * 그 높이만큼 내려 겹치지 않게 한다. */
@@ -4133,4 +4138,35 @@ body.is-column-reordering {
 .wiki-editor .ProseMirror table td,
 .wiki-editor .ProseMirror table th {
   position: relative;
+}
+
+/* 트리 인라인 이름 바꾸기 — 행 라벨이 입력으로 바뀐다(모달 아님) */
+.page-tree-rename {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  flex: 1;
+  min-width: 0;
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100);
+}
+.page-tree-rename-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--chanho-color-border-brand);
+  border-radius: var(--chanho-radius-small);
+  padding: 1px var(--chanho-space-50, 4px);
+  font: inherit;
+  font-size: var(--chanho-font-size-100);
+  color: var(--chanho-color-text-default);
+  background: var(--chanho-color-background-default);
+  outline: none;
+}
+
+/* 에디터 콘텐츠 칼럼 — 툴바(전체 너비) 아래의 제목+본문 가운데 칼럼(.page-edit-body와 같은 규격) */
+.wiki-editor-content {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--chanho-space-200) var(--chanho-space-400) var(--chanho-space-300);
+  box-sizing: border-box;
 }

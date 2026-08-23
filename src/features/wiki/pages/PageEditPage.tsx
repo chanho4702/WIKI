@@ -193,9 +193,11 @@ export function PageEditPage() {
   const changeIcon = (next: string | null) => {
     setIcon(next);
     if (isEdit && pageId) {
-      void setPageIcon(pageId, next).catch(() => {
-        toast({ title: "이모지 저장에 실패했습니다", appearance: "danger" });
-      });
+      void setPageIcon(pageId, next)
+        .then(() => reloadPages()) // 사이드바 트리의 문서 아이콘이 즉시 이모지로 바뀌어야 한다
+        .catch(() => {
+          toast({ title: "이모지 저장에 실패했습니다", appearance: "danger" });
+        });
     }
   };
 
@@ -400,8 +402,8 @@ export function PageEditPage() {
           </Button>
         </div>
       </div>
-      <div className="page-edit-body">
       {conflict ? (
+        <div className="page-edit-body">
         <EditConflictPanel
           serverPage={conflict.serverPage}
           localTitle={conflict.localTitle}
@@ -417,32 +419,10 @@ export function PageEditPage() {
           onReloadServer={() => void reloadServerVersion()}
           onContinueMerge={continueManualMerge}
         />
+        </div>
       ) : null}
-      <div className="page-edit-title-row">
-        <EmojiPicker
-          triggerLabel="페이지 이모지"
-          triggerChar={icon}
-          onPick={changeIcon}
-          onClear={() => changeIcon(null)}
-        />
-        <input
-        className="page-edit-title"
-        value={title}
-        onChange={(e) => {
-          const nextTitle = e.target.value;
-          if (collaboration.binding) {
-            replaceCollaborativeTitle(collaboration.binding.title, nextTitle);
-          } else {
-            setTitle(nextTitle);
-            setTitleDirty(nextTitle !== initialTitle);
-          }
-        }}
-        disabled={!collaborationReady || saving}
-        placeholder="제목 없음"
-        aria-label="페이지 제목"
-        />
-      </div>
       {collaborationRequired && !collaboration.binding ? (
+        <div className="page-edit-body">
         <div
           className={`collaboration-editor-gate collaboration-editor-gate--${collaboration.status}`}
           role="status"
@@ -459,10 +439,39 @@ export function PageEditPage() {
             <p>기존 내용을 안전하게 동기화한 뒤 편집기가 열립니다.</p>
           </div>
         </div>
+        </div>
       ) : (
         <WikiEditor
           key={`${pageId ?? "new"}:${editorGeneration}:${collaborationRequired ? "shared" : "solo"}`}
           ref={editorRef}
+          contentHeader={
+            /* 컨플 편집 화면(페이지편집.png): 툴바 줄은 전체 너비, 큰 제목은 그 아래 콘텐츠
+             * 칼럼 맨 위에 온다 — 제목을 에디터의 콘텐츠 칼럼 안에 그린다. */
+            <div className="page-edit-title-row">
+              <EmojiPicker
+                triggerLabel="페이지 이모지"
+                triggerChar={icon}
+                onPick={changeIcon}
+                onClear={() => changeIcon(null)}
+              />
+              <input
+                className="page-edit-title"
+                value={title}
+                onChange={(e) => {
+                  const nextTitle = e.target.value;
+                  if (collaboration.binding) {
+                    replaceCollaborativeTitle(collaboration.binding.title, nextTitle);
+                  } else {
+                    setTitle(nextTitle);
+                    setTitleDirty(nextTitle !== initialTitle);
+                  }
+                }}
+                disabled={!collaborationReady || saving}
+                placeholder="제목 없음"
+                aria-label="페이지 제목"
+              />
+            </div>
+          }
           initialMarkdown={initialBody}
           pages={pages ?? []}
           users={users}
@@ -472,7 +481,6 @@ export function PageEditPage() {
           collaborationExtensions={collaboration.binding?.extensions}
         />
       )}
-      </div>
     </div>
   );
 }

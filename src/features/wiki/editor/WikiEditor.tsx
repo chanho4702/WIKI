@@ -12,6 +12,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import GlobalDragHandle from "tiptap-extension-global-drag-handle";
 import type { Editor, Extensions } from "@tiptap/core";
+import type { ReactNode } from "react";
 import type { Attachment, Page, User } from "../store/types";
 import { buildBaseExtensions } from "./extensions/base";
 import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
@@ -74,6 +75,11 @@ export interface WikiEditorProps {
   onUploadStateChange?: (uploading: boolean) => void;
   /** 기능 플래그가 켜진 뒤 동적 로드한 Yjs/cursor 확장. 있으면 initialMarkdown을 재주입하지 않는다. */
   collaborationExtensions?: Extensions;
+  /**
+   * 툴바 아래·본문 위(콘텐츠 칼럼 안)에 그릴 헤더 — 컨플 편집 화면의 큰 제목 자리.
+   * 툴바 줄은 전체 너비, 제목·본문은 가운데 칼럼이라 제목을 에디터 안쪽에 그려야 폭이 맞는다.
+   */
+  contentHeader?: ReactNode;
 }
 
 export { safeParse } from "./markdown";
@@ -87,6 +93,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     onDirty,
     onUploadStateChange,
     collaborationExtensions,
+    contentHeader,
   }, ref) {
     // onUpdate는 useEditor 설정 시점에 캡처되므로 콜백을 ref로 최신화한다(재구독 없이).
     const onDirtyRef = useRef(onDirty);
@@ -464,14 +471,17 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
           />
         )}
         {editor && <TableToolbar editor={editor} />}
-        <UploadRail
-          tasks={uploadTasks}
-          onCancel={cancelUpload}
-          onRetry={retryUpload}
-          onDismiss={dismissUpload}
-        />
-        <EditorContent editor={editor} />
-        {uploadError && <div className="wiki-editor-upload-error" role="alert">{uploadError}</div>}
+        <div className="wiki-editor-content">
+          {contentHeader}
+          <UploadRail
+            tasks={uploadTasks}
+            onCancel={cancelUpload}
+            onRetry={retryUpload}
+            onDismiss={dismissUpload}
+          />
+          <EditorContent editor={editor} />
+          {uploadError && <div className="wiki-editor-upload-error" role="alert">{uploadError}</div>}
+        </div>
         {editor && <BubbleToolbar editor={editor} />}
         {/* 위치 보정(아래 공간 부족 시 캐럿 위로 뒤집기·가로 clamp)은 SuggestionPopup이 한다 —
             캐럿 rect만 넘기고 어디에 그릴지는 팝업이 스스로 정한다. */}
