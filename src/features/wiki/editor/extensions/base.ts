@@ -72,7 +72,9 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     TableHeader,
     TableCell,
     TaskList,
-    TaskItem.configure({ nested: false }),
+    // 중첩 허용 — Notion·Confluence 모두 체크리스트 하위 항목을 지원한다(동등성 Must 6).
+    // 저장은 표준 마크다운 들여쓰기 `- [ ]`라 왕복·기존 문서에 영향이 없다.
+    TaskItem.configure({ nested: true }),
     ImageWithView,
     // 레이어 분할 — 스키마에 영향을 주므로 화면(WikiEditor)이 아니라 여기(공용 목록)에 둔다.
     // markdown.ts의 헤드리스 변환기도 같은 노드를 봐야 `::::columns` 왕복이 성립한다.

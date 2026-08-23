@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { attachmentIdFromInlineUrl, fetchInlineAttachment } from "../store/wikiStore";
+import { stripImageWidth } from "./imageAttrs";
 
 export interface ResolvedWikiImage {
   resolvedSrc: string | null;
@@ -8,7 +9,9 @@ export interface ResolvedWikiImage {
 }
 
 /** 내부 첨부는 인증 fetch→Blob URL, 외부 URL은 기존 src 그대로 사용한다. */
-export function useResolvedWikiImage(src: string): ResolvedWikiImage {
+export function useResolvedWikiImage(rawSrc: string): ResolvedWikiImage {
+  // `#w=` 표시 폭 프래그먼트는 로드 경로가 아니다 — 첨부 ID 정확일치 파서에 걸리기 전에 걷어낸다
+  const src = stripImageWidth(rawSrc);
   const attachmentId = attachmentIdFromInlineUrl(src);
   const [state, setState] = useState<ResolvedWikiImage>(() => ({
     resolvedSrc: attachmentId ? null : src,

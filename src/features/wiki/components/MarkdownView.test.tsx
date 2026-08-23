@@ -113,6 +113,25 @@ describe("MarkdownView", () => {
   });
 });
 
+describe("MarkdownView — 이미지 폭·캡션", () => {
+  it("`#w=` 프래그먼트를 표시 폭으로, title을 캡션으로 렌더한다", () => {
+    const md = '![구조도](https://example.com/a.png#w=320 "배포 구조도")';
+    const { container } = render(<MarkdownView markdown={md} />);
+    const img = container.querySelector("img");
+    expect(img).toHaveStyle({ width: "320px" });
+    // 실제 로드 URL에는 폭 프래그먼트가 없다
+    expect(img?.getAttribute("src")).toBe("https://example.com/a.png");
+    expect(container.querySelector(".md-figcaption")).toHaveTextContent("배포 구조도");
+  });
+
+  it("폭·캡션이 없으면 기존 렌더 그대로다", () => {
+    const { container } = render(<MarkdownView markdown={"![기존](https://example.com/a.png)"} />);
+    const img = container.querySelector("img");
+    expect(img?.getAttribute("style")).toBeNull();
+    expect(container.querySelector(".md-figcaption")).toBeNull();
+  });
+});
+
 describe("MarkdownView — 토글(details)", () => {
   it("`:::details[제목]`을 네이티브 details/summary로 렌더한다(기본 접힘)", () => {
     const md = [":::details[릴리스 노트]", "숨긴 내용", ":::"].join("\n");

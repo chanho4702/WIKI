@@ -1925,6 +1925,71 @@ body {
   margin-left: var(--chanho-space-300);
 }
 
+/* ── 이미지 리사이즈·캡션 (동등성 Must 4) ─────────────────── */
+.image-view-frame {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+.image-view-frame img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.image-view-resize {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--chanho-space-50, 4px) * -1);
+  width: 8px;
+  height: 40px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-border-brand);
+  opacity: 0;
+  cursor: ew-resize;
+  transition: opacity var(--chanho-transition-base);
+}
+.image-view:hover .image-view-resize,
+.image-view-resize:focus-visible {
+  opacity: 1;
+}
+.image-view-resize:focus-visible {
+  outline: 2px solid var(--chanho-color-border-brand);
+  outline-offset: 2px;
+}
+.image-view-caption {
+  display: block;
+  width: 100%;
+  margin-top: var(--chanho-space-50, 4px);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+  text-align: center;
+}
+.image-view-caption:focus {
+  outline: none;
+  box-shadow: inset 0 -2px 0 var(--chanho-color-border-brand);
+}
+.image-view-caption::placeholder {
+  color: var(--chanho-color-text-subtlest);
+}
+.image-view-caption-text,
+.markdown-body .md-figcaption {
+  display: block;
+  margin-top: var(--chanho-space-50, 4px);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+  text-align: center;
+}
+.markdown-body .md-figure {
+  display: inline-block;
+  max-width: 100%;
+}
+
 /* W4: 버전 diff */
 .diff-view {
   margin: 0;

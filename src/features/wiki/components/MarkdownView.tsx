@@ -21,6 +21,7 @@ import { useResolvedWikiImage } from "../lib/useResolvedWikiImage";
 import { remarkAlerts } from "../lib/remarkAlerts";
 import { remarkColumns } from "../lib/remarkColumns";
 import { remarkDetails } from "../lib/remarkDetails";
+import { parseImageWidth } from "../lib/imageAttrs";
 import { remarkToc } from "../lib/remarkToc";
 import { showsLineNumbers, useCodeBlockPrefs } from "../lib/codeBlockPrefs";
 import { CodeLineNumbers } from "./CodeLineNumbers";
@@ -159,20 +160,31 @@ function CodeCopyBlock({ children }: { children?: ReactNode }) {
   );
 }
 
-function MarkdownImage({ src = "", alt = "", ...props }: ImgHTMLAttributes<HTMLImageElement>) {
+function MarkdownImage({ src = "", alt = "", title, ...props }: ImgHTMLAttributes<HTMLImageElement>) {
   const resolved = useResolvedWikiImage(src);
+  // 표시 폭은 src의 `#w=` 프래그먼트(lib/imageAttrs.ts), 캡션은 표준 title — 편집 화면과 같은 해석
+  const width = parseImageWidth(src);
   if (resolved.loading) return <span role="status">이미지 불러오는 중…</span>;
   if (resolved.error || !resolved.resolvedSrc) {
     return <span className="image-view-broken">{alt || "이미지를 불러올 수 없습니다"}</span>;
   }
-  return (
+  const img = (
     <img
       {...props}
       src={resolved.resolvedSrc}
       alt={alt}
       loading="lazy"
       referrerPolicy="no-referrer"
+      style={width ? { width: `${width}px` } : undefined}
     />
+  );
+  // img는 p 안의 인라인 콘텐츠 — figure/figcaption을 쓰면 invalid HTML이라 span으로 묶는다
+  if (!title) return img;
+  return (
+    <span className="md-figure">
+      {img}
+      <span className="md-figcaption">{title}</span>
+    </span>
   );
 }
 
