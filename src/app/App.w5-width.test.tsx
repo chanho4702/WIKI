@@ -100,21 +100,22 @@ describe("Task 20 편집↔보기 폭 일치 (CSS 회귀)", () => {
     return match[1];
   }
 
-  it(".page-edit 기본 폭이 .page-view와 동일한 760px 중앙 정렬이다", () => {
+  it("편집 본문(.page-edit-body) 기본 폭이 .page-view와 동일한 760px 중앙 정렬이다", () => {
+    // 컨플식 상단 고정 크롬 도입(2026-08-23) 이후 폭 제약은 .page-edit이 아니라
+    // 본문 래퍼(.page-edit-body)가 담당한다 — 크롬은 전폭으로 상단에 붙는다.
     const pageView = findRule(".page-view");
-    const pageEdit = findRule(".page-edit");
+    const editBody = findRule(".page-edit-body");
     expect(pageView).toContain("max-width: 760px");
     expect(pageView).toContain("margin: 0 auto");
-    expect(pageEdit).toContain("max-width: 760px");
-    expect(pageEdit).toContain("margin: 0 auto");
-    expect(pageEdit).not.toContain("880px");
+    expect(editBody).toContain("max-width: 760px");
+    expect(editBody).toContain("margin: 0 auto");
+    expect(editBody).not.toContain("880px");
   });
 
-  it(".page-edit--full은 .page-view--full과 동일하게 폭 제약을 해제한다", () => {
+  it(".page-edit--full은 본문 래퍼의 폭 제약을 해제한다", () => {
     const pageViewFull = findRule(".page-view--full");
-    const pageEditFull = findRule(".page-edit--full");
+    const editBodyFull = findRule(".page-edit--full .page-edit-body");
     expect(pageViewFull).toContain("max-width: none");
-    expect(pageEditFull).toContain("max-width: none");
-    expect(pageEditFull).toContain("margin: 0");
+    expect(editBodyFull).toContain("max-width: none");
   });
 });

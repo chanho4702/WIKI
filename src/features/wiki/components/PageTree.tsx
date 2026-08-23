@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import {
   DndContext,
@@ -124,6 +124,9 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
   const [moveTarget, setMoveTarget] = useState<Page | null>(null);
   const [moveParentId, setMoveParentId] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
+  // 드래그 직후 발화하는 클릭 억제 — 억제하지 않으면 드롭할 때 행의 NavLink 클릭이 살아나
+  // 그 페이지로 이동해 버려 "구조만 바꿨는데 화면 전체가 리로딩"되는 것처럼 보인다.
+  const suppressNavRef = useRef(false);
   const navigate = useNavigate();
   const toast = useToast();
   const roots = buildTree(pages);
@@ -172,6 +175,11 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
     const intent = dropIntent;
     setActiveId(null);
     setDropIntent(null);
+    // 이 드래그의 pointerup이 만들 클릭 한 번을 무효화한다(클릭이 안 오는 경우 대비 타이머 해제)
+    suppressNavRef.current = true;
+    setTimeout(() => {
+      suppressNavRef.current = false;
+    }, 120);
     if (!over || !intent || intent.overId !== String(over.id)) return;
     const drop = resolveDrop(dropNodes(), String(active.id), intent.overId, intent.mode);
     if (!drop) return;
@@ -270,7 +278,15 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
               ) : (
                 <span className="page-tree-toggle-spacer" aria-hidden="true" />
               )}
-              <NavLink to={contentPathIn(spaceId, page)}>
+              <NavLink
+                to={contentPathIn(spaceId, page)}
+                onClick={(e) => {
+                  if (suppressNavRef.current) {
+                    e.preventDefault();
+                    suppressNavRef.current = false;
+                  }
+                }}
+              >
                 {/* 폴더/문서 구분 — 아이콘만으로는 색약·저시력 사용자가 구분하기 어려우므로
                   * 접근 이름에도 "폴더"를 넣는다(WCAG 1.4.1 색·형태 단독 의존 금지). */}
                 {page.type === "folder" ? (

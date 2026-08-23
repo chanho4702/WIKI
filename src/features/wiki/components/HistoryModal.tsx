@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Button, Modal, Spinner, Tabs, useToast } from "@chanho/react";
+import { Button, Modal, Tabs, useToast } from "@chanho/react";
+import { SkeletonLines } from "./WikiSkeleton";
 import { History } from "lucide-react";
 import type { Page, PageVersion, User } from "../store/types";
 import { listVersions, restoreVersion } from "../store/wikiStore";
@@ -86,7 +87,7 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
       className="history-modal"
     >
       {versions === null ? (
-        <Spinner label="버전 로딩 중" />
+        <SkeletonLines label="버전 로딩 중" widths={["70%", "65%", "72%", "60%"]} />
       ) : (
         <div className="history-body">
           <ul className="history-list">

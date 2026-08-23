@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
 import { Avatar, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
-import { Maximize2, Minimize2, MoreHorizontal, Trash2 } from "lucide-react";
+import { Maximize2, Minimize2, MoreHorizontal, Trash2, Star } from "lucide-react";
 import type { DeletePageOptions, Page, User } from "../store/types";
 import { deletePage, getPage, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
@@ -13,6 +13,7 @@ import { ChildPages } from "../components/ChildPages";
 import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { CommentSection } from "../components/CommentSection";
 import { usePageWidth } from "../lib/pageWidth";
+import { removeStarredPage, useStarredPages } from "../lib/starredPages";
 import { displayUserName } from "../lib/userName";
 import { recordVisit } from "../lib/recentVisits";
 
@@ -76,6 +77,8 @@ export function PageViewPage() {
   const [users, setUsers] = useState<User[]>([]);
   // Task 18: 페이지 너비 토글 — early return 이전에 호출해야 하는 훅
   const { width, toggle: toggleWidth } = usePageWidth(pageId);
+  // 페이지 별표 — 사이드바 "별표 표시"와 같은 저장소를 구독한다(토글 즉시 반영)
+  const { starred: starredPages, toggle: toggleStar } = useStarredPages();
   // 삭제 확인 다이얼로그(공통 ConfirmDialog) — "…" 드롭다운의 삭제에서 연다
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -118,6 +121,7 @@ export function PageViewPage() {
     setDeleting(true);
     try {
       await deletePage(page.id, options);
+      removeStarredPage(page.id); // 죽은 별표가 목록에 남지 않게
       toast({ title: `"${page.title}" 페이지를 삭제했습니다`, appearance: "success" });
       // 이동 전에 다이얼로그를 닫는다 — 열린 채로 언마운트되면 Radix가 배경에 걸어둔
       // aria-hidden이 해제되지 않아 삭제 후 사이드바·본문이 접근성 트리에서 통째로 사라진다.
@@ -146,6 +150,23 @@ export function PageViewPage() {
         title={page.title}
         actions={
           <>
+            {/* 별표 — 사이드바 "별표 표시" 목록에 모인다. 눌림 상태는 채운 별 + aria-pressed */}
+            <Tooltip content={starredPages.includes(page.id) ? "별표 해제" : "별표"}>
+              <Button
+                size="small"
+                variant="subtle"
+                iconOnly
+                aria-label="별표"
+                aria-pressed={starredPages.includes(page.id)}
+                onClick={() => toggleStar(page.id)}
+              >
+                <Star
+                  size={16}
+                  aria-hidden="true"
+                  className={starredPages.includes(page.id) ? "page-star page-star--on" : "page-star"}
+                />
+              </Button>
+            </Tooltip>
             {/* 전체 너비: 아이콘 버튼 + Tooltip. 접근 이름은 aria-label로 고정("전체 너비") */}
             <Tooltip content={width === "full" ? "기본 너비" : "전체 너비"}>
               <Button
@@ -230,7 +251,8 @@ export function PageViewPage() {
           </div>
         );
       })()}
-      <TableOfContents markdown={page.body} />
+      {/* 본문에 명시 목차(::toc)가 있으면 자동 목차는 숨긴다 — 같은 목차가 두 번 보이는 중복 방지 */}
+      {!/^\s*::toc\s*$/m.test(page.body) && <TableOfContents markdown={page.body} />}
       <MarkdownView markdown={page.body} pages={pages} spaceId={space.id} />
       <ChildPages pages={pages} currentPageId={page.id} spaceId={space.id} />
       <CommentSection pageId={page.id} users={users} />

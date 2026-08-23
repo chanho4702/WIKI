@@ -1204,18 +1204,33 @@ body {
  * Task 20: 편집↔보기 시각 동등화 — 편집 화면 기본 폭을 .page-view(720px 중앙)와 맞춘다.
  * T18에서 결정한 880px 유지 방침은 폐기(사용자 피드백: 편집·보기가 다른 폭이면 WYSIWYG이 아니다).
  */
+/* 컨플식 편집 레이아웃 — 크롬은 화면 전폭으로 최상단에 딱 붙고(.wiki-content의 패딩을 음수
+ * 마진으로 상쇄), 본문(제목·편집기)만 .page-edit-body가 760px 중앙으로 제한한다. 예전엔
+ * .page-edit 전체가 760px 컨테이너라 크롬까지 좁은 폭으로 24px 떠 있었다. */
 .page-edit {
   display: flex;
   flex-direction: column;
+  margin: calc(-1 * var(--chanho-space-300)) calc(-1 * var(--chanho-space-400)) 0;
+}
+
+.page-edit-body {
+  display: flex;
+  flex-direction: column;
   gap: var(--chanho-space-200);
+  width: 100%;
   max-width: 760px;
   margin: 0 auto;
+  padding: var(--chanho-space-200) var(--chanho-space-400) var(--chanho-space-300);
+  box-sizing: border-box;
 }
 
 /* Task 18: 전체 너비 토글 — 기존 편집 화면 최대 폭 제약을 해제 */
 .page-edit--full {
   max-width: none;
-  margin: 0;
+  margin: calc(-1 * var(--chanho-space-300)) calc(-1 * var(--chanho-space-400)) 0;
+}
+.page-edit--full .page-edit-body {
+  max-width: none;
 }
 
 .page-edit-title {
@@ -1247,7 +1262,8 @@ body {
   gap: var(--chanho-space-200);
   min-height: var(--edit-chrome-height);
   box-sizing: border-box;
-  padding: var(--chanho-space-100) 0;
+  /* 전폭 상단 바 — .page-edit이 .wiki-content 패딩을 상쇄하므로 좌우 여백은 여기서 준다 */
+  padding: var(--chanho-space-100) var(--chanho-space-400);
   position: sticky;
   top: 0;
   z-index: 11;
@@ -2052,6 +2068,51 @@ body {
   font-family: var(--chanho-font-family-default, inherit);
   font-size: var(--chanho-font-size-75, 12px);
   color: var(--chanho-color-text-subtlest);
+}
+
+/* ── 별표 (스페이스+페이지, 사이드바 "별표 표시" 펼침) ────── */
+.page-star--on {
+  fill: var(--chanho-color-text-warning, #e2b203);
+  color: var(--chanho-color-text-warning, #e2b203);
+}
+.global-nav-caret {
+  margin-left: auto;
+  transition: transform var(--chanho-transition-base);
+}
+.global-nav-caret--open {
+  transform: rotate(180deg);
+}
+.global-nav-starred {
+  padding: var(--chanho-space-50, 4px) 0 var(--chanho-space-100) var(--chanho-space-400);
+}
+.global-nav-starred-empty {
+  margin: 0;
+  color: var(--chanho-color-text-subtlest);
+  font-size: var(--chanho-font-size-75, 12px);
+}
+.global-nav-starred-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.global-nav-starred-link {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100);
+  border-radius: var(--chanho-radius-small);
+  color: var(--chanho-color-text-default);
+  text-decoration: none;
+  font-size: var(--chanho-font-size-100);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.global-nav-starred-link:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered);
 }
 
 /* W4: 버전 diff */
@@ -3645,6 +3706,34 @@ body.is-column-reordering {
   background: var(--chanho-color-background-surface);
 }
 
+.wiki-skeleton-circle {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.wiki-skeleton-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+}
+.wiki-skeleton-tree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+  padding: var(--chanho-space-100) 0;
+}
+.wiki-skeleton-comments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+.wiki-skeleton-comment {
+  display: flex;
+  gap: var(--chanho-space-100);
+  align-items: flex-start;
+}
 .wiki-skeleton-line {
   height: 12px;
 }

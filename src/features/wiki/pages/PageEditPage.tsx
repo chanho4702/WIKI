@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
-import { Button, Spinner, useToast } from "@chanho/react";
+import { Button, useToast } from "@chanho/react";
 import {
   commitCollaborationDraft,
   createPage,
@@ -16,6 +16,7 @@ import { usePageWidth } from "../lib/pageWidth";
 import { DRAFT_TITLE } from "../lib/useCreateContent";
 import { EditConflictPanel } from "../components/EditConflictPanel";
 import { PageConflictError, type Page, type User } from "../store/types";
+import { SkeletonLines } from "../components/WikiSkeleton";
 import { CollaborationStatus } from "../editor/components/CollaborationStatus";
 import {
   COLLABORATION_ENABLED,
@@ -169,7 +170,13 @@ export function PageEditPage() {
     return <p>페이지를 찾을 수 없습니다</p>;
   }
   if (initialBody === null) {
-    return <Spinner label="페이지 로딩 중" />;
+    return (
+      <div className="page-edit">
+        <div className="page-edit-body">
+          <SkeletonLines label="페이지 로딩 중" widths={["40%", "100%", "92%", "97%", "60%"]} />
+        </div>
+      </div>
+    );
   }
   if (isEdit && pageId && pageSpaceId !== null && pageSpaceId !== spaceId) {
     // 잘못된 스페이스 URL — 페이지가 속한 스페이스의 편집 URL로 redirect (PageViewPage와 동일 패턴)
@@ -376,6 +383,7 @@ export function PageEditPage() {
           </Button>
         </div>
       </div>
+      <div className="page-edit-body">
       {conflict ? (
         <EditConflictPanel
           serverPage={conflict.serverPage}
@@ -439,6 +447,7 @@ export function PageEditPage() {
           collaborationExtensions={collaboration.binding?.extensions}
         />
       )}
+      </div>
     </div>
   );
 }

@@ -5,12 +5,12 @@ import {
   Button,
   Comment as CommentBlock,
   ConfirmDialog,
-  Spinner,
   TextArea,
   useToast,
 } from "@chanho/react";
 import type { CommentAction } from "@chanho/react";
 import { MessageSquare } from "lucide-react";
+import { CommentSkeleton } from "./WikiSkeleton";
 import type { Comment, User } from "../store/types";
 import { addComment, deleteComment, getCurrentUser, listComments, updateComment } from "../store/wikiStore";
 
@@ -148,7 +148,7 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
   };
 
   if (comments === null) {
-    return <Spinner size="small" label="코멘트 로딩 중" />;
+    return <CommentSkeleton label="코멘트 로딩 중" />;
   }
 
   const topLevel = comments.filter((c) => c.parentId === null);
