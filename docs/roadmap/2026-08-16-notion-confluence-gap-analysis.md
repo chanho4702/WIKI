@@ -110,7 +110,7 @@ Wiki 핵심과 분리한 확장 트랙으로 진행한다.
 | 실시간 공동 편집 | ❌ | CRDT/OT, collaboration 서버, WebSocket 경로가 없음 |
 | 접속자·커서·선택 영역 | ❌ | presence 프로토콜과 세션 수명주기 없음 |
 | 자동 저장·공유 초안 | ❌ | 로컬 dirty 상태와 수동 저장만 존재 |
-| 페이지 댓글·답글 | ⚠️ | UI는 있으나 백엔드 모드에서도 `wikiMock`의 `localStorage`를 사용함 |
+| 페이지 댓글·답글 | ✅ | PostgreSQL 영속 + VIEW 권한, 작성자 수정/삭제·ADMIN moderation, 1단 답글·연쇄 삭제 |
 | 인라인 댓글·해결/재개 | ❌ | block/range anchor, thread 상태, 재배치 정책 없음 |
 | 사용자/페이지 멘션 | ❌ | 사용자 검색, 문서 참조, 알림 이벤트가 없음 |
 | watch·받은 알림·읽음 상태 | ❌ | 구독과 전달 채널, 읽음 커서가 없음 |
@@ -206,10 +206,13 @@ Notion API의 업로드 파일 URL은 짧게 만료되는 signed URL이므로 �
   - presigned URL은 권한 확인 뒤 짧은 TTL로 발급한다.
   - 백업·복원 훈련에서 DB 메타데이터와 객체 체크섬을 대조한다.
 
-#### WIKI-P0-004 댓글이 서버에 저장되지 않음
+#### WIKI-P0-004 댓글이 서버에 저장되지 않음 — 해소(2026-08-23)
 
-- 근거: `wikiApi.ts`가 댓글 API를 `wikiMock.ts`에서 그대로 export한다.
-- 인수조건:
+- 해소: wiki-backend V8 `page_comment` + REST(CRUD)와 프론트 REST 어댑터로 전환. 1단 답글,
+  작성자만 수정/삭제 + 스페이스 ADMIN moderation, 최상위 삭제 시 답글 연쇄, 무변경 no-op,
+  작성 시점 `authorName` 스냅샷까지 목업 규칙 그대로 서버에 고정했다. 인라인 댓글 확장용
+  `anchor_type` 자리를 두었다. COMMENT 전용 action은 org-service 확장 대기(현재 VIEW 기준).
+- 원 인수조건:
   - 페이지 댓글/답글 CRUD가 PostgreSQL에 영속되고 VIEW/COMMENT 권한을 검사한다.
   - 작성자만 수정·삭제할 수 있고 관리자는 감사 가능한 moderation을 수행한다.
   - backend 모드 새로고침·다른 브라우저에서도 동일 thread가 보인다.
@@ -362,6 +365,8 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
 - 완료: 두 브라우저 stale 저장, 댓글 재접속, 동시 재정렬 테스트 통과
 - 1차 완료: load-time expectedVersion 전달, typed conflict와 최신 서버본 재조회, 로컬 편집 보존,
   서버/로컬 비교·복사·서버본 재로드·명시적 수동 병합 UI, 두 세션 stale 저장 회귀 테스트.
+- 2차 완료: 댓글/답글 서버 영속(V8)과 프론트 REST 어댑터 전환, 다른 사용자 재조회 동일 thread
+  검증, 작성 시점 authorName 스냅샷 표시 폴백. 남은 것: 서버 형제 순서(P1-001)와 사용자 디렉터리.
 
 ### W17 — 실시간 공동 편집
 
@@ -429,8 +434,8 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
 
 ## 11. 현재 검증 기준선
 
-- `wiki-front`: 88개 테스트 파일, 639개 테스트 통과(라이브 1개 별도), 기능 플래그 OFF/ON production build 통과
-- `wiki-backend`: 24개 suite, 132개 테스트 통과(실제 PostgreSQL Flyway V1→V7 포함)
+- `wiki-front`: 89개 테스트 파일, 644개 테스트 통과(라이브 1개 별도), 기능 플래그 OFF/ON production build 통과
+- `wiki-backend`: 25개 suite, 141개 테스트 통과(실제 PostgreSQL Flyway V1→V8 포함)
 - 확인된 품질 부채: 중복 `plaintext` React key 경고, 약 1.44 MB 초기 JS chunk 경고
 - 검증 브랜치: `wiki-front/feat/wiki-global-search`, `wiki-backend/main`
 

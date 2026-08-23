@@ -59,6 +59,8 @@ export interface Comment {
   id: string;
   pageId: string;
   authorId: string;
+  /** 백엔드 모드에서 서버가 주는 작성 시점 이름 스냅샷 — users 목록에 없을 때 표시 폴백. */
+  authorName?: string;
   body: string;
   parentId: string | null; // null = 최상위, 값 있으면 답글 (중첩 1단 제한)
   createdAt: string;

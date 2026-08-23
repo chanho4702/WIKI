@@ -1,14 +1,12 @@
 // wiki-backend 어댑터. 각 태스크에서 REST 구현으로 교체한다. 미구현분은 목업 위임.
-// comments는 백엔드에 없어 계속 목업(localStorage) 위임 — 설계 §4-2.
-export {
-  listComments, addComment, updateComment, deleteComment, __resetForTest,
-} from "./wikiMock";
+export { __resetForTest } from "./wikiMock";
 
 import { sharedApiFetch, sharedApiUpload, sharedCollaborationFetch } from "./apiClient";
-import { mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError } from "./mapping";
+import { mapComment, mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError, type CommentDto } from "./mapping";
 import {
   ContentSearchError,
   type Attachment,
+  type Comment,
   type AttachmentUploadOptions,
   type CollaborationBootstrap,
   type CollaborationDraftCommit,
@@ -45,6 +43,46 @@ export async function listUsers(): Promise<User[]> {
 /** 화면이 updatedBy/authorId(숫자 id)를 이름으로 못 찾을 때 쓰는 폴백. (호출부 후속 배선.) */
 export function displayUserName(id: string): string {
   return `사용자 #${id}`;
+}
+
+// ── comments ─────────────────────────────────────────────────
+// 서버 영속(P0-004) — 규칙은 목업과 동일: 1단 답글, 작성자만 수정/삭제(+스페이스 ADMIN
+// moderation), 최상위 삭제 시 답글 연쇄, 무변경 수정은 "(수정됨)"을 남기지 않는다.
+
+export async function listComments(pageId: string): Promise<Comment[]> {
+  const rows = await json<CommentDto[]>(
+    await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/comments`),
+  );
+  return rows.map(mapComment);
+}
+
+export async function addComment(
+  pageId: string,
+  body: string,
+  parentId?: string | null,
+): Promise<Comment> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      body,
+      parentId: parentId == null ? null : toBackendId(parentId),
+    }),
+  });
+  return mapComment(await json<CommentDto>(res));
+}
+
+export async function updateComment(id: string, body: string): Promise<Comment> {
+  const res = await sharedApiFetch(`/api/wiki/comments/${toBackendId(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+  return mapComment(await json<CommentDto>(res));
+}
+
+export async function deleteComment(id: string): Promise<void> {
+  await json(await sharedApiFetch(`/api/wiki/comments/${toBackendId(id)}`, { method: "DELETE" }));
 }
 
 export async function listSpaces(): Promise<Space[]> {

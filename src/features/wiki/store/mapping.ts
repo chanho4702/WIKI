@@ -1,5 +1,5 @@
 // 백엔드(wiki-backend) DTO ↔ 프론트 도메인 타입 순수 변환. 부수효과 없음.
-import type { Page, PageStatus, PageType, PageVersion, Space } from "./types";
+import type { Comment, Page, PageStatus, PageType, PageVersion, Space } from "./types";
 
 export function toClientId(n: number): string {
   return String(n);
@@ -92,4 +92,29 @@ export function extractError(status: number, body: unknown): string {
   if (status === 403) return "권한이 없습니다.";
   if (status === 404) return "찾을 수 없습니다.";
   return `요청 실패(${status})`;
+}
+
+export interface CommentDto {
+  id: number;
+  pageId: number;
+  parentId: number | null;
+  authorId: number;
+  authorName: string;
+  body: string;
+  createdAt: string;
+  /** 서버의 editedAt — 수정된 적 없으면 null(프론트 "(수정됨)" 표시 근거). */
+  updatedAt: string | null;
+}
+
+export function mapComment(dto: CommentDto): Comment {
+  return {
+    id: toClientId(dto.id),
+    pageId: toClientId(dto.pageId),
+    parentId: dto.parentId === null || dto.parentId === undefined ? null : toClientId(dto.parentId),
+    authorId: toClientId(dto.authorId),
+    authorName: dto.authorName,
+    body: dto.body,
+    createdAt: dto.createdAt,
+    updatedAt: dto.updatedAt ?? null,
+  };
 }

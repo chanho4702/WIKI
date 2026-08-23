@@ -41,7 +41,9 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
   }, [pageId]);
 
   const reload = async () => setComments(await listComments(pageId));
-  const userName = (id: string) => users.find((u) => u.id === id)?.name ?? "알 수 없음";
+  // 이름 해석: users 목록(목업/디렉터리) → 서버 스냅샷(백엔드 모드) → "알 수 없음"
+  const userName = (id: string, snapshot?: string) =>
+    users.find((u) => u.id === id)?.name ?? snapshot ?? "알 수 없음";
   const fail = (title: string, error: unknown) =>
     toast({
       title,
@@ -148,8 +150,8 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
     return (
       <Fragment key={comment.id}>
         <CommentBlock
-          author={userName(comment.authorId)}
-          avatar={<Avatar name={userName(comment.authorId)} size="small" />}
+          author={userName(comment.authorId, comment.authorName)}
+          avatar={<Avatar name={userName(comment.authorId, comment.authorName)} size="small" />}
           time={formatDateTime(comment.createdAt) + (comment.updatedAt ? " (수정됨)" : "")}
           nested={replies === null}
           actions={editing ? undefined : actionsFor(comment, replies)}
