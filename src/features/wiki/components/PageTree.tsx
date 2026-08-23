@@ -11,12 +11,12 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ConfirmDialog, Dropdown, Lozenge, useToast } from "@chanho/react";
+import { ConfirmDialog, Dropdown, Lozenge, Radio, RadioGroup, useToast } from "@chanho/react";
 import { ChevronRight, Copy, FileText, Folder, FolderInput, MoreHorizontal, Plus } from "lucide-react";
 import { contentPathIn } from "../lib/contentPath";
 import type { ReactNode } from "react";
-import type { Page, PageType } from "../store/types";
-import { copyPage, movePage } from "../store/wikiStore";
+import type { Page, PageType, Space } from "../store/types";
+import { copyPage, listPages, movePage } from "../store/wikiStore";
 import {
   descendantIdsOf,
   dropModeFor,
@@ -29,6 +29,8 @@ import { CreateContentMenu } from "./CreateContentMenu";
 export interface PageTreeProps {
   spaceId: string;
   pages: Page[];
+  /** 이동 다이얼로그의 "다른 스페이스" 후보 — 생략하면 현재 스페이스 안 이동만 가능 */
+  spaces?: Space[];
   /** true면 접힘 상태를 무시하고 전부 펼친다(검색 중) — 접기 토글도 숨긴다 */
   forceExpand?: boolean;
   /** 드래그로 페이지를 이동한 뒤 호출 — 주어지지 않으면 드래그 비활성 */
@@ -115,7 +117,7 @@ function SortableRow({
   );
 }
 
-export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreateChild }: PageTreeProps) {
+export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved, onCreateChild }: PageTreeProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   // 드래그 중 드롭 대상과 의도(앞/뒤/하위) — 시각 표시와 최종 이동이 같은 값을 쓴다
@@ -124,6 +126,10 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
   const [moveTarget, setMoveTarget] = useState<Page | null>(null);
   const [moveParentId, setMoveParentId] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
+  // 스페이스 간 이동 — 대상 스페이스와 그 스페이스의 페이지 목록(부모 후보), 하위 처리 방식
+  const [moveSpaceId, setMoveSpaceId] = useState<string>(spaceId);
+  const [moveSpacePages, setMoveSpacePages] = useState<Page[] | null>(null);
+  const [moveChildren, setMoveChildren] = useState<"with" | "promote">("with");
   // 드래그 직후 발화하는 클릭 억제 — 억제하지 않으면 드롭할 때 행의 NavLink 클릭이 살아나
   // 그 페이지로 이동해 버려 "구조만 바꿨는데 화면 전체가 리로딩"되는 것처럼 보인다.
   const suppressNavRef = useRef(false);
@@ -228,7 +234,10 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
     if (!moveTarget) return;
     setMoving(true);
     try {
-      await movePage(moveTarget.id, { parentId: moveParentId });
+      await movePage(moveTarget.id, {
+        parentId: moveParentId,
+        ...(moveSpaceId !== spaceId ? { spaceId: moveSpaceId, children: moveChildren } : {}),
+      });
       setMoveTarget(null);
       toast({ title: "페이지를 이동했습니다", appearance: "success" });
       await onMoved?.();
@@ -243,8 +252,32 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
     }
   };
 
+  const openMoveDialog = (page: Page) => {
+    setMoveSpaceId(spaceId);
+    setMoveSpacePages(null);
+    setMoveChildren("with");
+    setMoveParentId(page.parentId);
+    setMoveTarget(page);
+  };
+
+  const changeMoveSpace = (nextSpaceId: string) => {
+    setMoveSpaceId(nextSpaceId);
+    setMoveParentId(null); // 스페이스가 바뀌면 이전 부모는 무의미 — 루트부터 다시 고른다
+    if (nextSpaceId === spaceId) {
+      setMoveSpacePages(null); // 현재 스페이스는 이미 가진 pages를 쓴다
+      return;
+    }
+    setMoveSpacePages(null);
+    void listPages(nextSpaceId).then(setMoveSpacePages);
+  };
+
   /** 이동 다이얼로그의 대상 부모 후보 — 자기 자신과 자손은 제외(순환) */
   const moveOptions = (page: Page): FlatNode[] => {
+    if (moveSpaceId !== spaceId) {
+      // 다른 스페이스 — 로드한 그 스페이스 트리 전체가 후보(자기 서브트리는 그 스페이스에 없다)
+      if (moveSpacePages === null) return [];
+      return flattenVisible(buildTree(moveSpacePages), new Set(), true, null);
+    }
     const excluded = descendantIdsOf(
       pages.map((p) => ({ id: p.id, parentId: p.parentId, depth: 0 })),
       page.id,
@@ -347,10 +380,7 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
                     {
                       label: "이동…",
                       icon: <FolderInput size={16} aria-hidden="true" />,
-                      onSelect: () => {
-                        setMoveParentId(page.parentId);
-                        setMoveTarget(page);
-                      },
+                      onSelect: () => openMoveDialog(page),
                     },
                   ]}
                 />
@@ -409,19 +439,50 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
         onConfirm={() => void handleMoveConfirm()}
       >
         {moveTarget ? (
-          <select
-            className="page-tree-move-select"
-            aria-label="대상 위치"
-            value={moveParentId ?? ""}
-            onChange={(e) => setMoveParentId(e.target.value === "" ? null : e.target.value)}
-          >
-            <option value="">(맨 위)</option>
-            {moveOptions(moveTarget).map((f) => (
-              <option key={f.page.id} value={f.page.id}>
-                {`${" ".repeat(f.depth * 2)}${f.page.title}`}
-              </option>
-            ))}
-          </select>
+          <div className="page-tree-move-form">
+            {spaces && spaces.length > 1 ? (
+              <select
+                className="page-tree-move-select"
+                aria-label="대상 스페이스"
+                value={moveSpaceId}
+                onChange={(e) => changeMoveSpace(e.target.value)}
+              >
+                {spaces.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.id === spaceId ? " (현재)" : ""}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {moveSpaceId !== spaceId && moveSpacePages === null ? (
+              <p className="page-tree-move-loading" role="status">대상 스페이스 페이지를 불러오는 중…</p>
+            ) : (
+              <select
+                className="page-tree-move-select"
+                aria-label="대상 위치"
+                value={moveParentId ?? ""}
+                onChange={(e) => setMoveParentId(e.target.value === "" ? null : e.target.value)}
+              >
+                <option value="">(맨 위)</option>
+                {moveOptions(moveTarget).map((f) => (
+                  <option key={f.page.id} value={f.page.id}>
+                    {`${" ".repeat(f.depth * 2)}${f.page.title}`}
+                  </option>
+                ))}
+              </select>
+            )}
+            {moveSpaceId !== spaceId && pages.some((p) => p.parentId === moveTarget.id) ? (
+              <RadioGroup
+                aria-label="하위 항목 처리"
+                value={moveChildren}
+                onValueChange={(v: string) => setMoveChildren(v as "with" | "promote")}
+              >
+                <Radio value="with" label="하위 항목도 함께 이동" />
+                <Radio value="promote" label="하위 항목은 현재 위치에 남기기 (한 단계 위로)" />
+              </RadioGroup>
+            ) : null}
+          </div>
         ) : null}
       </ConfirmDialog>
     </nav>

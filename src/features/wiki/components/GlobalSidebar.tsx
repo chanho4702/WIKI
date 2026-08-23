@@ -257,6 +257,7 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
                 <PageTree
                   spaceId={space.id}
                   pages={visiblePages}
+                  spaces={spaces}
                   forceExpand={searching}
                   onMoved={reloadPages}
                   onCreateChild={createContent}

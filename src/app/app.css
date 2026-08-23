@@ -2043,9 +2043,19 @@ body {
   background: var(--chanho-color-background-brand-subtle, var(--chanho-color-background-neutral-subtle-hovered));
   border-radius: var(--chanho-radius-small);
 }
+.page-tree-move-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+  margin-top: var(--chanho-space-100);
+}
+.page-tree-move-loading {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+}
 .page-tree-move-select {
   width: 100%;
-  margin-top: var(--chanho-space-100);
   padding: var(--chanho-space-100);
   border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-medium);

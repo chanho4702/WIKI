@@ -255,7 +255,15 @@ export async function copyPage(id: string): Promise<Page> {
   return mapPage(await json(res));
 }
 
-export async function movePage(id: string, target: { parentId: string | null; beforeId?: string | null }): Promise<Page> {
+export async function movePage(
+  id: string,
+  target: {
+    parentId: string | null;
+    beforeId?: string | null;
+    spaceId?: string;
+    children?: "with" | "promote";
+  },
+): Promise<Page> {
   // V9 전용 move — 부모와 형제 순서를 한 트랜잭션으로. 이동은 편집이 아니라 version 불변이며,
   // 예전 PUT 경유(조회→전체 갱신)의 버전 증가·경합 문제가 함께 사라졌다(P1-001).
   const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/move`, {
@@ -264,6 +272,8 @@ export async function movePage(id: string, target: { parentId: string | null; be
     body: JSON.stringify({
       parentId: target.parentId ? toBackendId(target.parentId) : null,
       beforeId: target.beforeId ? toBackendId(target.beforeId) : null,
+      spaceId: target.spaceId ? toBackendId(target.spaceId) : null,
+      children: target.children ?? null,
     }),
   });
   return mapPage(await json(res));

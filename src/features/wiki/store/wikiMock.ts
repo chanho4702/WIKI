@@ -350,11 +350,47 @@ export async function deletePage(id: string, options?: DeletePageOptions): Promi
 
 export async function movePage(
   id: string,
-  target: { parentId: string | null; beforeId?: string | null },
+  target: {
+    parentId: string | null;
+    beforeId?: string | null;
+    /** 다른 스페이스로 이동(생략 = 현재 스페이스). 백엔드 move 계약과 동일 의미론. */
+    spaceId?: string;
+    /** 스페이스 간 이동 시 하위 처리 — "with"(기본): 서브트리 동반 / "promote": 원래 부모 밑에 남김 */
+    children?: "with" | "promote";
+  },
 ): Promise<Page> {
   const data = load();
   const page = data.pages.find((p) => p.id === id);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  const targetSpaceId = target.spaceId ?? page.spaceId;
+  if (targetSpaceId !== page.spaceId) {
+    if (!data.spaces.some((s) => s.id === targetSpaceId)) {
+      throw new Error("스페이스를 찾을 수 없습니다");
+    }
+    const sourceParentId = page.parentId;
+    if (target.children === "promote") {
+      // 직계 하위를 원래 부모 밑으로 올리고 이 페이지만 옮긴다
+      for (const child of data.pages) {
+        if (child.parentId === page.id) child.parentId = sourceParentId;
+      }
+    } else {
+      // 서브트리 동반 — 구조 유지, spaceId만 변경 (visited: 순환 데이터 방어)
+      const queue = [page.id];
+      const visited = new Set<string>();
+      while (queue.length > 0) {
+        const cur = queue.shift()!;
+        if (visited.has(cur)) continue;
+        visited.add(cur);
+        for (const child of data.pages) {
+          if (child.parentId === cur) {
+            child.spaceId = targetSpaceId;
+            queue.push(child.id);
+          }
+        }
+      }
+    }
+    page.spaceId = targetSpaceId;
+  }
   const parentId = target.parentId;
   if (parentId !== null) {
     const parent = data.pages.find((p) => p.id === parentId);
