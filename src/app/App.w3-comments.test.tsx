@@ -44,6 +44,8 @@ describe("W3 코멘트", () => {
     renderApp("/spaces/sp1/pages/pg1");
     await screen.findByRole("heading", { level: 1, name: "시작하기" });
     const region = await screen.findByRole("region", { name: "코멘트" });
+    // 작성기는 포커스 전 컴팩트 상태 — 입력창을 클릭해야 제출 버튼이 나타난다(컨플루언스 방식)
+    await user.click(within(region).getByLabelText("코멘트 작성"));
     await user.click(within(region).getByRole("button", { name: "코멘트 남기기" }));
     expect(await screen.findByText("코멘트 작성 실패")).toBeInTheDocument();
     expect(screen.getByText("코멘트 내용을 입력하세요")).toBeInTheDocument();

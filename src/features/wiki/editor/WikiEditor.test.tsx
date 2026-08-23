@@ -3,6 +3,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { createRef } from "react";
 import { WikiEditor, type WikiEditorHandle, safeParse } from "./WikiEditor";
 import { editorRegistry } from "./editorTestRegistry";
+import * as Y from "yjs";
+import { createCollaborationBootstrapState } from "./collaboration/session";
+import { buildCollaborationExtensions } from "./extensions/collaboration";
 
 describe("WikiEditor", () => {
   it("초기 마크다운을 렌더하고 getMarkdown으로 되돌린다", () => {
@@ -33,5 +36,29 @@ describe("WikiEditor", () => {
     await waitFor(() => expect(editorRegistry.current).toBeTruthy());
     const names = editorRegistry.current!.extensionManager.extensions.map((e) => e.name);
     expect(names).toContain("globalDragHandle");
+  });
+
+  it("공유 Y.Doc은 initialMarkdown을 다시 넣지 않아 최초 본문이 중복되지 않는다", async () => {
+    const document = new Y.Doc();
+    Y.applyUpdate(document, createCollaborationBootstrapState(
+      "공유 제목",
+      "## 공유 원문\n\n한 번만 표시",
+    ));
+    const ref = createRef<WikiEditorHandle>();
+    const view = render(
+      <WikiEditor
+        ref={ref}
+        initialMarkdown="절대 다시 넣으면 안 되는 원문"
+        pages={[]}
+        collaborationExtensions={buildCollaborationExtensions({ document })}
+      />,
+    );
+
+    await waitFor(() => expect(ref.current?.getMarkdown()).toContain("공유 원문"));
+    expect(ref.current!.getMarkdown()).not.toContain("절대 다시 넣으면 안 되는 원문");
+    expect(ref.current!.getMarkdown().match(/한 번만 표시/g)).toHaveLength(1);
+
+    view.unmount();
+    document.destroy();
   });
 });

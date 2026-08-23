@@ -133,6 +133,42 @@ body {
   outline: none;
 }
 
+/* TopBar 중앙 슬롯의 전역 검색 — URL q와 동기화되는 제출형 폼이다. DS TextField의 라벨은
+ * 접근성 트리에 남기고 시각적으로만 숨겨 기존 컨플루언스형 한 줄 헤더 밀도를 유지한다. */
+.wiki-global-search {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  max-width: 520px;
+  gap: var(--chanho-space-50);
+}
+
+.wiki-global-search-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.wiki-global-search-field > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wiki-global-search-field input {
+  width: 100%;
+  height: 32px;
+  border-radius: var(--chanho-radius-full);
+  font-size: var(--chanho-font-size-75);
+}
+
 /* 앱 로컬 커스텀 컨트롤(생 button/a)의 포커스 링을 DS 컴포넌트와 같은 토큰으로 통일한다.
  * 이것이 없으면 브라우저 기본 outline이 떠서 DS 버튼과 링 모양·색이 달라진다. */
 .global-nav-item:focus-visible,
@@ -150,6 +186,7 @@ body {
 .child-pages a:focus-visible,
 .top-toolbar button:focus-visible,
 .top-toolbar select:focus-visible,
+.wiki-upload-task-actions button:focus-visible,
 .bubble-toolbar button:focus-visible,
 .insert-menu-trigger:focus-visible,
 .insert-menu-list button:focus-visible,
@@ -1168,6 +1205,11 @@ body {
 .page-edit-title::placeholder {
   color: var(--wiki-text-subtlest);
 }
+.page-edit-title:disabled {
+  color: var(--chanho-color-text-subtle);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
 
 /* W6: 컨플식 편집 크롬 — 최상단 고정 바(제목 미리보기 + 전체 너비/업데이트/닫기).
  * .top-toolbar와 같은 스크롤 컨테이너(.wiki-content) 안에서 sticky top: 0으로 고정되므로,
@@ -1203,6 +1245,450 @@ body {
   align-items: center;
   gap: var(--chanho-space-100);
   flex-shrink: 0;
+}
+
+/* 공동 편집 상태는 편집 흐름을 가리지 않는 compact chrome으로 둔다. 색만으로 상태를 구분하지
+ * 않고 항상 텍스트/aria-label을 함께 제공하며, 참여자가 늘어도 최대 3개 아바타만 차지한다. */
+.collaboration-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50, 4px);
+  min-width: 0;
+  font-size: var(--chanho-font-size-75);
+  white-space: nowrap;
+}
+
+.collaboration-status-signal {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50, 4px);
+  min-width: 0;
+  padding: var(--chanho-space-25, 2px) var(--chanho-space-75, 6px);
+  border-radius: var(--chanho-radius-full);
+  background: var(--chanho-color-background-neutral);
+  color: var(--chanho-color-text-subtle);
+}
+
+.collaboration-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: var(--chanho-radius-full);
+  background: currentColor;
+}
+
+.collaboration-status--synced .collaboration-status-signal {
+  background: var(--chanho-color-background-success-subtle, #dcfff1);
+  color: var(--chanho-color-text-success, #216e4e);
+}
+
+.collaboration-status--connecting .collaboration-status-signal,
+.collaboration-status--syncing .collaboration-status-signal,
+.collaboration-status--reconnecting .collaboration-status-signal {
+  background: var(--chanho-color-background-info-subtle, #e9f2ff);
+  color: var(--chanho-color-text-info, #0c66e4);
+}
+
+.collaboration-status--connecting .collaboration-status-dot,
+.collaboration-status--syncing .collaboration-status-dot,
+.collaboration-status--reconnecting .collaboration-status-dot {
+  animation: collaboration-pulse 1.4s ease-in-out infinite;
+}
+
+.collaboration-status--offline .collaboration-status-signal {
+  background: var(--chanho-color-background-warning-subtle, #fff7d6);
+  color: var(--chanho-color-text-warning, #7f5f01);
+}
+
+.collaboration-status--error .collaboration-status-signal {
+  background: var(--chanho-color-background-danger-subtle, #ffedeb);
+  color: var(--chanho-color-text-danger, #ae2a19);
+}
+
+.collaboration-status-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collaboration-presence {
+  position: relative;
+  flex: none;
+}
+
+.collaboration-avatars {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: var(--chanho-space-50, 4px);
+  padding: var(--chanho-space-25, 2px) var(--chanho-space-50, 4px)
+    var(--chanho-space-25, 2px) 8px;
+  border: 0;
+  border-radius: var(--chanho-radius-full);
+  background: transparent;
+  cursor: pointer;
+}
+
+.collaboration-avatars:hover,
+.collaboration-avatars[aria-expanded="true"] {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.collaboration-avatars:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
+.collaboration-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-inline-start: -4px;
+  box-sizing: border-box;
+  border: 2px solid var(--chanho-color-background-surface, #fff);
+  border-radius: var(--chanho-radius-full);
+  background: var(--collaboration-avatar-color);
+  color: #fff;
+  font-size: 9px;
+  font-weight: var(--chanho-font-weight-bold, 700);
+  letter-spacing: -0.04em;
+}
+
+.collaboration-avatar--overflow {
+  background: var(--chanho-color-background-neutral-bold, #44546f);
+  letter-spacing: 0;
+}
+
+.collaboration-presence-panel {
+  position: absolute;
+  top: calc(100% + var(--chanho-space-100, 8px));
+  inset-inline-end: 0;
+  z-index: 40;
+  width: min(260px, calc(100vw - var(--chanho-space-400, 32px)));
+  max-height: 300px;
+  padding: var(--chanho-space-150, 12px);
+  box-sizing: border-box;
+  overflow: auto;
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-large, 8px);
+  background: var(--chanho-color-background-surface, #fff);
+  box-shadow: var(--chanho-shadow-overlay);
+  color: var(--chanho-color-text-default);
+}
+
+.collaboration-presence-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-100, 8px);
+  margin-bottom: var(--chanho-space-100, 8px);
+}
+
+.collaboration-presence-heading strong {
+  font-size: var(--chanho-font-size-100);
+}
+
+.collaboration-presence-heading span {
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.collaboration-presence-panel ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-50, 4px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.collaboration-presence-panel li {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100, 8px);
+  min-width: 0;
+  padding: var(--chanho-space-50, 4px);
+  border-radius: var(--chanho-radius-small, 4px);
+}
+
+.collaboration-participant-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--chanho-radius-full);
+  background: var(--collaboration-avatar-color);
+  color: #fff;
+  font-size: 10px;
+  font-weight: var(--chanho-font-weight-bold, 700);
+}
+
+.collaboration-participant-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.collaboration-retry {
+  border: 0;
+  padding: var(--chanho-space-25, 2px) var(--chanho-space-50, 4px);
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: var(--chanho-color-text-link, #0c66e4);
+  font: inherit;
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  cursor: pointer;
+}
+
+.collaboration-retry:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.collaboration-retry:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
+.collaboration-editor-gate {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--chanho-space-150, 12px);
+  min-height: 240px;
+  padding: var(--chanho-space-300, 24px);
+  box-sizing: border-box;
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-large, 8px);
+  background: var(--chanho-color-background-subtle);
+  color: var(--chanho-color-text-default);
+}
+
+.collaboration-editor-gate-mark {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  flex: none;
+  border: 2px solid var(--chanho-color-border-brand, #0c66e4);
+  border-top-color: transparent;
+  border-radius: var(--chanho-radius-full);
+  animation: collaboration-spin 0.9s linear infinite;
+}
+
+.collaboration-editor-gate--offline .collaboration-editor-gate-mark,
+.collaboration-editor-gate--error .collaboration-editor-gate-mark {
+  border-color: var(--chanho-color-border-danger, #ae2a19);
+  animation: none;
+}
+
+.collaboration-editor-gate strong {
+  font-size: var(--chanho-font-size-100);
+}
+
+.collaboration-editor-gate p {
+  margin: var(--chanho-space-50, 4px) 0 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.collaboration-cursor__caret {
+  position: relative;
+  z-index: 3;
+  border-inline-start: 2px solid;
+  border-inline-end: 0;
+  margin-inline-start: -1px;
+  pointer-events: none;
+}
+
+.collaboration-cursor__label {
+  position: absolute;
+  top: -1.45em;
+  inset-inline-start: -2px;
+  padding: 1px 5px;
+  border-radius: var(--chanho-radius-small, 4px) var(--chanho-radius-small, 4px)
+    var(--chanho-radius-small, 4px) 0;
+  color: #fff;
+  max-width: min(180px, 50vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--chanho-font-family-sans);
+  font-size: 10px;
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  line-height: 1.45;
+  white-space: nowrap;
+  box-shadow: var(--chanho-shadow-100);
+  user-select: none;
+}
+
+@keyframes collaboration-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes collaboration-pulse {
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collaboration-status-dot,
+  .collaboration-editor-gate-mark { animation: none; }
+}
+
+@media (max-width: 760px) {
+  .edit-chrome-title,
+  .edit-chrome-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .edit-chrome {
+    gap: var(--chanho-space-100, 8px);
+  }
+
+  .edit-chrome-width-toggle {
+    display: none;
+  }
+
+  .collaboration-status {
+    margin-inline-end: auto;
+  }
+
+  .collaboration-status-label {
+    max-width: 148px;
+  }
+}
+
+/* 오래된 편집본 저장 충돌 — 로컬 에디터를 덮지 않고 복구 선택지를 같은 흐름 안에 둔다. */
+.edit-conflict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-150, 12px);
+  padding: var(--chanho-space-200);
+  border-inline-start: 3px solid var(--chanho-color-text-warning, #b38600);
+  background: var(--chanho-color-background-warning-subtle, #fff7d6);
+  color: var(--chanho-color-text-default);
+}
+
+.edit-conflict-summary,
+.edit-conflict-pane-heading,
+.edit-conflict-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-150, 12px);
+}
+
+.edit-conflict-summary h2,
+.edit-conflict-pane-heading h3 {
+  margin: 0;
+  color: inherit;
+}
+
+.edit-conflict-summary h2 {
+  font-size: var(--chanho-font-size-200);
+}
+
+.edit-conflict-summary p,
+.edit-conflict-merge p {
+  margin: var(--chanho-space-50) 0 0;
+  font-size: var(--chanho-font-size-100);
+  color: var(--chanho-color-text-subtle);
+}
+
+.edit-conflict-version {
+  flex: none;
+  font-size: var(--chanho-font-size-75);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.edit-conflict-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.edit-conflict-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--chanho-color-border-default);
+  padding-top: var(--chanho-space-150, 12px);
+}
+
+.edit-conflict-compare > section {
+  min-width: 0;
+  padding: 0 var(--chanho-space-150, 12px);
+}
+
+.edit-conflict-compare > section:first-child {
+  padding-inline-start: 0;
+  border-inline-end: 1px solid var(--chanho-color-border-default);
+}
+
+.edit-conflict-compare > section:nth-child(2) {
+  padding-inline-end: 0;
+}
+
+.edit-conflict-pane-heading h3 {
+  font-size: var(--chanho-font-size-100);
+}
+
+.edit-conflict-compare strong {
+  display: block;
+  margin-top: var(--chanho-space-100);
+  font-size: var(--chanho-font-size-100);
+}
+
+.edit-conflict-compare pre {
+  max-height: 220px;
+  margin: var(--chanho-space-100) 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+
+.edit-conflict-merge {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-200);
+  margin-top: var(--chanho-space-150, 12px);
+  padding-top: var(--chanho-space-150, 12px);
+  border-top: 1px solid var(--chanho-color-border-default);
+}
+
+.edit-conflict-merge p {
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .edit-conflict-summary,
+  .edit-conflict-merge {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .edit-conflict-compare {
+    grid-template-columns: 1fr;
+  }
+
+  .edit-conflict-compare > section {
+    padding: var(--chanho-space-150, 12px) 0;
+  }
+
+  .edit-conflict-compare > section:first-child {
+    padding-top: 0;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--chanho-color-border-default);
+  }
 }
 
 /* ── 버전 히스토리 모달 (W3) ──────────────────────────── */
@@ -1299,15 +1785,53 @@ body {
 }
 
 .comment-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
   margin: 0;
+  padding: var(--chanho-space-200);
   color: var(--chanho-color-text-subtle);
+  border: 1px dashed var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
 }
 
-.comment-form {
+/* 코멘트 작성기 — 아바타 + 카드형 입력(레퍼런스: 컨플루언스 하단 comment bar).
+ * 포커스/입력 전에는 한 줄 컴팩트, 활성화되면 rows·액션 행이 늘어난다(컴포넌트가 제어). */
+.comment-composer {
   display: flex;
-  flex-direction: column;
   align-items: flex-start;
   gap: var(--chanho-space-100);
+}
+.comment-composer-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+}
+/* DS TextArea의 라벨은 스크린리더용으로만 남긴다 — 컨플루언스 작성기는 라벨 없이 placeholder다 */
+.comment-composer .comment-composer-main > div > label,
+.comment-edit > div > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.comment-composer--reply {
+  margin-left: var(--chanho-space-500);
+  margin-top: var(--chanho-space-100);
+}
+.comment-hint {
+  margin-left: auto;
+  color: var(--chanho-color-text-subtlest);
+  font-size: var(--chanho-font-size-75, 12px);
+}
+/* 답글 묶음 — 스레드 연결선으로 소속을 시각화한다(들여쓰기만으론 긴 목록에서 흐릿하다) */
+.comment-thread {
+  border-left: 2px solid var(--chanho-color-border-default);
+  margin-left: var(--chanho-space-200);
+  padding-left: var(--chanho-space-100);
 }
 
 /* W4: 코멘트 수정/답글 폼 버튼 행 — 답글/수정/삭제 액션과 들여쓰기는 DS Comment의 actions/nested가 담당 */
@@ -1321,6 +1845,170 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--chanho-space-100);
+}
+
+/* ── 토글(details) — 편집 NodeView ───────────────────────────
+ * 배경 없이 chevron+제목(레퍼런스: Notion 토글·Confluence expand 공통), 내용은 chevron
+ * 폭만큼 들여쓴다. 접힘 상태는 로컬 — DetailsView 참조. */
+.details-block {
+  margin: var(--chanho-space-100) 0;
+}
+.details-block-header {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-50, 4px);
+}
+.details-block-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  cursor: pointer;
+  transition: background var(--chanho-transition-base), transform var(--chanho-transition-base);
+}
+.details-block-chevron:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered);
+}
+.details-block--open .details-block-chevron svg {
+  transform: rotate(90deg);
+}
+.details-block-chevron svg {
+  transition: transform var(--chanho-transition-base);
+}
+.details-block-summary {
+  flex: 1;
+  padding: var(--chanho-space-50, 4px) 0;
+  border: none;
+  background: transparent;
+  color: var(--chanho-color-text-default);
+  font: inherit;
+  font-weight: var(--chanho-font-weight-semibold);
+}
+.details-block-summary:focus {
+  outline: none; /* 포커스는 아래 밑줄로 표시 — outline만 지우고 끝내지 않는다 */
+  box-shadow: inset 0 -2px 0 var(--chanho-color-border-brand);
+}
+.details-block-summary::placeholder {
+  color: var(--chanho-color-text-subtlest);
+}
+.details-block-content {
+  margin-left: calc(24px + var(--chanho-space-50, 4px));
+  padding-left: var(--chanho-space-100);
+  border-left: 2px solid var(--chanho-color-border-default);
+}
+
+/* ── 토글(details) — 보기 렌더(네이티브 details/summary) ───── */
+.markdown-body .md-details {
+  margin: var(--chanho-space-100) 0;
+}
+.markdown-body .md-details-summary {
+  display: list-item; /* 기본 disclosure 마커 유지 — 상태를 색이 아니라 형태로 구분 */
+  padding: var(--chanho-space-50, 4px) 0;
+  font-weight: var(--chanho-font-weight-semibold);
+  cursor: pointer;
+  border-radius: var(--chanho-radius-small);
+}
+.markdown-body .md-details-summary:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered);
+}
+.markdown-body .md-details-summary:focus-visible {
+  outline: 2px solid var(--chanho-color-border-brand);
+  outline-offset: 2px;
+}
+.markdown-body .md-details[open] > :not(summary) {
+  margin-left: var(--chanho-space-300);
+}
+
+/* ── 이미지 리사이즈·캡션 (동등성 Must 4) ─────────────────── */
+.image-view-frame {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+.image-view-frame img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.image-view-resize {
+  position: absolute;
+  top: 50%;
+  right: calc(var(--chanho-space-50, 4px) * -1);
+  width: 8px;
+  height: 40px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-border-brand);
+  opacity: 0;
+  cursor: ew-resize;
+  transition: opacity var(--chanho-transition-base);
+}
+.image-view:hover .image-view-resize,
+.image-view-resize:focus-visible {
+  opacity: 1;
+}
+.image-view-resize:focus-visible {
+  outline: 2px solid var(--chanho-color-border-brand);
+  outline-offset: 2px;
+}
+.image-view-caption {
+  display: block;
+  width: 100%;
+  margin-top: var(--chanho-space-50, 4px);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+  text-align: center;
+}
+.image-view-caption:focus {
+  outline: none;
+  box-shadow: inset 0 -2px 0 var(--chanho-color-border-brand);
+}
+.image-view-caption::placeholder {
+  color: var(--chanho-color-text-subtlest);
+}
+.image-view-caption-text,
+.markdown-body .md-figcaption {
+  display: block;
+  margin-top: var(--chanho-space-50, 4px);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+  text-align: center;
+}
+.markdown-body .md-figure {
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* ── 트리 드롭 표시 — 앞/뒤는 삽입선, 하위는 대상 행 하이라이트 ── */
+.page-tree-drop-before > .page-tree-row {
+  box-shadow: 0 -2px 0 var(--chanho-color-border-brand);
+}
+.page-tree-drop-after > .page-tree-row {
+  box-shadow: 0 2px 0 var(--chanho-color-border-brand);
+}
+.page-tree-drop-child > .page-tree-row {
+  background: var(--chanho-color-background-brand-subtle, var(--chanho-color-background-neutral-subtle-hovered));
+  border-radius: var(--chanho-radius-small);
+}
+.page-tree-move-select {
+  width: 100%;
+  margin-top: var(--chanho-space-100);
+  padding: var(--chanho-space-100);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-surface);
+  color: var(--chanho-color-text-default);
 }
 
 /* W4: 버전 diff */
@@ -1357,6 +2045,17 @@ body {
 
 .diff-title-change {
   font-weight: var(--chanho-font-weight-semibold);
+}
+
+/* ── 사용자 멘션 칩 — 편집(.user-mention NodeView 렌더)과 보기(MentionChip) 공용 ── */
+.user-mention {
+  display: inline;
+  padding: 1px var(--chanho-space-50, 4px);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-brand-subtle, var(--chanho-color-background-neutral-subtle-hovered));
+  color: var(--chanho-color-text-brand);
+  font-weight: var(--chanho-font-weight-medium);
+  white-space: nowrap;
 }
 
 /* W4: 페이지 간 링크 */
@@ -1867,6 +2566,142 @@ body {
 .image-view img {
   max-width: 100%;
 }
+.wiki-editor-image-input {
+  display: none;
+}
+.wiki-editor-upload-error,
+.image-view-loading {
+  margin-top: 8px;
+  color: var(--wiki-text-subtlest);
+  font-size: var(--chanho-font-size-100);
+}
+.wiki-editor-upload-error {
+  color: var(--chanho-color-text-danger);
+}
+.wiki-upload-rail {
+  margin: calc(var(--chanho-space-150, 12px) * -1) 0 var(--chanho-space-150, 12px);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+  background: var(--chanho-color-background-surface);
+}
+.wiki-upload-rail ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wiki-upload-task {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(100px, 220px) auto;
+  align-items: center;
+  gap: var(--chanho-space-150, 12px);
+  min-height: 38px;
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100, 8px);
+  border-left: 3px solid var(--chanho-color-border-brand);
+  font-size: var(--chanho-font-size-100);
+}
+.wiki-upload-task + .wiki-upload-task {
+  border-top: 1px solid var(--chanho-color-border-subtle, var(--chanho-color-border-default));
+}
+.wiki-upload-task--failed {
+  border-left-color: var(--chanho-color-border-danger, var(--chanho-color-text-danger));
+  background: var(--chanho-color-background-danger-subtle, transparent);
+}
+.wiki-upload-task--cancelled {
+  border-left-color: var(--chanho-color-border-default);
+}
+.wiki-upload-task-copy {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  gap: var(--chanho-space-100, 8px);
+}
+.wiki-upload-task-name {
+  overflow: hidden;
+  color: var(--chanho-color-text-default);
+  font-weight: var(--chanho-font-weight-semibold, 600);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wiki-upload-task-state {
+  flex-shrink: 0;
+  color: var(--wiki-text-subtlest);
+}
+.wiki-upload-task--failed .wiki-upload-task-state {
+  color: var(--chanho-color-text-danger);
+}
+.wiki-upload-progress {
+  width: 100%;
+  height: 4px;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  accent-color: var(--chanho-color-background-brand-bold, var(--chanho-color-border-brand));
+}
+.wiki-upload-progress::-webkit-progress-bar {
+  background: var(--chanho-color-background-neutral, #eef0f3);
+}
+.wiki-upload-progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: var(--chanho-color-background-brand-bold, var(--chanho-color-border-brand));
+}
+.wiki-upload-task--failed .wiki-upload-progress,
+.wiki-upload-task--cancelled .wiki-upload-progress {
+  opacity: 0.35;
+}
+.wiki-upload-task-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--chanho-space-50, 4px);
+}
+.wiki-upload-task-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50, 4px);
+  min-height: 28px;
+  padding: 2px var(--chanho-space-100, 8px);
+  border: 0;
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  cursor: pointer;
+  font: inherit;
+}
+.wiki-upload-task-actions button:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+  color: var(--chanho-color-text-default);
+}
+.wiki-upload-task-actions .wiki-upload-task-dismiss {
+  min-width: 28px;
+  padding-inline: 6px;
+}
+
+@media (max-width: 700px) {
+  .wiki-upload-task {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--chanho-space-50, 4px) var(--chanho-space-100, 8px);
+  }
+  .wiki-upload-task-copy {
+    flex-direction: column;
+    gap: 0;
+  }
+  .wiki-upload-progress {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .wiki-upload-task-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+.image-view-loading {
+  padding: 16px;
+  border: 1px dashed var(--chanho-color-border-default);
+  border-radius: 6px;
+  background: var(--chanho-color-background-subtle);
+}
 .image-view-broken {
   display: flex;
   flex-direction: column;
@@ -2038,6 +2873,149 @@ body {
 }
 .space-directory-star[aria-pressed="true"] {
   color: var(--chanho-color-text-warning, #b38600);
+}
+
+/* ── 통합 검색 (/search) ────────────────────────────────────
+ * 결과는 문서 탐색의 위계를 보존하는 단일 목록이다. 카드 그리드를 쓰지 않아 제목·경로·본문
+ * 조각을 한 번에 훑을 수 있고 PAGE/FOLDER/ATTACHMENT 타입이 실제 이동 경로와 함께 보인다. */
+.search-page {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--chanho-space-300) var(--chanho-space-400) var(--chanho-space-600);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-300);
+}
+
+.search-page-state {
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--chanho-space-150);
+  color: var(--chanho-color-text-subtle);
+}
+
+.search-result-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--chanho-space-200);
+  padding-bottom: var(--chanho-space-150);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
+
+.search-result-summary span,
+.search-result-path {
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+}
+
+.search-result-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search-result-item {
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
+
+.search-result-link {
+  display: flex;
+  gap: var(--chanho-space-200);
+  padding: var(--chanho-space-250) var(--chanho-space-100);
+  border-radius: var(--chanho-radius-medium);
+  color: var(--chanho-color-text-default);
+  text-decoration: none;
+  transition: background-color var(--chanho-transition-base);
+}
+
+.search-result-link:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.search-result-link:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+
+.search-result-icon {
+  flex-shrink: 0;
+  padding-top: var(--chanho-space-50);
+  color: var(--chanho-color-text-subtle);
+}
+
+.search-result-copy {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--chanho-space-75);
+}
+
+.search-result-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--chanho-space-100);
+}
+
+.search-result-heading strong {
+  overflow-wrap: anywhere;
+  color: var(--chanho-color-text-default);
+  font-size: var(--chanho-font-size-200);
+}
+
+.search-result-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-50);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+  line-height: var(--chanho-font-lineHeight-300);
+}
+
+.search-result-highlights p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.search-result-highlights mark {
+  border-radius: var(--chanho-radius-small);
+  padding: 0 var(--chanho-space-25);
+  background: var(--chanho-color-background-brand-subtle);
+  color: var(--chanho-color-text-default);
+}
+
+.search-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--chanho-space-200);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+}
+
+@media (max-width: 700px) {
+  .wiki-global-search {
+    max-width: none;
+  }
+
+  .wiki-global-search button {
+    display: none;
+  }
+
+  .search-page {
+    padding-inline: var(--chanho-space-100);
+  }
+
+  .search-result-link {
+    padding-inline: 0;
+  }
 }
 
 /* ── 폴더 상세 (/spaces/:spaceId/folder/:folderId) ───────────

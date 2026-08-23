@@ -7,6 +7,7 @@ import type { User } from "../store/types";
 import { getCurrentUser } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
 import { useAuth } from "../../../auth/AuthGate";
+import { GlobalSearchField } from "./GlobalSearchField";
 
 export interface WikiTopBarProps {
   /** 지정하면 브랜드 슬롯 좌측에 사이드바 토글 버튼을 렌더한다(WikiLayout 전용 — 사이드바가 있는
@@ -34,14 +35,14 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
     void getCurrentUser().then(setMe);
   }, []);
 
-  // TODO(전역 검색): 헤더 검색은 아직 배치만 — 검색 로직은 기능 백로그(docs/roadmap 체크리스트) 항목.
-  const handleSearch = () => {};
-
   return (
     <TopBar
-      onSearch={handleSearch}
-      searchPlaceholder="검색"
-      searchTrailing={create}
+      searchTrailing={
+        <>
+          <GlobalSearchField />
+          {create}
+        </>
+      }
       brand={
         <>
           {onSidebarToggle ? (

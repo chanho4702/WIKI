@@ -1,11 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { Button, Spinner, useToast } from "@chanho/react";
-import { createPage, deletePage, getPage, publishPage, updatePage } from "../store/wikiStore";
+import {
+  commitCollaborationDraft,
+  createPage,
+  deletePage,
+  getPage,
+  publishPage,
+  updatePage,
+  listUsers,
+} from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
 import { DRAFT_TITLE } from "../lib/useCreateContent";
+import { EditConflictPanel } from "../components/EditConflictPanel";
+import { PageConflictError, type Page, type User } from "../store/types";
+import { CollaborationStatus } from "../editor/components/CollaborationStatus";
+import {
+  COLLABORATION_ENABLED,
+  useCollaborationSession,
+} from "../editor/collaboration/useCollaborationSession";
+import { replaceCollaborativeTitle } from "../editor/collaboration/title";
+import { canCommitCollaborationDraft } from "../editor/collaboration/availability";
+
+interface EditConflict {
+  serverPage: Page | null;
+  localTitle: string;
+  localBody: string;
+}
 
 /**
  * 페이지 편집 화면 — 생성(/pages/new?parent=<id|없음>)과 수정(/pages/:pageId/edit) 공용.
@@ -22,14 +45,28 @@ export function PageEditPage() {
 
   const editorRef = useRef<WikiEditorHandle>(null);
   const [title, setTitle] = useState(() => (isEdit ? "" : (searchParams.get("title") ?? "")));
+  const [initialTitle, setInitialTitle] = useState<string | null>(() =>
+    (isEdit ? null : (searchParams.get("title") ?? "")));
   const [initialBody, setInitialBody] = useState<string | null>(isEdit ? null : "");
   const [notFound, setNotFound] = useState(false);
+  // 멘션(@) 자동완성 후보 — org 사용자 디렉터리. 실패해도 편집을 막지 않는다(listUsers가 빈 목록 폴백).
+  const [users, setUsers] = useState<User[]>([]);
+  useEffect(() => {
+    void listUsers().then(setUsers);
+  }, []);
   // 수정 모드에서 로드한 페이지의 실제 spaceId (URL 불일치 가드용)
   const [pageSpaceId, setPageSpaceId] = useState<string | null>(null);
   // Task 5: 제목 변경 추적 (본문은 WikiEditor.isDirty()로 추적)
   const [titleDirty, setTitleDirty] = useState(false);
   // 저장 진행 상태 — 업데이트 버튼 로딩 표시 + 중복 저장 차단
   const [saving, setSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  // 편집 시작 시점의 버전 — 저장 직전 최신값으로 바꾸면 stale 편집을 감지할 수 없다.
+  const [baseVersion, setBaseVersion] = useState<number | null>(null);
+  const [conflict, setConflict] = useState<EditConflict | null>(null);
+  const [conflictComparisonOpen, setConflictComparisonOpen] = useState(false);
+  // 서버본 재로드 때 TipTap 인스턴스를 명시적으로 새로 만들어 initialMarkdown을 다시 적용한다.
+  const [editorGeneration, setEditorGeneration] = useState(0);
   // Task 18: 페이지 너비 토글 — 생성 화면(pageId 없음)은 항상 기본 폭, toggle은 무동작
   const { width, toggle: toggleWidth } = usePageWidth(pageId);
 
@@ -38,9 +75,40 @@ export function PageEditPage() {
   const [bodyDirty, setBodyDirty] = useState(false);
   // 편집 중인 문서가 초안인지 — 초안이면 "업데이트" 대신 "게시"가 주 액션이다(기획 P3).
   const [isDraft, setIsDraft] = useState(false);
+  const collaboration = useCollaborationSession({
+    enabled: COLLABORATION_ENABLED && isEdit && !notFound,
+    pageId: pageId ?? null,
+    basePageVersion: baseVersion,
+    initialTitle,
+    initialMarkdown: initialBody,
+    pages: pages ?? [],
+  });
+  const collaborationRequired = COLLABORATION_ENABLED && isEdit;
+  const collaborationReady = !collaborationRequired
+    || (collaboration.binding !== null && collaboration.generation !== null);
+  const collaborationCommitReady = !collaborationRequired || canCommitCollaborationDraft(
+    collaboration.status,
+    collaboration.binding !== null,
+    collaboration.generation,
+  );
+
+  // 제목도 본문과 같은 Y.Doc의 Y.Text를 사용한다. 원격 update가 오면 controlled input과 dirty 표시를
+  // 함께 갱신하고, 재연결 뒤에는 마지막 published title과 비교해 미게시 변경을 숨기지 않는다.
+  useEffect(() => {
+    const sharedTitle = collaboration.binding?.title;
+    if (!sharedTitle || initialTitle === null) return;
+    const syncTitle = () => {
+      const nextTitle = sharedTitle.toString();
+      setTitle(nextTitle);
+      setTitleDirty(nextTitle !== initialTitle);
+    };
+    syncTitle();
+    sharedTitle.observe(syncTitle);
+    return () => sharedTitle.unobserve(syncTitle);
+  }, [collaboration.binding?.title, initialTitle]);
 
   // Task 5: 이탈 가드 — 제목·본문 미저장 변경 감지
-  const isDirty = () => titleDirty || (editorRef.current?.isDirty() ?? false);
+  const isDirty = () => titleDirty || imageUploading || (editorRef.current?.isDirty() ?? false);
 
   // 브라우저 새로고침/닫기 가드 — 라우터 내비게이션은 선언형 Routes라 useBlocker 불가(스펙 각주 참조)
   // 훅은 조건부가 아닌 곳에 고정해야 함 — early return 가드 이전에 배치
@@ -55,17 +123,31 @@ export function PageEditPage() {
   useEffect(() => {
     if (!isEdit || !pageId) return;
     // edit(A) → edit(B) 재사용 시 이전 페이지의 본문이 새 페이지 로딩 중 잠깐 노출되는 것을 방지
+    setInitialTitle(null);
     setInitialBody(null);
+    setNotFound(false);
+    setBaseVersion(null);
+    setConflict(null);
+    setConflictComparisonOpen(false);
+    setTitleDirty(false);
+    setBodyDirty(false);
+    let cancelled = false;
     void getPage(pageId).then((page) => {
+      if (cancelled) return;
       if (page === null) {
         setNotFound(true);
       } else {
         setTitle(page.title);
+        setInitialTitle(page.title);
         setInitialBody(page.body);
+        setBaseVersion(page.version);
         setPageSpaceId(page.spaceId);
         setIsDraft(page.status === "draft");
       }
     });
+    return () => {
+      cancelled = true;
+    };
   }, [isEdit, pageId]);
 
   // 같은 create 라우트 안에서 ?title=만 바뀌는 네비게이션(미리보기의 빨간 링크 클릭)도 프리필 반영
@@ -74,6 +156,7 @@ export function PageEditPage() {
     const prefill = searchParams.get("title");
     if (prefill !== null) {
       setTitle(prefill);
+      setInitialTitle(prefill);
       setTitleDirty(false); // Task 5: 프리필은 사용자 변경이 아님
     }
   }, [isEdit, searchParams]);
@@ -94,12 +177,37 @@ export function PageEditPage() {
   }
 
   const handleSave = async () => {
+    if (!collaborationReady) {
+      toast({ title: "공동 편집 문서를 준비한 뒤 저장해 주세요", appearance: "info" });
+      return;
+    }
+    if (!collaborationCommitReady) {
+      toast({
+        title: "연결이 복구되고 동기화된 뒤 저장해 주세요",
+        description: "현재 편집 내용은 이 탭에 임시 보관되어 있습니다.",
+        appearance: "info",
+      });
+      return;
+    }
+    if (imageUploading) {
+      toast({ title: "이미지 업로드가 끝난 뒤 저장해 주세요", appearance: "info" });
+      return;
+    }
     // 본문 불변 보장 — 본문 미수정이면 직렬화 대신 원문 그대로 (버전 diff 노이즈 방지)
     const body = editorRef.current?.isDirty() ? editorRef.current.getMarkdown() : initialBody;
     setSaving(true);
     try {
       if (isEdit && pageId) {
-        const saved = await updatePage(pageId, { title, body });
+        const saved = collaborationRequired
+          ? (await commitCollaborationDraft(pageId, { title, body }, {
+              expectedVersion: baseVersion!,
+              expectedGeneration: collaboration.generation!,
+            })).page
+          : await updatePage(pageId, { title, body }, {
+              expectedVersion: baseVersion ?? undefined,
+            });
+        setBaseVersion(saved.version);
+        await editorRef.current?.finalizePendingUploads();
         // 초안은 "저장"만으로 공개되지 않는다 — 이 버튼이 곧 게시다(라벨도 "게시").
         // 저장을 먼저 하는 이유: 게시 후 저장이 실패하면 빈 문서가 공개된 채 남는다.
         if (isDraft) await publishPage(saved.id);
@@ -116,6 +224,17 @@ export function PageEditPage() {
         navigate(`/spaces/${spaceId}/pages/${created.id}`);
       }
     } catch (error) {
+      if (error instanceof PageConflictError) {
+        setConflict({ serverPage: error.serverPage, localTitle: title, localBody: body });
+        setConflictComparisonOpen(Boolean(error.serverPage));
+        toast({
+          title: "저장하지 않았습니다",
+          description: error.message,
+          appearance: "danger",
+        });
+        setSaving(false);
+        return;
+      }
       toast({
         title: "저장 실패",
         description: error instanceof Error ? error.message : String(error),
@@ -126,11 +245,65 @@ export function PageEditPage() {
     }
   };
 
+  const copyDocument = async (label: string, copyTitle: string, copyBody: string) => {
+    if (!navigator.clipboard?.writeText) {
+      toast({
+        title: `${label}을 복사할 수 없습니다`,
+        description: "브라우저 클립보드 권한을 확인해 주세요.",
+        appearance: "danger",
+      });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(`# ${copyTitle}\n\n${copyBody}`);
+      toast({ title: `${label}을 클립보드에 복사했습니다`, appearance: "success" });
+    } catch {
+      toast({
+        title: `${label}을 복사할 수 없습니다`,
+        description: "브라우저 클립보드 권한을 확인해 주세요.",
+        appearance: "danger",
+      });
+    }
+  };
+
+  const reloadServerVersion = async () => {
+    const serverPage = conflict?.serverPage;
+    if (!serverPage) return;
+    if (!window.confirm(
+      "내 편집 내용을 버리고 서버에 저장된 최신 내용으로 다시 불러오시겠습니까?",
+    )) return;
+    await editorRef.current?.discardPendingUploads();
+    setTitle(serverPage.title);
+    setInitialTitle(serverPage.title);
+    setInitialBody(serverPage.body);
+    setBaseVersion(serverPage.version);
+    setTitleDirty(false);
+    setBodyDirty(false);
+    setImageUploading(false);
+    setConflict(null);
+    setConflictComparisonOpen(false);
+    setEditorGeneration((generation) => generation + 1);
+  };
+
+  const continueManualMerge = () => {
+    const serverPage = conflict?.serverPage;
+    if (!serverPage) return;
+    setBaseVersion(serverPage.version);
+    setConflict(null);
+    setConflictComparisonOpen(false);
+    toast({
+      title: `서버 v${serverPage.version}을 병합 기준으로 설정했습니다`,
+      description: "서버 변경을 현재 편집 내용에 반영한 뒤 다시 저장해 주세요.",
+      appearance: "info",
+    });
+  };
+
   const handleCancel = async () => {
     // Task 5: dirty 이탈 가드
     if (isDirty() && !window.confirm("저장하지 않은 변경이 있습니다. 나가시겠습니까?")) {
       return;
     }
+    await editorRef.current?.discardPendingUploads();
     // 손대지 않은 초안은 닫을 때 지운다. 생성 버튼이 초안을 즉시 만들어 트리에 세우는 구조라,
     // 정리하지 않으면 실수로 누른 만큼 "제목 없음"이 트리에 쌓인다. 제목이나 본문을 건드렸으면
     // 사용자의 작업물이므로 남긴다(초안 상태로).
@@ -171,11 +344,19 @@ export function PageEditPage() {
               ? "초안 — 아직 게시되지 않음"
               : "저장됨"}
         </span>
+        <CollaborationStatus
+          status={collaboration.status}
+          participants={collaboration.participants}
+          hasLocalDocument={collaboration.binding !== null}
+          error={collaboration.error}
+          onRetry={collaboration.retry}
+        />
         <div className="edit-chrome-actions">
           {isEdit && pageId ? (
             <Button
               size="small"
               variant="subtle"
+              className="edit-chrome-width-toggle"
               aria-label="전체 너비"
               aria-pressed={width === "full"}
               onClick={toggleWidth}
@@ -183,7 +364,11 @@ export function PageEditPage() {
               {width === "full" ? "기본 너비" : "전체 너비"}
             </Button>
           ) : null}
-          <Button onClick={handleSave} disabled={!title.trim()} loading={saving}>
+          <Button
+            onClick={handleSave}
+            disabled={!title.trim() || imageUploading || !collaborationCommitReady}
+            loading={saving}
+          >
             {isDraft ? "게시" : "업데이트"}
           </Button>
           <Button variant="subtle" onClick={() => void handleCancel()}>
@@ -191,22 +376,69 @@ export function PageEditPage() {
           </Button>
         </div>
       </div>
+      {conflict ? (
+        <EditConflictPanel
+          serverPage={conflict.serverPage}
+          localTitle={conflict.localTitle}
+          localBody={conflict.localBody}
+          comparisonOpen={conflictComparisonOpen}
+          onToggleComparison={() => setConflictComparisonOpen((open) => !open)}
+          onCopyLocal={() => void copyDocument("내 변경", conflict.localTitle, conflict.localBody)}
+          onCopyServer={() => {
+            if (conflict.serverPage) {
+              void copyDocument("서버본", conflict.serverPage.title, conflict.serverPage.body);
+            }
+          }}
+          onReloadServer={() => void reloadServerVersion()}
+          onContinueMerge={continueManualMerge}
+        />
+      ) : null}
       <input
         className="page-edit-title"
         value={title}
         onChange={(e) => {
-          setTitle(e.target.value);
-          setTitleDirty(true); // Task 5: 제목 변경 감지
+          const nextTitle = e.target.value;
+          if (collaboration.binding) {
+            replaceCollaborativeTitle(collaboration.binding.title, nextTitle);
+          } else {
+            setTitle(nextTitle);
+            setTitleDirty(nextTitle !== initialTitle);
+          }
         }}
+        disabled={!collaborationReady || saving}
         placeholder="제목 없음"
         aria-label="페이지 제목"
       />
-      <WikiEditor
-        ref={editorRef}
-        initialMarkdown={initialBody}
-        pages={pages ?? []}
-        onDirty={() => setBodyDirty(true)}
-      />
+      {collaborationRequired && !collaboration.binding ? (
+        <div
+          className={`collaboration-editor-gate collaboration-editor-gate--${collaboration.status}`}
+          role="status"
+        >
+          <span className="collaboration-editor-gate-mark" aria-hidden="true" />
+          <div>
+            <strong>
+              {collaboration.status === "error"
+                ? "공동 편집 연결을 복구해 주세요"
+                : collaboration.status === "offline"
+                  ? "네트워크 연결을 기다리고 있습니다"
+                  : "공동 편집 문서를 준비하고 있습니다"}
+            </strong>
+            <p>기존 내용을 안전하게 동기화한 뒤 편집기가 열립니다.</p>
+          </div>
+        </div>
+      ) : (
+        <WikiEditor
+          key={`${pageId ?? "new"}:${editorGeneration}:${collaborationRequired ? "shared" : "solo"}`}
+          ref={editorRef}
+          initialMarkdown={initialBody}
+          pages={pages ?? []}
+          users={users}
+          pageId={pageId}
+          onDirty={() => setBodyDirty(true)}
+          onUploadStateChange={setImageUploading}
+          collaborationExtensions={collaboration.binding?.extensions}
+        />
+      )}
     </div>
   );
 }

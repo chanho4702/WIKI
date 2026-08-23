@@ -22,7 +22,23 @@ describe("wikiApi.getCurrentUser", () => {
 });
 
 describe("wikiApi.listUsers", () => {
-  it("listUsers는 폴백으로 빈 배열(org-service 미연동)", async () => {
+  it("org 디렉터리(/api/org/members)에서 ACTIVE만 User로 매핑", async () => {
+    const spy = vi.spyOn(client, "sharedApiFetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify([
+          { id: 1, displayName: "이서연", email: "a@b.com", status: "ACTIVE" },
+          { id: 2, displayName: "탈퇴자", email: null, status: "INACTIVE" },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const { listUsers } = await import("./wikiApi");
+    expect(await listUsers()).toEqual([{ id: "1", name: "이서연" }]);
+    expect(spy).toHaveBeenCalledWith("/api/org/members");
+  });
+
+  it("디렉터리 장애는 화면을 죽이지 않고 빈 목록으로 폴백", async () => {
+    vi.spyOn(client, "sharedApiFetch").mockRejectedValueOnce(new Error("network down"));
     const { listUsers } = await import("./wikiApi");
     expect(await listUsers()).toEqual([]);
   });

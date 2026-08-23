@@ -1,5 +1,23 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
-import type { Attachment, Comment, DeletePageOptions, Page, PageStatus, PageType, PageVersion, Space, User, WikiData } from "./types";
+import { PageConflictError } from "./types";
+import type {
+  Attachment,
+  CollaborationDraftCommit,
+  CollaborationDraftCommitOptions,
+  Comment,
+  DeletePageOptions,
+  Page,
+  PageStatus,
+  PageType,
+  PageVersion,
+  SearchContentInput,
+  SearchHit,
+  SearchResults,
+  Space,
+  UpdatePageOptions,
+  User,
+  WikiData,
+} from "./types";
 import { CURRENT_USER_ID } from "../../../mock/users";
 import { createSeedData } from "../../../mock/seed";
 
@@ -120,10 +138,12 @@ function snapshotVersion(data: WikiData, page: Page, at: string): void {
   const maxVersion = data.versions
     .filter((v) => v.pageId === page.id)
     .reduce((max, v) => Math.max(max, v.version), 0);
+  const version = maxVersion + 1;
+  page.version = version;
   data.versions.push({
     id: nextId(),
     pageId: page.id,
-    version: maxVersion + 1,
+    version,
     title: page.title,
     body: page.body,
     savedBy: CURRENT_USER_ID,
@@ -169,7 +189,7 @@ export async function createPage(input: {
     status: input.type === "folder" ? "published" : (input.status ?? "published"),
     title,
     body: input.body ?? "",
-    version: 1, // 목업은 낙관적 락을 쓰지 않으므로 항상 1 고정
+    version: 1,
     position: maxPosition + 1,
     createdBy: CURRENT_USER_ID,
     updatedBy: CURRENT_USER_ID,
@@ -195,10 +215,14 @@ export async function listVersions(pageId: string): Promise<PageVersion[]> {
 export async function updatePage(
   id: string,
   patch: { title?: string; body?: string },
+  options: UpdatePageOptions = {},
 ): Promise<Page> {
   const data = load();
   const page = data.pages.find((p) => p.id === id);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  if (options.expectedVersion !== undefined && options.expectedVersion !== page.version) {
+    throw new PageConflictError(clone(page));
+  }
   const nextTitle = patch.title !== undefined ? patch.title.trim() : page.title;
   if (!nextTitle) throw new Error("페이지 제목을 입력하세요");
   const nextBody = patch.body !== undefined ? patch.body : page.body;
@@ -215,6 +239,17 @@ export async function updatePage(
   return clone(page);
 }
 
+export async function commitCollaborationDraft(
+  id: string,
+  patch: { title: string; body: string },
+  options: CollaborationDraftCommitOptions,
+): Promise<CollaborationDraftCommit> {
+  return {
+    page: await updatePage(id, patch, { expectedVersion: options.expectedVersion }),
+    generation: options.expectedGeneration + 1,
+  };
+}
+
 /**
  * 초안을 게시한다. 이미 게시된 문서면 no-op(버전·updatedAt 불변) — updatePage의 무변경 no-op과
  * 같은 규칙이다. 게시는 "내용 변경"이 아니므로 버전 스냅샷을 쌓지 않는다(movePage와 같은 취급).
@@ -228,6 +263,34 @@ export async function publishPage(id: string): Promise<Page> {
   page.status = "published";
   persist();
   return clone(page);
+}
+
+/**
+ * 단일 페이지 복제 — 백엔드 v1 계약과 동일한 범위: 하위·댓글 미복사, 제목 "(사본)",
+ * 부모·타입·상태 유지, 형제 맨 뒤. (목업엔 첨부 저장이 없어 첨부 복사는 해당 없음.)
+ */
+export async function copyPage(id: string): Promise<Page> {
+  const data = load();
+  const source = data.pages.find((p) => p.id === id);
+  if (!source) throw new Error("페이지를 찾을 수 없습니다");
+  const siblings = data.pages.filter(
+    (p) => p.spaceId === source.spaceId && p.parentId === source.parentId,
+  );
+  const now = new Date().toISOString();
+  const copy: Page = {
+    ...clone(source),
+    id: nextId(),
+    title: `${source.title} (사본)`,
+    position: Math.max(0, ...siblings.map((p) => p.position)) + 1,
+    version: 1,
+    createdBy: CURRENT_USER_ID,
+    updatedBy: CURRENT_USER_ID,
+    createdAt: now,
+    updatedAt: now,
+  };
+  data.pages.push(copy);
+  persist();
+  return clone(copy);
 }
 
 export async function deletePage(id: string, options?: DeletePageOptions): Promise<void> {
@@ -407,16 +470,105 @@ export async function listAttachments(_pageId: string): Promise<Attachment[]> {
   return [];
 }
 
-export async function uploadAttachment(_pageId: string, _file: File): Promise<Attachment> {
+export async function uploadAttachment(
+  _pageId: string,
+  _file: File,
+  _options?: import("./types").AttachmentUploadOptions,
+): Promise<Attachment> {
   throw new Error("목업 모드에서는 첨부를 지원하지 않습니다");
+}
+
+export async function requestCollaborationTicket(
+  _pageId: string,
+): Promise<import("./types").CollaborationTicket> {
+  throw new Error("목업 모드에서는 공동 편집을 지원하지 않습니다");
+}
+
+export async function bootstrapCollaborationDocument(
+  _pageId: string,
+  _basePageVersion: number,
+  _ticket: string,
+  _state: Uint8Array,
+): Promise<import("./types").CollaborationBootstrap> {
+  throw new Error("목업 모드에서는 공동 편집을 지원하지 않습니다");
+}
+
+export async function confirmAttachments(_pageId: string, _attachmentIds: string[]): Promise<void> {
+  // 목업 모드는 첨부 자체를 지원하지 않는다.
 }
 
 export function attachmentUrl(_id: string): string {
   return "";
 }
 
+export function inlineAttachmentUrl(id: string): string {
+  return `/api/wiki/attachments/${id}/inline`;
+}
+
+export function attachmentIdFromInlineUrl(src: string): string | null {
+  return /^\/api\/wiki\/attachments\/(\d+)\/inline$/.exec(src)?.[1] ?? null;
+}
+
+export async function fetchInlineAttachment(_id: string, _signal?: AbortSignal): Promise<Blob> {
+  throw new Error("목업 모드에서는 첨부를 지원하지 않습니다");
+}
+
 export async function deleteAttachment(_id: string): Promise<void> {
   // no-op
+}
+
+function highlightSnippet(text: string, query: string): string | null {
+  const index = text.toLocaleLowerCase("ko-KR").indexOf(query.toLocaleLowerCase("ko-KR"));
+  if (index < 0) return null;
+  const start = Math.max(0, index - 60);
+  const end = Math.min(text.length, index + query.length + 100);
+  const prefix = start > 0 ? "…" : "";
+  const suffix = end < text.length ? "…" : "";
+  return `${prefix}${text.slice(start, index)}<em>${text.slice(index, index + query.length)}</em>${text.slice(index + query.length, end)}${suffix}`;
+}
+
+/** 목업 모드도 화면과 같은 검색 계약을 제공한다. 첨부파일은 목업 스토리지가 없어 PAGE만 검색한다. */
+export async function searchContent(input: SearchContentInput): Promise<SearchResults> {
+  const query = input.query.trim();
+  if (!query) return { total: 0, tookMs: 0, hits: [] };
+
+  const data = load();
+  const spaces = new Map(data.spaces.map((space) => [space.id, space]));
+  const allowedSpaces = input.spaceIds ? new Set(input.spaceIds) : null;
+  const pagesRequested = !input.docTypes || input.docTypes.length === 0 || input.docTypes.includes("PAGE");
+  const pageHits: SearchHit[] = !pagesRequested
+    ? []
+    : data.pages.flatMap((page): SearchHit[] => {
+        if (page.status === "draft" || (allowedSpaces && !allowedSpaces.has(page.spaceId))) return [];
+        const space = spaces.get(page.spaceId);
+        if (!space) return [];
+        const titleHighlight = highlightSnippet(page.title, query);
+        const bodyHighlight = page.type === "page" ? highlightSnippet(page.body, query) : null;
+        if (!titleHighlight && !bodyHighlight) return [];
+        return [{
+          id: page.id,
+          docType: "PAGE",
+          spaceId: page.spaceId,
+          spaceKey: space.key,
+          spaceName: space.name,
+          pageId: null,
+          pageType: page.type === "folder" ? "FOLDER" : "PAGE",
+          title: page.title,
+          filename: null,
+          highlights: [titleHighlight, bodyHighlight].filter((value): value is string => value !== null),
+          updatedAt: page.updatedAt,
+          score: (titleHighlight ? 3 : 0) + (bodyHighlight ? 1 : 0),
+        }];
+      });
+
+  pageHits.sort((a, b) => b.score - a.score || (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+  const page = Math.max(input.page ?? 0, 0);
+  const size = Math.max(0, Math.min(input.size ?? 20, 100));
+  return {
+    total: pageHits.length,
+    tookMs: 0,
+    hits: pageHits.slice(page * size, (page + 1) * size),
+  };
 }
 
 export async function deleteComment(id: string): Promise<void> {

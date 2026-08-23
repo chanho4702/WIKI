@@ -51,23 +51,26 @@ describe("W4 코멘트 답글/수정/삭제", () => {
     expect(within(region).getByText(/\(수정됨\)/)).toBeInTheDocument();
   });
 
-  it("삭제는 확인 후 진행되고 목록에서 사라진다", async () => {
+  it("삭제는 다이얼로그 확인 후 진행되고 목록에서 사라진다", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     await addComment("pg1", "지울 코멘트");
     const region = await openPg1Comments();
     await user.click(within(region).getByRole("button", { name: "삭제" }));
-    expect(window.confirm).toHaveBeenCalled();
+    // window.confirm이 아니라 DS ConfirmDialog로 확인한다 — 되돌릴 수 없음이 명시된다
+    const dialog = await screen.findByRole("dialog", { name: "코멘트 삭제" });
+    expect(dialog).toHaveTextContent("되돌릴 수 없습니다");
+    await user.click(within(dialog).getByRole("button", { name: "삭제" }));
     await within(region).findByRole("heading", { name: "코멘트 (2)" });
     expect(within(region).queryByText("지울 코멘트")).not.toBeInTheDocument();
   });
 
-  it("confirm을 취소하면 삭제하지 않는다", async () => {
+  it("다이얼로그에서 취소하면 삭제하지 않는다", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     await addComment("pg1", "남을 코멘트");
     const region = await openPg1Comments();
     await user.click(within(region).getByRole("button", { name: "삭제" }));
+    const dialog = await screen.findByRole("dialog", { name: "코멘트 삭제" });
+    await user.click(within(dialog).getByRole("button", { name: "취소" }));
     expect(within(region).getByText("남을 코멘트")).toBeInTheDocument();
     expect(within(region).getByRole("heading", { name: "코멘트 (3)" })).toBeInTheDocument();
   });

@@ -58,6 +58,29 @@ describe("updatePage", () => {
     expect(await listVersions("pg2")).toHaveLength(1);
   });
 
+  it("두 편집 세션 중 오래된 버전은 거부하고 먼저 저장된 내용을 보존한다", async () => {
+    const sessionA = await getPage("pg2");
+    const sessionB = await getPage("pg2");
+    expect(sessionA).not.toBeNull();
+    expect(sessionB).not.toBeNull();
+
+    const savedByB = await updatePage(
+      "pg2",
+      { title: "B가 먼저 저장" },
+      { expectedVersion: sessionB!.version },
+    );
+    await expect(updatePage(
+      "pg2",
+      { title: "A의 오래된 편집" },
+      { expectedVersion: sessionA!.version },
+    )).rejects.toThrow("다른 사용자가 먼저 저장했습니다");
+
+    expect(await getPage("pg2")).toMatchObject({
+      title: "B가 먼저 저장",
+      version: savedByB.version,
+    });
+  });
+
   it("제목을 빈 문자열로 바꾸려 하면 거부한다", async () => {
     await expect(updatePage("pg2", { title: "  " })).rejects.toThrow("페이지 제목을 입력하세요");
   });

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
-import { __resetForTest } from "../features/wiki/store/wikiStore";
+import { __resetForTest, getPage, updatePage } from "../features/wiki/store/wikiStore";
 import { MOCK_USERS } from "../mock/users";
 import { editorRegistry } from "../features/wiki/editor/editorTestRegistry";
 
@@ -58,6 +58,65 @@ describe("W2 페이지 편집·생성", () => {
       expect(screen.getByTestId("location")).toHaveTextContent(/\/spaces\/sp1\/pages\/pg2$/);
     });
     expect(await screen.findByRole("heading", { level: 1, name: "팀 규칙" })).toBeInTheDocument();
+    confirmSpy.mockRestore();
+  });
+
+  it("다른 세션이 먼저 저장하면 로컬 편집을 보존하고 비교 후 명시적 병합만 허용한다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg2/edit");
+    const titleField = await screen.findByRole("textbox", { name: "페이지 제목" });
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+
+    // 편집 화면은 v1을 잡은 상태. 다른 브라우저 역할의 호출이 먼저 v2를 저장한다.
+    const serverSaved = await updatePage("pg2", {
+      title: "서버에서 먼저 바뀐 제목",
+      body: "## 서버에서 먼저 저장한 본문",
+    });
+    expect(serverSaved.version).toBeGreaterThan(1);
+
+    await user.clear(titleField);
+    await user.type(titleField, "내 로컬 편집 제목");
+    editorRegistry.current!.commands.setContent("## 내 로컬 편집 본문", true);
+    await user.click(screen.getByRole("button", { name: "업데이트" }));
+
+    const conflict = await screen.findByRole("alert");
+    expect(within(conflict).getByText("다른 사용자의 변경사항이 먼저 저장됐습니다")).toBeInTheDocument();
+    expect(within(conflict).getByText("서버에서 먼저 바뀐 제목")).toBeInTheDocument();
+    expect(within(conflict).getByText("내 로컬 편집 제목")).toBeInTheDocument();
+    expect(titleField).toHaveValue("내 로컬 편집 제목");
+    expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg2/edit");
+    expect(await getPage("pg2")).toMatchObject({ title: "서버에서 먼저 바뀐 제목" });
+
+    // 사용자가 비교를 마치고 최신 서버 버전을 병합 기준으로 명시한 뒤에만 재저장할 수 있다.
+    await user.click(within(conflict).getByRole("button", { name: /기준으로 병합 계속/ }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "업데이트" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "내 로컬 편집 제목" })).toBeInTheDocument();
+  });
+
+  it("저장 충돌에서 서버본 재로드를 확인하면 로컬 편집 대신 최신 본문으로 에디터를 다시 만든다", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderApp("/spaces/sp1/pages/pg2/edit");
+    const titleField = await screen.findByRole("textbox", { name: "페이지 제목" });
+    await waitFor(() => expect(editorRegistry.current).toBeTruthy());
+
+    await updatePage("pg2", { title: "최신 서버 제목", body: "## 최신 서버 본문" });
+    await user.clear(titleField);
+    await user.type(titleField, "버릴 로컬 제목");
+    editorRegistry.current!.commands.setContent("## 버릴 로컬 본문", true);
+    await user.click(screen.getByRole("button", { name: "업데이트" }));
+
+    const conflict = await screen.findByRole("alert");
+    await user.click(within(conflict).getByRole("button", { name: "서버본으로 다시 불러오기" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      "내 편집 내용을 버리고 서버에 저장된 최신 내용으로 다시 불러오시겠습니까?",
+    );
+    await waitFor(() => expect(titleField).toHaveValue("최신 서버 제목"));
+    await waitFor(() => expect(editorRegistry.current?.getText()).toContain("최신 서버 본문"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("저장됨")).toBeInTheDocument();
     confirmSpy.mockRestore();
   });
 

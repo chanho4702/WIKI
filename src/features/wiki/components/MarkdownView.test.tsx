@@ -113,6 +113,69 @@ describe("MarkdownView", () => {
   });
 });
 
+describe("MarkdownView — 이미지 폭·캡션", () => {
+  it("`#w=` 프래그먼트를 표시 폭으로, title을 캡션으로 렌더한다", () => {
+    const md = '![구조도](https://example.com/a.png#w=320 "배포 구조도")';
+    const { container } = render(<MarkdownView markdown={md} />);
+    const img = container.querySelector("img");
+    expect(img).toHaveStyle({ width: "320px" });
+    // 실제 로드 URL에는 폭 프래그먼트가 없다
+    expect(img?.getAttribute("src")).toBe("https://example.com/a.png");
+    expect(container.querySelector(".md-figcaption")).toHaveTextContent("배포 구조도");
+  });
+
+  it("폭·캡션이 없으면 기존 렌더 그대로다", () => {
+    const { container } = render(<MarkdownView markdown={"![기존](https://example.com/a.png)"} />);
+    const img = container.querySelector("img");
+    expect(img?.getAttribute("style")).toBeNull();
+    expect(container.querySelector(".md-figcaption")).toBeNull();
+  });
+});
+
+describe("MarkdownView — 사용자 멘션", () => {
+  it("`[@이름](user:id)`를 링크가 아니라 칩으로 렌더한다", () => {
+    const { container } = render(<MarkdownView markdown={"담당: [@김찬호](user:1)"} />);
+    const chip = container.querySelector(".user-mention");
+    expect(chip).toHaveTextContent("@김찬호");
+    expect(chip?.getAttribute("data-user-id")).toBe("1");
+    // 클릭 가능한 앵커로 렌더되지 않는다 — 프로필 화면이 생기기 전까지의 계약
+    expect(container.querySelector("a[href^='user:']")).toBeNull();
+  });
+
+  it("user: 스킴이 아닌 @링크는 일반 링크 그대로다", () => {
+    const { container } = render(
+      <MarkdownView markdown={"[@핸들](https://example.com/p)"} />,
+    );
+    expect(container.querySelector(".user-mention")).toBeNull();
+    expect(container.querySelector("a")?.getAttribute("href")).toBe("https://example.com/p");
+  });
+});
+
+describe("MarkdownView — 토글(details)", () => {
+  it("`:::details[제목]`을 네이티브 details/summary로 렌더한다(기본 접힘)", () => {
+    const md = [":::details[릴리스 노트]", "숨긴 내용", ":::"].join("\n");
+    const { container } = render(<MarkdownView markdown={md} />);
+    const details = container.querySelector("details.md-details");
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open");
+    expect(container.querySelector("summary.md-details-summary")).toHaveTextContent("릴리스 노트");
+    expect(details).toHaveTextContent("숨긴 내용");
+  });
+
+  it("제목 없는 토글은 기본 제목으로 렌더한다 — 화살표만 남지 않게", () => {
+    const md = [":::details", "내용", ":::"].join("\n");
+    const { container } = render(<MarkdownView markdown={md} />);
+    expect(container.querySelector("summary")).toHaveTextContent("펼쳐서 보기");
+  });
+
+  it("편집 왕복을 거친 문자열도 같은 구조로 렌더된다 — 편집↔보기 대칭", () => {
+    const md = [":::details[제목]", "내용", ":::"].join("\n");
+    const roundtripped = serializeMarkdown(parseMarkdown(md));
+    const { container } = render(<MarkdownView markdown={roundtripped} />);
+    expect(container.querySelector("details.md-details summary")).toHaveTextContent("제목");
+  });
+});
+
 describe("MarkdownView — 레이어 분할(컬럼)", () => {
   const TWO_COLUMNS = [
     "::::columns",

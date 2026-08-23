@@ -11,21 +11,22 @@ MSA_TEMPLATE의 **위키(컨플루언스 클론) 프론트엔드**. 3개 프론�
 
 - **개발**: Vite dev 서버 `:5174`, 경로 접두어 `/wiki/` (`http://localhost:5174/wiki/`, `--strictPort`)
 - **통합 배포**: nginx가 `/wiki/` 경로 아래로 서빙 (`vite.config.ts base: "/wiki/"`, `BrowserRouter basename="/wiki"`)
-- **인증 대상**: `VITE_API_BASE`(프로덕션은 nginx same-origin) → auth-server의 OIDC/JWT 엔드포인트
+- **인증 대상**: 프로덕션은 nginx same-origin, dev 백엔드 모드는 `VITE_API_PROXY`/`VITE_API_BASE` → auth-server의 OIDC/JWT 엔드포인트
 
-현재 데이터는 localStorage 목업이며, 스토어(`src/features/wiki/store/wikiStore.ts`)의 async 함수만 화면에서 호출한다.
-백엔드(wiki-service)·Keycloak이 붙으면 이 파일 내부만 fetch로 교체하면 된다.
+스토어(`src/features/wiki/store/wikiStore.ts`)가 듀얼모드 경계다. 순수 dev/test는 localStorage 목업,
+프로덕션과 API 환경변수를 둔 dev는 wiki-backend·search-service를 사용한다. 화면은 두 모드 모두 같은 async 함수만 호출한다.
 
 ---
 
-## 스택 (실측)
+## 기술 스택
 
 | 영역 | 사용 |
 |---|---|
 | 빌드/런타임 | Vite 7 · React 19 · TypeScript |
 | 라우팅 | react-router 7 (`BrowserRouter basename="/wiki"`) |
-| 디자인 시스템 | `@chanho/react` 0.3.0 + `@chanho/tokens` 0.2.0 (tarball `file:../design-system/artifacts/*.tgz`) |
+| 디자인 시스템 | `@chanho/react` 0.5.0 + `@chanho/tokens` 0.3.0 (tarball `file:../design-system/artifacts/*.tgz`) |
 | 에디터 | **TipTap 2.27** — `@tiptap/react` · `starter-kit` · 확장(link, image, table/row/header/cell, task-list/item, placeholder) + `tiptap-markdown`(마크다운 왕복) |
+| 공동 편집 | Yjs 13.6 · Hocuspocus Provider 4.6 — 본문·제목 CRDT, 인증 presence, 공동 커서, page+generation 원자 저장 (기능 플래그) |
 | 보기 렌더 | react-markdown 10 + remark-gfm 4 (표) |
 | 트리 DnD | `@dnd-kit/core` · `sortable` · `utilities` |
 | 테스트 | Vitest 3 + Testing Library + jsdom |
@@ -34,7 +35,7 @@ UI는 100% `@chanho` 디자인 시스템으로 구성한다 — 타 UI 라이브
 
 ---
 
-## 주요 기능 (실측)
+## 주요 기능
 
 - **스페이스 다중** — 생성/전환. 키는 자동 대문자·중복 거부.
 - **페이지 계층 트리** — `parentId` 트리, 사이드바 접이식(현재 페이지 하이라이트). `@dnd-kit` 드래그로 이동/정렬,
@@ -49,13 +50,18 @@ UI는 100% `@chanho` 디자인 시스템으로 구성한다 — 타 UI 라이브
   복원도 새 버전으로 쌓여 히스토리가 끊기지 않는다.
 - **코멘트** — 최상위 + 1단 답글, 본인만 수정/삭제, 최상위 삭제 시 답글 연쇄 삭제.
 - **제목 검색** — 부분일치(대소문자 무시), 매치의 조상 체인을 유지해 트리 구조 보존.
+- **통합 검색** — 상단 검색폼 → `/search?q=`. search-service GraphQL로 제목·본문·폴더·첨부파일명을
+  권한 필터링해 검색하고 PAGE/FOLDER/ATTACHMENT 경로, 안전한 하이라이트, 429·503 재시도를 제공한다.
+- **실시간 공동 편집(기능 플래그)** — 제목·본문 Yjs 동시 편집, 인증된 presence·공동 caret, 터치 가능한
+  참여자 명단과 연결 상태를 제공한다. 단절 중에는 로컬 편집을 유지하되 서버 재동기화 전 게시를 막고,
+  수동 재연결에도 현재 탭의 Yjs snapshot을 이어 붙인다.
 - **다크 모드 토글**, **미저장 이탈 가드**(`beforeunload` + 취소 confirm).
 
-데이터는 localStorage `wiki.v1`(손상 시 시드 재생성), 유저는 목업 고정(seed).
+목업 데이터는 localStorage `wiki.v1`(손상 시 시드 재생성), 프로덕션 데이터는 각 백엔드 서비스가 정본이다.
 
 ---
 
-## 실행 (실측 — package.json)
+## 빠른 시작
 
 ```bash
 pnpm install     # ../design-system/artifacts 의 tarball 필요
@@ -74,16 +80,19 @@ pnpm build       # vite build
 
 | 변수 | 용도 |
 |---|---|
-| `VITE_API_BASE` | 백엔드(auth-server) 오리진. `AuthGate`의 기본 클라이언트 `baseUrl`. 프로덕션은 nginx same-origin이라 빈 문자열, dev는 게이트가 꺼져 있어 미사용. |
+| `VITE_API_BASE` | 백엔드 직접 오리진. 프로덕션은 nginx same-origin이라 빈 문자열을 사용한다. |
+| `VITE_API_PROXY` | dev에서 Vite same-origin 프록시와 백엔드 모드를 함께 켠다. 미설정 dev/test는 목업 모드다. |
+| `VITE_WIKI_COLLABORATION_ENABLED` | `true`면 수정 화면의 ticket 기반 WebSocket 세션·presence UX를 켠다. 공유 문서 초기화/편집기 결합 전까지 기본 `false`. |
 
-repo에 `.env*` 파일은 커밋돼 있지 않다.
+`.env.example`을 복사해 로컬 `.env`를 만들 수 있다. 실제 `.env`는 git에서 제외하며,
+아무 변수도 설정하지 않으면 localStorage 목업 모드로 동작한다.
 
 ---
 
-## 인증 / SSO 흐름 (실측)
+## 인증 / SSO 흐름
 
-로그인 게이트는 `src/auth/`에 있으며 **프로덕션(`import.meta.env.PROD`)에서만 활성**된다 — dev/vitest는 게이트를 꺼
-인증 검증을 nginx 프로덕션 경로로만 수행한다.
+로그인 게이트는 `src/auth/`에 있으며 **프로덕션 또는 백엔드 모드 dev에서 활성**된다. 순수 목업 dev/vitest만
+게이트를 꺼 네트워크 없이 동작한다.
 
 1. **부트스트랩** (`AuthGate`) — 마운트 시 RT 쿠키로 silent refresh(`POST /api/auth/refresh`)를 시도.
    - 성공 → `GET /api/me`로 사용자를 받고 앱을 렌더.
@@ -106,10 +115,10 @@ src/
 ├── app/                  # main.tsx(AuthGate·BrowserRouter basename=/wiki), App.tsx(라우트), theme.ts, app.css, 테스트
 ├── auth/                 # client.ts(createAuthClient), AuthGate.tsx(useAuth), returnTo.ts, types.ts
 ├── features/wiki/
-│   ├── pages/            # SpaceIndexPage, PageViewPage, PageEditPage
-│   ├── components/       # WikiLayout, PageTree(+pageTreeDnd), HistoryModal, DiffView,
-│   │                     #  CommentSection, MarkdownView, SpaceCreateModal, EmptySpaces, filterPagesWithAncestors
-│   ├── editor/           # WikiEditor.tsx, markdown.ts(마크다운 왕복), extensions/(base.ts, wikiLink.ts), editorTestRegistry.ts
+│   ├── pages/            # SpaceIndexPage, PageViewPage, PageEditPage, FolderPage, SearchPage
+│   ├── components/       # AppShell, GlobalSidebar, PageTree, HistoryModal, GlobalSearchField,
+│   │                     # SearchHighlights, CommentSection, MarkdownView, SpaceCreateModal
+│   ├── editor/           # WikiEditor, Markdown 왕복, collaboration/(ticket 세션·presence), extensions/
 │   ├── lib/              # wikiLinks.ts, lineDiff.ts
 │   └── store/            # wikiStore.ts(백엔드 교체 지점), types.ts
 └── mock/                 # seed.ts, users.ts
@@ -117,12 +126,25 @@ src/
 
 ---
 
-## 라우트 (실측 — `App.tsx`, `basename="/wiki"`)
+## 라우트 (`App.tsx`, `basename="/wiki"`)
 
 | 경로 | 화면 | 비고 |
 |---|---|---|
-| `/spaces/:spaceId` | `SpaceIndexPage` (WikiLayout index) | 첫 루트 페이지로 이어짐 |
+| `/home` | `HomePage` | 글로벌 홈 |
+| `/spaces` | `SpaceDirectoryPage` | 모든 스페이스 |
+| `/search?q=<query>&page=<n>` | `SearchPage` | 통합 검색, page는 1부터 |
+| `/spaces/:spaceId` | `SpaceIndexPage` | 스페이스 개요 |
 | `/spaces/:spaceId/pages/new` | `PageEditPage` (생성) | 쿼리 `?parent=<id>`, `?title=<프리필>` |
 | `/spaces/:spaceId/pages/:pageId` | `PageViewPage` | 스페이스 URL 불일치 시 실제 스페이스로 redirect |
 | `/spaces/:spaceId/pages/:pageId/edit` | `PageEditPage` (수정) | |
+| `/spaces/:spaceId/folder/:folderId` | `FolderPage` | 폴더 자식 목록 |
 | `*` | 첫 스페이스로 `Navigate` | 스페이스가 하나도 없으면 `EmptySpaces` |
+
+---
+
+## 관련 문서
+
+- [wiki-backend](https://github.com/chanho4702/wiki-backend) — REST·권한·이벤트·색인용 gRPC 계약
+- [Chanho Design System](https://github.com/chanho4702/design-system) — 토큰과 UI 컴포넌트
+- [`docs/roadmap`](docs/roadmap/) — 기능 로드맵과 저장 포맷 결정
+- [`docs/backend`](docs/backend/) — 프론트 store와 백엔드 API 매핑

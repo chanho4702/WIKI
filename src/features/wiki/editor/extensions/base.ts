@@ -14,6 +14,8 @@ import Image from "@tiptap/extension-image";
 import { Markdown } from "tiptap-markdown";
 import { WikiLink } from "./wikiLink";
 import { Column, ColumnBlock } from "./columns";
+import { Details } from "./details";
+import { UserMention } from "./userMention";
 import { CodeBlockView } from "../components/CodeBlockView";
 import { ImageView } from "../components/ImageView";
 import type { Page } from "../../store/types";
@@ -48,6 +50,8 @@ const ImageWithView = Image.extend({
 export interface BaseExtensionOptions {
   /** 존재/부재 페이지 판별용 — 없으면 항상 빈 목록(모두 부재 처리) */
   getPages?: () => Page[];
+  /** Yjs Collaboration이 자체 undo manager를 쓸 때 StarterKit history를 중복 등록하지 않는다. */
+  history?: boolean;
 }
 
 /**
@@ -60,20 +64,29 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
       codeBlock: false,
+      ...(options.history === false ? { history: false } : {}),
     }),
     CodeBlockWithView,
-    Link.configure({ openOnClick: false }),
+    // protocols: 멘션 저장 문법 `[@이름](user:id)`의 `user:` 스킴 — Link 확장의 보안 검증
+    // (isAllowedUri)이 미등록 스킴 href를 버리면 멘션이 텍스트로 열화된다(userMention.ts 참조).
+    Link.configure({ openOnClick: false, protocols: ["user"] }),
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,
     TableCell,
     TaskList,
-    TaskItem.configure({ nested: false }),
+    // 중첩 허용 — Notion·Confluence 모두 체크리스트 하위 항목을 지원한다(동등성 Must 6).
+    // 저장은 표준 마크다운 들여쓰기 `- [ ]`라 왕복·기존 문서에 영향이 없다.
+    TaskItem.configure({ nested: true }),
     ImageWithView,
     // 레이어 분할 — 스키마에 영향을 주므로 화면(WikiEditor)이 아니라 여기(공용 목록)에 둔다.
     // markdown.ts의 헤드리스 변환기도 같은 노드를 봐야 `::::columns` 왕복이 성립한다.
     ColumnBlock,
     Column,
+    // 토글(expand) — 저장은 `:::details[제목]` 확장 문법(extensions/details.ts)
+    Details,
+    // 사용자 멘션 — 저장은 표준 링크 `[@이름](user:id)`(extensions/userMention.ts)
+    UserMention,
     Markdown.configure({
       html: false, // 생 HTML은 텍스트로 보존 (손실 정책)
       linkify: false,

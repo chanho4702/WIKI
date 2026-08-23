@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AnchorHTMLAttributes, HTMLAttributes, ReactNode } from "react";
-import ReactMarkdown from "react-markdown";
+import type { AnchorHTMLAttributes, HTMLAttributes, ImgHTMLAttributes, ReactNode } from "react";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkDirective from "remark-directive";
 import rehypeSlug from "rehype-slug";
@@ -17,8 +17,12 @@ import {
 } from "lucide-react";
 import type { Page } from "../store/types";
 import { resolveWikiLinks } from "../lib/wikiLinks";
+import { useResolvedWikiImage } from "../lib/useResolvedWikiImage";
 import { remarkAlerts } from "../lib/remarkAlerts";
 import { remarkColumns } from "../lib/remarkColumns";
+import { remarkDetails } from "../lib/remarkDetails";
+import { parseImageWidth } from "../lib/imageAttrs";
+import { mentionUserIdFromHref } from "../editor/extensions/userMention";
 import { remarkToc } from "../lib/remarkToc";
 import { showsLineNumbers, useCodeBlockPrefs } from "../lib/codeBlockPrefs";
 import { CodeLineNumbers } from "./CodeLineNumbers";
@@ -32,6 +36,34 @@ export interface MarkdownViewProps {
   spaceId?: string;
 }
 
+/**
+ * 사용자 멘션 칩 — `[@이름](user:id)` 저장 문법(editor/extensions/userMention.ts)의 보기 렌더.
+ * 프로필 화면이 아직 없어 링크가 아니라 칩(span)으로 그린다 — 후속: 프로필/필터 연결.
+ */
+function MentionChip({ userId, children }: { userId: string; children?: unknown }) {
+  return (
+    <span className="user-mention" data-user-id={userId}>
+      {children as never}
+    </span>
+  );
+}
+
+/** wikiMode 밖에서 쓰는 최소 a 렌더 — 멘션만 칩으로 바꾸고 나머지는 표준 앵커. */
+function MentionOnlyAnchor({
+  href = "",
+  children,
+  node: _node,
+  ...rest
+}: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) {
+  const mentionId = mentionUserIdFromHref(href);
+  if (mentionId) return <MentionChip userId={mentionId}>{children}</MentionChip>;
+  return (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
+}
+
 /** 내부 경로(/...)는 react-router Link로, 생성 링크(new?title=)는 danger 스타일로 렌더 */
 function WikiAnchor({
   href = "",
@@ -39,6 +71,8 @@ function WikiAnchor({
   node: _node,
   ...rest
 }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) {
+  const mentionId = mentionUserIdFromHref(href);
+  if (mentionId) return <MentionChip userId={mentionId}>{children}</MentionChip>;
   if (href.startsWith("/")) {
     // pathname이 생성 화면일 때만 부재 링크로 표시 — 본문 중간의 우연한 substring 매치 방지
     const missing = href.split("?")[0].endsWith("/pages/new");
@@ -157,6 +191,34 @@ function CodeCopyBlock({ children }: { children?: ReactNode }) {
   );
 }
 
+function MarkdownImage({ src = "", alt = "", title, ...props }: ImgHTMLAttributes<HTMLImageElement>) {
+  const resolved = useResolvedWikiImage(src);
+  // 표시 폭은 src의 `#w=` 프래그먼트(lib/imageAttrs.ts), 캡션은 표준 title — 편집 화면과 같은 해석
+  const width = parseImageWidth(src);
+  if (resolved.loading) return <span role="status">이미지 불러오는 중…</span>;
+  if (resolved.error || !resolved.resolvedSrc) {
+    return <span className="image-view-broken">{alt || "이미지를 불러올 수 없습니다"}</span>;
+  }
+  const img = (
+    <img
+      {...props}
+      src={resolved.resolvedSrc}
+      alt={alt}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      style={width ? { width: `${width}px` } : undefined}
+    />
+  );
+  // img는 p 안의 인라인 콘텐츠 — figure/figcaption을 쓰면 invalid HTML이라 span으로 묶는다
+  if (!title) return img;
+  return (
+    <span className="md-figure">
+      {img}
+      <span className="md-figcaption">{title}</span>
+    </span>
+  );
+}
+
 /**
  * 마크다운 렌더러 — react-markdown + remark-gfm(표) 래핑.
  * raw HTML은 렌더하지 않는다(react-markdown 기본값) — rehype-raw 추가 금지.
@@ -172,10 +234,12 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
   const components = useMemo(
     () => ({
       pre: CodeCopyBlock,
+      img: MarkdownImage,
       div: (props: HTMLAttributes<HTMLDivElement> & { node?: unknown }) => (
         <MarkdownDiv {...props} source={source} />
       ),
-      ...(wikiMode ? { a: WikiAnchor } : {}),
+      // 멘션 칩은 모드와 무관하게 필요하다 — wikiMode가 아니면 멘션 외 링크는 기본 렌더로 흘린다
+      a: wikiMode ? WikiAnchor : MentionOnlyAnchor,
     }),
     [source, wikiMode],
   );
@@ -185,7 +249,9 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
       {/* remarkDirective가 `:::`·`::` 문법을 노드로 만들고 remarkColumns/remarkToc가 그걸 div로
         * 매핑한다 — 순서가 뒤바뀌면 매핑할 노드가 아직 없다. */}
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkDirective, remarkColumns, remarkAlerts, remarkToc]}
+        // 기본 urlTransform은 http(s)·mailto 등만 허용해 `user:` 멘션 href를 지운다 — 이 스킴만 통과
+        urlTransform={(url) => (mentionUserIdFromHref(url) ? url : defaultUrlTransform(url))}
+        remarkPlugins={[remarkGfm, remarkDirective, remarkDetails, remarkColumns, remarkAlerts, remarkToc]}
         rehypePlugins={[rehypeSlug, [rehypeHighlight, { detect: false }]]}
         components={components}
       >
