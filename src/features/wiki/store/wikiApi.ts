@@ -37,8 +37,19 @@ export async function getCurrentUser(): Promise<User> {
   return { id: String(me.id), name: me.name ?? me.email ?? `사용자 #${me.id}` };
 }
 export async function listUsers(): Promise<User[]> {
-  // 백엔드에 사용자 목록 없음 — org-service users API 연동 전까지 빈 배열(작성자 이름은 폴백 `사용자 #{id}`).
-  return [];
+  // org-service 사용자 디렉터리 — JWT 로그인 시 member로 미러링된 실사용자 목록.
+  // ACTIVE만 노출한다(비활성 계정은 멘션·선택 UI에 나오면 안 된다). 디렉터리 장애가
+  // 화면 전체를 죽이면 안 되므로 실패는 빈 목록 — 이름은 authorName 스냅샷/폴백이 대신한다.
+  try {
+    const rows = await json<{ id: number; displayName: string; email?: string | null; status: string }[]>(
+      await sharedApiFetch("/api/org/members"),
+    );
+    return rows
+      .filter((m) => m.status === "ACTIVE")
+      .map((m) => ({ id: String(m.id), name: m.displayName }));
+  } catch {
+    return [];
+  }
 }
 /** 화면이 updatedBy/authorId(숫자 id)를 이름으로 못 찾을 때 쓰는 폴백. (호출부 후속 배선.) */
 export function displayUserName(id: string): string {
