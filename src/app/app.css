@@ -2245,6 +2245,96 @@ body {
   font-size: var(--chanho-font-size-100);
 }
 
+/* ── 글자색·배경색 팔레트 (`:c[..]{.red}` / `:bg[..]{.yellow}`) ──
+ * 라이트 값은 흰 배경 대비 ≥4.5:1로 검증(글자색), 배경색은 본문 텍스트가 그 위에서 4.5:1을
+ * 유지하는 옅은 톤. 다크 값은 [data-theme="dark"]에서 재정의 — 색만으로 의미를 나르지 않는
+ * 장식 서식이라 상태 구분 요건(1.4.1)과는 무관하다. */
+:root {
+  --wiki-txt-gray: #5e6c84;
+  --wiki-txt-red: #ae2e24;
+  --wiki-txt-orange: #a54800;
+  --wiki-txt-green: #216e4e;
+  --wiki-txt-blue: #0055cc;
+  --wiki-txt-purple: #5e4db2;
+  --wiki-bg-yellow: #fdf3ce;
+  --wiki-bg-red: #ffedeb;
+  --wiki-bg-green: #dcfff1;
+  --wiki-bg-blue: #e9f2ff;
+  --wiki-bg-purple: #f3f0ff;
+  --wiki-bg-gray: #f1f2f4;
+}
+[data-theme="dark"] {
+  --wiki-txt-gray: #9fadbc;
+  --wiki-txt-red: #f87168;
+  --wiki-txt-orange: #fea362;
+  --wiki-txt-green: #4bce97;
+  --wiki-txt-blue: #579dff;
+  --wiki-txt-purple: #9f8fef;
+  --wiki-bg-yellow: #533f04;
+  --wiki-bg-red: #5d1f1a;
+  --wiki-bg-green: #164b35;
+  --wiki-bg-blue: #09326c;
+  --wiki-bg-purple: #352c63;
+  --wiki-bg-gray: #454f59;
+}
+.txt-gray { color: var(--wiki-txt-gray); }
+.txt-red { color: var(--wiki-txt-red); }
+.txt-orange { color: var(--wiki-txt-orange); }
+.txt-green { color: var(--wiki-txt-green); }
+.txt-blue { color: var(--wiki-txt-blue); }
+.txt-purple { color: var(--wiki-txt-purple); }
+.bg-yellow { background: var(--wiki-bg-yellow); border-radius: 2px; }
+.bg-red { background: var(--wiki-bg-red); border-radius: 2px; }
+.bg-green { background: var(--wiki-bg-green); border-radius: 2px; }
+.bg-blue { background: var(--wiki-bg-blue); border-radius: 2px; }
+.bg-purple { background: var(--wiki-bg-purple); border-radius: 2px; }
+.bg-gray { background: var(--wiki-bg-gray); border-radius: 2px; }
+
+/* 팔레트 팝오버 — 버블 툴바 아래에 붙는다 */
+.color-palette {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--chanho-space-50, 4px);
+  padding: var(--chanho-space-100);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-50, 4px);
+  background: var(--chanho-color-background-surface);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  box-shadow: var(--chanho-shadow-overlay);
+}
+.color-palette-row {
+  display: flex;
+  gap: var(--chanho-space-50, 4px);
+}
+.color-swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-surface);
+  cursor: pointer;
+  font-size: var(--chanho-font-size-100);
+  line-height: 1;
+}
+.color-swatch[aria-pressed="true"] {
+  outline: 2px solid var(--chanho-color-border-brand);
+  outline-offset: 1px;
+}
+.color-swatch:focus-visible {
+  outline: 2px solid var(--chanho-color-border-brand);
+  outline-offset: 1px;
+}
+/* .bubble-toolbar button 일반 규칙(패딩)이 스와치 크기를 이기지 않게 명시 우선 */
+.bubble-toolbar .color-swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+}
+
 /* W4: 버전 diff */
 .diff-view {
   margin: 0;
@@ -2443,6 +2533,7 @@ body {
   transform: translate(-50%, calc(-100% - 8px));
 }
 .bubble-toolbar {
+  position: relative;
   display: flex;
   gap: 2px;
   padding: var(--chanho-space-50, 4px);

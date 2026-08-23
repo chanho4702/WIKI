@@ -21,6 +21,7 @@ import { useResolvedWikiImage } from "../lib/useResolvedWikiImage";
 import { remarkAlerts } from "../lib/remarkAlerts";
 import { remarkColumns } from "../lib/remarkColumns";
 import { remarkDetails } from "../lib/remarkDetails";
+import { remarkTextColors } from "../lib/remarkTextColors";
 import { parseImageWidth } from "../lib/imageAttrs";
 import { mentionUserIdFromHref } from "../editor/extensions/userMention";
 import { dateFromHref, formatDateLabel } from "../editor/extensions/dateMention";
@@ -265,7 +266,7 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
       <ReactMarkdown
         // 기본 urlTransform은 http(s)·mailto 등만 허용해 `user:` 멘션 href를 지운다 — 이 스킴만 통과
         urlTransform={(url) => (mentionUserIdFromHref(url) || dateFromHref(url) ? url : defaultUrlTransform(url))}
-        remarkPlugins={[remarkGfm, remarkDirective, remarkDetails, remarkColumns, remarkAlerts, remarkToc]}
+        remarkPlugins={[remarkGfm, remarkDirective, remarkTextColors, remarkDetails, remarkColumns, remarkAlerts, remarkToc]}
         rehypePlugins={[rehypeSlug, [rehypeHighlight, { detect: false }]]}
         components={components}
       >

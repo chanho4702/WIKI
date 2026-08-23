@@ -132,6 +132,22 @@ describe("MarkdownView — 이미지 폭·캡션", () => {
   });
 });
 
+describe("MarkdownView — 글자색·배경색", () => {
+  it("`:c[..]{.red}`와 `:bg[..]{.yellow}`를 팔레트 클래스 span으로 렌더한다", () => {
+    const { container } = render(
+      <MarkdownView markdown={"이건 :c[중요]{.red} 그리고 :bg[강조]{.yellow} 입니다"} />,
+    );
+    expect(container.querySelector("span.txt-red")).toHaveTextContent("중요");
+    expect(container.querySelector("span.bg-yellow")).toHaveTextContent("강조");
+  });
+
+  it("팔레트 밖 색은 스타일 없이 내용만 통과한다", () => {
+    const { container } = render(<MarkdownView markdown={":c[내용]{.hotpink}"} />);
+    expect(container.querySelector("[class*='txt-']")).toBeNull();
+    expect(container).toHaveTextContent("내용");
+  });
+});
+
 describe("MarkdownView — 날짜 요소", () => {
   it("`[ISO](date:ISO)`를 한국어 날짜 칩으로 렌더한다", () => {
     const { container } = render(<MarkdownView markdown={"마감: [2026-08-23](date:2026-08-23)"} />);

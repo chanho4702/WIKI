@@ -17,6 +17,7 @@ import { Column, ColumnBlock } from "./columns";
 import { Details } from "./details";
 import { UserMention } from "./userMention";
 import { DateMention } from "./dateMention";
+import { BgColor, TextColor } from "./textColors";
 import { CodeBlockView } from "../components/CodeBlockView";
 import { ImageView } from "../components/ImageView";
 import type { Page } from "../../store/types";
@@ -90,6 +91,9 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     UserMention,
     // 날짜 요소 — 저장은 표준 링크 `[ISO](date:ISO)`(extensions/dateMention.ts)
     DateMention,
+    // 글자색·배경색 — 저장은 텍스트 지시자 `:c[..]{.red}`/`:bg[..]{.yellow}`(extensions/textColors.ts)
+    TextColor,
+    BgColor,
     Markdown.configure({
       html: false, // 생 HTML은 텍스트로 보존 (손실 정책)
       linkify: false,

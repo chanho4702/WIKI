@@ -1,11 +1,20 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { posToDOMRect } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
-import { Bold, Italic, Strikethrough, Code, Link } from "lucide-react";
+import { Bold, Italic, Strikethrough, Code, Link, Palette } from "lucide-react";
+import { BG_COLORS, TEXT_COLORS } from "../extensions/textColors";
 import { promptSetLink } from "../lib/linkCommand";
+
+/** 팔레트 색 이름의 한국어 표기 — 접근 이름("빨강 글자색")에 쓴다. */
+const COLOR_LABELS: Record<string, string> = {
+  gray: "회색", red: "빨강", orange: "주황", green: "초록",
+  blue: "파랑", purple: "보라", yellow: "노랑",
+};
 
 /** 버튼 행 — 위치 계산과 분리해 jsdom에서 단독 테스트 가능하게 한다(좌표 계산 없이 버튼 동작만 검증) */
 export function ToolbarButtons({ editor }: { editor: Editor }) {
+  // 색상 팔레트 팝오버 — 툴바 안 로컬 상태. 선택 영역이 풀리면(툴바가 사라지면) 함께 닫힌다.
+  const [paletteOpen, setPaletteOpen] = useState(false);
   // TopToolbar와 동일하게 접근 가능한 이름은 aria-label로 고정하고 lucide 아이콘은 aria-hidden.
   const btn = (label: string, icon: ReactNode, active: boolean, onClick: () => void) => (
     <button
@@ -31,6 +40,80 @@ export function ToolbarButtons({ editor }: { editor: Editor }) {
       {btn("취소선", <Strikethrough size={16} aria-hidden />, editor.isActive("strike"), () => editor.chain().focus().toggleStrike().run())}
       {btn("코드", <Code size={16} aria-hidden />, editor.isActive("code"), () => editor.chain().focus().toggleCode().run())}
       {btn("링크", <Link size={16} aria-hidden />, editor.isActive("link"), () => promptSetLink(editor))}
+      {btn(
+        "글자 색상",
+        <Palette size={16} aria-hidden />,
+        editor.isActive("textColor") || editor.isActive("bgColor") || paletteOpen,
+        () => setPaletteOpen((v) => !v),
+      )}
+      {paletteOpen ? (
+        <div className="color-palette" role="group" aria-label="색상 선택">
+          <div className="color-palette-row" role="group" aria-label="글자색">
+            {TEXT_COLORS.map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={`color-swatch color-swatch-txt txt-${color}`}
+                aria-label={`${COLOR_LABELS[color]} 글자색`}
+                aria-pressed={editor.isActive("textColor", { color })}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  if (editor.isActive("textColor", { color })) {
+                    editor.chain().focus().unsetTextColor().run();
+                  } else {
+                    editor.chain().focus().setTextColor(color).run();
+                  }
+                }}
+              >
+                가
+              </button>
+            ))}
+            <button
+              type="button"
+              className="color-swatch"
+              aria-label="글자색 제거"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                editor.chain().focus().unsetTextColor().run();
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          <div className="color-palette-row" role="group" aria-label="배경색">
+            {BG_COLORS.map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={`color-swatch color-swatch-bg bg-${color}`}
+                aria-label={`${COLOR_LABELS[color]} 배경색`}
+                aria-pressed={editor.isActive("bgColor", { color })}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  if (editor.isActive("bgColor", { color })) {
+                    editor.chain().focus().unsetBgColor().run();
+                  } else {
+                    editor.chain().focus().setBgColor(color).run();
+                  }
+                }}
+              >
+                가
+              </button>
+            ))}
+            <button
+              type="button"
+              className="color-swatch"
+              aria-label="배경색 제거"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                editor.chain().focus().unsetBgColor().run();
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
