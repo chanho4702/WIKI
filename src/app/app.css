@@ -4068,3 +4068,69 @@ body.is-column-reordering {
 .emoji-picker-clear:hover {
   color: var(--chanho-color-text-danger);
 }
+
+/* 표 컨트롤 바 — 커서가 표 안일 때 TopToolbar 아래에 뜨는 컨텍스트 바(컨플루언스 참조) */
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+  background: var(--chanho-color-background-subtle);
+}
+.table-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  cursor: pointer;
+}
+.table-toolbar button:hover:not(:disabled) {
+  background: var(--chanho-color-background-neutral-hovered);
+  color: var(--chanho-color-text-default);
+}
+.table-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.table-toolbar-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 var(--chanho-space-50, 4px);
+  background: var(--chanho-color-border-default);
+}
+
+/* TipTap 열 리사이즈 — 드래그 핸들·선택 셀 표시 (tiptap 권장 스타일의 토큰판) */
+.wiki-editor .ProseMirror .tableWrapper {
+  overflow-x: auto;
+}
+.wiki-editor .ProseMirror table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background: var(--chanho-color-border-brand);
+  pointer-events: none;
+}
+.wiki-editor .ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+.wiki-editor .ProseMirror table .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--chanho-color-background-selected);
+  opacity: 0.45;
+  pointer-events: none;
+  z-index: 2;
+}
+.wiki-editor .ProseMirror table td,
+.wiki-editor .ProseMirror table th {
+  position: relative;
+}

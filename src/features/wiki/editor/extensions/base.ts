@@ -72,7 +72,9 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     // protocols: 멘션 저장 문법 `[@이름](user:id)`의 `user:` 스킴 — Link 확장의 보안 검증
     // (isAllowedUri)이 미등록 스킴 href를 버리면 멘션이 텍스트로 열화된다(userMention.ts 참조).
     Link.configure({ openOnClick: false, protocols: ["user", "date"] }),
-    Table.configure({ resizable: false }),
+    // resizable: 편집 중 열 너비 드래그(컨플식). 폭은 GFM에 저장 문법이 없어 세션 한정 —
+    // 영속하려면 저장 포맷 확장이 필요하다(분석서 "열린 정책 결정"에 기록).
+    Table.configure({ resizable: true }),
     TableRow,
     TableHeader,
     TableCell,

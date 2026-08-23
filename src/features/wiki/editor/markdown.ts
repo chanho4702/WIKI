@@ -4,6 +4,8 @@ import { WIKI_LINK_SOURCE } from "../lib/wikiLinks";
 import { USER_MENTION_NAME, mentionUserIdFromHref } from "./extensions/userMention";
 import { DATE_MENTION_NAME, dateFromHref } from "./extensions/dateMention";
 
+import { expandTableSpans, foldTableSpans } from "./tableSpanBridge";
+
 /** 변환 전용 헤드리스 에디터 — 사용 후 반드시 destroy */
 function withEditor<T>(content: string | JSONContent, fn: (editor: Editor) => T): T {
   const editor = new Editor({
@@ -73,7 +75,8 @@ function promoteWikiLinks(node: JSONContent): JSONContent {
 /** 마크다운 → TipTap 문서 JSON. 실패 시 호출부에서 폴백 처리한다(throw 전파). */
 export function parseMarkdown(md: string): JSONContent {
   const doc = withEditor(md, (editor) => editor.getJSON());
-  return promoteWikiLinks(doc);
+  // 표 병합 마커(`<<`/`^^`) → colspan/rowspan (tableSpanBridge ADR). 마커 없는 문서는 no-op.
+  return foldTableSpans(promoteWikiLinks(doc));
 }
 
 /** 파싱 실패 시 원문 전체를 플레인 문단으로 보존해 편집 진입을 막지 않는다. */
@@ -94,5 +97,6 @@ export function safeParse(md: string): JSONContent {
 
 /** TipTap 문서 JSON → 마크다운 */
 export function serializeMarkdown(doc: JSONContent): string {
-  return withEditor(doc, (editor) => editor.storage.markdown.getMarkdown());
+  // colspan/rowspan → 마커 셀 그리드 복원 — GFM 파이프 구조(행마다 셀 수 동일)를 유지한다.
+  return withEditor(expandTableSpans(doc), (editor) => editor.storage.markdown.getMarkdown());
 }

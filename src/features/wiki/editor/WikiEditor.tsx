@@ -26,6 +26,7 @@ import { SuggestionPopup } from "./components/SuggestionPopup";
 import { DatePickerPopup } from "./components/DatePickerPopup";
 import { BubbleToolbar } from "./components/BubbleToolbar";
 import { TopToolbar } from "./components/TopToolbar";
+import { TableToolbar } from "./components/TableToolbar";
 import {
   UploadRail,
   type ImageUploadTaskView,
@@ -462,6 +463,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
             onUploadImage={() => imageInputRef.current?.click()}
           />
         )}
+        {editor && <TableToolbar editor={editor} />}
         <UploadRail
           tasks={uploadTasks}
           onCancel={cancelUpload}

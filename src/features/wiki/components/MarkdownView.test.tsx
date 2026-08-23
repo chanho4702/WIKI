@@ -132,6 +132,28 @@ describe("MarkdownView — 이미지 폭·캡션", () => {
   });
 });
 
+describe("MarkdownView — 표 셀 병합 마커", () => {
+  it("`<<`/`^^`가 colspan/rowspan으로 렌더되고 마커 셀은 사라진다", () => {
+    const { container } = render(
+      <MarkdownView markdown={["| 병합 | << | 오른쪽 |", "| --- | --- | --- |", "| ^^ | ^^ | 값 |"].join("\n")} />,
+    );
+    const merged = container.querySelector("th[colspan='2'][rowspan='2']");
+    expect(merged).toHaveTextContent("병합");
+    expect(container.textContent).not.toContain("<<");
+    expect(container.textContent).not.toContain("^^");
+    // 두 번째 행에는 "값" 셀 하나만 남는다
+    const bodyRow = container.querySelector("tbody tr");
+    expect(bodyRow?.querySelectorAll("td")).toHaveLength(1);
+  });
+
+  it("마커가 유효하지 않으면(왼쪽 이웃 없음) 일반 텍스트로 남는다", () => {
+    const { container } = render(
+      <MarkdownView markdown={["| << | b |", "| --- | --- |", "| c | d |"].join("\n")} />,
+    );
+    expect(container.textContent).toContain("<<");
+  });
+});
+
 describe("MarkdownView — 글자색·배경색", () => {
   it("`:c[..]{.red}`와 `:bg[..]{.yellow}`를 팔레트 클래스 span으로 렌더한다", () => {
     const { container } = render(
