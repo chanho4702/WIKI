@@ -23,6 +23,7 @@ import { remarkColumns } from "../lib/remarkColumns";
 import { remarkDetails } from "../lib/remarkDetails";
 import { parseImageWidth } from "../lib/imageAttrs";
 import { mentionUserIdFromHref } from "../editor/extensions/userMention";
+import { dateFromHref, formatDateLabel } from "../editor/extensions/dateMention";
 import { remarkToc } from "../lib/remarkToc";
 import { showsLineNumbers, useCodeBlockPrefs } from "../lib/codeBlockPrefs";
 import { CodeLineNumbers } from "./CodeLineNumbers";
@@ -48,6 +49,15 @@ function MentionChip({ userId, children }: { userId: string; children?: unknown 
   );
 }
 
+/** 날짜 칩 — `[ISO](date:ISO)` 저장 문법의 보기 렌더. 표시 포맷은 에디터 칩과 동일하다. */
+function DateChip({ iso }: { iso: string }) {
+  return (
+    <span className="date-mention" data-date={iso}>
+      {formatDateLabel(iso)}
+    </span>
+  );
+}
+
 /** wikiMode 밖에서 쓰는 최소 a 렌더 — 멘션만 칩으로 바꾸고 나머지는 표준 앵커. */
 function MentionOnlyAnchor({
   href = "",
@@ -57,6 +67,8 @@ function MentionOnlyAnchor({
 }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) {
   const mentionId = mentionUserIdFromHref(href);
   if (mentionId) return <MentionChip userId={mentionId}>{children}</MentionChip>;
+  const dateIso = dateFromHref(href);
+  if (dateIso) return <DateChip iso={dateIso} />;
   return (
     <a href={href} {...rest}>
       {children}
@@ -73,6 +85,8 @@ function WikiAnchor({
 }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) {
   const mentionId = mentionUserIdFromHref(href);
   if (mentionId) return <MentionChip userId={mentionId}>{children}</MentionChip>;
+  const dateIso = dateFromHref(href);
+  if (dateIso) return <DateChip iso={dateIso} />;
   if (href.startsWith("/")) {
     // pathname이 생성 화면일 때만 부재 링크로 표시 — 본문 중간의 우연한 substring 매치 방지
     const missing = href.split("?")[0].endsWith("/pages/new");
@@ -250,7 +264,7 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
         * 매핑한다 — 순서가 뒤바뀌면 매핑할 노드가 아직 없다. */}
       <ReactMarkdown
         // 기본 urlTransform은 http(s)·mailto 등만 허용해 `user:` 멘션 href를 지운다 — 이 스킴만 통과
-        urlTransform={(url) => (mentionUserIdFromHref(url) ? url : defaultUrlTransform(url))}
+        urlTransform={(url) => (mentionUserIdFromHref(url) || dateFromHref(url) ? url : defaultUrlTransform(url))}
         remarkPlugins={[remarkGfm, remarkDirective, remarkDetails, remarkColumns, remarkAlerts, remarkToc]}
         rehypePlugins={[rehypeSlug, [rehypeHighlight, { detect: false }]]}
         components={components}

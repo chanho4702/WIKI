@@ -2139,6 +2139,112 @@ body {
   outline-offset: 2px;
 }
 
+/* ── 날짜 요소 (`//` 캘린더) ─────────────────────────────── */
+.date-mention {
+  display: inline;
+  padding: 1px var(--chanho-space-50, 4px);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-neutral);
+  color: var(--chanho-color-text-default);
+  white-space: nowrap;
+}
+.date-picker-popup {
+  position: fixed;
+  z-index: 30;
+  padding: var(--chanho-space-100);
+  background: var(--chanho-color-background-surface);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  box-shadow: var(--chanho-shadow-overlay);
+}
+.date-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--chanho-space-50, 4px);
+}
+.date-picker-header button {
+  display: inline-flex;
+  padding: var(--chanho-space-50, 4px);
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: transparent;
+  cursor: pointer;
+  color: var(--chanho-color-text-subtle);
+}
+.date-picker-header button:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered);
+}
+.date-picker-title {
+  font-weight: var(--chanho-font-weight-semibold);
+  font-size: var(--chanho-font-size-100);
+}
+.date-picker-grid {
+  border-collapse: collapse;
+}
+.date-picker-grid th {
+  padding: 2px;
+  color: var(--chanho-color-text-subtlest);
+  font-size: var(--chanho-font-size-75, 12px);
+  font-weight: var(--chanho-font-weight-regular);
+}
+.date-picker-day {
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: transparent;
+  cursor: pointer;
+  color: var(--chanho-color-text-default);
+  font-size: var(--chanho-font-size-100);
+}
+.date-picker-day:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered);
+}
+.date-picker-day--today {
+  background: var(--chanho-color-background-brand-subtle, var(--chanho-color-background-neutral));
+  color: var(--chanho-color-text-brand);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+.date-picker-hint {
+  margin: var(--chanho-space-50, 4px) 0 0;
+  color: var(--chanho-color-text-subtlest);
+  font-size: var(--chanho-font-size-75, 12px);
+}
+
+/* 슬래시 메뉴 단축키 뱃지 + 도움말 kbd */
+.editor-suggestion-shortcut,
+.shortcut-help kbd {
+  margin-left: auto;
+  padding: 1px var(--chanho-space-50, 4px);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-subtle);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75, 12px);
+  font-family: var(--chanho-font-family-default, inherit);
+  white-space: nowrap;
+}
+.shortcut-help {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+.shortcut-help h3 {
+  margin: 0 0 var(--chanho-space-100);
+  font-size: var(--chanho-font-size-100);
+  color: var(--chanho-color-text-subtle);
+}
+.shortcut-help table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.shortcut-help td {
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100) var(--chanho-space-50, 4px) 0;
+  font-size: var(--chanho-font-size-100);
+}
+
 /* W4: 버전 diff */
 .diff-view {
   margin: 0;

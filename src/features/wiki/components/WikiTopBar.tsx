@@ -8,6 +8,7 @@ import { getCurrentUser } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
 import { useAuth } from "../../../auth/AuthGate";
 import { GlobalSearchField } from "./GlobalSearchField";
+import { ShortcutHelpModal } from "./ShortcutHelpModal";
 
 export interface WikiTopBarProps {
   /** 지정하면 브랜드 슬롯 좌측에 사이드바 토글 버튼을 렌더한다(WikiLayout 전용 — 사이드바가 있는
@@ -30,6 +31,7 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
   const { theme, toggle } = useTheme();
   const { user: authUser, logout } = useAuth();
   const [me, setMe] = useState<User | null>(null);
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -90,8 +92,10 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
                 label: theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환",
                 onSelect: toggle,
               },
+              { label: "단축키 도움말", onSelect: () => setShortcutHelpOpen(true) },
             ]}
           />
+          <ShortcutHelpModal open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
           {/* 사용자 — 아바타 드롭다운(이름·로그아웃) */}
           {me ? (
             <Dropdown

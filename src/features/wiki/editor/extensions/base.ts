@@ -16,6 +16,7 @@ import { WikiLink } from "./wikiLink";
 import { Column, ColumnBlock } from "./columns";
 import { Details } from "./details";
 import { UserMention } from "./userMention";
+import { DateMention } from "./dateMention";
 import { CodeBlockView } from "../components/CodeBlockView";
 import { ImageView } from "../components/ImageView";
 import type { Page } from "../../store/types";
@@ -69,7 +70,7 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     CodeBlockWithView,
     // protocols: 멘션 저장 문법 `[@이름](user:id)`의 `user:` 스킴 — Link 확장의 보안 검증
     // (isAllowedUri)이 미등록 스킴 href를 버리면 멘션이 텍스트로 열화된다(userMention.ts 참조).
-    Link.configure({ openOnClick: false, protocols: ["user"] }),
+    Link.configure({ openOnClick: false, protocols: ["user", "date"] }),
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,
@@ -87,6 +88,8 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     Details,
     // 사용자 멘션 — 저장은 표준 링크 `[@이름](user:id)`(extensions/userMention.ts)
     UserMention,
+    // 날짜 요소 — 저장은 표준 링크 `[ISO](date:ISO)`(extensions/dateMention.ts)
+    DateMention,
     Markdown.configure({
       html: false, // 생 HTML은 텍스트로 보존 (손실 정책)
       linkify: false,

@@ -132,6 +132,16 @@ describe("MarkdownView — 이미지 폭·캡션", () => {
   });
 });
 
+describe("MarkdownView — 날짜 요소", () => {
+  it("`[ISO](date:ISO)`를 한국어 날짜 칩으로 렌더한다", () => {
+    const { container } = render(<MarkdownView markdown={"마감: [2026-08-23](date:2026-08-23)"} />);
+    const chip = container.querySelector(".date-mention");
+    expect(chip).toHaveTextContent("2026년 8월 23일");
+    expect(chip?.getAttribute("data-date")).toBe("2026-08-23");
+    expect(container.querySelector("a[href^='date:']")).toBeNull();
+  });
+});
+
 describe("MarkdownView — 사용자 멘션", () => {
   it("`[@이름](user:id)`를 링크가 아니라 칩으로 렌더한다", () => {
     const { container } = render(<MarkdownView markdown={"담당: [@김찬호](user:1)"} />);

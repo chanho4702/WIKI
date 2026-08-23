@@ -16,11 +16,14 @@ import type { Attachment, Page, User } from "../store/types";
 import { buildBaseExtensions } from "./extensions/base";
 import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
 import { UserMentionSuggestion } from "./extensions/userMentionSuggestion";
+import { DateSuggestion } from "./extensions/dateSuggestion";
+import { BlockShortcuts } from "./extensions/blockShortcuts";
 import { SlashMenu, type SlashItem } from "./extensions/slashMenu";
 import { AlertDecoration } from "./extensions/alertDecoration";
 import { TocDecoration } from "./extensions/tocDecoration";
 import { ColumnDrag } from "./extensions/columnDrag";
 import { SuggestionPopup } from "./components/SuggestionPopup";
+import { DatePickerPopup } from "./components/DatePickerPopup";
 import { BubbleToolbar } from "./components/BubbleToolbar";
 import { TopToolbar } from "./components/TopToolbar";
 import {
@@ -120,6 +123,11 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
       clientRect: DOMRect | null;
       command: (item: User) => void;
     } | null>(null);
+    // `//` 날짜 캘린더 팝업 상태 — DateSuggestion이 onStateChange로 밀어넣는다
+    const [dateMenu, setDateMenu] = useState<{
+      clientRect: DOMRect | null;
+      command: (isoDate: string) => void;
+    } | null>(null);
     // "/" 슬래시 메뉴 팝업 상태 — SlashMenu가 onStateChange로 밀어넣는다
     const [slashMenu, setSlashMenu] = useState<{
       items: SlashItem[];
@@ -146,6 +154,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
           getUsers: () => usersRef.current,
           onStateChange: setMentionMenu,
         }),
+        DateSuggestion.configure({ onStateChange: setDateMenu }),
         SlashMenu.configure({
           onStateChange: setSlashMenu,
           onOpenEmoji: () => setEmojiPickerOpen(true),
@@ -153,6 +162,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
         }),
         AlertDecoration,
         TocDecoration,
+        BlockShortcuts,
         // 열 너비 조절·열 재배치·끌어서 분할. 스키마에 영향이 없는 뷰 전용이라 base.ts가 아니라
         // 여기에 둔다(마크다운 왕복 계약과 무관).
         ColumnDrag,
@@ -474,6 +484,16 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
               left: linkMenu.clientRect.left,
             }}
             onPick={(i) => linkMenu.command(linkMenu.items[i])}
+          />
+        )}
+        {dateMenu && dateMenu.clientRect && (
+          <DatePickerPopup
+            anchor={{
+              top: dateMenu.clientRect.top,
+              bottom: dateMenu.clientRect.bottom,
+              left: dateMenu.clientRect.left,
+            }}
+            onPick={(iso) => dateMenu.command(iso)}
           />
         )}
         {mentionMenu && mentionMenu.clientRect && (

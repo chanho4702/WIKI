@@ -2,6 +2,7 @@ import { Editor, type JSONContent } from "@tiptap/core";
 import { buildBaseExtensions } from "./extensions/base";
 import { WIKI_LINK_SOURCE } from "../lib/wikiLinks";
 import { USER_MENTION_NAME, mentionUserIdFromHref } from "./extensions/userMention";
+import { DATE_MENTION_NAME, dateFromHref } from "./extensions/dateMention";
 
 /** 변환 전용 헤드리스 에디터 — 사용 후 반드시 destroy */
 function withEditor<T>(content: string | JSONContent, fn: (editor: Editor) => T): T {
@@ -33,6 +34,16 @@ function promoteInline(nodes: JSONContent[]): JSONContent[] {
       return [{
         type: USER_MENTION_NAME,
         attrs: { userId: mentionUserId, name: node.text.replace(/^@/, "") },
+        ...(rest && rest.length ? { marks: rest } : {}),
+      }];
+    }
+    // `[2026-08-23](date:2026-08-23)` — 날짜 요소 승격(dateMention.ts 문법 근거)
+    const dateIso = dateFromHref((linkMark?.attrs as { href?: string } | undefined)?.href);
+    if (dateIso !== null) {
+      const rest = node.marks?.filter((m) => m.type !== "link");
+      return [{
+        type: DATE_MENTION_NAME,
+        attrs: { date: dateIso },
         ...(rest && rest.length ? { marks: rest } : {}),
       }];
     }

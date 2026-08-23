@@ -19,7 +19,7 @@ export interface SuggestionAnchor {
 }
 
 export interface SuggestionPopupProps {
-  items: Array<{ id: string; label: string; description?: string; icon?: SuggestionIcon }>;
+  items: Array<{ id: string; label: string; description?: string; icon?: SuggestionIcon; shortcut?: string }>;
   highlight: number;
   anchor: SuggestionAnchor;
   onPick: (index: number) => void;
@@ -103,6 +103,11 @@ export function SuggestionPopup({ items, highlight, anchor, onPick, ariaLabel }:
                 <span id={descriptionId} className="editor-suggestion-description">
                   {item.description}
                 </span>
+              )}
+              {item.shortcut && (
+                <kbd className="editor-suggestion-shortcut" aria-hidden="true">
+                  {item.shortcut}
+                </kbd>
               )}
             </button>
           </li>

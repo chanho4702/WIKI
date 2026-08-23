@@ -125,7 +125,13 @@ describe("W10 스켈레톤 로딩", () => {
     renderApp("/spaces/sp1/pages/pg1");
 
     await screen.findByRole("heading", { level: 1, name: "시작하기" });
-    expect(document.querySelectorAll(".wiki-skeleton")).toHaveLength(0);
+    // 본문 자리 스켈레톤이 사라졌는지를 본다 — 댓글 등 다른 영역은 각자 로딩 스켈레톤을
+    // 가질 수 있어(2026-08-23 스켈레톤 확대) 전체 0개 단정은 병렬 타이밍 플레이크였다.
+    expect(document.querySelector(".page-view-skeleton")).toBeNull();
+    // 댓글 스켈레톤까지 정리되는 것도 최종적으로 보장한다(로드 완료 대기)
+    await waitFor(() =>
+      expect(document.querySelectorAll(".wiki-skeleton")).toHaveLength(0),
+    );
   });
 
   it("홈 '이어서 작업'도 로딩 중 카드 자리를 미리 잡는다", async () => {

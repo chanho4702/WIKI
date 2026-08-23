@@ -37,6 +37,9 @@ export interface SlashItem {
   label: string;
   /** 요소 브라우저(InsertMenu)·슬래시 메뉴 팝업에 라벨 아래 한 줄로 노출하는 설명 */
   description: string;
+  /** 팝업·요소 브라우저·단축키 도움말에 함께 표기하는 키 조합(예: "Ctrl+Alt+1").
+   *  실제 바인딩은 Tiptap 기본 또는 blockShortcuts.ts — 표기만 하고 여기서 걸지 않는다. */
+  shortcut?: string;
   /** 슬래시 메뉴 팝업(SuggestionPopup)에서 라벨 앞에 그리는 아이콘 컴포넌트 —
    * 데이터 객체라 JSX가 아니라 컴포넌트 참조를 저장하고, 렌더는 SuggestionPopup이 담당한다.
    * lucide 아이콘이 기본이고, lucide에 없는 것(열 N개 레이아웃)은 같은 규격의 자체 SVG를 쓴다. */
@@ -92,6 +95,7 @@ const COLUMN_LAYOUT_ITEMS: SlashItem[] = SUPPORTED_COLUMN_COUNTS.map((count) => 
 export const SLASH_ITEMS: SlashItem[] = [
   {
     id: "h1",
+    shortcut: "Ctrl+Alt+1",
     label: "제목 1",
     description: "큰 섹션 제목을 추가합니다",
     icon: Heading1,
@@ -99,6 +103,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   },
   {
     id: "h2",
+    shortcut: "Ctrl+Alt+2",
     label: "제목 2",
     description: "중간 섹션 제목을 추가합니다",
     icon: Heading2,
@@ -106,6 +111,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   },
   {
     id: "h3",
+    shortcut: "Ctrl+Alt+3",
     label: "제목 3",
     description: "작은 섹션 제목을 추가합니다",
     icon: Heading3,
@@ -113,6 +119,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   },
   {
     id: "bullet",
+    shortcut: "Ctrl+Shift+8",
     label: "글머리 목록",
     description: "글머리 기호로 목록을 만듭니다",
     icon: List,
@@ -120,6 +127,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   },
   {
     id: "ordered",
+    shortcut: "Ctrl+Shift+7",
     label: "번호 목록",
     description: "번호를 매겨 목록을 만듭니다",
     icon: ListOrdered,
@@ -127,6 +135,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   },
   {
     id: "task",
+    shortcut: "Ctrl+Shift+9",
     label: "체크박스 목록",
     description: "체크박스가 있는 할 일 목록을 만듭니다",
     icon: ListChecks,
@@ -134,6 +143,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   },
   {
     id: "quote",
+    shortcut: "Ctrl+Shift+B",
     label: "인용",
     description: "인용구 블록을 추가합니다",
     icon: Quote,
@@ -148,6 +158,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   // 부르고 있었다. IMPORTANT는 렌더만 되고 삽입 경로가 없어 보라 패널을 만들 방법이 없었다.
   {
     id: "note",
+    shortcut: "Ctrl+Alt+P",
     label: "정보 패널",
     description: "파란색 정보 패널을 추가합니다",
     icon: Info,
@@ -183,6 +194,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   },
   {
     id: "toggle",
+    shortcut: "Ctrl+Alt+D",
     label: "토글",
     description: "접었다 펼 수 있는 콘텐츠를 추가합니다",
     icon: ChevronRight,
@@ -191,6 +203,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   },
   {
     id: "code",
+    shortcut: "Ctrl+Alt+C",
     label: "코드 블록",
     description: "구문 강조가 있는 코드 블록을 추가합니다",
     icon: SquareCode,
@@ -205,6 +218,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   },
   {
     id: "table",
+    shortcut: "Ctrl+Alt+T",
     label: "표",
     description: "행과 열로 콘텐츠를 구성합니다",
     icon: Table,
