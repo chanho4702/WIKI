@@ -304,6 +304,8 @@ Notion API의 업로드 파일 URL은 짧게 만료되는 signed URL이므로 �
    - Given 스페이스 ADMIN When 멤버 추가에서 사용자·팀을 고르고 역할 지정 Then 즉시 반영되고
      대상 사용자의 접근이 30초 내(권한 캐시 TTL) 갱신된다.
 4. 페이지 단위 제한 + 상속 — ADR-W14-06 의미론(§3)대로. P0-006과 동일 항목.
+   → **상세 설계 완료(2026-08-23)**: `docs/superpowers/specs/2026-08-23-w18-page-restriction-design.md`
+   (V11 모델·effective permission 단일 함수·검색 후필터·이동 영향 확인·누출 테스트 매트릭스)
 
 **Should**: COMMENT/RESTRICT 세분 action(org 확장 — 현재 댓글은 VIEW 기준선), 감사 이벤트
 (누가 언제 무슨 grant를 바꿨나), `/api/org/members` 페이지네이션·검색(멘션 자동완성용).
