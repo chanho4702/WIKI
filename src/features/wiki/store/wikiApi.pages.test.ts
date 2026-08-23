@@ -11,7 +11,7 @@ function mockSeq(responses: Array<{ status: number; body: unknown }>) {
 afterEach(() => vi.restoreAllMocks());
 
 describe("wikiApi pages", () => {
-  it("listPages → GET tree를 Page[]로(position=index+1)", async () => {
+  it("listPages → GET tree를 Page[]로(서버 position 없으면 index+1 폴백)", async () => {
     mockSeq([{ status: 200, body: [{ id: 1, parentId: null, title: "A" }] }]);
     const { listPages } = await import("./wikiApi");
     const pages = await listPages("5");
@@ -124,3 +124,47 @@ describe("wikiApi pages", () => {
     await expect(deletePage("1")).rejects.toThrow("하위 페이지가 있어 삭제할 수 없습니다");
   });
 });
+
+describe("wikiApi.movePage — V9 전용 move 엔드포인트", () => {
+  it("POST /move에 parentId·beforeId를 숫자로 보내고 응답 position을 매핑한다", async () => {
+    const spy = mockSeq([{
+      status: 200,
+      body: { id: 3, spaceId: 1, parentId: 2, title: "이동됨", content: "", version: 1, position: 1 },
+    }]);
+    const { movePage } = await import("./wikiApi");
+
+    const moved = await movePage("3", { parentId: "2", beforeId: "5" });
+
+    expect(spy).toHaveBeenCalledWith(
+      "/api/wiki/pages/3/move",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(JSON.parse(spy.mock.calls[0][1]?.body as string)).toEqual({ parentId: 2, beforeId: 5 });
+    expect(moved).toMatchObject({ parentId: "2", position: 1, version: 1 });
+  });
+
+  it("루트 이동은 parentId null, beforeId 생략은 null로 보낸다", async () => {
+    const spy = mockSeq([{
+      status: 200,
+      body: { id: 3, spaceId: 1, parentId: null, title: "이동됨", content: "", version: 1, position: 2 },
+    }]);
+    const { movePage } = await import("./wikiApi");
+    await movePage("3", { parentId: null });
+    expect(JSON.parse(spy.mock.calls[0][1]?.body as string)).toEqual({ parentId: null, beforeId: null });
+  });
+
+  it("서버 position이 있으면 트리 매핑이 그것을 쓴다", async () => {
+    mockSeq([{
+      status: 200,
+      body: [
+        { id: 1, parentId: null, title: "B", position: 2 },
+        { id: 2, parentId: null, title: "A", position: 1 },
+      ],
+    }]);
+    const { listPages } = await import("./wikiApi");
+    const pages = await listPages("1");
+    expect(pages.find((p) => p.title === "A")?.position).toBe(1);
+    expect(pages.find((p) => p.title === "B")?.position).toBe(2);
+  });
+});
+

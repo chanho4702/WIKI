@@ -256,15 +256,14 @@ export async function copyPage(id: string): Promise<Page> {
 }
 
 export async function movePage(id: string, target: { parentId: string | null; beforeId?: string | null }): Promise<Page> {
-  // 백엔드는 순서(beforeId)를 지원하지 않는다 — parentId만 PUT으로 반영(설계 §4-3).
-  const current = await getPage(id);
-  if (!current) throw new Error("페이지를 찾을 수 없습니다");
-  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}`, {
-    method: "PUT", headers: { "Content-Type": "application/json" },
+  // V9 전용 move — 부모와 형제 순서를 한 트랜잭션으로. 이동은 편집이 아니라 version 불변이며,
+  // 예전 PUT 경유(조회→전체 갱신)의 버전 증가·경합 문제가 함께 사라졌다(P1-001).
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/move`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      title: current.title, content: current.body,
       parentId: target.parentId ? toBackendId(target.parentId) : null,
-      expectedVersion: current.version,
+      beforeId: target.beforeId ? toBackendId(target.beforeId) : null,
     }),
   });
   return mapPage(await json(res));

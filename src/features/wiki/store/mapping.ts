@@ -26,6 +26,8 @@ export function mapSpace(dto: SpaceDto): Space {
 
 interface PageDto {
   id: number; spaceId: number; parentId: number | null; title: string; content: string; version: number;
+  /** V9 형제 순서 — 구버전 응답 호환을 위해 optional */
+  position?: number;
   /** 백엔드 V2에서 추가. 없던 시절 응답 호환을 위해 optional로 둔다. */
   type?: PageType; status?: PageStatus;
 }
@@ -46,14 +48,16 @@ export function mapPage(dto: PageDto): Page {
     title: dto.title,
     body: dto.content,
     version: dto.version,
-    position: 0,
+    position: dto.position ?? 0,
     createdBy: "", updatedBy: "", createdAt: now, updatedAt: now,
   };
 }
 
-interface TreeItemDto { id: number; parentId: number | null; title: string; type?: PageType; status?: PageStatus }
+interface TreeItemDto { id: number; parentId: number | null; title: string; type?: PageType; status?: PageStatus   /** V9 형제 순서 — 구버전 응답 호환을 위해 optional */
+  position?: number;
+}
 export function mapPageTree(items: TreeItemDto[]): Page[] {
-  // 백엔드 트리엔 position/본문/시각이 없다. index+1을 position으로 부여(형제 순서는 서버 미보장 — 설계 §4-3).
+  // V9부터 서버가 형제 순서(position)를 저장한다(P1-001). 없던 시절 응답은 index+1 폴백.
   return items.map((it, i) => ({
     id: toClientId(it.id),
     spaceId: "",
@@ -63,7 +67,7 @@ export function mapPageTree(items: TreeItemDto[]): Page[] {
     title: it.title,
     body: "",
     version: 1,
-    position: i + 1,
+    position: it.position ?? i + 1,
     createdBy: "", updatedBy: "", createdAt: "", updatedAt: "",
   }));
 }
