@@ -4170,3 +4170,10 @@ body.is-column-reordering {
   padding: var(--chanho-space-200) var(--chanho-space-400) var(--chanho-space-300);
   box-sizing: border-box;
 }
+
+/* 위치 지정 만들기 다이얼로그 — 이동 다이얼로그(.page-tree-move-form)와 같은 결 */
+.create-content-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-150);
+}

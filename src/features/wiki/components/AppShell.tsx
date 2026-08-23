@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { Button } from "@chanho/react";
-import { FolderPlus, Plus } from "lucide-react";
+import { FolderPlus, MapPin, Plus } from "lucide-react";
 import type { Page, Space } from "../store/types";
 import { listPages } from "../store/wikiStore";
 import { GlobalSidebar } from "./GlobalSidebar";
@@ -12,6 +12,7 @@ import { useSidebarPrefs } from "../lib/sidebarPrefs";
 import { pruneStarredSpaces } from "../lib/starredSpaces";
 import { useCreateContent } from "../lib/useCreateContent";
 import { CreateContentMenu } from "./CreateContentMenu";
+import { CreateContentDialog } from "./CreateContentDialog";
 
 export interface AppShellProps {
   spaces: Space[];
@@ -84,6 +85,9 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
   // 따로 복제돼 있었고, 그 탓에 헤더에서는 하위 폴더를 만들 방법이 아예 없었다(parentId 미지원).
   const { createContent } = useCreateContent(space?.id ?? null, reloadPages);
 
+  // 위치 지정 만들기 다이얼로그 — 헤더 "만들기"의 상세 경로. null = 닫힘, 값 = 기본 타입.
+  const [createDialogType, setCreateDialogType] = useState<"page" | "folder" | null>(null);
+
   // 존재하지 않는 스페이스 ID로 접근하면(스페이스 라우트인데 매칭 실패) 첫 스페이스로 돌린다.
   // 홈(/home)·디렉토리(/spaces)는 spaceId가 없으므로 여기에 해당하지 않는다.
   if (spaceId !== undefined && space === null) {
@@ -101,6 +105,11 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
       onSelect={(type) => void createContent(type)}
       extraItems={[
         {
+          label: "위치 지정해 만들기…",
+          icon: <MapPin size={16} aria-hidden="true" />,
+          onSelect: () => setCreateDialogType("page"),
+        },
+        {
           label: "새 스페이스",
           icon: <FolderPlus size={16} aria-hidden="true" />,
           onSelect: () => setSpaceModalOpen(true),
@@ -108,13 +117,23 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
       ]}
     />
   ) : (
-    <Button
-      size="small"
-      iconBefore={<Plus size={16} aria-hidden="true" />}
-      onClick={() => setSpaceModalOpen(true)}
-    >
-      만들기
-    </Button>
+    // 스페이스 밖(홈·디렉토리) — 직접 생성할 스페이스 컨텍스트가 없으므로 페이지/폴더는
+    // 위치 지정 다이얼로그로 연다(타입 미리 선택). 전에는 새 스페이스만 가능했다.
+    <CreateContentMenu
+      trigger={
+        <Button size="small" iconBefore={<Plus size={16} aria-hidden="true" />}>
+          만들기
+        </Button>
+      }
+      onSelect={(type) => setCreateDialogType(type)}
+      extraItems={[
+        {
+          label: "새 스페이스",
+          icon: <FolderPlus size={16} aria-hidden="true" />,
+          onSelect: () => setSpaceModalOpen(true),
+        },
+      ]}
+    />
   );
 
   // 홈·디렉토리 라우트도 이 컨텍스트를 받지만 space를 읽지 않는다(스페이스 페이지 화면만 읽는다).
@@ -149,6 +168,16 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
           <Outlet context={outletContext} />
         </main>
       </div>
+      <CreateContentDialog
+        open={createDialogType !== null}
+        onOpenChange={(open) => {
+          if (!open) setCreateDialogType(null);
+        }}
+        spaces={spaces}
+        defaultSpaceId={space?.id ?? null}
+        defaultType={createDialogType ?? "page"}
+        reloadPages={reloadPages}
+      />
       {/* 스페이스 생성 모달 — 헤더 "만들기"와 스페이스 플라이아웃이 공유하는 단일 인스턴스 */}
       <SpaceCreateModal
         showTrigger={false}

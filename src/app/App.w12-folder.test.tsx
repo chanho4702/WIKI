@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
-import { __resetForTest } from "../features/wiki/store/wikiStore";
+import { __resetForTest, listPages } from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
 import type { WikiData } from "../features/wiki/store/types";
 
@@ -386,5 +386,44 @@ describe("W12 폴더 이동·삭제 (A4)", () => {
     });
     expect(tree().queryByRole("link", { name: /운영 문서/ })).not.toBeInTheDocument();
     expect(tree().queryByRole("link", { name: /장애 대응 절차/ })).not.toBeInTheDocument();
+  });
+});
+
+/** 위치 지정 만들기 다이얼로그(2026-08-23) — 타입·스페이스·상위 위치·제목을 골라 만든다. */
+describe("위치 지정해 만들기", () => {
+  it("헤더 만들기 → 위치 지정: 상위 위치를 골라 폴더를 만들면 그 아래에 생긴다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1");
+    await screen.findByRole("navigation", { name: "페이지 트리" });
+
+    await user.click(screen.getByRole("button", { name: "만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "위치 지정해 만들기…" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "새 콘텐츠 만들기" });
+    await user.click(within(dialog).getByRole("radio", { name: "폴더" }));
+    await user.type(within(dialog).getByRole("textbox"), "자료실");
+    await user.selectOptions(await within(dialog).findByLabelText("상위 위치"), "pg1");
+    await user.click(within(dialog).getByRole("button", { name: "만들기" }));
+
+    const created = (await listPages("sp1")).find((p) => p.title === "자료실")!;
+    expect(created.type).toBe("folder");
+    expect(created.parentId).toBe("pg1");
+  });
+
+  it("홈(스페이스 밖) 헤더에서도 페이지를 스페이스 골라 만들 수 있다", async () => {
+    const user = userEvent.setup();
+    renderApp("/home");
+    await screen.findByRole("button", { name: "만들기" });
+
+    await user.click(screen.getByRole("button", { name: "만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "새 콘텐츠 만들기" });
+    await user.type(within(dialog).getByRole("textbox"), "홈에서 만든 문서");
+    await within(dialog).findByLabelText("상위 위치");
+    await user.click(within(dialog).getByRole("button", { name: "만들기" }));
+
+    const created = (await listPages("sp1")).find((p) => p.title === "홈에서 만든 문서")!;
+    expect(created.status).toBe("draft");
   });
 });
