@@ -1990,6 +1990,27 @@ body {
   max-width: 100%;
 }
 
+/* ── 트리 드롭 표시 — 앞/뒤는 삽입선, 하위는 대상 행 하이라이트 ── */
+.page-tree-drop-before > .page-tree-row {
+  box-shadow: 0 -2px 0 var(--chanho-color-border-brand);
+}
+.page-tree-drop-after > .page-tree-row {
+  box-shadow: 0 2px 0 var(--chanho-color-border-brand);
+}
+.page-tree-drop-child > .page-tree-row {
+  background: var(--chanho-color-background-brand-subtle, var(--chanho-color-background-neutral-subtle-hovered));
+  border-radius: var(--chanho-radius-small);
+}
+.page-tree-move-select {
+  width: 100%;
+  margin-top: var(--chanho-space-100);
+  padding: var(--chanho-space-100);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-surface);
+  color: var(--chanho-color-text-default);
+}
+
 /* W4: 버전 diff */
 .diff-view {
   margin: 0;

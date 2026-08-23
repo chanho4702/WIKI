@@ -6,17 +6,24 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Lozenge, useToast } from "@chanho/react";
-import { ChevronRight, FileText, Folder, Plus } from "lucide-react";
+import { ConfirmDialog, Dropdown, Lozenge, useToast } from "@chanho/react";
+import { ChevronRight, Copy, FileText, Folder, FolderInput, MoreHorizontal, Plus } from "lucide-react";
 import { contentPathIn } from "../lib/contentPath";
 import type { ReactNode } from "react";
 import type { Page, PageType } from "../store/types";
-import { movePage } from "../store/wikiStore";
-import { projectDrop, type FlatDropNode } from "./pageTreeDnd";
+import { copyPage, movePage } from "../store/wikiStore";
+import {
+  descendantIdsOf,
+  dropModeFor,
+  resolveDrop,
+  type DropMode,
+  type FlatDropNode,
+} from "./pageTreeDnd";
 import { CreateContentMenu } from "./CreateContentMenu";
 
 export interface PageTreeProps {
@@ -52,9 +59,6 @@ function buildTree(pages: Page[]): TreeNode[] {
   return toNodes(null);
 }
 
-/** 한 깊이당 들여쓰기 픽셀 — projectDrop의 offsetX 환산 기준 */
-const INDENT_PX = 24;
-
 interface FlatNode {
   page: Page;
   depth: number;
@@ -84,13 +88,26 @@ function flattenVisible(
  * 드래그 가능한 트리 항목(li). useSortable의 attributes는 li에 role="button"을 붙여
  * 링크/트리 시맨틱을 해치므로 listeners만 스프레드한다(포인터 드래그 전용 — 스펙 4.1).
  */
-function SortableRow({ id, children }: { id: string; children: ReactNode }) {
+function SortableRow({
+  id,
+  dropMode,
+  children,
+}: {
+  id: string;
+  /** 이 항목 위에 드롭하면 어떻게 되는지 — 시각 표시(앞/뒤 선, 하위 하이라이트) */
+  dropMode: DropMode | null;
+  children: ReactNode;
+}) {
   const { setNodeRef, listeners, transform, transition, isDragging } = useSortable({ id });
+  const classes = [
+    isDragging ? "page-tree-dragging" : null,
+    dropMode ? `page-tree-drop-${dropMode}` : null,
+  ].filter(Boolean);
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={isDragging ? "page-tree-dragging" : undefined}
+      className={classes.length ? classes.join(" ") : undefined}
       {...listeners}
     >
       {children}
@@ -101,6 +118,12 @@ function SortableRow({ id, children }: { id: string; children: ReactNode }) {
 export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreateChild }: PageTreeProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
+  // 드래그 중 드롭 대상과 의도(앞/뒤/하위) — 시각 표시와 최종 이동이 같은 값을 쓴다
+  const [dropIntent, setDropIntent] = useState<{ overId: string; mode: DropMode } | null>(null);
+  // 이동 다이얼로그 대상 페이지 (null = 닫힘)
+  const [moveTarget, setMoveTarget] = useState<Page | null>(null);
+  const [moveParentId, setMoveParentId] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
   const roots = buildTree(pages);
@@ -119,20 +142,38 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
     });
   };
 
+  const dropNodes = (): FlatDropNode[] =>
+    flat.map((f) => ({ id: f.page.id, parentId: f.page.parentId, depth: f.depth }));
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
   };
 
+  const handleDragMove = (event: DragMoveEvent) => {
+    const { active, over } = event;
+    if (!over || String(over.id) === String(active.id)) {
+      setDropIntent(null);
+      return;
+    }
+    const overId = String(over.id);
+    // 자기 자손 위는 무효 — 표시도 하지 않는다(놓아도 아무 일 없음을 미리 보여준다)
+    if (descendantIdsOf(dropNodes(), String(active.id)).has(overId)) {
+      setDropIntent(null);
+      return;
+    }
+    const activeRect = active.rect.current.translated;
+    if (!activeRect) return;
+    const pointerY = activeRect.top + activeRect.height / 2;
+    setDropIntent({ overId, mode: dropModeFor(pointerY, over.rect.top, over.rect.height) });
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over, delta } = event;
+    const { active, over } = event;
+    const intent = dropIntent;
     setActiveId(null);
-    if (!over) return;
-    const dropNodes: FlatDropNode[] = flat.map((f) => ({
-      id: f.page.id,
-      parentId: f.page.parentId,
-      depth: f.depth,
-    }));
-    const drop = projectDrop(dropNodes, String(active.id), String(over.id), delta.x, INDENT_PX);
+    setDropIntent(null);
+    if (!over || !intent || intent.overId !== String(over.id)) return;
+    const drop = resolveDrop(dropNodes(), String(active.id), intent.overId, intent.mode);
     if (!drop) return;
     try {
       await movePage(String(active.id), drop);
@@ -154,6 +195,54 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
         appearance: "danger",
       });
     }
+  };
+
+  const handleCopy = async (page: Page) => {
+    try {
+      const copy = await copyPage(page.id);
+      toast({ title: `"${copy.title}"을(를) 만들었습니다`, appearance: "success" });
+    } catch (error) {
+      toast({
+        title: "페이지 복제 실패",
+        description: error instanceof Error ? error.message : String(error),
+        appearance: "danger",
+      });
+      return;
+    }
+    try {
+      await onMoved?.();
+    } catch {
+      /* 복제는 성공 — 새로고침 실패는 다음 로드에서 해소된다 */
+    }
+  };
+
+  const handleMoveConfirm = async () => {
+    if (!moveTarget) return;
+    setMoving(true);
+    try {
+      await movePage(moveTarget.id, { parentId: moveParentId });
+      setMoveTarget(null);
+      toast({ title: "페이지를 이동했습니다", appearance: "success" });
+      await onMoved?.();
+    } catch (error) {
+      toast({
+        title: "페이지 이동 실패",
+        description: error instanceof Error ? error.message : String(error),
+        appearance: "danger",
+      });
+    } finally {
+      setMoving(false);
+    }
+  };
+
+  /** 이동 다이얼로그의 대상 부모 후보 — 자기 자신과 자손은 제외(순환) */
+  const moveOptions = (page: Page): FlatNode[] => {
+    const excluded = descendantIdsOf(
+      pages.map((p) => ({ id: p.id, parentId: p.parentId, depth: 0 })),
+      page.id,
+    );
+    excluded.add(page.id);
+    return flattenVisible(roots, new Set(), true, null).filter((f) => !excluded.has(f.page.id));
   };
 
   const renderNodes = (nodes: TreeNode[]) => (
@@ -222,12 +311,44 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
                   <Plus size={14} aria-hidden="true" />
                 </button>
               )}
+              {onMoved ? (
+                <Dropdown
+                  trigger={
+                    <button
+                      type="button"
+                      className="page-tree-add"
+                      aria-label={`${page.title} 더보기`}
+                    >
+                      <MoreHorizontal size={14} aria-hidden="true" />
+                    </button>
+                  }
+                  items={[
+                    {
+                      label: "복제",
+                      icon: <Copy size={16} aria-hidden="true" />,
+                      onSelect: () => void handleCopy(page),
+                    },
+                    {
+                      label: "이동…",
+                      icon: <FolderInput size={16} aria-hidden="true" />,
+                      onSelect: () => {
+                        setMoveParentId(page.parentId);
+                        setMoveTarget(page);
+                      },
+                    },
+                  ]}
+                />
+              ) : null}
             </div>
             {children.length > 0 && !isCollapsed ? renderNodes(children) : null}
           </>
         );
         return dragEnabled ? (
-          <SortableRow key={page.id} id={page.id}>
+          <SortableRow
+            key={page.id}
+            id={page.id}
+            dropMode={dropIntent?.overId === page.id ? dropIntent.mode : null}
+          >
             {row}
           </SortableRow>
         ) : (
@@ -243,7 +364,12 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
   return (
     <nav className="page-tree" aria-label="페이지 트리">
       {dragEnabled ? (
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+        >
           <SortableContext
             items={flat.map((f) => f.page.id)}
             strategy={verticalListSortingStrategy}
@@ -254,6 +380,34 @@ export function PageTree({ spaceId, pages, forceExpand = false, onMoved, onCreat
       ) : (
         renderNodes(roots)
       )}
+      <ConfirmDialog
+        open={moveTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setMoveTarget(null);
+        }}
+        title="페이지 이동"
+        description={moveTarget ? `"${moveTarget.title}"을(를) 어디로 옮길까요?` : undefined}
+        confirmLabel="이동"
+        cancelLabel="취소"
+        loading={moving}
+        onConfirm={() => void handleMoveConfirm()}
+      >
+        {moveTarget ? (
+          <select
+            className="page-tree-move-select"
+            aria-label="대상 위치"
+            value={moveParentId ?? ""}
+            onChange={(e) => setMoveParentId(e.target.value === "" ? null : e.target.value)}
+          >
+            <option value="">(맨 위)</option>
+            {moveOptions(moveTarget).map((f) => (
+              <option key={f.page.id} value={f.page.id}>
+                {`${" ".repeat(f.depth * 2)}${f.page.title}`}
+              </option>
+            ))}
+          </select>
+        ) : null}
+      </ConfirmDialog>
     </nav>
   );
 }

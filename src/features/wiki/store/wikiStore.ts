@@ -21,6 +21,7 @@ export const commitCollaborationDraft = impl.commitCollaborationDraft;
 export const publishPage = impl.publishPage;
 export const deletePage = impl.deletePage;
 export const movePage = impl.movePage;
+export const copyPage = impl.copyPage;
 export const listVersions = impl.listVersions;
 export const restoreVersion = impl.restoreVersion;
 export const listComments = impl.listComments;

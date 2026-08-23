@@ -265,6 +265,34 @@ export async function publishPage(id: string): Promise<Page> {
   return clone(page);
 }
 
+/**
+ * 단일 페이지 복제 — 백엔드 v1 계약과 동일한 범위: 하위·댓글 미복사, 제목 "(사본)",
+ * 부모·타입·상태 유지, 형제 맨 뒤. (목업엔 첨부 저장이 없어 첨부 복사는 해당 없음.)
+ */
+export async function copyPage(id: string): Promise<Page> {
+  const data = load();
+  const source = data.pages.find((p) => p.id === id);
+  if (!source) throw new Error("페이지를 찾을 수 없습니다");
+  const siblings = data.pages.filter(
+    (p) => p.spaceId === source.spaceId && p.parentId === source.parentId,
+  );
+  const now = new Date().toISOString();
+  const copy: Page = {
+    ...clone(source),
+    id: nextId(),
+    title: `${source.title} (사본)`,
+    position: Math.max(0, ...siblings.map((p) => p.position)) + 1,
+    version: 1,
+    createdBy: CURRENT_USER_ID,
+    updatedBy: CURRENT_USER_ID,
+    createdAt: now,
+    updatedAt: now,
+  };
+  data.pages.push(copy);
+  persist();
+  return clone(copy);
+}
+
 export async function deletePage(id: string, options?: DeletePageOptions): Promise<void> {
   const data = load();
   const index = data.pages.findIndex((p) => p.id === id);

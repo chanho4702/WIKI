@@ -249,6 +249,12 @@ export async function deletePage(id: string, options?: DeletePageOptions): Promi
   const query = options?.children ? `?children=${options.children}` : "";
   await json(await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}${query}`, { method: "DELETE" }));
 }
+/** 단일 페이지 복제 — 서버가 첨부 복사·본문 참조 재작성까지 한다(v1 계약). */
+export async function copyPage(id: string): Promise<Page> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/copy`, { method: "POST" });
+  return mapPage(await json(res));
+}
+
 export async function movePage(id: string, target: { parentId: string | null; beforeId?: string | null }): Promise<Page> {
   // 백엔드는 순서(beforeId)를 지원하지 않는다 — parentId만 PUT으로 반영(설계 §4-3).
   const current = await getPage(id);
