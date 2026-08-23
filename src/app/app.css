@@ -1137,15 +1137,68 @@ body {
   color: var(--chanho-color-text-danger);
 }
 
-/* 에디터 전용: 마커 텍스트("[!NOTE]" 등)는 지우지 않는 대신 작은 배지로 시각 구분한다 —
-   뷰의 md-alert-label(별도 노드, 라벨 문구)과 달리 원본 마커 문자열 그대로를 감싼다 */
+/* 에디터 전용: 마커 텍스트("[!NOTE]" 등)는 문서에 남기되(왕복 안전) 화면에서 숨기고,
+   alertDecoration.ts가 그 자리에 타입 아이콘 위젯을 그린다 — 컨플루언스식 표시 */
 .wiki-editor .ProseMirror .md-alert-marker {
-  padding: 0 var(--chanho-space-50, 4px);
+  display: none;
+}
+.wiki-editor .ProseMirror .md-alert {
+  position: relative; /* 스위처 absolute 기준 */
+}
+.wiki-editor .ProseMirror .md-alert-icon-widget {
+  display: inline-flex;
+  vertical-align: -3px; /* 첫 줄 텍스트의 광학 중심에 맞춘다(뷰의 margin-top 2px 대응) */
+  margin-right: var(--chanho-space-100);
+}
+.wiki-editor .ProseMirror .md-alert-note .md-alert-icon-widget {
+  color: var(--chanho-color-text-info);
+}
+.wiki-editor .ProseMirror .md-alert-tip .md-alert-icon-widget {
+  color: var(--chanho-color-text-success);
+}
+.wiki-editor .ProseMirror .md-alert-important .md-alert-icon-widget {
+  color: var(--chanho-color-text-brand);
+}
+.wiki-editor .ProseMirror .md-alert-warning .md-alert-icon-widget {
+  color: var(--chanho-color-text-warning);
+}
+.wiki-editor .ProseMirror .md-alert-caution .md-alert-icon-widget {
+  color: var(--chanho-color-text-danger);
+}
+
+/* 패널 타입 스위처 — 커서가 패널 안일 때만 데코레이션으로 붙는다 */
+.wiki-editor .ProseMirror .md-alert-switcher {
+  position: absolute;
+  top: calc(-1 * var(--chanho-space-100));
+  right: var(--chanho-space-100);
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-small);
-  background: var(--chanho-color-background-neutral-hovered);
+  background: var(--chanho-color-background-default);
+  box-shadow: var(--chanho-shadow-overlay);
+  z-index: 2;
+}
+.wiki-editor .ProseMirror .md-alert-switch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: transparent;
   color: var(--chanho-color-text-subtle);
-  font-size: var(--chanho-font-size-100);
-  font-weight: var(--chanho-font-weight-semibold);
+  cursor: pointer;
+}
+.wiki-editor .ProseMirror .md-alert-switch:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+  color: var(--chanho-color-text-default);
+}
+.wiki-editor .ProseMirror .md-alert-switch[aria-pressed="true"] {
+  background: var(--chanho-color-background-selected);
+  color: var(--chanho-color-text-brand);
 }
 
 .markdown-body a,

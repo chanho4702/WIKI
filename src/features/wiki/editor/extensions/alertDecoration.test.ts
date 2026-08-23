@@ -40,14 +40,32 @@ describe("alertDecoration — 편집 중 GitHub-style Alerts 라이브 프리뷰
     editor.destroy();
   });
 
-  it("마커 텍스트 범위에만 md-alert-marker 인라인 배지가 붙는다 — 본문은 배지 밖", () => {
+  it("마커 텍스트 범위에만 md-alert-marker(숨김 대상)가 붙고, 그 자리에 아이콘 위젯이 그려진다", () => {
     const { editor, el } = mount("> [!NOTE] 본문내용");
     const marker = el.querySelector(".md-alert-marker");
     expect(marker).not.toBeNull();
     expect(marker?.textContent).toBe("[!NOTE]");
     expect(marker?.textContent).not.toContain("본문내용");
-    // 배지가 붙어도 텍스트는 그대로 편집 가능한 문서 안에 남아있다 (숨기지 않음)
+    // CSS로 숨겨도 텍스트는 편집 가능한 문서 안에 그대로 남는다(왕복 안전)
     expect(el.querySelector("blockquote")?.textContent).toBe("[!NOTE] 본문내용");
+    expect(el.querySelector(".md-alert-icon-widget svg")).not.toBeNull();
+    editor.destroy();
+  });
+
+  it("커서가 패널 안이면 타입 스위처가 뜨고, 클릭하면 마커가 치환된다", () => {
+    const { editor, el } = mount("> [!NOTE] 내용");
+    // 초기 선택도 첫 텍스트블록(패널 안)이라 스위처가 이미 떠 있다
+    editor.chain().focus().setTextSelection(12).run(); // "내용" 안쪽
+    const switcher = el.querySelector(".md-alert-switcher");
+    expect(switcher).not.toBeNull();
+    const buttons = switcher!.querySelectorAll("button.md-alert-switch");
+    expect(buttons.length).toBe(5);
+    expect(switcher!.querySelector('[aria-label="정보 패널로 전환"]')?.getAttribute("aria-pressed")).toBe("true");
+
+    const tipBtn = switcher!.querySelector('[aria-label="성공 패널로 전환"]') as HTMLElement;
+    tipBtn.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    expect(el.querySelector("blockquote")?.textContent).toBe("[!TIP] 내용");
+    expect(el.querySelector("blockquote")).toHaveClass("md-alert-tip");
     editor.destroy();
   });
 
