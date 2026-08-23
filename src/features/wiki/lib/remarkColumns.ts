@@ -26,6 +26,8 @@ export function remarkColumns() {
   return (tree: Root) => {
     visit(tree, (node) => {
       if (node.type !== "containerDirective") return;
+      // details는 remarkDetails 담당 — 여기 폴백(div 덮어쓰기)에 걸리면 <details>가 사라진다
+      if ((node as { name?: string }).name === "details") return;
 
       // mdast의 directive 노드 타입은 remark-directive가 확장한 것이라 여기서만 좁힌다
       const directive = node as typeof node & {

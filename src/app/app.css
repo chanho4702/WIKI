@@ -1785,15 +1785,53 @@ body {
 }
 
 .comment-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
   margin: 0;
+  padding: var(--chanho-space-200);
   color: var(--chanho-color-text-subtle);
+  border: 1px dashed var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
 }
 
-.comment-form {
+/* 코멘트 작성기 — 아바타 + 카드형 입력(레퍼런스: 컨플루언스 하단 comment bar).
+ * 포커스/입력 전에는 한 줄 컴팩트, 활성화되면 rows·액션 행이 늘어난다(컴포넌트가 제어). */
+.comment-composer {
   display: flex;
-  flex-direction: column;
   align-items: flex-start;
   gap: var(--chanho-space-100);
+}
+.comment-composer-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+}
+/* DS TextArea의 라벨은 스크린리더용으로만 남긴다 — 컨플루언스 작성기는 라벨 없이 placeholder다 */
+.comment-composer .comment-composer-main > div > label,
+.comment-edit > div > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.comment-composer--reply {
+  margin-left: var(--chanho-space-500);
+  margin-top: var(--chanho-space-100);
+}
+.comment-hint {
+  margin-left: auto;
+  color: var(--chanho-color-text-subtlest);
+  font-size: var(--chanho-font-size-75, 12px);
+}
+/* 답글 묶음 — 스레드 연결선으로 소속을 시각화한다(들여쓰기만으론 긴 목록에서 흐릿하다) */
+.comment-thread {
+  border-left: 2px solid var(--chanho-color-border-default);
+  margin-left: var(--chanho-space-200);
+  padding-left: var(--chanho-space-100);
 }
 
 /* W4: 코멘트 수정/답글 폼 버튼 행 — 답글/수정/삭제 액션과 들여쓰기는 DS Comment의 actions/nested가 담당 */
@@ -1807,6 +1845,84 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--chanho-space-100);
+}
+
+/* ── 토글(details) — 편집 NodeView ───────────────────────────
+ * 배경 없이 chevron+제목(레퍼런스: Notion 토글·Confluence expand 공통), 내용은 chevron
+ * 폭만큼 들여쓴다. 접힘 상태는 로컬 — DetailsView 참조. */
+.details-block {
+  margin: var(--chanho-space-100) 0;
+}
+.details-block-header {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-50, 4px);
+}
+.details-block-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  cursor: pointer;
+  transition: background var(--chanho-transition-base), transform var(--chanho-transition-base);
+}
+.details-block-chevron:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered);
+}
+.details-block--open .details-block-chevron svg {
+  transform: rotate(90deg);
+}
+.details-block-chevron svg {
+  transition: transform var(--chanho-transition-base);
+}
+.details-block-summary {
+  flex: 1;
+  padding: var(--chanho-space-50, 4px) 0;
+  border: none;
+  background: transparent;
+  color: var(--chanho-color-text-default);
+  font: inherit;
+  font-weight: var(--chanho-font-weight-semibold);
+}
+.details-block-summary:focus {
+  outline: none; /* 포커스는 아래 밑줄로 표시 — outline만 지우고 끝내지 않는다 */
+  box-shadow: inset 0 -2px 0 var(--chanho-color-border-brand);
+}
+.details-block-summary::placeholder {
+  color: var(--chanho-color-text-subtlest);
+}
+.details-block-content {
+  margin-left: calc(24px + var(--chanho-space-50, 4px));
+  padding-left: var(--chanho-space-100);
+  border-left: 2px solid var(--chanho-color-border-default);
+}
+
+/* ── 토글(details) — 보기 렌더(네이티브 details/summary) ───── */
+.markdown-body .md-details {
+  margin: var(--chanho-space-100) 0;
+}
+.markdown-body .md-details-summary {
+  display: list-item; /* 기본 disclosure 마커 유지 — 상태를 색이 아니라 형태로 구분 */
+  padding: var(--chanho-space-50, 4px) 0;
+  font-weight: var(--chanho-font-weight-semibold);
+  cursor: pointer;
+  border-radius: var(--chanho-radius-small);
+}
+.markdown-body .md-details-summary:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered);
+}
+.markdown-body .md-details-summary:focus-visible {
+  outline: 2px solid var(--chanho-color-border-brand);
+  outline-offset: 2px;
+}
+.markdown-body .md-details[open] > :not(summary) {
+  margin-left: var(--chanho-space-300);
 }
 
 /* W4: 버전 diff */

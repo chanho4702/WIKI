@@ -1,6 +1,7 @@
 import { Node, mergeAttributes, type JSONContent } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
+import { containerMarker } from "./containerMarker";
 
 /**
  * 레이어 분할(컬럼 레이아웃) — 한 줄을 여러 열로 나눠 편집한다.
@@ -267,8 +268,10 @@ export const ColumnBlock = Node.create({
     return {
       markdown: {
         serialize(state: MarkdownSerializerStateLike, node: ProseMirrorNodeLike) {
-          // 바깥은 4개 — 안쪽 열(3개)이 바깥을 먼저 닫지 못하게 한다
-          state.write("::::columns");
+          // 마커 길이는 안쪽 컨테이너 층수에서 계산한다(containerMarker.ts) — 중첩이 없으면
+          // 기존과 같은 ::::columns/:::column이고, 열 안에 토글이 들어가면 자동으로 길어진다.
+          const marker = containerMarker(node as never);
+          state.write(`${marker}columns`);
           state.ensureNewLine();
           // renderContent 대신 직접 순회한다: 블록 사이 기본 구분이 빈 줄 하나(\n\n)라
           // 열마다 사이에 빈 줄이 끼어든다. flushClose(1)로 줄바꿈 하나만 흘려보낸다.
@@ -277,7 +280,7 @@ export const ColumnBlock = Node.create({
             state.render(child, node, index);
           });
           state.flushClose(1);
-          state.write("::::");
+          state.write(marker);
           state.closeBlock(node);
         },
         parse: { setup: setupMarkdownIt },
@@ -453,12 +456,13 @@ export const Column = Node.create({
       markdown: {
         serialize(state: MarkdownSerializerStateLike, node: ProseMirrorNodeLike) {
           const width = (node as { attrs?: { width?: number | null } }).attrs?.width;
-          state.write(width == null ? ":::column" : `:::column{width=${width}}`);
+          const marker = containerMarker(node as never);
+          state.write(width == null ? `${marker}column` : `${marker}column{width=${width}}`);
           state.ensureNewLine();
           state.renderContent(node);
           // 열 안의 마지막 블록이 닫히며 예약한 빈 줄을 줄바꿈 하나로 줄인다
           state.flushClose(1);
-          state.write(":::");
+          state.write(marker);
           state.closeBlock(node);
         },
         parse: { setup: setupMarkdownIt },
@@ -479,6 +483,7 @@ interface MarkdownSerializerStateLike {
 }
 
 interface ProseMirrorNodeLike {
+  type?: { name: string };
   forEach: (
     fn: (child: ProseMirrorNodeLike, offset: number, index: number) => void,
   ) => void;

@@ -113,6 +113,31 @@ describe("MarkdownView", () => {
   });
 });
 
+describe("MarkdownView — 토글(details)", () => {
+  it("`:::details[제목]`을 네이티브 details/summary로 렌더한다(기본 접힘)", () => {
+    const md = [":::details[릴리스 노트]", "숨긴 내용", ":::"].join("\n");
+    const { container } = render(<MarkdownView markdown={md} />);
+    const details = container.querySelector("details.md-details");
+    expect(details).not.toBeNull();
+    expect(details).not.toHaveAttribute("open");
+    expect(container.querySelector("summary.md-details-summary")).toHaveTextContent("릴리스 노트");
+    expect(details).toHaveTextContent("숨긴 내용");
+  });
+
+  it("제목 없는 토글은 기본 제목으로 렌더한다 — 화살표만 남지 않게", () => {
+    const md = [":::details", "내용", ":::"].join("\n");
+    const { container } = render(<MarkdownView markdown={md} />);
+    expect(container.querySelector("summary")).toHaveTextContent("펼쳐서 보기");
+  });
+
+  it("편집 왕복을 거친 문자열도 같은 구조로 렌더된다 — 편집↔보기 대칭", () => {
+    const md = [":::details[제목]", "내용", ":::"].join("\n");
+    const roundtripped = serializeMarkdown(parseMarkdown(md));
+    const { container } = render(<MarkdownView markdown={roundtripped} />);
+    expect(container.querySelector("details.md-details summary")).toHaveTextContent("제목");
+  });
+});
+
 describe("MarkdownView — 레이어 분할(컬럼)", () => {
   const TWO_COLUMNS = [
     "::::columns",

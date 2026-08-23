@@ -2,6 +2,7 @@ import { Extension, type Editor } from "@tiptap/core";
 import Suggestion from "@tiptap/suggestion";
 import { PluginKey } from "@tiptap/pm/state";
 import {
+  ChevronRight,
   Heading1,
   Heading2,
   Heading3,
@@ -179,6 +180,14 @@ export const SLASH_ITEMS: SlashItem[] = [
     description: "빨간색 주의 패널을 추가합니다",
     icon: OctagonAlert,
     run: (e) => insertAlertMarker(e, "[!CAUTION] "),
+  },
+  {
+    id: "toggle",
+    label: "토글",
+    description: "접었다 펼 수 있는 콘텐츠를 추가합니다",
+    icon: ChevronRight,
+    // 저장은 `:::details[제목]` 확장 문법(extensions/details.ts)
+    run: (e) => e.chain().focus().setDetails().run(),
   },
   {
     id: "code",

@@ -14,6 +14,7 @@ import Image from "@tiptap/extension-image";
 import { Markdown } from "tiptap-markdown";
 import { WikiLink } from "./wikiLink";
 import { Column, ColumnBlock } from "./columns";
+import { Details } from "./details";
 import { CodeBlockView } from "../components/CodeBlockView";
 import { ImageView } from "../components/ImageView";
 import type { Page } from "../../store/types";
@@ -77,6 +78,8 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     // markdown.ts의 헤드리스 변환기도 같은 노드를 봐야 `::::columns` 왕복이 성립한다.
     ColumnBlock,
     Column,
+    // 토글(expand) — 저장은 `:::details[제목]` 확장 문법(extensions/details.ts)
+    Details,
     Markdown.configure({
       html: false, // 생 HTML은 텍스트로 보존 (손실 정책)
       linkify: false,

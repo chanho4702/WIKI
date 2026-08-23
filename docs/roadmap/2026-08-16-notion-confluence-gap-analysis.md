@@ -514,7 +514,7 @@ Confluence DC가 다중 application node, load balancer, 공유 DB와 공유 첨
 
 ## 11. 현재 검증 기준선
 
-- `wiki-front`: 89개 테스트 파일, 644개 테스트 통과(라이브 1개 별도), 기능 플래그 OFF/ON production build 통과
+- `wiki-front`: 91개 테스트 파일, 658개 테스트 통과(라이브 1개 별도), 기능 플래그 OFF/ON production build 통과
 - `wiki-backend`: 25개 suite, 141개 테스트 통과(실제 PostgreSQL Flyway V1→V8 포함)
 - 확인된 품질 부채: 중복 `plaintext` React key 경고, 약 1.44 MB 초기 JS chunk 경고
 - 검증 브랜치: `wiki-front/feat/wiki-global-search`, `wiki-backend/main`

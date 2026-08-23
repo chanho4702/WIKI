@@ -20,6 +20,7 @@ import { resolveWikiLinks } from "../lib/wikiLinks";
 import { useResolvedWikiImage } from "../lib/useResolvedWikiImage";
 import { remarkAlerts } from "../lib/remarkAlerts";
 import { remarkColumns } from "../lib/remarkColumns";
+import { remarkDetails } from "../lib/remarkDetails";
 import { remarkToc } from "../lib/remarkToc";
 import { showsLineNumbers, useCodeBlockPrefs } from "../lib/codeBlockPrefs";
 import { CodeLineNumbers } from "./CodeLineNumbers";
@@ -204,7 +205,7 @@ export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
       {/* remarkDirective가 `:::`·`::` 문법을 노드로 만들고 remarkColumns/remarkToc가 그걸 div로
         * 매핑한다 — 순서가 뒤바뀌면 매핑할 노드가 아직 없다. */}
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkDirective, remarkColumns, remarkAlerts, remarkToc]}
+        remarkPlugins={[remarkGfm, remarkDirective, remarkDetails, remarkColumns, remarkAlerts, remarkToc]}
         rehypePlugins={[rehypeSlug, [rehypeHighlight, { detect: false }]]}
         components={components}
       >
