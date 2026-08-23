@@ -36,6 +36,10 @@ export interface Page {
   /** 없으면 "published"로 간주한다 — 초안 개념 도입 이전 문서는 전부 게시된 상태였다. */
   status: PageStatus;
   title: string;
+  /** 페이지 이모지 아이콘(노션/컨플식) — 트리·제목 옆에 표시. 없으면 null/undefined(기본 문서 아이콘). */
+  icon?: string | null;
+  /** 누적 조회수 — 구버전 백엔드 응답엔 없다(표시 생략). */
+  views?: number;
   body: string; // 마크다운 원문
   version: number; // 낙관적 락 카운터. 편집 세션은 로드 시 받은 값을 저장 요청까지 유지한다.
   position: number; // 형제 내 정렬 (생성순 max+1)

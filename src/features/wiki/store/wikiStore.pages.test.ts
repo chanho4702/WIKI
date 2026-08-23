@@ -5,6 +5,8 @@ import {
   getPage,
   listPages,
   listVersions,
+  recordPageView,
+  setPageIcon,
 } from "./wikiStore";
 
 beforeEach(() => {
@@ -105,5 +107,29 @@ describe("createPage", () => {
     await expect(
       createPage({ spaceId: "sp1", parentId: "없는id", title: "문서" }),
     ).rejects.toThrow("부모 페이지를 찾을 수 없습니다");
+  });
+});
+
+describe("setPageIcon / recordPageView", () => {
+  it("이모지 설정은 버전 스냅샷 없이 영속되고, null로 해제된다", async () => {
+    const before = await listVersions("pg1");
+    const withIcon = await setPageIcon("pg1", "🚀");
+    expect(withIcon.icon).toBe("🚀");
+    expect((await getPage("pg1"))?.icon).toBe("🚀");
+    // 메타데이터 변경 — 내용 버전이 쌓이지 않는다(movePage와 같은 취급)
+    expect(await listVersions("pg1")).toHaveLength(before.length);
+    const cleared = await setPageIcon("pg1", null);
+    expect(cleared.icon).toBeNull();
+  });
+
+  it("recordPageView가 누적 조회수를 올리며 돌려준다", async () => {
+    expect(await recordPageView("pg1")).toBe(1);
+    expect(await recordPageView("pg1")).toBe(2);
+    expect((await getPage("pg1"))?.views).toBe(2);
+  });
+
+  it("없는 페이지는 한국어 에러", async () => {
+    await expect(setPageIcon("없음", "🚀")).rejects.toThrow("페이지를 찾을 수 없습니다");
+    await expect(recordPageView("없음")).rejects.toThrow("페이지를 찾을 수 없습니다");
   });
 });

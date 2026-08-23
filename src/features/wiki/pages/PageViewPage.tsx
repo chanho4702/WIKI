@@ -4,7 +4,7 @@ import { Avatar, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho
 import type { BreadcrumbItem } from "@chanho/react";
 import { Maximize2, Minimize2, MoreHorizontal, Trash2, Star } from "lucide-react";
 import type { DeletePageOptions, Page, User } from "../store/types";
-import { deletePage, getPage, listUsers } from "../store/wikiStore";
+import { deletePage, getPage, listUsers, recordPageView } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
 import { TableOfContents } from "../components/TableOfContents";
@@ -87,12 +87,21 @@ export function PageViewPage() {
     void listUsers().then(setUsers);
   }, []);
 
+  // 조회수 — 진입 시 1회 기록하고 누적치를 표시한다. 부가 신호라 실패는 조용히 무시(표시 생략).
+  const [views, setViews] = useState<number | null>(null);
+
   useEffect(() => {
     if (!pageId) return;
     setPage(undefined);
+    setViews(null);
     void getPage(pageId).then((p) => {
       setPage(p);
-      if (p) recordVisit(p.id); // "이어서 작업"용 방문 로그(클라이언트)
+      if (p) {
+        recordVisit(p.id); // "이어서 작업"용 방문 로그(클라이언트)
+        void recordPageView(p.id)
+          .then(setViews)
+          .catch(() => {});
+      }
     });
   }, [pageId]);
 
@@ -147,7 +156,7 @@ export function PageViewPage() {
       <PageHeader
         className="page-view-header"
         breadcrumbs={breadcrumbs}
-        title={page.title}
+        title={page.icon ? `${page.icon} ${page.title}` : page.title}
         actions={
           <>
             {/* 별표 — 사이드바 "별표 표시" 목록에 모인다. 눌림 상태는 채운 별 + aria-pressed */}
@@ -158,7 +167,7 @@ export function PageViewPage() {
                 iconOnly
                 aria-label="별표"
                 aria-pressed={starredPages.includes(page.id)}
-                onClick={() => toggleStar(page.id)}
+                onClick={() => toggleStar({ id: page.id, spaceId: space.id, title: page.title, icon: page.icon })}
               >
                 <Star
                   size={16}
@@ -238,7 +247,7 @@ export function PageViewPage() {
         // 작성자: 이름을 못 찾고 id만 있으면(백엔드 모드) `사용자 #{id}` 폴백. id도 없으면 표기 없음.
         const editorName = editor?.name ?? (page.updatedBy ? displayUserName(page.updatedBy) : null);
         const updatedLabel = formatDate(page.updatedAt);
-        if (!editorName && !updatedLabel) return null; // 백엔드 모드처럼 둘 다 없으면 메타 숨김
+        if (!editorName && !updatedLabel && views === null) return null; // 표시할 게 하나도 없으면 메타 숨김
         return (
           <div className="page-view-meta">
             {editorName ? (
@@ -248,6 +257,7 @@ export function PageViewPage() {
               </>
             ) : null}
             {updatedLabel ? <span>{updatedLabel} 수정</span> : null}
+            {views !== null ? <span>조회 {views}회</span> : null}
           </div>
         );
       })()}

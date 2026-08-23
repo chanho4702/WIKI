@@ -11,12 +11,12 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ConfirmDialog, Dropdown, Lozenge, Radio, RadioGroup, useToast } from "@chanho/react";
-import { ChevronRight, Copy, FileText, Folder, FolderInput, MoreHorizontal, Plus } from "lucide-react";
+import { ConfirmDialog, Dropdown, Lozenge, Radio, RadioGroup, TextField, useToast } from "@chanho/react";
+import { ChevronRight, Copy, FileText, Folder, FolderInput, Link2, MoreHorizontal, Pencil, Plus, Star } from "lucide-react";
 import { contentPathIn } from "../lib/contentPath";
 import type { ReactNode } from "react";
 import type { Page, PageType, Space } from "../store/types";
-import { copyPage, listPages, movePage } from "../store/wikiStore";
+import { copyPage, listPages, movePage, updatePage } from "../store/wikiStore";
 import {
   descendantIdsOf,
   dropModeFor,
@@ -25,6 +25,7 @@ import {
   type FlatDropNode,
 } from "./pageTreeDnd";
 import { CreateContentMenu } from "./CreateContentMenu";
+import { useStarredPages } from "../lib/starredPages";
 
 export interface PageTreeProps {
   spaceId: string;
@@ -130,6 +131,11 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
   const [moveSpaceId, setMoveSpaceId] = useState<string>(spaceId);
   const [moveSpacePages, setMoveSpacePages] = useState<Page[] | null>(null);
   const [moveChildren, setMoveChildren] = useState<"with" | "promote">("with");
+  // 이름 바꾸기 다이얼로그 대상 (null = 닫힘)
+  const [renameTarget, setRenameTarget] = useState<Page | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
+  const { starred: starredPageIds, toggle: toggleStar } = useStarredPages();
   // 드래그 직후 발화하는 클릭 억제 — 억제하지 않으면 드롭할 때 행의 NavLink 클릭이 살아나
   // 그 페이지로 이동해 버려 "구조만 바꿨는데 화면 전체가 리로딩"되는 것처럼 보인다.
   const suppressNavRef = useRef(false);
@@ -208,6 +214,47 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
         description: error instanceof Error ? error.message : String(error),
         appearance: "danger",
       });
+    }
+  };
+
+  /** 링크 복사 — 게이트웨이 뒤 실제 주소(base "/wiki" 포함)를 클립보드에 넣는다. */
+  const handleCopyLink = async (page: Page) => {
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    const url = `${window.location.origin}${base}${contentPathIn(spaceId, page)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: "링크를 복사했습니다", appearance: "success" });
+    } catch {
+      toast({ title: "링크 복사에 실패했습니다", description: url, appearance: "danger" });
+    }
+  };
+
+  const handleRenameConfirm = async () => {
+    if (!renameTarget) return;
+    const next = renameValue.trim();
+    if (!next) {
+      toast({ title: "제목을 입력하세요", appearance: "danger" });
+      return;
+    }
+    setRenaming(true);
+    try {
+      await updatePage(renameTarget.id, { title: next });
+      setRenameTarget(null);
+      toast({ title: "이름을 바꿨습니다", appearance: "success" });
+    } catch (e) {
+      toast({
+        title: "이름 바꾸기 실패",
+        description: e instanceof Error ? e.message : undefined,
+        appearance: "danger",
+      });
+      setRenaming(false);
+      return;
+    }
+    setRenaming(false);
+    try {
+      await onMoved?.();
+    } catch {
+      /* 이름은 이미 바뀜 — 새로고침 실패는 다음 로드에서 해소된다 */
     }
   };
 
@@ -322,7 +369,9 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
               >
                 {/* 폴더/문서 구분 — 아이콘만으로는 색약·저시력 사용자가 구분하기 어려우므로
                   * 접근 이름에도 "폴더"를 넣는다(WCAG 1.4.1 색·형태 단독 의존 금지). */}
-                {page.type === "folder" ? (
+                {page.icon ? (
+                  <span className="page-tree-emoji" aria-hidden="true">{page.icon}</span>
+                ) : page.type === "folder" ? (
                   <Folder className="page-tree-icon" size={16} aria-hidden="true" />
                 ) : (
                   <FileText className="page-tree-icon" size={16} aria-hidden="true" />
@@ -372,6 +421,37 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
                     </button>
                   }
                   items={[
+                    {
+                      label: "이름 바꾸기…",
+                      icon: <Pencil size={16} aria-hidden="true" />,
+                      onSelect: () => {
+                        setRenameValue(page.title);
+                        setRenameTarget(page);
+                      },
+                    },
+                    {
+                      label: "링크 복사",
+                      icon: <Link2 size={16} aria-hidden="true" />,
+                      onSelect: () => void handleCopyLink(page),
+                    },
+                    {
+                      label: starredPageIds.includes(page.id) ? "별표 해제" : "별표 표시",
+                      icon: (
+                        <Star
+                          size={16}
+                          aria-hidden="true"
+                          fill={starredPageIds.includes(page.id) ? "currentColor" : "none"}
+                        />
+                      ),
+                      onSelect: () =>
+                        toggleStar({
+                          id: page.id,
+                          spaceId,
+                          title: page.title,
+                          icon: page.icon,
+                          type: page.type,
+                        }),
+                    },
                     {
                       label: "복제",
                       icon: <Copy size={16} aria-hidden="true" />,
@@ -483,6 +563,26 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
               </RadioGroup>
             ) : null}
           </div>
+        ) : null}
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={renameTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenameTarget(null);
+        }}
+        title="이름 바꾸기"
+        confirmLabel="저장"
+        cancelLabel="취소"
+        loading={renaming}
+        onConfirm={() => void handleRenameConfirm()}
+      >
+        {renameTarget ? (
+          <TextField
+            label="제목"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            autoFocus
+          />
         ) : null}
       </ConfirmDialog>
     </nav>

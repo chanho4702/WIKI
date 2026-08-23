@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Avatar, EmptyState, TextField } from "@chanho/react";
-import { ChevronDown, Clock, Compass, FileText, Grid3x3, House, Plus, Star } from "lucide-react";
+import { ChevronRight, Clock, Compass, Grid3x3, House, Plus, Star } from "lucide-react";
 import type { Page, Space } from "../store/types";
 import { PageTree } from "./PageTree";
 import { TreeSkeleton } from "./WikiSkeleton";
 import { useCreateContent } from "../lib/useCreateContent";
-import { contentPathIn } from "../lib/contentPath";
 import { CreateContentMenu } from "./CreateContentMenu";
 import { SidebarResizer } from "./SidebarResizer";
 import { SpaceFlyout } from "./SpaceFlyout";
 import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
 import { useStarredSpaces } from "../lib/starredSpaces";
-import { useStarredPages } from "../lib/starredPages";
+import { hydrateStarredPages, useStarredPages } from "../lib/starredPages";
+import { StarredFlyout } from "./StarredFlyout";
 import { useDismissablePopover } from "../lib/useDismissablePopover";
 
 export interface GlobalSidebarProps {
@@ -46,9 +46,18 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
   const navigate = useNavigate();
   const { width, setWidth } = useSidebarPrefs();
   const { starred } = useStarredSpaces();
-  const { starred: starredPages } = useStarredPages();
-  // "별표 표시" 네비 항목 펼침 — 예전엔 자리표시(disabled)라 별표를 눌러도 아무 변화가 없었다
+  const { entries: starredPageEntries } = useStarredPages();
+  // "별표 표시" — 검색형 플라이아웃(컨플루언스 참조: 펼침 목록이 아니라 검색해서 찾는다)
   const [starOpen, setStarOpen] = useState(false);
+  const starContainerRef = useRef<HTMLLIElement>(null);
+  const starTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeStarFlyout = useCallback(() => setStarOpen(false), []);
+  useDismissablePopover({
+    containerRef: starContainerRef,
+    triggerRef: starTriggerRef,
+    open: starOpen,
+    onClose: closeStarFlyout,
+  });
 
   // 드래그 중 실시간 미리보기 폭 — pointermove마다 저장하지 않고 화면 표시만 갱신한다.
   const [displayWidth, setDisplayWidth] = useState(width);
@@ -66,6 +75,11 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
   // 페이지 트리 제목 검색 — 스페이스 전환 시 초기화한다.
   const [query, setQuery] = useState("");
   const spaceId = space?.id ?? null;
+  // 별표 스냅샷 최신화 — 이 스페이스 트리를 로드할 때 개명·이모지 변경을 반영하고
+  // 구버전(제목 없는) 엔트리를 채운다. 다른 스페이스의 별표는 건드리지 않는다.
+  useEffect(() => {
+    if (spaceId !== null && pages !== null) hydrateStarredPages(spaceId, pages);
+  }, [spaceId, pages]);
   useEffect(() => {
     setQuery("");
   }, [spaceId]);
@@ -91,8 +105,6 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
   const visiblePages = pages === null ? null : filterPagesWithAncestors(pages, query);
   // 별표 스페이스 목록 — 홈·디렉토리 컨텍스트(space=null)에서만 렌더하므로 현재 스페이스 제외는 불필요.
   const starredSpaceList = spaces.filter((s) => starred.includes(s.id));
-  // 현재 스페이스에서 별표한 페이지(다른 스페이스 페이지는 제목을 모름 — 그 스페이스에 들어가면 보인다)
-  const starredPageList = (pages ?? []).filter((p) => starredPages.includes(p.id));
   // 주의: 페이지 별표는 여기서 prune하지 않는다 — 이 컴포넌트는 현재 스페이스의 페이지만
   // 알아서, 그 기준으로 지우면 다른 스페이스의 별표가 날아간다(스페이스 별표 prune과 다른 점).
   // 죽은 페이지 별표는 페이지 삭제 경로(PageViewPage)에서 개별 제거한다.
@@ -119,51 +131,29 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
               <span>최근</span>
             </button>
           </li>
-          <li>
+          <li ref={starContainerRef} className="global-nav-star-anchor">
             <button
+              ref={starTriggerRef}
               type="button"
               className="global-nav-item"
+              aria-haspopup="dialog"
               aria-expanded={starOpen}
               onClick={() => setStarOpen((v) => !v)}
             >
               <Star className="global-nav-icon" size={16} aria-hidden="true" />
               <span>별표 표시</span>
-              <ChevronDown
-                className={`global-nav-caret${starOpen ? " global-nav-caret--open" : ""}`}
-                size={14}
-                aria-hidden="true"
-              />
+              <ChevronRight className="global-nav-caret" size={14} aria-hidden="true" />
             </button>
             {starOpen ? (
-              <div className="global-nav-starred" aria-label="별표 표시된 항목">
-                {starredSpaceList.length === 0 && starredPageList.length === 0 ? (
-                  <p className="global-nav-starred-empty">
-                    스페이스·페이지의 별표(★)를 누르면 여기에 모입니다
-                  </p>
-                ) : (
-                  <ul className="global-nav-starred-list">
-                    {starredSpaceList.map((s) => (
-                      <li key={`s-${s.id}`}>
-                        <NavLink to={`/spaces/${s.id}`} className="global-nav-starred-link">
-                          <Compass size={14} aria-hidden="true" />
-                          <span>{s.name}</span>
-                        </NavLink>
-                      </li>
-                    ))}
-                    {starredPageList.map((p) => (
-                      <li key={`p-${p.id}`}>
-                        <NavLink
-                          to={contentPathIn(space!.id, p)}
-                          className="global-nav-starred-link"
-                        >
-                          <FileText size={14} aria-hidden="true" />
-                          <span>{p.title}</span>
-                        </NavLink>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <StarredFlyout
+                spaces={spaces}
+                starredSpaceIds={starred}
+                starredPages={starredPageEntries}
+                onNavigate={(path) => {
+                  setStarOpen(false);
+                  navigate(path);
+                }}
+              />
             ) : null}
           </li>
           <li>

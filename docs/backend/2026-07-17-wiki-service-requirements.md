@@ -51,6 +51,8 @@
 | deletePage(id, {children?}) | DELETE /api/wiki/pages/{id}**?children=promote\|cascade** | 옵션 없이 하위 존재 시 409. promote=자식을 대상의 부모로 승격 후 대상만 삭제, cascade=후손 전부. 어느 쪽이든 지워지는 페이지의 버전·첨부 연쇄 삭제 — **구현됨** |
 | publishPage(id) | POST /api/wiki/pages/{id}/publish | 초안→게시. 멱등, version·리비전 불변(내용 변경이 아님) — **구현됨** |
 | movePage(id, {parentId, beforeId?}) | PUT /api/wiki/pages/{id}/position | 아래 이동 규칙 참조 |
+| setPageIcon(id, icon\|null) | PUT /api/wiki/pages/{id}/icon | **V10** 이모지 아이콘(varchar). 메타데이터 변경 — 버전 스냅샷 없음, PageResponse·트리 응답에 `icon` 포함 |
+| recordPageView(id) | POST /api/wiki/pages/{id}/views | **V10** 조회 1회 기록 → `{views}` 누적치. 실패해도 화면 진행(프론트가 조용히 무시) |
 | listVersions(pageId) | GET /api/wiki/pages/{pageId}/versions | version 내림차순 |
 | restoreVersion(pageId, versionId) | POST /api/wiki/pages/{pageId}/restore | updatePage 경로 재사용(새 버전으로 쌓임) |
 | listComments(pageId) | GET /api/wiki/pages/{pageId}/comments | createdAt 오름차순 |

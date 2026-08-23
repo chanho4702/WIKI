@@ -6,7 +6,8 @@ import { useDismissablePopover } from "../../lib/useDismissablePopover";
 import { useControlledOpenState } from "../../lib/controlledOpenState";
 
 export interface EmojiPickerProps {
-  editor: Editor;
+  /** 본문 삽입 대상 — onPick을 쓰면(페이지 이모지 아이콘 등) 생략 가능. */
+  editor?: Editor;
   /**
    * 열림 상태를 외부에서 제어하고 싶을 때(예: 슬래시 메뉴 "이모지" 항목, InsertMenu의 "이모지" 항목이
    * 이 팝오버를 열기 위함) 지정한다. 미지정 시 SpaceCreateModal.tsx와 동일한 패턴으로 내부 상태로
@@ -14,6 +15,17 @@ export interface EmojiPickerProps {
    */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /**
+   * 선택 결과를 본문 삽입 대신 콜백으로 받는다 — 페이지 이모지 아이콘(제목 옆) 설정처럼
+   * 에디터 밖에서 이모지 하나를 고르는 용도. 지정하면 editor는 쓰이지 않는다.
+   */
+  onPick?: (char: string) => void;
+  /** 트리거 접근 이름 재정의(기본 "이모지") — 페이지 이모지 설정 등 용도 구분. */
+  triggerLabel?: string;
+  /** 트리거에 Smile 아이콘 대신 현재 선택된 이모지를 보여준다. */
+  triggerChar?: string | null;
+  /** 지정하면 팝오버 하단에 "이모지 제거" 버튼을 렌더한다(현재 값이 있을 때의 해제 경로). */
+  onClear?: () => void;
 }
 
 /** 이모지 그리드의 열 수 — app.css의 `.emoji-picker-grid { grid-template-columns: repeat(6, 1fr); }`와
@@ -32,7 +44,9 @@ const EMOJI_GRID_COLUMNS = 6;
  * 제외한다(검색 입력만 탭 가능) — 대신 그리드는 검색 입력에 포커스가 있는 채로 화살표 키(←→/↑↓)와
  * Enter로 내비게이션한다(W7 T1, EmojiPicker ARIA 정합 — W6 리뷰 Issue #1).
  */
-export function EmojiPicker({ editor, open: openProp, onOpenChange: onOpenChangeProp }: EmojiPickerProps) {
+export function EmojiPicker({
+  editor, open: openProp, onOpenChange: onOpenChangeProp, onPick, triggerLabel, triggerChar, onClear,
+}: EmojiPickerProps) {
   const [open, setOpen] = useControlledOpenState("EmojiPicker", openProp, onOpenChangeProp);
 
   const [query, setQuery] = useState("");
@@ -68,7 +82,11 @@ export function EmojiPicker({ editor, open: openProp, onOpenChange: onOpenChange
   }, [trimmed, categoryId]);
 
   const select = (char: string) => {
-    editor.chain().focus().insertContent(char).run();
+    if (onPick) {
+      onPick(char);
+    } else {
+      editor?.chain().focus().insertContent(char).run();
+    }
     close();
   };
 
@@ -122,13 +140,13 @@ export function EmojiPicker({ editor, open: openProp, onOpenChange: onOpenChange
       <button
         type="button"
         ref={triggerRef}
-        aria-label="이모지"
-        title="이모지"
+        aria-label={triggerLabel ?? "이모지"}
+        title={triggerLabel ?? "이모지"}
         aria-expanded={open}
         className="emoji-picker-trigger"
         onClick={() => setOpen(!open)}
       >
-        <Smile size={16} aria-hidden />
+        {triggerChar ? <span aria-hidden="true">{triggerChar}</span> : <Smile size={16} aria-hidden />}
       </button>
       {open && (
         <div className="emoji-picker-popover">
@@ -181,6 +199,18 @@ export function EmojiPicker({ editor, open: openProp, onOpenChange: onOpenChange
             ))}
           </div>
           {visible.length === 0 && <p className="emoji-picker-empty">일치하는 이모지가 없습니다</p>}
+          {onClear && triggerChar ? (
+            <button
+              type="button"
+              className="emoji-picker-clear"
+              onClick={() => {
+                onClear();
+                close();
+              }}
+            >
+              이모지 제거
+            </button>
+          ) : null}
         </div>
       )}
     </div>

@@ -9,6 +9,7 @@ import {
   publishPage,
   updatePage,
   listUsers,
+  setPageIcon,
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
@@ -23,6 +24,7 @@ import {
   useCollaborationSession,
 } from "../editor/collaboration/useCollaborationSession";
 import { replaceCollaborativeTitle } from "../editor/collaboration/title";
+import { EmojiPicker } from "../editor/components/EmojiPicker";
 import { canCommitCollaborationDraft } from "../editor/collaboration/availability";
 
 interface EditConflict {
@@ -59,6 +61,8 @@ export function PageEditPage() {
   const [pageSpaceId, setPageSpaceId] = useState<string | null>(null);
   // Task 5: 제목 변경 추적 (본문은 WikiEditor.isDirty()로 추적)
   const [titleDirty, setTitleDirty] = useState(false);
+  // 페이지 이모지 아이콘 — 기존 페이지는 즉시 저장(메타데이터 변경), 새 문서는 저장 시 함께 적용
+  const [icon, setIcon] = useState<string | null>(null);
   // 저장 진행 상태 — 업데이트 버튼 로딩 표시 + 중복 저장 차단
   const [saving, setSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
@@ -144,6 +148,7 @@ export function PageEditPage() {
         setBaseVersion(page.version);
         setPageSpaceId(page.spaceId);
         setIsDraft(page.status === "draft");
+        setIcon(page.icon ?? null);
       }
     });
     return () => {
@@ -182,6 +187,17 @@ export function PageEditPage() {
     // 잘못된 스페이스 URL — 페이지가 속한 스페이스의 편집 URL로 redirect (PageViewPage와 동일 패턴)
     return <Navigate to={`/spaces/${pageSpaceId}/pages/${pageId}/edit`} replace />;
   }
+
+  /** 이모지 아이콘 변경 — 기존 페이지는 즉시 영속(버전 스냅샷 없는 메타데이터 변경),
+   * 새 문서는 아직 id가 없어 로컬에 들고 있다가 저장 시 적용한다. */
+  const changeIcon = (next: string | null) => {
+    setIcon(next);
+    if (isEdit && pageId) {
+      void setPageIcon(pageId, next).catch(() => {
+        toast({ title: "이모지 저장에 실패했습니다", appearance: "danger" });
+      });
+    }
+  };
 
   const handleSave = async () => {
     if (!collaborationReady) {
@@ -226,6 +242,7 @@ export function PageEditPage() {
         navigate(`/spaces/${spaceId}/pages/${saved.id}`);
       } else {
         const created = await createPage({ spaceId, parentId, title, body });
+        if (icon) await setPageIcon(created.id, icon).catch(() => {});
         toast({ title: `"${created.title}" 페이지를 만들었습니다`, appearance: "success" });
         await reloadPages();
         navigate(`/spaces/${spaceId}/pages/${created.id}`);
@@ -401,7 +418,14 @@ export function PageEditPage() {
           onContinueMerge={continueManualMerge}
         />
       ) : null}
-      <input
+      <div className="page-edit-title-row">
+        <EmojiPicker
+          triggerLabel="페이지 이모지"
+          triggerChar={icon}
+          onPick={changeIcon}
+          onClear={() => changeIcon(null)}
+        />
+        <input
         className="page-edit-title"
         value={title}
         onChange={(e) => {
@@ -416,7 +440,8 @@ export function PageEditPage() {
         disabled={!collaborationReady || saving}
         placeholder="제목 없음"
         aria-label="페이지 제목"
-      />
+        />
+      </div>
       {collaborationRequired && !collaboration.binding ? (
         <div
           className={`collaboration-editor-gate collaboration-editor-gate--${collaboration.status}`}

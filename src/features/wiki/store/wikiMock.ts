@@ -239,6 +239,32 @@ export async function updatePage(
   return clone(page);
 }
 
+/**
+ * 페이지 이모지 아이콘 설정/해제(null) — 이동(movePage)과 같은 메타데이터 변경 취급이다:
+ * 내용이 안 바뀌므로 버전 스냅샷을 쌓지 않고 updatedAt도 건드리지 않는다.
+ */
+export async function setPageIcon(id: string, icon: string | null): Promise<Page> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === id);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  page.icon = icon;
+  persist();
+  return clone(page);
+}
+
+/**
+ * 조회 1회 기록 — 페이지 보기 화면 진입 시 호출한다. 누적 조회수를 돌려준다.
+ * 컨플루언스처럼 정교한 중복 제거(사용자별 유니크)는 백엔드 몫 — 목업은 단순 누적.
+ */
+export async function recordPageView(id: string): Promise<number> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === id);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  page.views = (page.views ?? 0) + 1;
+  persist();
+  return page.views;
+}
+
 export async function commitCollaborationDraft(
   id: string,
   patch: { title: string; body: string },

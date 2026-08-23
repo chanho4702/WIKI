@@ -35,6 +35,8 @@ describe("App 라우팅과 위키 W1 흐름", () => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1");
     });
     expect(screen.getByTestId("location")).not.toHaveTextContent("/pages/");
+    // 트리는 페이지 목록 로드 후 스켈레톤을 대체한다 — 로드 완료를 기다린다(경합 방지)
+    await screen.findByRole("navigation", { name: "페이지 트리" });
     const tree = treeIn();
     // 루트 2 + 하위 2 + 손자 1 전부 표시 (기본 펼침)
     expect(tree.getByRole("link", { name: "시작하기" })).toBeInTheDocument();

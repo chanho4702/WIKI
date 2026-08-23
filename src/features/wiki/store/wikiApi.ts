@@ -159,6 +159,22 @@ export async function updatePage(
   return mapPage(await json(res));
 }
 
+/** 이모지 아이콘 설정/해제 — 메타데이터 변경(버전 스냅샷 없음). 백엔드 V10 계약. */
+export async function setPageIcon(id: string, icon: string | null): Promise<Page> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/icon`, {
+    method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ icon }),
+  });
+  return mapPage(await json(res));
+}
+
+/** 조회 1회 기록 — 실패해도 화면을 막으면 안 되는 부가 신호라 호출부에서 무시 가능해야 한다. */
+export async function recordPageView(id: string): Promise<number> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/views`, { method: "POST" });
+  const body = await json<{ views: number }>(res);
+  return body.views;
+}
+
 /** Yjs projection과 page revision, collaboration generation을 서버의 단일 transaction으로 확정한다. */
 export async function commitCollaborationDraft(
   id: string,

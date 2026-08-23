@@ -47,8 +47,9 @@ describe("W8 백엔드 모드 정합화", () => {
 
     // 페이지 자체는 정상 렌더
     expect(await screen.findByRole("heading", { level: 1, name: "시작하기" })).toBeInTheDocument();
-    // "Invalid Date" 노출 없음, 메타(작성자·수정일) 블록 자체가 렌더되지 않음(둘 다 비어 숨김)
+    // "Invalid Date" 노출 없음 — 작성자·수정일은 숨고, 조회수(항상 기록됨)만 남는다
     expect(screen.queryByText(/Invalid Date/)).not.toBeInTheDocument();
-    expect(document.querySelector(".page-view-meta")).toBeNull();
+    expect(screen.queryByText(/수정$/)).not.toBeInTheDocument();
+    expect(await screen.findByText(/^조회 \d+회$/)).toBeInTheDocument();
   });
 });

@@ -30,6 +30,8 @@ interface PageDto {
   position?: number;
   /** 백엔드 V2에서 추가. 없던 시절 응답 호환을 위해 optional로 둔다. */
   type?: PageType; status?: PageStatus;
+  /** V10 — 이모지 아이콘·조회수. 구버전 응답 호환 optional. */
+  icon?: string | null; views?: number;
 }
 export function mapPage(dto: PageDto): Page {
   // 백엔드 PageResponse엔 시각/작성자가 없다 → 빈 문자열. ⚠️ 백엔드 모드에서 PageView 메타의
@@ -48,6 +50,8 @@ export function mapPage(dto: PageDto): Page {
     title: dto.title,
     body: dto.content,
     version: dto.version,
+    icon: dto.icon ?? null,
+    views: dto.views,
     position: dto.position ?? 0,
     createdBy: "", updatedBy: "", createdAt: now, updatedAt: now,
   };
@@ -55,6 +59,8 @@ export function mapPage(dto: PageDto): Page {
 
 interface TreeItemDto { id: number; parentId: number | null; title: string; type?: PageType; status?: PageStatus   /** V9 형제 순서 — 구버전 응답 호환을 위해 optional */
   position?: number;
+  /** V10 — 트리에 이모지 아이콘 표시용. */
+  icon?: string | null;
 }
 export function mapPageTree(items: TreeItemDto[]): Page[] {
   // V9부터 서버가 형제 순서(position)를 저장한다(P1-001). 없던 시절 응답은 index+1 폴백.
@@ -65,6 +71,7 @@ export function mapPageTree(items: TreeItemDto[]): Page[] {
     type: it.type ?? "page",
     status: it.status ?? "published",
     title: it.title,
+    icon: it.icon ?? null,
     body: "",
     version: 1,
     position: it.position ?? i + 1,

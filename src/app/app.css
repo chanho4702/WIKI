@@ -1286,6 +1286,19 @@ body {
   max-width: none;
 }
 
+.page-edit-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+}
+/* 제목 왼쪽 이모지 트리거 — 제목 크기에 맞춘 큰 히트영역, 없을 땐 은은한 스마일 */
+.page-edit-title-row .emoji-picker-trigger {
+  width: 40px;
+  height: 40px;
+  font-size: 26px;
+  flex: none;
+}
+
 .page-edit-title {
   border: none;
   outline: none;
@@ -2145,37 +2158,27 @@ body {
 .global-nav-caret--open {
   transform: rotate(180deg);
 }
-.global-nav-starred {
-  padding: var(--chanho-space-50, 4px) 0 var(--chanho-space-100) var(--chanho-space-400);
+/* 별표 검색 플라이아웃 — 컨플루언스처럼 펼침 목록 대신 검색해서 찾는다.
+ * .space-flyout 시각 패턴을 그대로 재사용하고, 위치만 트리거 옆으로 잡는다. */
+.global-nav-star-anchor {
+  position: relative;
 }
-.global-nav-starred-empty {
-  margin: 0;
+.starred-flyout {
+  top: 0;
+  left: calc(100% + var(--chanho-space-100));
+}
+.starred-flyout-empty {
+  margin: var(--chanho-space-100) 0 0;
   color: var(--chanho-color-text-subtlest);
   font-size: var(--chanho-font-size-75, 12px);
 }
-.global-nav-starred-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.global-nav-starred-link {
+.starred-flyout .space-flyout-item-name {
   display: flex;
   align-items: center;
   gap: var(--chanho-space-100);
-  padding: var(--chanho-space-50, 4px) var(--chanho-space-100);
-  border-radius: var(--chanho-radius-small);
-  color: var(--chanho-color-text-default);
-  text-decoration: none;
-  font-size: var(--chanho-font-size-100);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-.global-nav-starred-link:hover {
-  background: var(--chanho-color-background-neutral-subtle-hovered);
 }
 
 /* 사용자 메뉴 트리거 — 아바타를 버튼으로 감싼다(드롭다운 접근성) */
@@ -4039,4 +4042,29 @@ body.is-column-reordering {
   flex-direction: column;
   gap: var(--chanho-space-100);
   margin-top: var(--chanho-space-200);
+}
+
+/* 페이지 이모지 아이콘 — 트리·별표 패널에서 문서 아이콘 대신 표시 */
+.page-tree-emoji {
+  flex: none;
+  width: 16px;
+  text-align: center;
+  font-size: var(--chanho-font-size-100);
+  line-height: 1;
+}
+
+/* 이모지 팝오버 하단 "이모지 제거" — 페이지 이모지 설정에서만 렌더된다 */
+.emoji-picker-clear {
+  width: 100%;
+  margin-top: var(--chanho-space-100);
+  padding: var(--chanho-space-50, 4px);
+  border: none;
+  border-top: 1px solid var(--chanho-color-border-default);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75, 12px);
+  cursor: pointer;
+}
+.emoji-picker-clear:hover {
+  color: var(--chanho-color-text-danger);
 }
