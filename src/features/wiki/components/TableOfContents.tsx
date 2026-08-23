@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import GithubSlugger from "github-slugger";
 import { WIKI_LINK_SOURCE } from "../lib/wikiLinks";
 
@@ -103,6 +104,27 @@ export interface TableOfContentsProps {
 export function TableOfContents({ markdown, variant = "aside" }: TableOfContentsProps) {
   const headings = extractHeadings(markdown);
   const inline = variant === "inline";
+  // 스크롤스파이 — 지금 읽고 있는 섹션을 사이드 목차에서 강조한다(휴리스틱 #1 상태 가시성).
+  // rootMargin 하단 -70%: 뷰포트 위쪽 30% 밴드에 들어온 heading을 "현재"로 본다.
+  const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  useEffect(() => {
+    if (inline || typeof IntersectionObserver === "undefined") return; // jsdom·인라인은 제외
+    const targets = Array.from(
+      document.querySelectorAll(".markdown-body :is(h1, h2, h3)[id]"),
+    );
+    if (targets.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActiveSlug(visible[0].target.id);
+      },
+      { rootMargin: "0px 0px -70% 0px" },
+    );
+    targets.forEach((t) => observer.observe(t));
+    return () => observer.disconnect();
+  }, [markdown, inline]);
   if (!inline && headings.length < 3) return null;
 
   if (inline && headings.length === 0) {
@@ -119,7 +141,13 @@ export function TableOfContents({ markdown, variant = "aside" }: TableOfContents
       <ul>
         {headings.map((h) => (
           <li key={h.slug} className={`page-toc-level-${h.level}`}>
-            <a href={`#${h.slug}`}>{h.text}</a>
+            <a
+              href={`#${h.slug}`}
+              className={!inline && h.slug === activeSlug ? "page-toc-active" : undefined}
+              aria-current={!inline && h.slug === activeSlug ? "true" : undefined}
+            >
+              {h.text}
+            </a>
           </li>
         ))}
       </ul>

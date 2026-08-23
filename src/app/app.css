@@ -753,6 +753,32 @@ body {
 
 /* ── 목차 (.page-toc — TableOfContents 전용 스코프) ── */
 
+/* 넓은 화면(우측 여백이 실제로 남는 폭)에서는 자동 목차를 우측 고정 레일로 띄운다 —
+ * 본문 위 박스는 스크롤하면 사라져 "목차 기능이 없다"로 읽혔다. 본문(760px)이 중앙 정렬이라
+ * 레일 왼쪽 끝 = 50% + 380px + 32px. 좁은 화면은 기존 상단 박스 그대로다. */
+@media (min-width: 1440px) {
+  .page-view:not(.page-view--full) .page-toc:not(.page-toc--inline) {
+    position: fixed;
+    top: 140px;
+    left: calc(50% + 380px + 32px);
+    width: 240px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    margin-bottom: 0;
+    padding: var(--chanho-space-100) var(--chanho-space-200);
+    background: transparent;
+    border-left: 2px solid var(--chanho-color-border-default);
+    border-radius: 0;
+  }
+}
+
+/* 스크롤스파이 — 지금 읽는 섹션 표시. 색만으로 구분하지 않게 굵기도 함께 바꾼다 */
+.page-toc a.page-toc-active {
+  color: var(--chanho-color-text-brand);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+
 .page-toc {
   margin-bottom: var(--chanho-space-300);
   padding: var(--chanho-space-200) var(--chanho-space-300);
@@ -2009,6 +2035,23 @@ body {
   border-radius: var(--chanho-radius-medium);
   background: var(--chanho-color-background-surface);
   color: var(--chanho-color-text-default);
+}
+
+/* 에디터 `::toc` 라이브 프리뷰 — 원문은 편집 가능하게 두고 칩 스타일+안내만 덧입힌다 */
+.wiki-editor .ProseMirror .toc-marker {
+  display: inline-block;
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100);
+  border: 1px dashed var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-subtle);
+  color: var(--chanho-color-text-subtle);
+  font-family: var(--chanho-font-family-code, monospace);
+}
+.wiki-editor .ProseMirror .toc-marker::after {
+  content: " — 보기 화면에서 목차로 표시됩니다";
+  font-family: var(--chanho-font-family-default, inherit);
+  font-size: var(--chanho-font-size-75, 12px);
+  color: var(--chanho-color-text-subtlest);
 }
 
 /* W4: 버전 diff */

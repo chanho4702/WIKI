@@ -66,6 +66,13 @@ export function SuggestionPopup({ items, highlight, anchor, onPick, ariaLabel }:
     setPos((prev) => (prev.top === top && prev.left === left ? prev : { top, left }));
   }, [anchor.top, anchor.bottom, anchor.left, items.length]);
 
+  // 키보드 순회가 스크롤을 따라가게 — 목록이 max-height로 잘려 있을 때 화살표로 내려가면
+  // 하이라이트가 접힌 영역으로 사라졌다("항목이 없어 보임"). nearest: 이미 보이면 안 움직인다.
+  useLayoutEffect(() => {
+    const el = ref.current?.children[highlight] as HTMLElement | undefined;
+    el?.scrollIntoView?.({ block: "nearest" });
+  }, [highlight]);
+
   return (
     <ul
       ref={ref}

@@ -18,6 +18,7 @@ import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
 import { UserMentionSuggestion } from "./extensions/userMentionSuggestion";
 import { SlashMenu, type SlashItem } from "./extensions/slashMenu";
 import { AlertDecoration } from "./extensions/alertDecoration";
+import { TocDecoration } from "./extensions/tocDecoration";
 import { ColumnDrag } from "./extensions/columnDrag";
 import { SuggestionPopup } from "./components/SuggestionPopup";
 import { BubbleToolbar } from "./components/BubbleToolbar";
@@ -151,6 +152,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
           onUploadImage: () => imageInputRef.current?.click(),
         }),
         AlertDecoration,
+        TocDecoration,
         // 열 너비 조절·열 재배치·끌어서 분할. 스키마에 영향이 없는 뷰 전용이라 base.ts가 아니라
         // 여기에 둔다(마크다운 왕복 계약과 무관).
         ColumnDrag,

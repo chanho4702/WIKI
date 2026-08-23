@@ -69,3 +69,45 @@ describe("SuggestionPopup 위치 보정", () => {
     expect(list).toHaveStyle({ left: "796px" });
   });
 });
+
+
+describe("SuggestionPopup — 키보드 순회 스크롤", () => {
+  it("하이라이트가 바뀌면 해당 항목을 scrollIntoView한다(max-height로 잘린 목록 대비)", () => {
+    const calls: unknown[] = [];
+    // 주의: 테스트 스코프의 Element와 jsdom 문서 realm의 Element가 달라 전역 Element 패치는
+    // 헛돈다 — 실제 DOM 요소가 상속하는 window.HTMLElement 쪽을 패치해야 한다.
+    const proto = window.HTMLElement.prototype as unknown as {
+      scrollIntoView?: (arg?: unknown) => void;
+    };
+    const original = proto.scrollIntoView;
+    proto.scrollIntoView = function (arg?: unknown) {
+      calls.push(arg);
+    };
+    try {
+      const items = Array.from({ length: 20 }, (_, i) => ({ id: `i${i}`, label: `항목 ${i}` }));
+      const { rerender } = render(
+        <SuggestionPopup
+          ariaLabel="테스트"
+          items={items}
+          highlight={0}
+          anchor={{ top: 10, bottom: 30, left: 10 }}
+          onPick={() => {}}
+        />,
+      );
+      const before = calls.length;
+      rerender(
+        <SuggestionPopup
+          ariaLabel="테스트"
+          items={items}
+          highlight={15}
+          anchor={{ top: 10, bottom: 30, left: 10 }}
+          onPick={() => {}}
+        />,
+      );
+      expect(calls.length).toBeGreaterThan(before);
+      expect(calls[calls.length - 1]).toEqual({ block: "nearest" });
+    } finally {
+      proto.scrollIntoView = original;
+    }
+  });
+});
