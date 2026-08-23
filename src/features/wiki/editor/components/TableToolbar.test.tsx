@@ -78,3 +78,17 @@ describe("TableToolbar — 셀 배경색", () => {
     editor.destroy();
   });
 });
+
+describe("TableToolbar — 헤더 열", () => {
+  it("헤더 열 토글이 첫 열을 th로 만들고 {.th} 마커로 직렬화된다", () => {
+    const editor = makeEditor(TABLE_MD);
+    editor.commands.setTextSelection(4);
+    render(<TableToolbar editor={editor} />);
+
+    fireMouseDown(screen.getByRole("button", { name: "헤더 열 토글" }));
+    const table = editor.getJSON().content!.find((n) => n.type === "table")!;
+    expect(table.content![1].content![0].type).toBe("tableHeader"); // 본문 행 첫 셀
+    expect(serializeMarkdown(editor.getJSON())).toContain("{.th}");
+    editor.destroy();
+  });
+});

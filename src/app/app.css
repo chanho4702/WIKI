@@ -2312,28 +2312,40 @@ body {
   --wiki-txt-gray: #5e6c84;
   --wiki-txt-red: #ae2e24;
   --wiki-txt-orange: #a54800;
+  --wiki-txt-yellow: #7f5f01;
   --wiki-txt-green: #216e4e;
+  --wiki-txt-teal: #206a83;
   --wiki-txt-blue: #0055cc;
   --wiki-txt-purple: #5e4db2;
+  --wiki-txt-magenta: #943d73;
   --wiki-bg-yellow: #fdf3ce;
   --wiki-bg-red: #ffedeb;
+  --wiki-bg-orange: #fedec8;
   --wiki-bg-green: #dcfff1;
+  --wiki-bg-teal: #c6edfb;
   --wiki-bg-blue: #e9f2ff;
   --wiki-bg-purple: #f3f0ff;
+  --wiki-bg-magenta: #fdd0ec;
   --wiki-bg-gray: #f1f2f4;
 }
 [data-theme="dark"] {
   --wiki-txt-gray: #9fadbc;
   --wiki-txt-red: #f87168;
   --wiki-txt-orange: #fea362;
+  --wiki-txt-yellow: #f5cd47;
   --wiki-txt-green: #4bce97;
+  --wiki-txt-teal: #6cc3e0;
   --wiki-txt-blue: #579dff;
   --wiki-txt-purple: #9f8fef;
+  --wiki-txt-magenta: #e774bb;
   --wiki-bg-yellow: #533f04;
   --wiki-bg-red: #5d1f1a;
+  --wiki-bg-orange: #702e00;
   --wiki-bg-green: #164b35;
+  --wiki-bg-teal: #164555;
   --wiki-bg-blue: #09326c;
   --wiki-bg-purple: #352c63;
+  --wiki-bg-magenta: #50253f;
   --wiki-bg-gray: #454f59;
 }
 .txt-gray { color: var(--wiki-txt-gray); }
@@ -2342,12 +2354,18 @@ body {
 .txt-green { color: var(--wiki-txt-green); }
 .txt-blue { color: var(--wiki-txt-blue); }
 .txt-purple { color: var(--wiki-txt-purple); }
+.txt-yellow { color: var(--wiki-txt-yellow); }
+.txt-teal { color: var(--wiki-txt-teal); }
+.txt-magenta { color: var(--wiki-txt-magenta); }
 .bg-yellow { background: var(--wiki-bg-yellow); border-radius: 2px; }
 .bg-red { background: var(--wiki-bg-red); border-radius: 2px; }
 .bg-green { background: var(--wiki-bg-green); border-radius: 2px; }
 .bg-blue { background: var(--wiki-bg-blue); border-radius: 2px; }
 .bg-purple { background: var(--wiki-bg-purple); border-radius: 2px; }
 .bg-gray { background: var(--wiki-bg-gray); border-radius: 2px; }
+.bg-orange { background: var(--wiki-bg-orange); border-radius: 2px; }
+.bg-teal { background: var(--wiki-bg-teal); border-radius: 2px; }
+.bg-magenta { background: var(--wiki-bg-magenta); border-radius: 2px; }
 
 /* 팔레트 팝오버 — 버블 툴바 아래에 붙는다 */
 /* 색상 팔레트(컨플루언스 색상 피커 참조) — 섹션 제목 + 사각 칩 그리드 + "기본"(제거) 칩 + 현재 색 ✓ */
@@ -2379,8 +2397,8 @@ body {
 }
 .color-palette-grid {
   display: grid;
-  grid-template-columns: repeat(7, 24px);
-  gap: var(--chanho-space-50, 4px);
+  grid-template-columns: repeat(5, 24px);
+  gap: var(--chanho-space-100, 8px);
 }
 .color-swatch {
   position: relative;
@@ -4390,4 +4408,80 @@ body.is-column-reordering {
 .markdown-body .cell-bg-gray,
 .wiki-editor .ProseMirror .cell-bg-gray {
   background: var(--wiki-bg-gray);
+}
+.markdown-body .cell-bg-orange,
+.wiki-editor .ProseMirror .cell-bg-orange {
+  background: var(--wiki-bg-orange);
+}
+.markdown-body .cell-bg-teal,
+.wiki-editor .ProseMirror .cell-bg-teal {
+  background: var(--wiki-bg-teal);
+}
+.markdown-body .cell-bg-magenta,
+.wiki-editor .ProseMirror .cell-bg-magenta {
+  background: var(--wiki-bg-magenta);
+}
+
+/* 링크 미리보기 카드(::bookmark) — 편집 NodeView와 보기 앵커가 같은 클래스 */
+.bookmark-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 var(--chanho-space-200);
+  padding: var(--chanho-space-150) var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium, 8px);
+  background: var(--chanho-color-background-subtle);
+  text-decoration: none;
+  cursor: pointer;
+}
+.bookmark-card:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered);
+}
+.bookmark-card-title {
+  font-weight: var(--chanho-font-weight-semibold);
+  color: var(--chanho-color-text-default);
+}
+.bookmark-card-url {
+  font-size: var(--chanho-font-size-75, 12px);
+  color: var(--chanho-color-text-subtle);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.wiki-editor .ProseMirror .bookmark-card.ProseMirror-selectednode,
+.wiki-editor .ProseMirror div.bookmark-card:has(+ .ProseMirror-gapcursor) {
+  outline: 2px solid var(--chanho-color-border-brand);
+}
+
+/* URL 붙여넣기 형식 전환 메뉴 — 삽입 지점 아래에 잠깐 뜨는 선택지 */
+.paste-link-menu {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-surface);
+  box-shadow: var(--chanho-shadow-overlay);
+}
+.paste-link-menu button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50, 4px);
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100);
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: transparent;
+  color: var(--chanho-color-text-default);
+  font-size: var(--chanho-font-size-75, 12px);
+  cursor: pointer;
+  max-width: 220px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.paste-link-menu button:hover {
+  background: var(--chanho-color-background-neutral-hovered);
 }

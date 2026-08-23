@@ -8,6 +8,7 @@ import {
   Combine,
   Grid2x2,
   Minus,
+  PanelLeft,
   PaintBucket,
   Trash2,
 } from "lucide-react";
@@ -106,6 +107,10 @@ export function TableToolbar({ editor }: TableToolbarProps) {
         editor.chain().focus().deleteRow().run(),
       )}
       <span className="table-toolbar-divider" aria-hidden="true" />
+      {/* 헤더 열 — 첫 열을 th로(컨플 헤더 열). 저장은 {.th} 셀 마커(tableSpanBridge) */}
+      {btn("헤더 열 토글", <PanelLeft size={16} aria-hidden />, () =>
+        editor.chain().focus().toggleHeaderColumn().run(),
+      )}
       <span className="table-toolbar-palette-anchor">
         {btn(
           "셀 배경색",

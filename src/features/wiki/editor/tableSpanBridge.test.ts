@@ -87,3 +87,28 @@ describe("tableSpanBridge — 셀 배경색 마커", () => {
     );
   });
 });
+
+describe("tableSpanBridge — 헤더 열 마커", () => {
+  const HEADER_COL = "| 항목 | 값 |\n| --- | --- |\n| {.th} 이름 | 위키 |\n| {.th} 용도 | 문서 |\n";
+
+  it("`{.th}` 마커가 본문 행 셀을 tableHeader로 접는다", () => {
+    const table = tableOf(parseMarkdown(HEADER_COL));
+    expect(table.content![1].content![0].type).toBe("tableHeader");
+    expect(table.content![1].content![1].type).toBe("tableCell");
+    expect(JSON.stringify(table)).not.toContain("{.th}");
+  });
+
+  it("직렬화가 마커를 복원한다 — 왕복 안정, 색 마커와 조합 가능", () => {
+    const md = serializeMarkdown(parseMarkdown(HEADER_COL));
+    expect(md).toContain("{.th}");
+    expect(serializeMarkdown(parseMarkdown(md))).toBe(md);
+
+    const combo = "| a | b |\n| --- | --- |\n| {.th} {.bg-teal} 헤더셀 | 값 |\n";
+    const table = tableOf(parseMarkdown(combo));
+    const cell = table.content![1].content![0];
+    expect(cell.type).toBe("tableHeader");
+    expect(cell.attrs?.bgColor).toBe("teal");
+    const round = serializeMarkdown(parseMarkdown(combo));
+    expect(serializeMarkdown(parseMarkdown(round))).toBe(round);
+  });
+});

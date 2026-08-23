@@ -9,6 +9,7 @@ import {
   type DragEvent,
 } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
+import { posToDOMRect } from "@tiptap/core";
 import Placeholder from "@tiptap/extension-placeholder";
 import GlobalDragHandle from "tiptap-extension-global-drag-handle";
 import type { Editor, Extensions } from "@tiptap/core";
@@ -28,6 +29,8 @@ import { DatePickerPopup } from "./components/DatePickerPopup";
 import { BubbleToolbar } from "./components/BubbleToolbar";
 import { TopToolbar } from "./components/TopToolbar";
 import { TableToolbar } from "./components/TableToolbar";
+import { PasteLinkMenu } from "./components/PasteLinkMenu";
+import { UrlPaste, type UrlPasteInfo } from "./extensions/urlPaste";
 import {
   UploadRail,
   type ImageUploadTaskView,
@@ -147,6 +150,11 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     // 같은 팝오버를 공유하므로 여기(WikiEditor)로 끌어올린다. SlashMenu 확장은 useEditor 안에서
     // 구성되므로 TopToolbar가 마운트되기 전에 이미 이 상태의 setter를 필요로 한다.
     const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+    // URL 붙여넣기 형식 메뉴 — 삽입 직후 뜨고, 이후 문서가 또 바뀌면(다음 입력) 닫는다
+    const [pasteMenu, setPasteMenu] = useState<UrlPasteInfo | null>(null);
+    // 최신 pasteMenu를 transaction 리스너에서 참조 — 재구독 없이(ref 규약, pagesRef와 동일)
+    const pasteMenuRef = useRef<UrlPasteInfo | null>(null);
+    pasteMenuRef.current = pasteMenu;
 
     const editor = useEditor({
       immediatelyRender: true,
@@ -168,6 +176,7 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
           onOpenEmoji: () => setEmojiPickerOpen(true),
           onUploadImage: () => imageInputRef.current?.click(),
         }),
+        UrlPaste.configure({ onPaste: setPasteMenu }),
         AlertDecoration,
         TocDecoration,
         BlockShortcuts,
@@ -421,8 +430,15 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
         setSlashMenu(null);
       };
       editor.on("blur", handleBlur);
+      // URL 붙여넣기 형식 메뉴 — 삽입 "이후"의 추가 문서 변경(다음 타이핑 등)에서 닫는다.
+      // 메뉴 액션 자체의 변경은 onClose가 먼저 null로 만들므로 여기 걸리지 않는다.
+      const handleTransaction = ({ transaction }: { transaction: { docChanged: boolean } }) => {
+        if (pasteMenuRef.current && transaction.docChanged) setPasteMenu(null);
+      };
+      editor.on("transaction", handleTransaction);
       return () => {
         editor.off("blur", handleBlur);
+        editor.off("transaction", handleTransaction);
       };
     }, [editor]);
 
@@ -485,6 +501,18 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
         {editor && <BubbleToolbar editor={editor} />}
         {/* 위치 보정(아래 공간 부족 시 캐럿 위로 뒤집기·가로 clamp)은 SuggestionPopup이 한다 —
             캐럿 rect만 넘기고 어디에 그릴지는 팝업이 스스로 정한다. */}
+        {editor && pasteMenu && (() => {
+          const rect = posToDOMRect(editor.view, pasteMenu.to, pasteMenu.to);
+          return (
+            <PasteLinkMenu
+              editor={editor}
+              info={pasteMenu}
+              pages={pages}
+              anchor={{ left: rect.left, bottom: rect.bottom }}
+              onClose={() => setPasteMenu(null)}
+            />
+          );
+        })()}
         {linkMenu && linkMenu.clientRect && (
           <SuggestionPopup
             ariaLabel="페이지 링크 자동완성"

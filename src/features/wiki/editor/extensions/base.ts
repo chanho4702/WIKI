@@ -7,6 +7,7 @@ import Link from "@tiptap/extension-link";
 import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import { ColorTableCell, ColorTableHeader } from "./tableCellColor";
+import { BookmarkCard } from "./bookmarkCard";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Image from "@tiptap/extension-image";
@@ -89,6 +90,7 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     Column,
     // 토글(expand) — 저장은 `:::details[제목]` 확장 문법(extensions/details.ts)
     Details,
+    BookmarkCard,
     // 사용자 멘션 — 저장은 표준 링크 `[@이름](user:id)`(extensions/userMention.ts)
     UserMention,
     // 날짜 요소 — 저장은 표준 링크 `[ISO](date:ISO)`(extensions/dateMention.ts)

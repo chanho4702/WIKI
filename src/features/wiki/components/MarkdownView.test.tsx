@@ -163,6 +163,32 @@ describe("MarkdownView — 표 셀 배경색", () => {
     expect(cell).toHaveTextContent("강조");
     expect(container.textContent).not.toContain("{.bg-");
   });
+
+  it("`{.th}` 마커가 본문 행 셀을 th(scope=row)로 렌더한다", () => {
+    const { container } = render(
+      <MarkdownView markdown={["| 항목 | 값 |", "| --- | --- |", "| {.th} 이름 | 위키 |"].join("\n")} />,
+    );
+    const th = container.querySelector("tbody th[scope='row']");
+    expect(th).toHaveTextContent("이름");
+    expect(container.textContent).not.toContain("{.th}");
+  });
+});
+
+describe("MarkdownView — 링크 미리보기 카드", () => {
+  it("`::bookmark{...}`를 카드형 앵커로 렌더한다", () => {
+    const { container } = render(
+      <MarkdownView markdown={'::bookmark{url="https://example.com/docs" title="예제 문서"}'} />,
+    );
+    const card = container.querySelector("a.bookmark-card");
+    expect(card).toHaveAttribute("href", "https://example.com/docs");
+    expect(card?.querySelector(".bookmark-card-title")).toHaveTextContent("예제 문서");
+    expect(card?.querySelector(".bookmark-card-url")).toHaveTextContent("https://example.com/docs");
+  });
+
+  it("url 없는 지시자는 카드로 렌더하지 않는다", () => {
+    const { container } = render(<MarkdownView markdown={'::bookmark{title="제목만"}'} />);
+    expect(container.querySelector(".bookmark-card")).toBeNull();
+  });
 });
 
 describe("MarkdownView — 글자색·배경색", () => {

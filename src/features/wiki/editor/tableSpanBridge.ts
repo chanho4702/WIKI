@@ -6,11 +6,12 @@ import {
   foldSpanGrid,
   type SpanMarker,
 } from "../lib/tableSpans";
-import { CELL_BG_MARKER_RE, cellBgMarker, isBgColor, type BgColorName } from "./extensions/tableCellColor";
+import { CELL_BG_MARKER_RE, CELL_TH_MARKER, CELL_TH_MARKER_RE, cellBgMarker, isBgColor, type BgColorName } from "./extensions/tableCellColor";
 
 /**
  * 표 셀 마커 ↔ TipTap 셀 attrs 브리지 — 편집 경로.
- * ① 병합 마커(`<<`/`^^`) ↔ colspan/rowspan ② 배경색 마커(`{.bg-색}` 접두) ↔ bgColor.
+ * ① 병합 마커(`<<`/`^^`) ↔ colspan/rowspan ② 배경색 마커(`{.bg-색}` 접두) ↔ bgColor
+ * ③ 헤더 열 마커(`{.th}` 접두) ↔ 본문 행의 tableHeader 셀(컨플 헤더 열).
  *
  * 저장 문법은 tableSpans.ts ADR(스팬 마커) 그대로다: GFM 파이프 구조를 유지한 채 병합으로
  * 덮인 자리를 마커 셀로 남긴다. 파싱 직후 fold(마커 셀 제거 + 소유 셀 attrs), 직렬화 직전
@@ -34,55 +35,86 @@ function markerOf(cell: JSONContent): SpanMarker {
   return null;
 }
 
-/** 셀 첫 문단 맨 앞의 `{.bg-색}` 마커를 attrs.bgColor로 접는다 — 없으면 원본 그대로. */
-function foldCellColor(cell: JSONContent): JSONContent {
+/** 셀 첫 문단 맨 앞의 `{.bg-색}`/`{.th}` 마커를 attrs·셀 타입으로 접는다(순서 무관 반복). */
+function foldCellMarkers(cell: JSONContent): JSONContent {
   const content = cell.content ?? [];
   const first = content[0];
   if (!first || first.type !== "paragraph") return cell;
   const inline = first.content ?? [];
   const firstText = inline[0];
   if (!firstText || firstText.type !== "text" || !firstText.text) return cell;
-  const m = CELL_BG_MARKER_RE.exec(firstText.text);
-  if (!m || !isBgColor(m[1])) return cell;
-  const rest = firstText.text.slice(m[0].length);
-  const newInline = rest ? [{ ...firstText, text: rest }, ...inline.slice(1)] : inline.slice(1);
+
+  let text = firstText.text;
+  let bgColor: string | null = null;
+  let header = false;
+  for (;;) {
+    const bg = CELL_BG_MARKER_RE.exec(text);
+    if (bg && isBgColor(bg[1])) {
+      bgColor = bg[1];
+      text = text.slice(bg[0].length);
+      continue;
+    }
+    const th = CELL_TH_MARKER_RE.exec(text);
+    if (th) {
+      header = true;
+      text = text.slice(th[0].length);
+      continue;
+    }
+    break;
+  }
+  if (bgColor === null && !header) return cell;
+
+  const newInline = text ? [{ ...firstText, text }, ...inline.slice(1)] : inline.slice(1);
   return {
     ...cell,
-    attrs: { ...cell.attrs, bgColor: m[1] },
+    type: header ? "tableHeader" : cell.type,
+    attrs: bgColor === null ? cell.attrs : { ...cell.attrs, bgColor },
     content: [{ ...first, content: newInline }, ...content.slice(1)],
   };
 }
 
-/** attrs.bgColor를 `{.bg-색}` 마커 텍스트로 되돌린다 — 직렬화용. */
-function expandCellColor(cell: JSONContent): JSONContent {
+/** attrs.bgColor·본문 행 tableHeader를 마커 텍스트로 되돌린다 — 직렬화용. rowIndex 0 = GFM 헤더 행. */
+function expandCellMarkers(cell: JSONContent, rowIndex: number): JSONContent {
   const color = cell.attrs?.bgColor as string | null | undefined;
-  if (!color || !isBgColor(color)) {
-    if (cell.attrs && "bgColor" in cell.attrs) {
-      const { bgColor: _b, ...rest } = cell.attrs;
-      return { ...cell, attrs: rest };
-    }
-    return cell;
+  const validColor = color && isBgColor(color) ? color : null;
+  // 파싱이 본문 행 셀을 전부 tableCell로 되돌리므로, 헤더 열 셀은 마커로만 살아남는다
+  const headerInBody = rowIndex > 0 && cell.type === "tableHeader";
+
+  let out = cell;
+  if (out.attrs && "bgColor" in out.attrs) {
+    const { bgColor: _b, ...rest } = out.attrs;
+    out = { ...out, attrs: rest };
   }
-  const { bgColor: _b, ...restAttrs } = cell.attrs ?? {};
-  const marker = { type: "text", text: cellBgMarker(color as BgColorName) };
-  const content = cell.content ?? [];
+  if (headerInBody) out = { ...out, type: "tableCell" };
+  if (!validColor && !headerInBody) return out;
+
+  const prefix = (headerInBody ? CELL_TH_MARKER : "") +
+    (validColor ? cellBgMarker(validColor as BgColorName) : "");
+  const marker = { type: "text", text: prefix };
+  const content = out.content ?? [];
   const first = content[0];
   if (first && first.type === "paragraph") {
     return {
-      ...cell,
-      attrs: restAttrs,
+      ...out,
       content: [{ ...first, content: [marker, ...(first.content ?? [])] }, ...content.slice(1)],
     };
   }
-  return { ...cell, attrs: restAttrs, content: [{ type: "paragraph", content: [marker] }, ...content] };
+  return { ...out, content: [{ type: "paragraph", content: [marker] }, ...content] };
 }
 
-function mapCells(table: JSONContent, fn: (cell: JSONContent) => JSONContent): JSONContent {
+function mapCells(
+  table: JSONContent,
+  fn: (cell: JSONContent, rowIndex: number) => JSONContent,
+): JSONContent {
+  let rowIndex = -1;
   return {
     ...table,
-    content: (table.content ?? []).map((row) =>
-      isTableRow(row) ? { ...row, content: (row.content ?? []).map(fn) } : row,
-    ),
+    content: (table.content ?? []).map((row) => {
+      if (!isTableRow(row)) return row;
+      rowIndex += 1;
+      const r = rowIndex;
+      return { ...row, content: (row.content ?? []).map((cell) => fn(cell, r)) };
+    }),
   };
 }
 
@@ -157,10 +189,10 @@ function walkTables(node: JSONContent, transform: (table: JSONContent) => JSONCo
 /** 파싱 직후: 배경색 마커 → attrs, 병합 마커 셀 → colspan/rowspan 순서로 접는다
  * (색을 먼저 접어야 `{.bg-색} <<` 같은 조합 없이 스팬 판정이 순수 텍스트를 본다). */
 export function foldTableSpans(doc: JSONContent): JSONContent {
-  return walkTables(doc, (table) => foldTable(mapCells(table, foldCellColor)));
+  return walkTables(doc, (table) => foldTable(mapCells(table, foldCellMarkers)));
 }
 
 /** 직렬화 직전: 스팬을 마커 그리드로 편 뒤 배경색 attrs를 마커 텍스트로 되돌린다. */
 export function expandTableSpans(doc: JSONContent): JSONContent {
-  return walkTables(doc, (table) => mapCells(expandTable(table), expandCellColor));
+  return walkTables(doc, (table) => mapCells(expandTable(table), expandCellMarkers));
 }

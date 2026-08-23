@@ -6,8 +6,8 @@ import { useDismissablePopover } from "../../lib/useDismissablePopover";
 
 /** 팔레트 색 이름의 한국어 표기 — 접근 이름("빨강 글자색")에 쓴다. */
 export const COLOR_LABELS: Record<string, string> = {
-  gray: "회색", red: "빨강", orange: "주황", green: "초록",
-  blue: "파랑", purple: "보라", yellow: "노랑",
+  gray: "회색", red: "빨강", orange: "주황", yellow: "노랑", green: "초록",
+  teal: "청록", blue: "파랑", purple: "보라", magenta: "자홍",
 };
 
 /** 최근 사용 색 — TopToolbar "A" 버튼이 원클릭으로 다시 적용한다(컨플식). 세션·탭 간 유지. */
