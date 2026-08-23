@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
 import { buildBaseExtensions } from "../extensions/base";
-import { parseMarkdown } from "../markdown";
+import { parseMarkdown, serializeMarkdown } from "../markdown";
 import { TableToolbar } from "./TableToolbar";
 
 const TABLE_MD = "| a | b |\n| --- | --- |\n| c | d |\n";
@@ -55,6 +55,26 @@ describe("TableToolbar — 표 컨텍스트 컨트롤", () => {
     render(<TableToolbar editor={editor} />);
     fireMouseDown(screen.getByRole("button", { name: "표 삭제" }));
     expect(editor.getJSON().content!.some((n) => n.type === "table")).toBe(false);
+    editor.destroy();
+  });
+});
+
+describe("TableToolbar — 셀 배경색", () => {
+  it("팔레트에서 고른 색이 셀 attrs로 들어가고 마커로 직렬화된다", () => {
+    const editor = makeEditor(TABLE_MD);
+    editor.commands.setTextSelection(4); // 헤더 첫 셀
+    render(<TableToolbar editor={editor} />);
+
+    fireEvent.mouseDown(screen.getByRole("button", { name: "셀 배경색" }));
+    fireEvent.mouseDown(screen.getByRole("button", { name: "노랑 셀 배경" }));
+
+    const table = editor.getJSON().content!.find((n) => n.type === "table")!;
+    expect(table.content![0].content![0].attrs?.bgColor).toBe("yellow");
+    expect(serializeMarkdown(editor.getJSON())).toContain("{.bg-yellow}");
+
+    // 제거 칩 — attrs가 비워지고 마커도 사라진다
+    fireEvent.mouseDown(screen.getByRole("button", { name: "셀 배경 제거" }));
+    expect(serializeMarkdown(editor.getJSON())).not.toContain("{.bg-");
     editor.destroy();
   });
 });

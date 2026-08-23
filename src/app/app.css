@@ -2350,48 +2350,111 @@ body {
 .bg-gray { background: var(--wiki-bg-gray); border-radius: 2px; }
 
 /* 팔레트 팝오버 — 버블 툴바 아래에 붙는다 */
+/* 색상 팔레트(컨플루언스 색상 피커 참조) — 섹션 제목 + 사각 칩 그리드 + "기본"(제거) 칩 + 현재 색 ✓ */
 .color-palette {
   position: absolute;
   top: 100%;
   right: 0;
   margin-top: var(--chanho-space-50, 4px);
-  padding: var(--chanho-space-100);
+  padding: var(--chanho-space-150);
   display: flex;
   flex-direction: column;
-  gap: var(--chanho-space-50, 4px);
+  gap: var(--chanho-space-150);
+  min-width: 196px;
   background: var(--chanho-color-background-surface);
   border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-medium);
   box-shadow: var(--chanho-shadow-overlay);
+  z-index: 30;
 }
-.color-palette-row {
+.color-palette-section {
   display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-50, 4px);
+}
+.color-palette-title {
+  font-size: var(--chanho-font-size-75, 12px);
+  font-weight: var(--chanho-font-weight-semibold);
+  color: var(--chanho-color-text-subtle);
+}
+.color-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 24px);
   gap: var(--chanho-space-50, 4px);
 }
 .color-swatch {
-  width: 26px;
-  height: 26px;
+  position: relative;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-small);
-  background: var(--chanho-color-background-surface);
   cursor: pointer;
-  font-size: var(--chanho-font-size-100);
-  line-height: 1;
+}
+.color-swatch:hover {
+  transform: scale(1.12);
+}
+/* "기본"(색 제거) 칩 — 흰 바탕에 대각선(컨플루언스 No color 칩) */
+.color-swatch-none {
+  background:
+    linear-gradient(to top left,
+      transparent 46%, var(--chanho-color-border-danger) 46%,
+      var(--chanho-color-border-danger) 54%, transparent 54%),
+    var(--chanho-color-background-surface);
 }
 .color-swatch[aria-pressed="true"] {
   outline: 2px solid var(--chanho-color-border-brand);
   outline-offset: 1px;
 }
+.color-swatch[aria-pressed="true"]::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--chanho-color-text-default);
+  text-shadow: 0 0 2px var(--chanho-color-background-surface);
+}
 .color-swatch:focus-visible {
   outline: 2px solid var(--chanho-color-border-brand);
   outline-offset: 1px;
 }
-/* .bubble-toolbar button 일반 규칙(패딩)이 스와치 크기를 이기지 않게 명시 우선 */
-.bubble-toolbar .color-swatch {
-  width: 26px;
-  height: 26px;
+/* .bubble-toolbar/.top-toolbar button 일반 규칙(패딩)이 스와치 크기를 이기지 않게 명시 우선 */
+.bubble-toolbar .color-swatch,
+.top-toolbar .color-swatch {
+  width: 24px;
+  height: 24px;
   padding: 0;
+}
+
+/* TopToolbar 글자 색상 스플릿 버튼 — "가" + 최근 색 밑줄, 옆 화살표가 팔레트를 연다(컨플식) */
+.color-split {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.color-split-caret {
+  width: 14px !important;
+  padding: 0 !important;
+}
+.color-a-glyph {
+  position: relative;
+  display: inline-block;
+  font-size: var(--chanho-font-size-200);
+  font-weight: var(--chanho-font-weight-semibold);
+  line-height: 1;
+  padding-bottom: 3px;
+}
+.color-a-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 1px;
 }
 
 /* W4: 버전 diff */
@@ -4074,14 +4137,26 @@ body.is-column-reordering {
   color: var(--chanho-color-text-danger);
 }
 
-/* 표 컨트롤 바 — 커서가 표 안일 때 TopToolbar 아래에 뜨는 컨텍스트 바(컨플루언스 참조) */
+/* 표 플로팅 컨트롤 바 — 커서가 표 안일 때 그 표 바로 위에 붙는다(컨플루언스 참조) */
 .table-toolbar {
+  position: fixed;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 2px;
   padding: var(--chanho-space-50, 4px) var(--chanho-space-100);
-  border-bottom: 1px solid var(--chanho-color-border-default);
-  background: var(--chanho-color-background-subtle);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-surface);
+  box-shadow: var(--chanho-shadow-overlay);
+}
+.table-toolbar-palette-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.table-toolbar-palette-anchor .color-palette {
+  right: auto;
+  left: 0;
 }
 .table-toolbar button {
   display: inline-flex;
@@ -4289,4 +4364,30 @@ body.is-column-reordering {
   flex: none;
   color: var(--chanho-color-text-subtlest);
   font-size: var(--chanho-font-size-75, 12px);
+}
+
+/* 표 셀 배경색 — {.bg-색} 셀 마커(tableCellColor.ts). 텍스트 배경 팔레트와 같은 토큰 */
+.markdown-body .cell-bg-yellow,
+.wiki-editor .ProseMirror .cell-bg-yellow {
+  background: var(--wiki-bg-yellow);
+}
+.markdown-body .cell-bg-red,
+.wiki-editor .ProseMirror .cell-bg-red {
+  background: var(--wiki-bg-red);
+}
+.markdown-body .cell-bg-green,
+.wiki-editor .ProseMirror .cell-bg-green {
+  background: var(--wiki-bg-green);
+}
+.markdown-body .cell-bg-blue,
+.wiki-editor .ProseMirror .cell-bg-blue {
+  background: var(--wiki-bg-blue);
+}
+.markdown-body .cell-bg-purple,
+.wiki-editor .ProseMirror .cell-bg-purple {
+  background: var(--wiki-bg-purple);
+}
+.markdown-body .cell-bg-gray,
+.wiki-editor .ProseMirror .cell-bg-gray {
+  background: var(--wiki-bg-gray);
 }

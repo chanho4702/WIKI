@@ -49,3 +49,41 @@ describe("tableSpanBridge — 셀 병합 마커 왕복", () => {
     expect(table.content![0].content).toHaveLength(2); // 접히지 않음
   });
 });
+
+describe("tableSpanBridge — 셀 배경색 마커", () => {
+  const COLORED = "| {.bg-yellow} 강조 | 일반 |\n| --- | --- |\n| 값1 | {.bg-blue} 값2 |\n";
+
+  it("`{.bg-색}` 접두 마커가 셀 attrs.bgColor로 접힌다", () => {
+    const table = tableOf(parseMarkdown(COLORED));
+    const header = table.content![0].content!;
+    expect(header[0].attrs?.bgColor).toBe("yellow");
+    expect(header[1].attrs?.bgColor ?? null).toBeNull();
+    // 마커 문자는 본문에서 사라진다
+    expect(JSON.stringify(table)).not.toContain("{.bg-");
+    expect(table.content![1].content![1].attrs?.bgColor).toBe("blue");
+  });
+
+  it("직렬화가 마커를 복원한다 — 왕복 안정", () => {
+    const md = serializeMarkdown(parseMarkdown(COLORED));
+    expect(md).toContain("{.bg-yellow}");
+    expect(md).toContain("{.bg-blue}");
+    expect(serializeMarkdown(parseMarkdown(md))).toBe(md);
+  });
+
+  it("팔레트 밖 색 마커는 일반 텍스트로 남는다(문서 훼손 금지)", () => {
+    const table = tableOf(parseMarkdown("| {.bg-hotpink} 값 | b |\n| --- | --- |\n| c | d |\n"));
+    expect(table.content![0].content![0].attrs?.bgColor ?? null).toBeNull();
+    expect(JSON.stringify(table)).toContain("{.bg-hotpink}");
+  });
+
+  it("병합 마커와 조합해도 각자 동작한다", () => {
+    const md = "| {.bg-yellow} 병합 | << |\n| --- | --- |\n| a | b |\n";
+    const table = tableOf(parseMarkdown(md));
+    const cell = table.content![0].content![0];
+    expect(cell.attrs?.bgColor).toBe("yellow");
+    expect(cell.attrs?.colspan).toBe(2);
+    expect(serializeMarkdown(parseMarkdown(serializeMarkdown(parseMarkdown(md))))).toBe(
+      serializeMarkdown(parseMarkdown(md)),
+    );
+  });
+});

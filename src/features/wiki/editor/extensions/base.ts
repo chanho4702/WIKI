@@ -6,8 +6,7 @@ import { common, createLowlight } from "lowlight";
 import Link from "@tiptap/extension-link";
 import Table from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
-import TableHeader from "@tiptap/extension-table-header";
-import TableCell from "@tiptap/extension-table-cell";
+import { ColorTableCell, ColorTableHeader } from "./tableCellColor";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import Image from "@tiptap/extension-image";
@@ -76,8 +75,9 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     // 영속하려면 저장 포맷 확장이 필요하다(분석서 "열린 정책 결정"에 기록).
     Table.configure({ resizable: true }),
     TableRow,
-    TableHeader,
-    TableCell,
+    // 셀 배경색 attr(bgColor) 확장 — 저장은 `{.bg-색}` 셀 마커(tableCellColor.ts 참조)
+    ColorTableHeader,
+    ColorTableCell,
     TaskList,
     // 중첩 허용 — Notion·Confluence 모두 체크리스트 하위 항목을 지원한다(동등성 Must 6).
     // 저장은 표준 마크다운 들여쓰기 `- [ ]`라 왕복·기존 문서에 영향이 없다.

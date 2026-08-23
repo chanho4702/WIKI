@@ -22,6 +22,7 @@ import { promptSetLink } from "../lib/linkCommand";
 import { useControlledOpenState } from "../../lib/controlledOpenState";
 import { InsertMenu } from "./InsertMenu";
 import { EmojiPicker } from "./EmojiPicker";
+import { TextColorControl } from "./ColorPalette";
 
 /** 슬래시 메뉴 이미지 항목의 run을 그대로 재사용 — URL 프롬프트/삽입 로직을 이중 정의하지 않는다 */
 const insertImage = SLASH_ITEMS.find((i) => i.id === "image")!.run;
@@ -117,6 +118,8 @@ export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange, o
       {btn("기울임", <Italic size={16} aria-hidden />, () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"))}
       {btn("취소선", <Strikethrough size={16} aria-hidden />, () => editor.chain().focus().toggleStrike().run(), editor.isActive("strike"))}
       {btn("코드", <Code size={16} aria-hidden />, () => editor.chain().focus().toggleCode().run(), editor.isActive("code"))}
+      {/* 글자 색상 — 최근 색 원클릭 + 팔레트 드롭다운(컨플식 스플릿) */}
+      <TextColorControl editor={editor} />
       <span className="top-toolbar-divider" />
       {btn("글머리 목록", <List size={16} aria-hidden />, () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}
       {btn("번호 목록", <ListOrdered size={16} aria-hidden />, () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}

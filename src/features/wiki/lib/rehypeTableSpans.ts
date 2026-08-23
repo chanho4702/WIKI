@@ -1,9 +1,11 @@
 import { visit } from "unist-util-visit";
 import { COLSPAN_MARKER, ROWSPAN_MARKER, foldSpanGrid, type SpanMarker } from "./tableSpans";
+import { CELL_BG_MARKER_RE, isBgColor } from "../editor/extensions/tableCellColor";
 
 /**
- * 표 셀 병합 마커(`<<`/`^^`) 보기 렌더 — 편집 경로(tableSpanBridge.ts)와 같은 fold 알고리즘.
- * 소유 셀에 colSpan/rowSpan을 걸고 덮인 자리를 제거한다.
+ * 표 셀 마커 보기 렌더 — 편집 경로(tableSpanBridge.ts)와 같은 fold 알고리즘.
+ * ① 병합 마커(`<<`/`^^`): 소유 셀에 colSpan/rowSpan, 덮인 자리 제거.
+ * ② 배경색 마커(`{.bg-색}` 접두): 마커를 지우고 셀에 cell-bg-* 클래스.
  *
  * mdast(remark) 단계가 아니라 **hast(rehype) 단계**에서 하는 이유: remark-gfm의 표 hast 변환이
  * 행을 열 수에 맞춰 빈 셀로 패딩하므로, mdast에서 지운 셀이 빈 td로 되살아난다(실측).
@@ -57,6 +59,21 @@ export function rehypeTableSpans() {
       }
       const cellsOf = (tr: Element) =>
         tr.children.filter((c): c is Element => isElement(c, "th") || isElement(c, "td"));
+
+      // 배경색 마커 먼저 — 셀 첫 텍스트의 `{.bg-색}` 접두를 지우고 클래스로 바꾼다
+      for (const tr of rows) {
+        for (const cell of cellsOf(tr)) {
+          const first = cell.children[0] as { type: string; value?: string } | undefined;
+          if (!first || first.type !== "text" || !first.value) continue;
+          const m = CELL_BG_MARKER_RE.exec(first.value);
+          if (!m || !isBgColor(m[1])) continue;
+          first.value = first.value.slice(m[0].length);
+          if (!first.value) cell.children.shift();
+          const prev = cell.properties?.className;
+          const classes = Array.isArray(prev) ? prev : prev ? [prev] : [];
+          cell.properties = { ...cell.properties, className: [...classes, `cell-bg-${m[1]}`] };
+        }
+      }
 
       const markers = rows.map((tr) => cellsOf(tr).map(markerOf));
       const { spans, covered, changed } = foldSpanGrid(markers);

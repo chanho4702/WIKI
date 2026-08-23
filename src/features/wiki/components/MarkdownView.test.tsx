@@ -154,6 +154,17 @@ describe("MarkdownView — 표 셀 병합 마커", () => {
   });
 });
 
+describe("MarkdownView — 표 셀 배경색", () => {
+  it("`{.bg-색}` 마커가 셀 클래스로 렌더되고 마커 문자는 사라진다", () => {
+    const { container } = render(
+      <MarkdownView markdown={["| {.bg-yellow} 강조 | 일반 |", "| --- | --- |", "| a | b |"].join("\n")} />,
+    );
+    const cell = container.querySelector("th.cell-bg-yellow");
+    expect(cell).toHaveTextContent("강조");
+    expect(container.textContent).not.toContain("{.bg-");
+  });
+});
+
 describe("MarkdownView — 글자색·배경색", () => {
   it("`:c[..]{.red}`와 `:bg[..]{.yellow}`를 팔레트 클래스 span으로 렌더한다", () => {
     const { container } = render(

@@ -2,14 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { posToDOMRect } from "@tiptap/core";
 import type { Editor } from "@tiptap/core";
 import { Bold, Italic, Strikethrough, Code, Link, Palette } from "lucide-react";
-import { BG_COLORS, TEXT_COLORS } from "../extensions/textColors";
+import { TextColorPalette } from "./ColorPalette";
 import { promptSetLink } from "../lib/linkCommand";
-
-/** 팔레트 색 이름의 한국어 표기 — 접근 이름("빨강 글자색")에 쓴다. */
-const COLOR_LABELS: Record<string, string> = {
-  gray: "회색", red: "빨강", orange: "주황", green: "초록",
-  blue: "파랑", purple: "보라", yellow: "노랑",
-};
 
 /** 버튼 행 — 위치 계산과 분리해 jsdom에서 단독 테스트 가능하게 한다(좌표 계산 없이 버튼 동작만 검증) */
 export function ToolbarButtons({ editor }: { editor: Editor }) {
@@ -46,74 +40,7 @@ export function ToolbarButtons({ editor }: { editor: Editor }) {
         editor.isActive("textColor") || editor.isActive("bgColor") || paletteOpen,
         () => setPaletteOpen((v) => !v),
       )}
-      {paletteOpen ? (
-        <div className="color-palette" role="group" aria-label="색상 선택">
-          <div className="color-palette-row" role="group" aria-label="글자색">
-            {TEXT_COLORS.map((color) => (
-              <button
-                key={color}
-                type="button"
-                className={`color-swatch color-swatch-txt txt-${color}`}
-                aria-label={`${COLOR_LABELS[color]} 글자색`}
-                aria-pressed={editor.isActive("textColor", { color })}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  if (editor.isActive("textColor", { color })) {
-                    editor.chain().focus().unsetTextColor().run();
-                  } else {
-                    editor.chain().focus().setTextColor(color).run();
-                  }
-                }}
-              >
-                가
-              </button>
-            ))}
-            <button
-              type="button"
-              className="color-swatch"
-              aria-label="글자색 제거"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                editor.chain().focus().unsetTextColor().run();
-              }}
-            >
-              ✕
-            </button>
-          </div>
-          <div className="color-palette-row" role="group" aria-label="배경색">
-            {BG_COLORS.map((color) => (
-              <button
-                key={color}
-                type="button"
-                className={`color-swatch color-swatch-bg bg-${color}`}
-                aria-label={`${COLOR_LABELS[color]} 배경색`}
-                aria-pressed={editor.isActive("bgColor", { color })}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  if (editor.isActive("bgColor", { color })) {
-                    editor.chain().focus().unsetBgColor().run();
-                  } else {
-                    editor.chain().focus().setBgColor(color).run();
-                  }
-                }}
-              >
-                가
-              </button>
-            ))}
-            <button
-              type="button"
-              className="color-swatch"
-              aria-label="배경색 제거"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                editor.chain().focus().unsetBgColor().run();
-              }}
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {paletteOpen ? <TextColorPalette editor={editor} /> : null}
     </div>
   );
 }
