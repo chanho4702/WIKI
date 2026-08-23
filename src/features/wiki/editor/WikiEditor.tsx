@@ -12,9 +12,10 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import GlobalDragHandle from "tiptap-extension-global-drag-handle";
 import type { Editor, Extensions } from "@tiptap/core";
-import type { Attachment, Page } from "../store/types";
+import type { Attachment, Page, User } from "../store/types";
 import { buildBaseExtensions } from "./extensions/base";
 import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
+import { UserMentionSuggestion } from "./extensions/userMentionSuggestion";
 import { SlashMenu, type SlashItem } from "./extensions/slashMenu";
 import { AlertDecoration } from "./extensions/alertDecoration";
 import { ColumnDrag } from "./extensions/columnDrag";
@@ -55,6 +56,8 @@ export interface WikiEditorProps {
   initialMarkdown: string;
   /** [[링크]] 존재/부재 판별 + 자동완성 후보 */
   pages: Page[];
+  /** `@` 멘션 자동완성 후보 — org 사용자 디렉터리. 생략하면 멘션 팝업이 뜨지 않는다. */
+  users?: User[];
   /** 첨부 업로드 대상. 신규 페이지처럼 아직 ID가 없으면 파일 업로드를 막는다. */
   pageId?: string;
   /**
@@ -73,6 +76,7 @@ export { safeParse } from "./markdown";
 export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
   function WikiEditor({
     initialMarkdown,
+    users,
     pages,
     pageId,
     onDirty,
@@ -98,12 +102,22 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     const uploadTasksRef = useRef(uploadTasks);
     uploadTasksRef.current = uploadTasks;
     const [uploadError, setUploadError] = useState<string | null>(null);
+    // 멘션 후보 — pagesRef와 같은 이유(useEditor 클로저에 최신값 공급)로 ref 경유
+    const usersRef = useRef<User[]>(users ?? []);
+    usersRef.current = users ?? [];
     // [[ 자동완성 팝업 상태 — WikiLinkSuggestion이 onStateChange로 밀어넣는다
     const [linkMenu, setLinkMenu] = useState<{
       items: Page[];
       highlight: number;
       clientRect: DOMRect | null;
       command: (item: Page) => void;
+    } | null>(null);
+    // `@` 멘션 팝업 상태 — UserMentionSuggestion이 onStateChange로 밀어넣는다
+    const [mentionMenu, setMentionMenu] = useState<{
+      items: User[];
+      highlight: number;
+      clientRect: DOMRect | null;
+      command: (item: User) => void;
     } | null>(null);
     // "/" 슬래시 메뉴 팝업 상태 — SlashMenu가 onStateChange로 밀어넣는다
     const [slashMenu, setSlashMenu] = useState<{
@@ -126,6 +140,10 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
         WikiLinkSuggestion.configure({
           getPages: () => pagesRef.current,
           onStateChange: setLinkMenu,
+        }),
+        UserMentionSuggestion.configure({
+          getUsers: () => usersRef.current,
+          onStateChange: setMentionMenu,
         }),
         SlashMenu.configure({
           onStateChange: setSlashMenu,
@@ -454,6 +472,19 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
               left: linkMenu.clientRect.left,
             }}
             onPick={(i) => linkMenu.command(linkMenu.items[i])}
+          />
+        )}
+        {mentionMenu && mentionMenu.clientRect && (
+          <SuggestionPopup
+            ariaLabel="사용자 멘션 자동완성"
+            items={mentionMenu.items.map((u) => ({ id: u.id, label: u.name }))}
+            highlight={mentionMenu.highlight}
+            anchor={{
+              top: mentionMenu.clientRect.top,
+              bottom: mentionMenu.clientRect.bottom,
+              left: mentionMenu.clientRect.left,
+            }}
+            onPick={(i) => mentionMenu.command(mentionMenu.items[i])}
           />
         )}
         {slashMenu && slashMenu.clientRect && (

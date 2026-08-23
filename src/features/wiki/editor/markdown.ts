@@ -1,6 +1,7 @@
 import { Editor, type JSONContent } from "@tiptap/core";
 import { buildBaseExtensions } from "./extensions/base";
 import { WIKI_LINK_SOURCE } from "../lib/wikiLinks";
+import { USER_MENTION_NAME, mentionUserIdFromHref } from "./extensions/userMention";
 
 /** 변환 전용 헤드리스 에디터 — 사용 후 반드시 destroy */
 function withEditor<T>(content: string | JSONContent, fn: (editor: Editor) => T): T {
@@ -22,6 +23,19 @@ function promoteInline(nodes: JSONContent[]): JSONContent[] {
   return nodes.flatMap((node) => {
     if (node.type !== "text" || !node.text) return [node];
     if (node.marks?.some((m) => m.type === "code")) return [node]; // 인라인 코드 제외
+    // `[@이름](user:1)` — 표준 링크로 파싱된 멘션을 원자 노드로 승격한다(userMention.ts 문법 근거)
+    const linkMark = node.marks?.find((m) => m.type === "link");
+    const mentionUserId = mentionUserIdFromHref(
+      (linkMark?.attrs as { href?: string } | undefined)?.href,
+    );
+    if (mentionUserId !== null) {
+      const rest = node.marks?.filter((m) => m.type !== "link");
+      return [{
+        type: USER_MENTION_NAME,
+        attrs: { userId: mentionUserId, name: node.text.replace(/^@/, "") },
+        ...(rest && rest.length ? { marks: rest } : {}),
+      }];
+    }
     const wikiLinkRegex = new RegExp(WIKI_LINK_SOURCE, "g");
     const parts: JSONContent[] = [];
     let last = 0;

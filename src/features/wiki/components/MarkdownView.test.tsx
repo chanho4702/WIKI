@@ -132,6 +132,25 @@ describe("MarkdownView — 이미지 폭·캡션", () => {
   });
 });
 
+describe("MarkdownView — 사용자 멘션", () => {
+  it("`[@이름](user:id)`를 링크가 아니라 칩으로 렌더한다", () => {
+    const { container } = render(<MarkdownView markdown={"담당: [@김찬호](user:1)"} />);
+    const chip = container.querySelector(".user-mention");
+    expect(chip).toHaveTextContent("@김찬호");
+    expect(chip?.getAttribute("data-user-id")).toBe("1");
+    // 클릭 가능한 앵커로 렌더되지 않는다 — 프로필 화면이 생기기 전까지의 계약
+    expect(container.querySelector("a[href^='user:']")).toBeNull();
+  });
+
+  it("user: 스킴이 아닌 @링크는 일반 링크 그대로다", () => {
+    const { container } = render(
+      <MarkdownView markdown={"[@핸들](https://example.com/p)"} />,
+    );
+    expect(container.querySelector(".user-mention")).toBeNull();
+    expect(container.querySelector("a")?.getAttribute("href")).toBe("https://example.com/p");
+  });
+});
+
 describe("MarkdownView — 토글(details)", () => {
   it("`:::details[제목]`을 네이티브 details/summary로 렌더한다(기본 접힘)", () => {
     const md = [":::details[릴리스 노트]", "숨긴 내용", ":::"].join("\n");

@@ -2026,6 +2026,17 @@ body {
   font-weight: var(--chanho-font-weight-semibold);
 }
 
+/* ── 사용자 멘션 칩 — 편집(.user-mention NodeView 렌더)과 보기(MentionChip) 공용 ── */
+.user-mention {
+  display: inline;
+  padding: 1px var(--chanho-space-50, 4px);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-brand-subtle, var(--chanho-color-background-neutral-subtle-hovered));
+  color: var(--chanho-color-text-brand);
+  font-weight: var(--chanho-font-weight-medium);
+  white-space: nowrap;
+}
+
 /* W4: 페이지 간 링크 */
 .markdown-body .wiki-link-missing {
   color: var(--chanho-color-text-danger);

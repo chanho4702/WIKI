@@ -15,6 +15,7 @@ import { Markdown } from "tiptap-markdown";
 import { WikiLink } from "./wikiLink";
 import { Column, ColumnBlock } from "./columns";
 import { Details } from "./details";
+import { UserMention } from "./userMention";
 import { CodeBlockView } from "../components/CodeBlockView";
 import { ImageView } from "../components/ImageView";
 import type { Page } from "../../store/types";
@@ -66,7 +67,9 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
       ...(options.history === false ? { history: false } : {}),
     }),
     CodeBlockWithView,
-    Link.configure({ openOnClick: false }),
+    // protocols: 멘션 저장 문법 `[@이름](user:id)`의 `user:` 스킴 — Link 확장의 보안 검증
+    // (isAllowedUri)이 미등록 스킴 href를 버리면 멘션이 텍스트로 열화된다(userMention.ts 참조).
+    Link.configure({ openOnClick: false, protocols: ["user"] }),
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,
@@ -82,6 +85,8 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     Column,
     // 토글(expand) — 저장은 `:::details[제목]` 확장 문법(extensions/details.ts)
     Details,
+    // 사용자 멘션 — 저장은 표준 링크 `[@이름](user:id)`(extensions/userMention.ts)
+    UserMention,
     Markdown.configure({
       html: false, // 생 HTML은 텍스트로 보존 (손실 정책)
       linkify: false,

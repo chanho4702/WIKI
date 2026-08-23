@@ -8,13 +8,14 @@ import {
   getPage,
   publishPage,
   updatePage,
+  listUsers,
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
 import { DRAFT_TITLE } from "../lib/useCreateContent";
 import { EditConflictPanel } from "../components/EditConflictPanel";
-import { PageConflictError, type Page } from "../store/types";
+import { PageConflictError, type Page, type User } from "../store/types";
 import { CollaborationStatus } from "../editor/components/CollaborationStatus";
 import {
   COLLABORATION_ENABLED,
@@ -48,6 +49,11 @@ export function PageEditPage() {
     (isEdit ? null : (searchParams.get("title") ?? "")));
   const [initialBody, setInitialBody] = useState<string | null>(isEdit ? null : "");
   const [notFound, setNotFound] = useState(false);
+  // 멘션(@) 자동완성 후보 — org 사용자 디렉터리. 실패해도 편집을 막지 않는다(listUsers가 빈 목록 폴백).
+  const [users, setUsers] = useState<User[]>([]);
+  useEffect(() => {
+    void listUsers().then(setUsers);
+  }, []);
   // 수정 모드에서 로드한 페이지의 실제 spaceId (URL 불일치 가드용)
   const [pageSpaceId, setPageSpaceId] = useState<string | null>(null);
   // Task 5: 제목 변경 추적 (본문은 WikiEditor.isDirty()로 추적)
@@ -426,6 +432,7 @@ export function PageEditPage() {
           ref={editorRef}
           initialMarkdown={initialBody}
           pages={pages ?? []}
+          users={users}
           pageId={pageId}
           onDirty={() => setBodyDirty(true)}
           onUploadStateChange={setImageUploading}
