@@ -6,6 +6,8 @@ import type {
   CollaborationDraftCommitOptions,
   Comment,
   DeletePageOptions,
+  NotificationList,
+  NotificationType,
   Page,
   PageStatus,
   PageType,
@@ -230,11 +232,13 @@ export async function updatePage(
   if (nextTitle === page.title && nextBody === page.body) {
     return clone(page);
   }
+  const oldBody = page.body;
   page.title = nextTitle;
   page.body = nextBody;
   page.updatedBy = CURRENT_USER_ID;
   page.updatedAt = new Date().toISOString();
   snapshotVersion(data, page, page.updatedAt); // 적용 후 내용을 새 버전(max+1)으로
+  notifyPageUpdated(data, page, oldBody, nextBody);
   persist();
   return clone(page);
 }
@@ -263,6 +267,92 @@ export async function recordPageView(id: string): Promise<number> {
   page.views = (page.views ?? 0) + 1;
   persist();
   return page.views;
+}
+
+/* ── 알림 (백엔드 V11과 같은 규칙 — NotificationService 참조) ─────────────
+ * 트리거: 새 멘션(MENTIONED) / 관심 사용자(작성자+버전 편집자+본문 멘션)의 페이지
+ * 업데이트·댓글. 행위자 자신 제외, 같은 (수신자,페이지,타입) 미읽음은 1건으로 합침. */
+
+const MENTION_RE = /\]\(user:([\w-]+)\)/g;
+
+function mentionIdsOf(body: string | undefined): Set<string> {
+  const ids = new Set<string>();
+  for (const m of (body ?? "").matchAll(MENTION_RE)) ids.add(m[1]);
+  return ids;
+}
+
+function interestedIn(data: WikiData, page: Page, mentions: Set<string>): Set<string> {
+  const users = new Set(mentions);
+  users.add(page.createdBy);
+  for (const v of data.versions.filter((v) => v.pageId === page.id)) users.add(v.savedBy);
+  return users;
+}
+
+function deliver(data: WikiData, userId: string, type: NotificationType, page: Page) {
+  const rows = (data.notifications ??= []);
+  if (type !== "mentioned") {
+    const unread = rows.find(
+      (n) => n.userId === userId && n.pageId === page.id && n.type === type && !n.read,
+    );
+    if (unread) {
+      unread.actorId = CURRENT_USER_ID;
+      unread.createdAt = new Date().toISOString();
+      unread.pageTitle = page.title;
+      return;
+    }
+  }
+  rows.push({
+    id: `n${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    userId,
+    type,
+    pageId: page.id,
+    spaceId: page.spaceId,
+    pageTitle: page.title,
+    actorId: CURRENT_USER_ID,
+    createdAt: new Date().toISOString(),
+    read: false,
+  });
+}
+
+function notifyPageUpdated(data: WikiData, page: Page, oldBody: string, newBody: string) {
+  const before = mentionIdsOf(oldBody);
+  const now = mentionIdsOf(newBody);
+  const newlyMentioned = [...now].filter((id) => !before.has(id) && id !== CURRENT_USER_ID);
+  for (const id of newlyMentioned) deliver(data, id, "mentioned", page);
+  const interested = interestedIn(data, page, now);
+  interested.delete(CURRENT_USER_ID);
+  for (const id of newlyMentioned) interested.delete(id);
+  for (const id of interested) deliver(data, id, "page_updated", page);
+}
+
+function notifyCommentAdded(data: WikiData, page: Page, commentBody: string): void {
+  const mentioned = [...mentionIdsOf(commentBody)].filter((id) => id !== CURRENT_USER_ID);
+  for (const id of mentioned) deliver(data, id, "mentioned", page);
+  const interested = interestedIn(data, page, mentionIdsOf(page.body));
+  interested.delete(CURRENT_USER_ID);
+  for (const id of mentioned) interested.delete(id);
+  for (const id of interested) deliver(data, id, "comment", page);
+}
+
+export async function listNotifications(): Promise<NotificationList> {
+  const rows = (load().notifications ?? [])
+    .filter((n) => n.userId === CURRENT_USER_ID)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 30);
+  return {
+    unreadCount: rows.filter((n) => !n.read).length,
+    items: rows.map((n) => ({ ...n })),
+  };
+}
+
+/** ids가 비면 전체 읽음. */
+export async function markNotificationsRead(ids: string[] = []): Promise<void> {
+  const data = load();
+  for (const n of data.notifications ?? []) {
+    if (n.userId !== CURRENT_USER_ID) continue;
+    if (ids.length === 0 || ids.includes(n.id)) n.read = true;
+  }
+  persist();
 }
 
 export async function commitCollaborationDraft(
@@ -505,6 +595,8 @@ export async function addComment(
     updatedAt: null,
   };
   data.comments.push(comment);
+  const page = data.pages.find((p) => p.id === pageId);
+  if (page) notifyCommentAdded(data, page, trimmed);
   persist();
   return clone(comment);
 }

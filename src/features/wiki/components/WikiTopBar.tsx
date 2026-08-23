@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { Avatar, Button, Dropdown, TopBar, useToast } from "@chanho/react";
-import { Bell, PanelLeft, Settings } from "lucide-react";
+import { Avatar, Button, Dropdown, TopBar } from "@chanho/react";
+import { PanelLeft, Settings } from "lucide-react";
 import type { User } from "../store/types";
 import { getCurrentUser } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
 import { useAuth } from "../../../auth/AuthGate";
 import { GlobalSearchField } from "./GlobalSearchField";
 import { ShortcutHelpModal } from "./ShortcutHelpModal";
+import { NotificationBell } from "./NotificationBell";
 
 export interface WikiTopBarProps {
   /** 지정하면 브랜드 슬롯 좌측에 사이드바 토글 버튼을 렌더한다(WikiLayout 전용 — 사이드바가 있는
@@ -32,7 +33,6 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
   const { user: authUser, logout } = useAuth();
   const [me, setMe] = useState<User | null>(null);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
-  const toast = useToast();
 
   useEffect(() => {
     void getCurrentUser().then(setMe);
@@ -67,19 +67,8 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
       }
       actions={
         <>
-          {/* 알림 — 벨 아이콘 자리. 알림함은 서버 알림 이벤트(W18)와 함께 연결한다 */}
-          <Button
-            size="small"
-            variant="ghost"
-            iconOnly
-            aria-label="알림"
-            title="알림"
-            onClick={() =>
-              toast({ title: "알림함은 준비 중입니다", description: "멘션·페이지 업데이트 알림이 여기에 모입니다." })
-            }
-          >
-            <Bell size={16} aria-hidden="true" />
-          </Button>
+          {/* 알림 — 미읽음 배지 + 알림함 팝오버(멘션/관심 페이지 업데이트/댓글) */}
+          <NotificationBell />
           {/* 설정 — 드롭다운 골격. 하위 항목은 결정 대기 상태라 자리만 잡아 둔다 */}
           <Dropdown
             trigger={

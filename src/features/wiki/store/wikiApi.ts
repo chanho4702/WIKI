@@ -13,6 +13,8 @@ import {
   type CollaborationDraftCommitOptions,
   type CollaborationTicket,
   type DeletePageOptions,
+  type NotificationList,
+  type NotificationType,
   type Page,
   PageConflictError,
   type PageStatus,
@@ -157,6 +159,40 @@ export async function updatePage(
     throw new PageConflictError(serverPage);
   }
   return mapPage(await json(res));
+}
+
+/** 알림 — 백엔드 V11 계약. 타입은 서버 enum(MENTIONED…)을 프론트 소문자로 매핑한다. */
+export async function listNotifications(): Promise<NotificationList> {
+  const body = await json<{
+    unreadCount: number;
+    items: Array<{
+      id: number; type: string; pageId: number; spaceId: number | null; pageTitle: string;
+      actorId: number; createdAt: string; read: boolean;
+    }>;
+  }>(await sharedApiFetch("/api/wiki/notifications"));
+  const typeOf = (t: string): NotificationType =>
+    t === "MENTIONED" ? "mentioned" : t === "COMMENT" ? "comment" : "page_updated";
+  return {
+    unreadCount: body.unreadCount,
+    items: body.items.map((n) => ({
+      id: String(n.id),
+      userId: "",
+      type: typeOf(n.type),
+      pageId: String(n.pageId),
+      spaceId: n.spaceId === null ? "" : String(n.spaceId),
+      pageTitle: n.pageTitle,
+      actorId: String(n.actorId),
+      createdAt: n.createdAt,
+      read: n.read,
+    })),
+  };
+}
+
+export async function markNotificationsRead(ids: string[] = []): Promise<void> {
+  await json(await sharedApiFetch("/api/wiki/notifications/read", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids: ids.map(toBackendId) }),
+  }));
 }
 
 /** 이모지 아이콘 설정/해제 — 메타데이터 변경(버전 스냅샷 없음). 백엔드 V10 계약. */

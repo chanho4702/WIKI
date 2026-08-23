@@ -187,6 +187,27 @@ export interface DeletePageOptions {
   children?: "promote" | "cascade";
 }
 
+export type NotificationType = "mentioned" | "page_updated" | "comment";
+
+export interface Notification {
+  id: string;
+  /** 수신자 — 목업은 항상 현재 사용자 행만 보여준다. */
+  userId: string;
+  type: NotificationType;
+  pageId: string;
+  /** 라우팅용(/spaces/{s}/pages/{p}) — 페이지 삭제 시 알림도 함께 사라져 대부분 존재. */
+  spaceId: string;
+  pageTitle: string;
+  actorId: string;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface NotificationList {
+  unreadCount: number;
+  items: Notification[];
+}
+
 /** localStorage `wiki.v1`에 저장되는 루트 구조 */
 export interface WikiData {
   users: User[];
@@ -194,4 +215,6 @@ export interface WikiData {
   pages: Page[];
   versions: PageVersion[];
   comments: Comment[];
+  /** 알림 — 목업 전용 저장(백엔드 모드는 V11 notification 테이블). 없던 저장분 호환 optional. */
+  notifications?: Notification[];
 }

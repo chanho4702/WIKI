@@ -4177,3 +4177,116 @@ body.is-column-reordering {
   flex-direction: column;
   gap: var(--chanho-space-150);
 }
+
+/* TopBar 알림 벨 — 배지 + 팝오버 알림함 */
+.notification-bell {
+  position: relative;
+  display: inline-flex;
+}
+.notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--chanho-color-background-danger-bold, #c9372c);
+  color: #fff;
+  font-size: 9px;
+  font-weight: var(--chanho-font-weight-bold);
+  line-height: 14px;
+  text-align: center;
+}
+.notification-popover {
+  position: absolute;
+  top: calc(100% + var(--chanho-space-100));
+  right: 0;
+  width: 320px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: var(--chanho-space-150);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium, 8px);
+  background: var(--chanho-color-background-default);
+  box-shadow: var(--chanho-shadow-overlay);
+  z-index: 40;
+}
+.notification-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--chanho-space-100);
+}
+.notification-popover-head h3 {
+  margin: 0;
+  font-size: var(--chanho-font-size-200);
+}
+.notification-read-all {
+  border: none;
+  background: transparent;
+  color: var(--chanho-color-text-brand);
+  font-size: var(--chanho-font-size-75, 12px);
+  cursor: pointer;
+}
+.notification-empty {
+  margin: var(--chanho-space-200) 0;
+  color: var(--chanho-color-text-subtlest);
+  font-size: var(--chanho-font-size-100);
+  text-align: center;
+}
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--chanho-space-100);
+  width: 100%;
+  padding: var(--chanho-space-100);
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: transparent;
+  color: var(--chanho-color-text-default);
+  text-align: left;
+  cursor: pointer;
+}
+.notification-item:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered);
+}
+.notification-item--unread {
+  background: var(--chanho-color-background-info-subtle);
+}
+.notification-item-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--chanho-color-text-subtle);
+}
+.notification-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.notification-item-title {
+  font-weight: var(--chanho-font-weight-semibold);
+  font-size: var(--chanho-font-size-100);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.notification-item-text {
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75, 12px);
+}
+.notification-item-time {
+  flex: none;
+  color: var(--chanho-color-text-subtlest);
+  font-size: var(--chanho-font-size-75, 12px);
+}

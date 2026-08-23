@@ -53,6 +53,8 @@
 | movePage(id, {parentId, beforeId?}) | PUT /api/wiki/pages/{id}/position | 아래 이동 규칙 참조 |
 | setPageIcon(id, icon\|null) | PUT /api/wiki/pages/{id}/icon | **V10** 이모지 아이콘(varchar). 메타데이터 변경 — 버전 스냅샷 없음, PageResponse·트리 응답에 `icon` 포함 |
 | recordPageView(id) | POST /api/wiki/pages/{id}/views | **V10** 조회 1회 기록 → `{views}` 누적치. 실패해도 화면 진행(프론트가 조용히 무시) |
+| listNotifications() | GET /api/wiki/notifications | **V11** `{unreadCount, items[{id,type,pageId,spaceId,pageTitle,actorId,createdAt,read}]}` 최신 30건. type: MENTIONED\|PAGE_UPDATED\|COMMENT |
+| markNotificationsRead(ids?) | POST /api/wiki/notifications/read | **V11** ids 비우면 전체 읽음. 본인 행만 |
 | listVersions(pageId) | GET /api/wiki/pages/{pageId}/versions | version 내림차순 |
 | restoreVersion(pageId, versionId) | POST /api/wiki/pages/{pageId}/restore | updatePage 경로 재사용(새 버전으로 쌓임) |
 | listComments(pageId) | GET /api/wiki/pages/{pageId}/comments | createdAt 오름차순 |
