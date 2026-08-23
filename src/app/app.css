@@ -2125,6 +2125,20 @@ body {
   background: var(--chanho-color-background-neutral-subtle-hovered);
 }
 
+/* 사용자 메뉴 트리거 — 아바타를 버튼으로 감싼다(드롭다운 접근성) */
+.wiki-user-menu-trigger {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.wiki-user-menu-trigger:focus-visible {
+  outline: 2px solid var(--chanho-color-border-brand);
+  outline-offset: 2px;
+}
+
 /* W4: 버전 diff */
 .diff-view {
   margin: 0;

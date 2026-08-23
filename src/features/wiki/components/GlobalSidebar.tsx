@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Avatar, EmptyState, TextField } from "@chanho/react";
-import { ChevronDown, Clock, Compass, ExternalLink, FileText, Grid3x3, House, Plus, Star } from "lucide-react";
+import { ChevronDown, Clock, Compass, FileText, Grid3x3, House, Plus, Star } from "lucide-react";
 import type { Page, Space } from "../store/types";
 import { PageTree } from "./PageTree";
 import { TreeSkeleton } from "./WikiSkeleton";
@@ -32,7 +32,7 @@ export interface GlobalSidebarProps {
  * 컨플루언스 글로벌 셸의 좌측 사이드바 (설계 §1.2 — `2026-07-22-confluence-shell-design.md`).
  * 3단 구조: (1) 글로벌 네비(추천/최근/별표 표시/스페이스/앱, 모든 화면 공통) ·
  * (2) 컨텍스트 섹션(스페이스 안이면 스페이스 헤더 + "콘텐츠"(페이지 트리+검색)만 — 순수 스페이스
- * 스코프. 홈·디렉토리면 별표 스페이스 목록 + "모든 스페이스 보기") · (3) 푸터(Jira 크로스앱 링크).
+ * 스코프. 홈·디렉토리면 별표 스페이스 목록 + "모든 스페이스 보기").
  * AppShell이 접힘 상태에 따라 이 컴포넌트를 마운트/언마운트한다(접히면 aside 자체가 사라지는 기존
  * 동작 유지 — App.w5-sidebar 테스트 계약).
  *
@@ -297,16 +297,8 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
         </div>
       )}
 
-      {/* 3단 — 푸터. Jira는 게이트웨이 뒤 alm 앱(별도 SPA base /alm/)이라 a 태그로 풀페이지 이동.
-       * 팀·더 보기는 대상 앱이 아직 없어 후속 — 죽은 링크를 두지 않는다(디자인 재검토 접근성 지적). */}
-      <div className="wiki-sidebar-footer">
-        {/* 접근 이름에 앱 이동을 명시 — 아이콘(↗)은 장식이라 aria-hidden이라 텍스트만으론 크로스앱임이 안 드러남 */}
-        <a className="wiki-sidebar-footer-link" href="/alm/" aria-label="Jira 앱으로 이동">
-          <span>Jira</span>
-          <ExternalLink size={14} aria-hidden="true" />
-        </a>
-      </div>
-
+      {/* 푸터의 Jira 크로스앱 링크는 제거했다(2026-08-23 피드백) — 위키 셸에서 타 앱 이동은
+       * 글로벌 네비 "앱" 항목이 담당할 예정이라 중복 진입점을 두지 않는다. */}
       <SidebarResizer width={displayWidth} onDrag={setDisplayWidth} onCommit={handleResizeCommit} />
     </aside>
   );

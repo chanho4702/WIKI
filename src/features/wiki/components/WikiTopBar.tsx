@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { Avatar, Button, Switch, TopBar } from "@chanho/react";
-import { PanelLeft } from "lucide-react";
+import { Avatar, Button, Dropdown, TopBar, useToast } from "@chanho/react";
+import { Bell, PanelLeft, Settings } from "lucide-react";
 import type { User } from "../store/types";
 import { getCurrentUser } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
@@ -30,6 +30,7 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
   const { theme, toggle } = useTheme();
   const { user: authUser, logout } = useAuth();
   const [me, setMe] = useState<User | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     void getCurrentUser().then(setMe);
@@ -64,16 +65,47 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
       }
       actions={
         <>
-          <Switch label="다크 모드" checked={theme === "dark"} onCheckedChange={toggle} />
-          {authUser ? (
-            <>
-              <span className="wiki-auth-user">{authUser.name ?? authUser.email}</span>
-              <Button size="small" variant="ghost" onClick={() => void logout()}>
-                로그아웃
+          {/* 알림 — 벨 아이콘 자리. 알림함은 서버 알림 이벤트(W18)와 함께 연결한다 */}
+          <Button
+            size="small"
+            variant="ghost"
+            iconOnly
+            aria-label="알림"
+            title="알림"
+            onClick={() =>
+              toast({ title: "알림함은 준비 중입니다", description: "멘션·페이지 업데이트 알림이 여기에 모입니다." })
+            }
+          >
+            <Bell size={16} aria-hidden="true" />
+          </Button>
+          {/* 설정 — 드롭다운 골격. 하위 항목은 결정 대기 상태라 자리만 잡아 둔다 */}
+          <Dropdown
+            trigger={
+              <Button size="small" variant="ghost" iconOnly aria-label="설정" title="설정">
+                <Settings size={16} aria-hidden="true" />
               </Button>
-            </>
+            }
+            items={[
+              {
+                label: theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환",
+                onSelect: toggle,
+              },
+            ]}
+          />
+          {/* 사용자 — 아바타 드롭다운(이름·로그아웃) */}
+          {me ? (
+            <Dropdown
+              trigger={
+                <button type="button" className="wiki-user-menu-trigger" aria-label="사용자 메뉴">
+                  <Avatar name={me.name} size="small" />
+                </button>
+              }
+              items={[
+                { label: authUser?.name ?? authUser?.email ?? me.name, onSelect: () => {} },
+                ...(authUser ? [{ label: "로그아웃", onSelect: () => void logout() }] : []),
+              ]}
+            />
           ) : null}
-          {me ? <Avatar name={me.name} size="small" /> : null}
         </>
       }
     />
