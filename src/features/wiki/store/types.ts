@@ -215,6 +215,20 @@ export interface Team {
   name: string;
 }
 
+/**
+ * 이동 영향(W18 §5) — 새 조상의 보기 제한이 이 페이지에 새로 적용될 때 서버(또는 목업)가
+ * 확인 없는 이동을 이 오류로 멈춘다. 화면이 확인을 받으면 confirmImpact로 재시도한다.
+ */
+export class MoveImpactError extends Error {
+  constructor(
+    message: string,
+    public readonly newlyRestrictedBy: InheritedRestriction[],
+  ) {
+    super(message);
+    this.name = "MoveImpactError";
+  }
+}
+
 export type NotificationType = "mentioned" | "page_updated" | "comment";
 
 export interface Notification {

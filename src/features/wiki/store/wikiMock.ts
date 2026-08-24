@@ -1,5 +1,5 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
-import { PageConflictError } from "./types";
+import { MoveImpactError, PageConflictError } from "./types";
 import type {
   Attachment,
   CollaborationDraftCommit,
@@ -525,12 +525,43 @@ export async function movePage(
     spaceId?: string;
     /** 스페이스 간 이동 시 하위 처리 — "with"(기본): 서브트리 동반 / "promote": 원래 부모 밑에 남김 */
     children?: "with" | "promote";
+    /** 이동 영향(새로 적용되는 보기 제한) 확인 완료 표시 — 없으면 영향 발견 시 MoveImpactError. */
+    confirmImpact?: boolean;
   },
 ): Promise<Page> {
   const data = load();
   const page = data.pages.find((p) => p.id === id);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
   const targetSpaceId = target.spaceId ?? page.spaceId;
+  // W18 이동 영향 — 백엔드와 같은 규칙: 새 조상 체인의 VIEW 제한 중 현 체인에 없던 것
+  if (!target.confirmImpact
+      && (targetSpaceId !== page.spaceId || page.parentId !== (target.parentId ?? null))) {
+    const restrictedChain = (startId: string | null): Map<string, RestrictionPrincipal[]> => {
+      const found = new Map<string, RestrictionPrincipal[]>();
+      const visited = new Set<string>();
+      let cursor = startId;
+      while (cursor && !visited.has(cursor)) {
+        visited.add(cursor);
+        const rows = data.restrictions?.[cursor];
+        if (rows && rows.view.length > 0) found.set(cursor, rows.view);
+        cursor = data.pages.find((p) => p.id === cursor)?.parentId ?? null;
+      }
+      return found;
+    };
+    const current = restrictedChain(page.parentId);
+    const next = restrictedChain(target.parentId ?? null);
+    const newly = [...next.entries()].filter(([pid]) => !current.has(pid));
+    if (newly.length > 0) {
+      throw new MoveImpactError(
+        "이동하면 새 위치의 보기 제한이 적용되어 일부 사용자가 접근을 잃습니다. 확인 후 다시 시도하세요",
+        newly.map(([pid, principals]) => ({
+          pageId: pid,
+          pageTitle: data.pages.find((p) => p.id === pid)?.title ?? "",
+          principals: clone(principals),
+        })),
+      );
+    }
+  }
   if (targetSpaceId !== page.spaceId) {
     if (!data.spaces.some((s) => s.id === targetSpaceId)) {
       throw new Error("스페이스를 찾을 수 없습니다");

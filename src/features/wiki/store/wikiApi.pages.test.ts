@@ -139,7 +139,7 @@ describe("wikiApi.movePage — V9 전용 move 엔드포인트", () => {
       "/api/wiki/pages/3/move",
       expect.objectContaining({ method: "POST" }),
     );
-    expect(JSON.parse(spy.mock.calls[0][1]?.body as string)).toEqual({ parentId: 2, beforeId: 5, spaceId: null, children: null });
+    expect(JSON.parse(spy.mock.calls[0][1]?.body as string)).toEqual({ parentId: 2, beforeId: 5, spaceId: null, children: null, confirmImpact: false });
     expect(moved).toMatchObject({ parentId: "2", position: 1, version: 1 });
   });
 
@@ -150,7 +150,7 @@ describe("wikiApi.movePage — V9 전용 move 엔드포인트", () => {
     }]);
     const { movePage } = await import("./wikiApi");
     await movePage("3", { parentId: null });
-    expect(JSON.parse(spy.mock.calls[0][1]?.body as string)).toEqual({ parentId: null, beforeId: null, spaceId: null, children: null });
+    expect(JSON.parse(spy.mock.calls[0][1]?.body as string)).toEqual({ parentId: null, beforeId: null, spaceId: null, children: null, confirmImpact: false });
   });
 
   it("서버 position이 있으면 트리 매핑이 그것을 쓴다", async () => {

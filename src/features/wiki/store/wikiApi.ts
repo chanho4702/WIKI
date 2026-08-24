@@ -5,6 +5,7 @@ import { sharedApiFetch, sharedApiUpload, sharedCollaborationFetch } from "./api
 import { mapComment, mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError, type CommentDto } from "./mapping";
 import {
   ContentSearchError,
+  MoveImpactError,
   type Attachment,
   type Comment,
   type AttachmentUploadOptions,
@@ -372,6 +373,7 @@ export async function movePage(
     beforeId?: string | null;
     spaceId?: string;
     children?: "with" | "promote";
+    confirmImpact?: boolean;
   },
 ): Promise<Page> {
   // V9 전용 move — 부모와 형제 순서를 한 트랜잭션으로. 이동은 편집이 아니라 version 불변이며,
@@ -384,8 +386,27 @@ export async function movePage(
       beforeId: target.beforeId ? toBackendId(target.beforeId) : null,
       spaceId: target.spaceId ? toBackendId(target.spaceId) : null,
       children: target.children ?? null,
+      confirmImpact: target.confirmImpact ?? false,
     }),
   });
+  // W18 이동 영향 — 409에 impact가 실리면 확인 다이얼로그 분기용 오류로 변환
+  if (res.status === 409) {
+    const body = (await res.json().catch(() => null)) as {
+      error?: string;
+      impact?: { newlyRestrictedBy?: Array<{ pageId: number; pageTitle: string; principals: RestrictionPrincipalDto[] }> };
+    } | null;
+    if (body?.impact?.newlyRestrictedBy) {
+      throw new MoveImpactError(
+        body.error ?? "이동 영향 확인이 필요합니다",
+        body.impact.newlyRestrictedBy.map((i) => ({
+          pageId: String(i.pageId),
+          pageTitle: i.pageTitle,
+          principals: i.principals.map(mapPrincipal),
+        })),
+      );
+    }
+    throw new Error(body?.error ?? "이동 충돌이 발생했습니다");
+  }
   return mapPage(await json(res));
 }
 

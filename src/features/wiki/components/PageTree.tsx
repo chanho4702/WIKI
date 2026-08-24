@@ -15,6 +15,7 @@ import { ConfirmDialog, Dropdown, Lozenge, Radio, RadioGroup, useToast } from "@
 import { ChevronRight, Copy, FileText, Folder, FolderInput, Link2, MoreHorizontal, Pencil, Plus, Star } from "lucide-react";
 import { contentPathIn } from "../lib/contentPath";
 import type { ReactNode } from "react";
+import { MoveImpactError } from "../store/types";
 import type { Page, PageType, Space } from "../store/types";
 import { copyPage, listPages, movePage, updatePage } from "../store/wikiStore";
 import {
@@ -196,7 +197,7 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
     const drop = resolveDrop(dropNodes(), String(active.id), intent.overId, intent.mode);
     if (!drop) return;
     try {
-      await movePage(String(active.id), drop);
+      if (!(await moveWithImpactConfirm(String(active.id), drop))) return; // 사용자가 취소
     } catch (error) {
       toast({
         title: "페이지 이동 실패",
@@ -214,6 +215,30 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
         description: error instanceof Error ? error.message : String(error),
         appearance: "danger",
       });
+    }
+  };
+
+  /**
+   * 이동 실행 + W18 영향 확인 — 새 위치의 보기 제한이 새로 적용되면(MoveImpactError)
+   * 어떤 제한이 적용되는지 보여주고 확인받은 뒤 confirmImpact로 재시도한다.
+   * @returns 이동을 실행했으면 true, 사용자가 취소했으면 false
+   */
+  const moveWithImpactConfirm = async (
+    id: string,
+    target: Parameters<typeof movePage>[1],
+  ): Promise<boolean> => {
+    try {
+      await movePage(id, target);
+      return true;
+    } catch (error) {
+      if (!(error instanceof MoveImpactError)) throw error;
+      const titles = error.newlyRestrictedBy.map((i) => `"${i.pageTitle}"`).join(", ");
+      const ok = window.confirm(
+        `이동하면 상위 ${titles}의 보기 제한이 적용되어 그 외 사용자는 이 페이지에 접근할 수 없게 됩니다. 계속할까요?`,
+      );
+      if (!ok) return false;
+      await movePage(id, { ...target, confirmImpact: true });
+      return true;
     }
   };
 
@@ -277,10 +302,11 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
     if (!moveTarget) return;
     setMoving(true);
     try {
-      await movePage(moveTarget.id, {
+      const moved = await moveWithImpactConfirm(moveTarget.id, {
         parentId: moveParentId,
         ...(moveSpaceId !== spaceId ? { spaceId: moveSpaceId, children: moveChildren } : {}),
       });
+      if (!moved) return; // 사용자가 영향 확인에서 취소 — 다이얼로그는 열어 둔다
       setMoveTarget(null);
       toast({ title: "페이지를 이동했습니다", appearance: "success" });
       await onMoved?.();
