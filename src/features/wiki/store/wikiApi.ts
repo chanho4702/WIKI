@@ -15,6 +15,9 @@ import {
   type DeletePageOptions,
   type NotificationList,
   type NotificationType,
+  type PageRestrictions,
+  type RestrictionPrincipal,
+  type Team,
   type Page,
   PageConflictError,
   type PageStatus,
@@ -159,6 +162,61 @@ export async function updatePage(
     throw new PageConflictError(serverPage);
   }
   return mapPage(await json(res));
+}
+
+/* ── 페이지 제한 (W18, V12 계약) ─────────────────────────── */
+
+interface RestrictionPrincipalDto { type: string; id: number }
+interface RestrictionsDto {
+  view: RestrictionPrincipalDto[];
+  edit: RestrictionPrincipalDto[];
+  inherited: Array<{ pageId: number; pageTitle: string; principals: RestrictionPrincipalDto[] }>;
+}
+
+function mapPrincipal(p: RestrictionPrincipalDto): RestrictionPrincipal {
+  return { type: p.type === "TEAM" ? "team" : "user", id: String(p.id) };
+}
+
+function mapRestrictions(dto: RestrictionsDto): PageRestrictions {
+  return {
+    view: dto.view.map(mapPrincipal),
+    edit: dto.edit.map(mapPrincipal),
+    inherited: dto.inherited.map((i) => ({
+      pageId: String(i.pageId),
+      pageTitle: i.pageTitle,
+      principals: i.principals.map(mapPrincipal),
+    })),
+  };
+}
+
+function toPrincipalDto(p: RestrictionPrincipal) {
+  return { type: p.type === "team" ? "TEAM" : "USER", id: toBackendId(p.id) };
+}
+
+export async function getPageRestrictions(pageId: string): Promise<PageRestrictions> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/restrictions`);
+  return mapRestrictions(await json<RestrictionsDto>(res));
+}
+
+export async function setPageRestrictions(
+  pageId: string,
+  input: { view: RestrictionPrincipal[]; edit: RestrictionPrincipal[] },
+): Promise<PageRestrictions> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/restrictions`, {
+    method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ view: input.view.map(toPrincipalDto), edit: input.edit.map(toPrincipalDto) }),
+  });
+  return mapRestrictions(await json<RestrictionsDto>(res));
+}
+
+/** org 팀 목록 — 제한 다이얼로그의 TEAM 주체 선택용. 디렉터리 장애가 화면을 죽이면 안 된다(빈 목록). */
+export async function listTeams(): Promise<Team[]> {
+  try {
+    const rows = await json<Array<{ id: number; name: string }>>(await sharedApiFetch("/api/org/teams"));
+    return rows.map((t) => ({ id: String(t.id), name: t.name }));
+  } catch {
+    return [];
+  }
 }
 
 /** 알림 — 백엔드 V11 계약. 타입은 서버 enum(MENTIONED…)을 프론트 소문자로 매핑한다. */

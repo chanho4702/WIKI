@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
 import { Avatar, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
-import { Maximize2, Minimize2, MoreHorizontal, Trash2, Star } from "lucide-react";
-import type { DeletePageOptions, Page, User } from "../store/types";
-import { deletePage, getPage, listUsers, recordPageView } from "../store/wikiStore";
+import { Maximize2, Minimize2, MoreHorizontal, Trash2, Star, Lock } from "lucide-react";
+import type { DeletePageOptions, Page, PageRestrictions, User } from "../store/types";
+import { deletePage, getPage, listUsers, recordPageView , getPageRestrictions } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
 import { TableOfContents } from "../components/TableOfContents";
@@ -14,6 +14,7 @@ import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { CommentSection } from "../components/CommentSection";
 import { usePageWidth } from "../lib/pageWidth";
 import { removeStarredPage, useStarredPages } from "../lib/starredPages";
+import { RestrictionsDialog } from "../components/RestrictionsDialog";
 import { displayUserName } from "../lib/userName";
 import { recordVisit } from "../lib/recentVisits";
 
@@ -91,17 +92,24 @@ export function PageViewPage() {
   const [views, setViews] = useState<number | null>(null);
   // 로드 실패(403 페이지 제한·503 등) — 빈 화면/무한 스켈레톤으로 삼키지 않고 에러 상태로 노출
   const [loadError, setLoadError] = useState<string | null>(null);
+  // 페이지 제한(W18) — 자물쇠 아이콘 상태 + 다이얼로그. 실패는 조용히(버튼만 기본 상태)
+  const [restrictions, setRestrictions] = useState<PageRestrictions | null>(null);
+  const [restrictionsOpen, setRestrictionsOpen] = useState(false);
 
   useEffect(() => {
     if (!pageId) return;
     setPage(undefined);
     setViews(null);
     setLoadError(null);
+    setRestrictions(null);
     void getPage(pageId)
       .then((p) => {
         setPage(p);
         if (p) {
           recordVisit(p.id); // "이어서 작업"용 방문 로그(클라이언트)
+        void getPageRestrictions(p.id)
+          .then(setRestrictions)
+          .catch(() => setRestrictions(null));
           void recordPageView(p.id)
             .then(setViews)
             .catch(() => {});
@@ -177,6 +185,29 @@ export function PageViewPage() {
         title={page.icon ? `${page.icon} ${page.title}` : page.title}
         actions={
           <>
+            {/* 자물쇠(W18) — 제한이 있으면 채워진 자물쇠. 다이얼로그에서 보기/편집 제한 관리 */}
+            <Tooltip content="페이지 제한">
+              <Button
+                size="small"
+                variant="subtle"
+                iconOnly
+                aria-label="페이지 제한"
+                aria-pressed={
+                  (restrictions?.view.length ?? 0) > 0 || (restrictions?.edit.length ?? 0) > 0
+                }
+                onClick={() => setRestrictionsOpen(true)}
+              >
+                <Lock
+                  size={16}
+                  aria-hidden="true"
+                  className={
+                    (restrictions?.view.length ?? 0) > 0 || (restrictions?.edit.length ?? 0) > 0
+                      ? "page-lock page-lock--on"
+                      : "page-lock"
+                  }
+                />
+              </Button>
+            </Tooltip>
             {/* 별표 — 사이드바 "별표 표시" 목록에 모인다. 눌림 상태는 채운 별 + aria-pressed */}
             <Tooltip content={starredPages.includes(page.id) ? "별표 해제" : "별표"}>
               <Button
@@ -260,6 +291,13 @@ export function PageViewPage() {
         childCount={pages.filter((p) => p.parentId === page.id).length}
         loading={deleting}
         onConfirm={handleDelete}
+      />
+      <RestrictionsDialog
+        open={restrictionsOpen}
+        onOpenChange={setRestrictionsOpen}
+        pageId={page.id}
+        users={users}
+        onSaved={setRestrictions}
       />
       {(() => {
         // 작성자: 이름을 못 찾고 id만 있으면(백엔드 모드) `사용자 #{id}` 폴백. id도 없으면 표기 없음.

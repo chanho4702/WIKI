@@ -4498,3 +4498,57 @@ body.is-column-reordering {
   background: var(--chanho-color-background-subtle);
   color: var(--chanho-color-text-default);
 }
+
+/* 페이지 제한(W18) — 자물쇠 상태 + 다이얼로그 */
+.page-lock--on {
+  color: var(--chanho-color-text-danger);
+}
+.restriction-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+.restriction-section h4 {
+  margin: 0 0 var(--chanho-space-50, 4px);
+  font-size: var(--chanho-font-size-100);
+}
+.restriction-hint {
+  margin: 0 0 var(--chanho-space-100);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75, 12px);
+}
+.restriction-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-50, 4px);
+  margin: 0 0 var(--chanho-space-100);
+  padding: 0;
+  list-style: none;
+}
+.restriction-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  padding: var(--chanho-space-50, 4px) var(--chanho-space-100);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-small);
+}
+.restriction-list li span {
+  flex: 1;
+}
+.restriction-list li button {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  cursor: pointer;
+}
+.restriction-list li button:hover {
+  color: var(--chanho-color-text-danger);
+}
+.restriction-inherited {
+  margin: 0;
+  padding-left: var(--chanho-space-200);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75, 12px);
+}

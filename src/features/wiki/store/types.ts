@@ -187,6 +187,34 @@ export interface DeletePageOptions {
   children?: "promote" | "cascade";
 }
 
+/* ── 페이지 제한 (W18) ─────────────────────────────────────── */
+
+export type RestrictionPrincipalType = "user" | "team";
+
+export interface RestrictionPrincipal {
+  type: RestrictionPrincipalType;
+  id: string;
+}
+
+/** 조상에서 상속되는 보기 제한 — 다이얼로그의 읽기 전용 표시. */
+export interface InheritedRestriction {
+  pageId: string;
+  pageTitle: string;
+  principals: RestrictionPrincipal[];
+}
+
+/** 빈 배열 = 해당 타입 제한 없음(모두 허용). */
+export interface PageRestrictions {
+  view: RestrictionPrincipal[];
+  edit: RestrictionPrincipal[];
+  inherited: InheritedRestriction[];
+}
+
+export interface Team {
+  id: string;
+  name: string;
+}
+
 export type NotificationType = "mentioned" | "page_updated" | "comment";
 
 export interface Notification {
@@ -217,4 +245,6 @@ export interface WikiData {
   comments: Comment[];
   /** 알림 — 목업 전용 저장(백엔드 모드는 V11 notification 테이블). 없던 저장분 호환 optional. */
   notifications?: Notification[];
+  /** 페이지 제한(W18) — 목업 저장. 키 = pageId. 없던 저장분 호환 optional. */
+  restrictions?: Record<string, { view: RestrictionPrincipal[]; edit: RestrictionPrincipal[] }>;
 }
