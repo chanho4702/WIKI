@@ -4485,3 +4485,16 @@ body.is-column-reordering {
 .paste-link-menu button:hover {
   background: var(--chanho-color-background-neutral-hovered);
 }
+
+/* 페이지 로드 실패(권한 403 등) — 침묵하지 않는 에러 상태 + 회복 동작 */
+.page-view-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--chanho-space-150);
+  padding: var(--chanho-space-300);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium, 8px);
+  background: var(--chanho-color-background-subtle);
+  color: var(--chanho-color-text-default);
+}

@@ -89,22 +89,40 @@ export function PageViewPage() {
 
   // 조회수 — 진입 시 1회 기록하고 누적치를 표시한다. 부가 신호라 실패는 조용히 무시(표시 생략).
   const [views, setViews] = useState<number | null>(null);
+  // 로드 실패(403 페이지 제한·503 등) — 빈 화면/무한 스켈레톤으로 삼키지 않고 에러 상태로 노출
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!pageId) return;
     setPage(undefined);
     setViews(null);
-    void getPage(pageId).then((p) => {
-      setPage(p);
-      if (p) {
-        recordVisit(p.id); // "이어서 작업"용 방문 로그(클라이언트)
-        void recordPageView(p.id)
-          .then(setViews)
-          .catch(() => {});
-      }
-    });
+    setLoadError(null);
+    void getPage(pageId)
+      .then((p) => {
+        setPage(p);
+        if (p) {
+          recordVisit(p.id); // "이어서 작업"용 방문 로그(클라이언트)
+          void recordPageView(p.id)
+            .then(setViews)
+            .catch(() => {});
+        }
+      })
+      .catch((e: unknown) => {
+        // 서버의 한국어 메시지(예: "이 페이지를 볼 권한이 없습니다" — W18 제한)를 그대로 보여준다
+        setLoadError(e instanceof Error ? e.message : "페이지를 불러오지 못했습니다");
+      });
   }, [pageId]);
 
+  if (loadError) {
+    return (
+      <div className="page-view-error" role="alert">
+        <p>{loadError}</p>
+        <Button variant="subtle" onClick={() => navigate(-1)}>
+          뒤로 가기
+        </Button>
+      </div>
+    );
+  }
   if (page === undefined || pages === null) {
     return <PageViewSkeleton />;
   }
