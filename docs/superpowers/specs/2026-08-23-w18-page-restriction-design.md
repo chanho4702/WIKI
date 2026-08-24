@@ -147,7 +147,20 @@ Principal = `{type:"USER"|"TEAM", id, name}` (name은 응답 시 org 디렉터�
 MockMvc + FakePermissionClient(+FakeTeamDirectory) 페이크로 org 의존 없이 돌린다.
 검색 후필터는 게이트웨이 리졸버 단위 테스트 + wiki visible API 계약 테스트로 나눈다.
 
-## 10. 구현 순서 (증분)
+## 10. 구현 순서 (증분) — **전부 구현 완료(2026-08-24)**
+
+구현 결과와 설계 대비 조정 사항:
+- 마이그레이션 번호는 **V12**(V11은 알림이 선점).
+- principal 이름 해석은 프론트(org 디렉터리 REST) — wiki→org REST 신규 결합 회피(§6 조정).
+- 검색 후필터는 REST visible API 대신 **wiki gRPC `FilterVisiblePages`(proto 0.8.0)** —
+  search-service가 이미 wiki gRPC 채널을 갖고 있어 인증 배관이 불필요(§4 조정).
+  `restricted` 색인 힌트는 생략(이벤트·스키마 변경 회피, M 규모에서 배치 1회 비용 수용).
+- 스페이스 제한 Caffeine 캐시는 미도입 — 관리 API 쓰기 무효화와 함께 넣기로 했으나
+  요청당 2쿼리(스페이스 스코프)가 충분히 싸서 실측 병목 확인 후로 미룸(§8 조정).
+- 셀프 락아웃 가드 추가(설계엔 없던 보호): 비ADMIN이 자신이 빠진 VIEW 제한을 걸면 400.
+- TeamDirectory 기본 구현은 fail-closed 빈 목록, 운영은 org gRPC `ListUserTeams`(proto 0.7.0)
+  + 30초 캐시.
+
 
 1. V11 + 엔티티/리포지토리 + `EffectivePermissionService`(단건·배치) + 본문/트리/첨부/댓글/티켓 적용 + 누출 테스트 1~5
 2. 제한 관리 API + org 팀 멤버십 gRPC + 프론트 자물쇠 다이얼로그(듀얼모드 목업 포함)
