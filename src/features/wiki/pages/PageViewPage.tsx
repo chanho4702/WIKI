@@ -95,6 +95,7 @@ export function PageViewPage() {
   // 페이지 제한(W18) — 자물쇠 아이콘 상태 + 다이얼로그. 실패는 조용히(버튼만 기본 상태)
   const [restrictions, setRestrictions] = useState<PageRestrictions | null>(null);
   const [restrictionsOpen, setRestrictionsOpen] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     if (!pageId) return;
@@ -102,14 +103,18 @@ export function PageViewPage() {
     setViews(null);
     setLoadError(null);
     setRestrictions(null);
+    setRestrictionsOpen(false);
+
+    // 본문 VIEW와 제한 관리 권한은 다르다. 두 요청을 독립적으로 시작해야 본문에서 막힌
+    // space ADMIN도 제한 API 성공 결과로 복구 버튼을 볼 수 있고, 정상 화면도 waterfall이 없다.
+    void getPageRestrictions(pageId)
+      .then(setRestrictions)
+      .catch(() => setRestrictions(null));
     void getPage(pageId)
       .then((p) => {
         setPage(p);
         if (p) {
           recordVisit(p.id); // "이어서 작업"용 방문 로그(클라이언트)
-        void getPageRestrictions(p.id)
-          .then(setRestrictions)
-          .catch(() => setRestrictions(null));
           void recordPageView(p.id)
             .then(setViews)
             .catch(() => {});
@@ -119,15 +124,32 @@ export function PageViewPage() {
         // 서버의 한국어 메시지(예: "이 페이지를 볼 권한이 없습니다" — W18 제한)를 그대로 보여준다
         setLoadError(e instanceof Error ? e.message : "페이지를 불러오지 못했습니다");
       });
-  }, [pageId]);
+  }, [pageId, loadAttempt]);
 
   if (loadError) {
     return (
       <div className="page-view-error" role="alert">
         <p>{loadError}</p>
-        <Button variant="subtle" onClick={() => navigate(-1)}>
-          뒤로 가기
-        </Button>
+        <div className="page-view-error-actions">
+          <Button variant="subtle" onClick={() => navigate(-1)}>
+            뒤로 가기
+          </Button>
+          {pageId && restrictions ? (
+            <Button onClick={() => setRestrictionsOpen(true)}>페이지 제한 관리</Button>
+          ) : null}
+        </div>
+        {pageId ? (
+          <RestrictionsDialog
+            open={restrictionsOpen}
+            onOpenChange={setRestrictionsOpen}
+            pageId={pageId}
+            users={users}
+            onSaved={(saved) => {
+              setRestrictions(saved);
+              setLoadAttempt((attempt) => attempt + 1);
+            }}
+          />
+        ) : null}
       </div>
     );
   }

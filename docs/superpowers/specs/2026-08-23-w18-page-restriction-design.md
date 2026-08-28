@@ -98,9 +98,11 @@ CREATE INDEX idx_page_restriction_page ON page_restriction (page_id);
 
 `POST /pages/{id}/move`에 2단계 계약을 추가한다:
 
-- 1차 호출(기본): 서버가 이전/새 조상 체인의 VIEW 제한 차이를 계산. **접근을 잃는 주체가
-  있으면** `409 {"error":"...", "impact":{"losers":[{principal, name}...]}}`로 응답.
-- 프론트는 영향 다이얼로그(잃는 사용자·팀 목록)를 보여주고, 확인 시 `"confirmImpact":true`를
+- 1차 호출(기본): 서버가 이전/새 조상 체인의 VIEW 제한 노드 차이를 계산. 새로 적용되는 제한이
+  있으면 `409 {"error":"...", "impact":{"newlyRestrictedBy":[{pageId,pageTitle,principals}...]}}`로
+  응답한다. TEAM 중첩과 space grant 전체를 펼친 정확한 `losers` 계산은 비용과 오판 가능성이 있어,
+  UI는 "접근 범위가 좁아질 수 있음"으로 보수적으로 안내한다(구현 조정 2026-08-28).
+- 프론트는 영향 다이얼로그(새로 적용되는 제한 출처 목록)를 보여주고, 확인 시 `"confirmImpact":true`를
   실어 재호출 → 실행. 영향 없으면 1차 호출이 곧바로 실행된다(현행 무변경 경로).
 
 ## 6. API 계약 (프론트 `docs/backend` 계약 문서에 반영할 것)
@@ -160,6 +162,8 @@ MockMvc + FakePermissionClient(+FakeTeamDirectory) 페이크로 org 의존 없�
 - 셀프 락아웃 가드 추가(설계엔 없던 보호): 비ADMIN이 자신이 빠진 VIEW 제한을 걸면 400.
 - TeamDirectory 기본 구현은 fail-closed 빈 목록, 운영은 org gRPC `ListUserTeams`(proto 0.7.0)
   + 30초 캐시.
+- 제한 주체 저장 전 org gRPC `ValidatePrincipals`(proto 0.9.0)로 USER/TEAM 실재 여부를 일괄
+  검증한다. org-service 장애나 미배포(`UNIMPLEMENTED`) 시에는 저장을 503으로 차단한다.
 
 
 1. V11 + 엔티티/리포지토리 + `EffectivePermissionService`(단건·배치) + 본문/트리/첨부/댓글/티켓 적용 + 누출 테스트 1~5

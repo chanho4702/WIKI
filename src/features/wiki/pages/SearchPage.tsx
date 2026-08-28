@@ -129,7 +129,10 @@ export function SearchPage() {
         <>
           <div className="search-result-summary" role="status">
             <strong>‘{query}’ 검색 결과</strong>
-            <span>{results.total.toLocaleString("ko-KR")}개</span>
+            <span>
+              {results.total.toLocaleString("ko-KR")}
+              {results.totalExact ? "개" : "개 이상"}
+            </span>
           </div>
           <ol className="search-result-list">
             {results.hits.map((hit) => {

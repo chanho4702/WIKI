@@ -62,7 +62,7 @@ describe("W13 통합 검색", () => {
       .mockRejectedValueOnce(
         new ContentSearchError("검색 요청이 너무 많습니다. 잠시 후 다시 시도하세요.", "rate-limited"),
       )
-      .mockResolvedValueOnce({ total: 0, tookMs: 0, hits: [] });
+      .mockResolvedValueOnce({ total: 0, totalExact: true, tookMs: 0, hits: [] });
     renderApp("/search?q=검색");
 
     expect(await screen.findByText("검색 서비스를 사용할 수 없습니다. 잠시 후 다시 시도하세요.")).toBeInTheDocument();
@@ -70,5 +70,19 @@ describe("W13 통합 검색", () => {
     expect(await screen.findByText("검색 요청이 너무 많습니다. 잠시 후 다시 시도하세요.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "다시 시도" }));
     expect(await screen.findByText("검색 결과가 없습니다")).toBeInTheDocument();
+  });
+
+  it("권한 후필터가 전체를 스캔하지 못한 합계는 정확한 개수처럼 표시하지 않는다", async () => {
+    searchMocks.searchContent.mockResolvedValueOnce({
+      total: 21,
+      totalExact: false,
+      tookMs: 4,
+      hits: [],
+    });
+
+    renderApp("/search?q=제한문서");
+
+    expect(await screen.findByText("21개 이상")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다음" })).toBeEnabled();
   });
 });

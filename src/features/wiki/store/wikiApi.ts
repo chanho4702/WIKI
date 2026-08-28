@@ -495,6 +495,7 @@ const SEARCH_OPERATION = `
   query WikiSearch($input: SearchInput!) {
     search(input: $input) {
       total
+      totalExact
       tookMs
       hits {
         id
@@ -537,7 +538,7 @@ function contentSearchError(status: number, code?: string): ContentSearchError {
 /** Gateway `/api/search/graphql` 계약. HTTP 200 안의 GraphQL errors도 성공으로 삼키지 않는다. */
 export async function searchContent(input: SearchContentInput): Promise<SearchResults> {
   const query = input.query.trim();
-  if (!query) return { total: 0, tookMs: 0, hits: [] };
+  if (!query) return { total: 0, totalExact: true, tookMs: 0, hits: [] };
 
   const res = await sharedApiFetch("/api/search/graphql", {
     method: "POST",

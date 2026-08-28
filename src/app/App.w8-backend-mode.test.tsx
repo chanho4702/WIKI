@@ -52,4 +52,21 @@ describe("W8 백엔드 모드 정합화", () => {
     expect(screen.queryByText(/수정$/)).not.toBeInTheDocument();
     expect(await screen.findByText(/^조회 \d+회$/)).toBeInTheDocument();
   });
+
+  it("본문 VIEW가 막힌 ADMIN도 에러 화면에서 페이지 제한을 관리할 수 있다", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(store, "getPage").mockRejectedValue(new Error("이 페이지를 볼 권한이 없습니다"));
+    vi.spyOn(store, "getPageRestrictions").mockResolvedValue({
+      view: [{ type: "user", id: "u1" }],
+      edit: [],
+      inherited: [],
+    });
+
+    renderApp("/spaces/sp1/pages/pg1");
+
+    expect(await screen.findByText("이 페이지를 볼 권한이 없습니다")).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "페이지 제한 관리" }));
+    expect(await screen.findByRole("dialog", { name: "페이지 제한" })).toBeInTheDocument();
+    vi.restoreAllMocks();
+  });
 });

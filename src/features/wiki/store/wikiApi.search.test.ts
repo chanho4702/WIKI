@@ -18,6 +18,7 @@ describe("wikiApi.searchContent", () => {
       data: {
         search: {
           total: 1,
+          totalExact: true,
           tookMs: 3,
           hits: [{
             id: "9",
@@ -44,6 +45,7 @@ describe("wikiApi.searchContent", () => {
     expect(spy).toHaveBeenCalledWith("/api/search/graphql", expect.objectContaining({ method: "POST" }));
     const request = JSON.parse(spy.mock.calls[0][1]?.body as string);
     expect(request.query).toContain("pageType");
+    expect(request.query).toContain("totalExact");
     expect(request.variables.input).toMatchObject({ query: "운영", page: 2, size: 10 });
   });
 
@@ -73,7 +75,12 @@ describe("wikiApi.searchContent", () => {
     const spy = vi.spyOn(client, "sharedApiFetch");
     const { searchContent } = await import("./wikiApi");
 
-    await expect(searchContent({ query: "   " })).resolves.toEqual({ total: 0, tookMs: 0, hits: [] });
+    await expect(searchContent({ query: "   " })).resolves.toEqual({
+      total: 0,
+      totalExact: true,
+      tookMs: 0,
+      hits: [],
+    });
     expect(spy).not.toHaveBeenCalled();
   });
 });

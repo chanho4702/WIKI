@@ -234,7 +234,7 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
       if (!(error instanceof MoveImpactError)) throw error;
       const titles = error.newlyRestrictedBy.map((i) => `"${i.pageTitle}"`).join(", ");
       const ok = window.confirm(
-        `이동하면 상위 ${titles}의 보기 제한이 적용되어 그 외 사용자는 이 페이지에 접근할 수 없게 됩니다. 계속할까요?`,
+        `이동하면 상위 ${titles}의 보기 제한이 새로 적용되어 접근 범위가 좁아질 수 있습니다. 계속할까요?`,
       );
       if (!ok) return false;
       await movePage(id, { ...target, confirmImpact: true });

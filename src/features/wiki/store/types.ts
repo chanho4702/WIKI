@@ -152,6 +152,8 @@ export interface SearchHit {
 
 export interface SearchResults {
   total: number;
+  /** false면 total은 비인가 건수를 제외하고 현재까지 확인한 결과의 하한값이다. */
+  totalExact: boolean;
   tookMs: number;
   hits: SearchHit[];
 }

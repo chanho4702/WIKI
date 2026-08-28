@@ -4499,6 +4499,12 @@ body.is-column-reordering {
   color: var(--chanho-color-text-default);
 }
 
+.page-view-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--chanho-space-100);
+}
+
 /* 페이지 제한(W18) — 자물쇠 상태 + 다이얼로그 */
 .page-lock--on {
   color: var(--chanho-color-text-danger);

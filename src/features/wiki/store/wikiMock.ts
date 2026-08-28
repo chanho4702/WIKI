@@ -767,7 +767,7 @@ function highlightSnippet(text: string, query: string): string | null {
 /** 목업 모드도 화면과 같은 검색 계약을 제공한다. 첨부파일은 목업 스토리지가 없어 PAGE만 검색한다. */
 export async function searchContent(input: SearchContentInput): Promise<SearchResults> {
   const query = input.query.trim();
-  if (!query) return { total: 0, tookMs: 0, hits: [] };
+  if (!query) return { total: 0, totalExact: true, tookMs: 0, hits: [] };
 
   const data = load();
   const spaces = new Map(data.spaces.map((space) => [space.id, space]));
@@ -803,6 +803,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
   const size = Math.max(0, Math.min(input.size ?? 20, 100));
   return {
     total: pageHits.length,
+    totalExact: true,
     tookMs: 0,
     hits: pageHits.slice(page * size, (page + 1) * size),
   };
