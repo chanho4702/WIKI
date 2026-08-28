@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { ConfirmDialog, Radio, RadioGroup, TextField, useToast } from "@chanho/react";
-import type { Page, PageType, Space } from "../store/types";
-import { createPage, listPages } from "../store/wikiStore";
+import type { PageNode, PageType, Space } from "../store/types";
+import { createPage, listChildren, searchPageTitles } from "../store/wikiStore";
 import { contentPathIn } from "../lib/contentPath";
 import { DRAFT_TITLE, FOLDER_TITLE } from "../lib/useCreateContent";
 
@@ -39,7 +39,12 @@ export function CreateContentDialog({
   const [parentId, setParentId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   // 대상 스페이스의 부모 후보 — 스페이스를 바꾸면 다시 불러온다(이동 다이얼로그와 같은 패턴)
-  const [candidates, setCandidates] = useState<Page[] | null>(null);
+  /**
+   * 상위 위치 후보(2026-08-29) — 검색어가 없으면 그 스페이스의 최상위, 있으면 제목 검색 결과.
+   * 예전에는 스페이스 전 페이지를 받아 계층 select를 만들었는데 그 조회가 규모 상한이었다.
+   */
+  const [candidates, setCandidates] = useState<PageNode[] | null>(null);
+  const [parentQuery, setParentQuery] = useState("");
   const [creating, setCreating] = useState(false);
 
   // 열릴 때마다 기본값으로 초기화 — 지난번 입력이 남아 있으면 엉뚱한 위치에 만든다
@@ -48,20 +53,29 @@ export function CreateContentDialog({
     setType(defaultType);
     setSpaceId(defaultSpaceId ?? spaces[0]?.id ?? "");
     setParentId(null);
+    setParentQuery("");
     setTitle("");
   }, [open, defaultType, defaultSpaceId, spaces]);
 
   useEffect(() => {
     if (!open || !spaceId) return;
     let cancelled = false;
-    setCandidates(null);
-    void listPages(spaceId).then((pages) => {
-      if (!cancelled) setCandidates(pages);
-    });
+    const q = parentQuery.trim();
+    const timer = setTimeout(() => {
+      const fetching = q.length === 0 ? listChildren(spaceId, null) : searchPageTitles(spaceId, q);
+      void fetching
+        .then((found) => {
+          if (!cancelled) setCandidates(found);
+        })
+        .catch(() => {
+          if (!cancelled) setCandidates([]);
+        });
+    }, 200);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [open, spaceId]);
+  }, [open, spaceId, parentQuery]);
 
   const handleConfirm = async () => {
     if (!spaceId || creating) return;
@@ -92,13 +106,6 @@ export function CreateContentDialog({
       setCreating(false);
     }
   };
-
-  // 트리 순서로 들여쓰기된 부모 후보(폴더·페이지 모두 부모가 될 수 있다)
-  const flatten = (pages: Page[], parent: string | null, depth: number): Array<{ page: Page; depth: number }> =>
-    pages
-      .filter((p) => p.parentId === parent)
-      .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))
-      .flatMap((p) => [{ page: p, depth }, ...flatten(pages, p.id, depth + 1)]);
 
   return (
     <ConfirmDialog
@@ -141,9 +148,15 @@ export function CreateContentDialog({
             ))}
           </select>
         ) : null}
+        <TextField
+          label="상위 위치 검색"
+          value={parentQuery}
+          onChange={(e) => setParentQuery(e.target.value)}
+          placeholder="제목으로 검색 (비우면 최상위 문서)"
+        />
         {candidates === null ? (
           <p className="page-tree-move-loading" role="status">
-            대상 스페이스 페이지를 불러오는 중…
+            상위 위치를 불러오는 중…
           </p>
         ) : (
           <select
@@ -153,9 +166,9 @@ export function CreateContentDialog({
             onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)}
           >
             <option value="">(맨 위)</option>
-            {flatten(candidates, null, 0).map(({ page, depth }) => (
-              <option key={page.id} value={page.id}>
-                {`${" ".repeat(depth * 2)}${page.title}`}
+            {candidates.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.title}
               </option>
             ))}
           </select>

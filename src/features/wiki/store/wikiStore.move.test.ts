@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { __resetForTest, createPage, createSpace, getPage, listPages, listVersions, movePage } from "./wikiStore";
+import { __resetForTest, createPage, createSpace, getPage, listChildren, listVersions, movePage } from "./wikiStore";
 
 beforeEach(() => {
   localStorage.clear();
   __resetForTest();
 });
 
-/** spaceId의 페이지 중 parentId가 일치하는 것을 position 순으로 반환 */
+/** spaceId의 직계 자식을 position 순으로 반환(서버 정렬 그대로) */
 async function siblings(spaceId: string, parentId: string | null) {
-  return (await listPages(spaceId)).filter((p) => p.parentId === parentId);
+  return listChildren(spaceId, parentId);
 }
 
 describe("movePage", () => {

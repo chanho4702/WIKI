@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderApp } from "./testUtils";
-import { __resetForTest, createSpace, getPage, listPages } from "../features/wiki/store/wikiStore";
+import { allPagesForTest, renderApp } from "./testUtils";
+import { __resetForTest, createSpace, getPage } from "../features/wiki/store/wikiStore";
 
 beforeEach(() => {
   localStorage.clear();
@@ -21,7 +21,7 @@ describe("W10 트리 복제·이동", () => {
 
     expect(await within(tree).findByText("시작하기 (사본)")).toBeInTheDocument();
     // 원본과 같은 부모·같은 본문의 새 페이지다
-    const pages = await listPages("sp1");
+    const pages = await allPagesForTest("sp1");
     const original = pages.find((p) => p.title === "시작하기")!;
     const copy = pages.find((p) => p.title === "시작하기 (사본)")!;
     expect(copy.parentId).toBe(original.parentId);
@@ -33,7 +33,7 @@ describe("W10 트리 복제·이동", () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg1");
     const tree = await screen.findByRole("navigation", { name: "페이지 트리" });
-    const pagesBefore = await listPages("sp1");
+    const pagesBefore = await allPagesForTest("sp1");
     const root = pagesBefore.find((p) => p.title === "시작하기")!;
     // 자손은 옵션에서 제외되므로(순환 방지) 다른 루트 페이지를 대상으로 고른다
     const target = pagesBefore.find((p) => p.id !== root.id && p.parentId === null)!;
@@ -42,11 +42,12 @@ describe("W10 트리 복제·이동", () => {
     await user.click(await screen.findByRole("menuitem", { name: "이동…" }));
 
     const dialog = await screen.findByRole("dialog", { name: "페이지 이동" });
-    await user.selectOptions(within(dialog).getByLabelText("대상 위치"), target.id);
+    // 대상 위치 후보는 서버에서 온다(2026-08-29) — 목록이 채워질 때까지 기다린다.
+    await user.selectOptions(await within(dialog).findByLabelText("대상 위치"), target.id);
     await user.click(within(dialog).getByRole("button", { name: "이동" }));
 
     // 스토어에 새 부모가 반영된다 (트리 갱신은 onMoved 리로드가 담당)
-    const moved = (await listPages("sp1")).find((p) => p.title === "시작하기")!;
+    const moved = (await allPagesForTest("sp1")).find((p) => p.title === "시작하기")!;
     expect(moved.parentId).toBe(target.id);
   });
 
@@ -56,7 +57,7 @@ describe("W10 트리 복제·이동", () => {
     const target2 = await createSpace({ key: "OPS", name: "운영 위키" });
     renderApp("/spaces/sp1/pages/pg1");
     const tree = await screen.findByRole("navigation", { name: "페이지 트리" });
-    const before = await listPages("sp1");
+    const before = await allPagesForTest("sp1");
     const root = before.find((p) => p.title === "시작하기")!;
     const child = before.find((p) => p.parentId === root.id)!;
 
@@ -74,8 +75,8 @@ describe("W10 트리 복제·이동", () => {
     await user.click(within(dialog).getByRole("button", { name: "이동" }));
 
     // 루트는 sp2로, 하위는 sp1 루트로 승격
-    const sp1After = await listPages("sp1");
-    const sp2After = await listPages(target2.id);
+    const sp1After = await allPagesForTest("sp1");
+    const sp2After = await allPagesForTest(target2.id);
     expect(sp2After.some((p) => p.id === root.id)).toBe(true);
     const stayed = sp1After.find((p) => p.id === child.id)!;
     expect(stayed.parentId).toBe(root.parentId);
@@ -85,15 +86,15 @@ describe("W10 트리 복제·이동", () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/pg1");
     const tree = await screen.findByRole("navigation", { name: "페이지 트리" });
-    const pages = await listPages("sp1");
+    const pages = await allPagesForTest("sp1");
     const root = pages.find((p) => p.title === "시작하기")!;
     const childTitles = pages.filter((p) => p.parentId === root.id).map((p) => p.title);
 
     await user.click(within(tree).getByRole("button", { name: "시작하기 더보기" }));
     await user.click(await screen.findByRole("menuitem", { name: "이동…" }));
 
-    const select = within(await screen.findByRole("dialog", { name: "페이지 이동" }))
-      .getByLabelText("대상 위치");
+    const select = await within(await screen.findByRole("dialog", { name: "페이지 이동" }))
+      .findByLabelText("대상 위치");
     const options = within(select as HTMLElement).getAllByRole("option").map((o) => o.textContent?.trim());
     expect(options).toContain("(맨 위)");
     expect(options).not.toContain("시작하기");
@@ -116,7 +117,7 @@ describe("트리 인라인 이름 바꾸기·별표", () => {
     await user.type(input, "온보딩 가이드{Enter}");
 
     expect(await within(tree).findByRole("link", { name: "온보딩 가이드" })).toBeInTheDocument();
-    const renamed = (await listPages("sp1")).find((p) => p.id === "pg1")!;
+    const renamed = (await allPagesForTest("sp1")).find((p) => p.id === "pg1")!;
     expect(renamed.title).toBe("온보딩 가이드");
   });
 

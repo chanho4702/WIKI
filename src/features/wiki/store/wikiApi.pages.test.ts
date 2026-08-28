@@ -11,11 +11,11 @@ function mockSeq(responses: Array<{ status: number; body: unknown }>) {
 afterEach(() => vi.restoreAllMocks());
 
 describe("wikiApi pages", () => {
-  it("listPages → GET tree를 Page[]로(서버 position 없으면 index+1 폴백)", async () => {
-    mockSeq([{ status: 200, body: [{ id: 1, parentId: null, title: "A" }] }]);
-    const { listPages } = await import("./wikiApi");
-    const pages = await listPages("5");
-    expect(pages[0]).toMatchObject({ id: "1", parentId: null, position: 1 });
+  it("listChildren → 트리 노드로 매핑하고 childCount를 싣는다", async () => {
+    mockSeq([{ status: 200, body: [{ id: 1, parentId: null, title: "A", position: 1, childCount: 2 }] }]);
+    const { listChildren } = await import("./wikiApi");
+    const nodes = await listChildren("5", null);
+    expect(nodes[0]).toMatchObject({ id: "1", parentId: null, position: 1, childCount: 2 });
   });
 
   it("비대화형 updatePage는 getPage로 version을 읽어 PUT expectedVersion에 넣는다", async () => {
@@ -153,18 +153,18 @@ describe("wikiApi.movePage — V9 전용 move 엔드포인트", () => {
     expect(JSON.parse(spy.mock.calls[0][1]?.body as string)).toEqual({ parentId: null, beforeId: null, spaceId: null, children: null, confirmImpact: false });
   });
 
-  it("서버 position이 있으면 트리 매핑이 그것을 쓴다", async () => {
+  it("서버 position을 그대로 싣는다 — 순서는 서버가 정한다", async () => {
     mockSeq([{
       status: 200,
       body: [
-        { id: 1, parentId: null, title: "B", position: 2 },
-        { id: 2, parentId: null, title: "A", position: 1 },
+        { id: 2, parentId: null, title: "A", position: 1, childCount: 0 },
+        { id: 1, parentId: null, title: "B", position: 2, childCount: 0 },
       ],
     }]);
-    const { listPages } = await import("./wikiApi");
-    const pages = await listPages("1");
-    expect(pages.find((p) => p.title === "A")?.position).toBe(1);
-    expect(pages.find((p) => p.title === "B")?.position).toBe(2);
+    const { listChildren } = await import("./wikiApi");
+    const nodes = await listChildren("1", null);
+    expect(nodes.map((n) => n.title)).toEqual(["A", "B"]);
+    expect(nodes.find((n) => n.title === "B")?.position).toBe(2);
   });
 });
 

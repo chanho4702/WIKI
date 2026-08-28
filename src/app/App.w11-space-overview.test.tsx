@@ -26,45 +26,41 @@ describe("W11 스페이스 개요 (/spaces/:spaceId)", () => {
     expect(screen.getByTestId("location")).not.toHaveTextContent("/pages/");
   });
 
-  it("콘텐츠 섹션이 스페이스 전체 계층을 펼친 상태로 보여준다", async () => {
+  /**
+   * 2026-08-29: 개요는 **최상위만** 보여준다. 전체 계층을 펼치려면 전 페이지를 받아야 했고
+   * 그것이 이 화면의 규모 상한이었다. 아래로 내려가는 일은 사이드바 트리와 각 문서가 맡는다.
+   */
+  it("콘텐츠 섹션이 최상위 문서만 보여준다", async () => {
     renderApp("/spaces/sp1");
     await screen.findByRole("heading", { level: 1, name: "개발 위키" });
 
     const content = contentSection();
-    // 루트 2 + 하위 2 + 손자 1 — 사이드바와 달리 접기 없이 전부 노출(조망이 목적)
-    for (const title of ["시작하기", "팀 규칙", "개발 환경 설정", "배포 가이드", "로컬 DB 설정"]) {
-      expect(content.getByRole("link", { name: new RegExp(title) })).toBeInTheDocument();
-    }
+    expect(content.getByRole("link", { name: /시작하기/ })).toBeInTheDocument();
+    expect(content.getByRole("link", { name: /팀 규칙/ })).toBeInTheDocument();
+    expect(content.queryByRole("link", { name: /개발 환경 설정/ })).not.toBeInTheDocument();
+    expect(content.queryByRole("link", { name: /로컬 DB 설정/ })).not.toBeInTheDocument();
   });
 
-  it("자식이 있는 페이지는 하위 항목 수를 함께 보여준다 — 폴더인지 아이콘만으로 구분하지 않는다", async () => {
+  it("자식이 있는 문서는 직계 하위 수를 함께 보여준다 — 아이콘만으로 구분하지 않는다", async () => {
     renderApp("/spaces/sp1");
     await screen.findByRole("heading", { level: 1, name: "개발 위키" });
 
-    // 시드 계층: 시작하기(pg1) > 개발 환경 설정(pg3) > 로컬 DB 설정(pg5), 배포 가이드(pg4)
-    // → 시작하기의 하위 항목 총합은 손자 포함 3
-    expect(contentSection().getByRole("link", { name: /시작하기/ })).toHaveTextContent("3개 항목");
-    expect(contentSection().getByRole("link", { name: /개발 환경 설정/ })).toHaveTextContent(
-      "1개 항목",
-    );
-
-    // 말단 페이지(팀 규칙·로컬 DB 설정)에는 개수 표기가 붙지 않는다
-    expect(contentSection().getByRole("link", { name: /팀 규칙/ })).not.toHaveTextContent("개 항목");
-    expect(contentSection().getByRole("link", { name: /로컬 DB 설정/ })).not.toHaveTextContent(
-      "개 항목",
-    );
+    // 시드: 시작하기(pg1) > 개발 환경 설정·배포 가이드 → 직계 2개.
+    // 손자까지 세지 않는 이유는 그러려면 후손을 전부 받아야 하기 때문이다.
+    expect(contentSection().getByRole("link", { name: /시작하기/ })).toHaveTextContent("하위 2개");
+    expect(contentSection().getByRole("link", { name: /팀 규칙/ })).not.toHaveTextContent("하위");
   });
 
-  it("콘텐츠 트리의 항목을 클릭하면 그 페이지로 이동한다", async () => {
+  it("콘텐츠 목록의 항목을 클릭하면 그 페이지로 이동한다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1");
     await screen.findByRole("heading", { level: 1, name: "개발 위키" });
 
-    await user.click(contentSection().getByRole("link", { name: /배포 가이드/ }));
+    await user.click(contentSection().getByRole("link", { name: /팀 규칙/ }));
     await waitFor(() => {
-      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg4");
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1/pages/pg2");
     });
-    expect(await screen.findByRole("heading", { level: 1, name: "배포 가이드" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "팀 규칙" })).toBeInTheDocument();
   });
 
   it("최근 업데이트 섹션이 수정 시각 내림차순으로 페이지를 보여준다", async () => {

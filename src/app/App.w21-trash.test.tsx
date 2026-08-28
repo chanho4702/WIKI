@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderApp } from "./testUtils";
+import { allPagesForTest, renderApp } from "./testUtils";
 import {
   __resetForTest,
   deletePage,
   getPage,
-  listPages,
   listTrash,
   purgePage,
   restorePage,
@@ -24,7 +23,7 @@ describe("W21-1 휴지통 — 스토어 계약", () => {
     await deletePage("pg2");
 
     expect(await getPage("pg2")).toBeNull();
-    expect((await listPages("sp1")).map((p) => p.id)).not.toContain("pg2");
+    expect((await allPagesForTest("sp1")).map((p) => p.id)).not.toContain("pg2");
     const trash = await listTrash("sp1");
     expect(trash.map((t) => t.title)).toEqual(["팀 규칙"]);
     expect(trash[0].descendantCount).toBe(0);
@@ -42,7 +41,7 @@ describe("W21-1 휴지통 — 스토어 계약", () => {
 
     expect(result.restoredCount).toBe(4);
     expect(result.reparentedToRoot).toBe(false);
-    expect((await listPages("sp1")).map((p) => p.id).sort()).toContain("pg5");
+    expect((await allPagesForTest("sp1")).map((p) => p.id).sort()).toContain("pg5");
     expect((await getPage("pg5"))?.parentId).toBe("pg3");
     expect(await listTrash("sp1")).toHaveLength(0);
   });

@@ -3,7 +3,7 @@ import {
   __resetForTest,
   createPage,
   getPage,
-  listPages,
+  listChildren,
   listVersions,
   recordPageView,
   setPageIcon,
@@ -14,20 +14,21 @@ beforeEach(() => {
   __resetForTest();
 });
 
-describe("listPages / getPage", () => {
-  it("시드에 페이지 5개가 position 오름차순으로, 깊이 3 트리로 들어 있다", async () => {
-    const pages = await listPages("sp1");
-    expect(pages).toHaveLength(5);
-    // position 오름차순 (1,1,1,2,2 순 — 트리 구성은 화면 몫)
-    expect(pages.map((p) => p.position)).toEqual([1, 1, 1, 2, 2]);
-    const byId = new Map(pages.map((p) => [p.id, p]));
-    expect(byId.get("pg3")?.parentId).toBe("pg1"); // 하위
-    expect(byId.get("pg5")?.parentId).toBe("pg3"); // 손자 (깊이 3)
-    expect(pages.filter((p) => p.parentId === null).map((p) => p.id)).toEqual(["pg1", "pg2"]);
+describe("listChildren / getPage", () => {
+  /** 전량 조회는 없앴다(2026-08-29) — 트리는 한 단계씩 읽는다. */
+  it("시드는 최상위 2개 아래로 깊이 3 트리를 이룬다", async () => {
+    const roots = await listChildren("sp1", null);
+    expect(roots.map((p) => p.id)).toEqual(["pg1", "pg2"]);
+    expect(roots.map((p) => p.position)).toEqual([1, 2]);
+    expect(roots.find((p) => p.id === "pg1")?.childCount).toBe(2);
+
+    const children = await listChildren("sp1", "pg1");
+    expect(children.map((p) => p.id)).toEqual(["pg3", "pg4"]);
+    expect(await listChildren("sp1", "pg3")).toMatchObject([{ id: "pg5" }]); // 손자(깊이 3)
   });
 
   it("다른 스페이스의 페이지는 반환하지 않는다", async () => {
-    await expect(listPages("없는스페이스")).resolves.toEqual([]);
+    await expect(listChildren("없는스페이스", null)).resolves.toEqual([]);
   });
 
   it("getPage는 존재하면 페이지를, 없으면 null을 반환한다", async () => {

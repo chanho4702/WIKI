@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import {
   DndContext,
@@ -16,8 +16,8 @@ import { ChevronRight, Copy, FileText, Folder, FolderInput, Link2, MoreHorizonta
 import { contentPathIn } from "../lib/contentPath";
 import type { ReactNode } from "react";
 import { MoveImpactError } from "../store/types";
-import type { Page, PageNode, PageType, Space } from "../store/types";
-import { copyPage, listPages, movePage, updatePage } from "../store/wikiStore";
+import type { PageNode, PageType, Space } from "../store/types";
+import { copyPage, listChildren, movePage, searchPageTitles, updatePage } from "../store/wikiStore";
 import {
   descendantIdsOf,
   dropModeFor,
@@ -48,22 +48,6 @@ export interface PageTreeProps {
 interface TreeNode {
   page: PageNode;
   children: TreeNode[];
-}
-
-/** 이동 다이얼로그용 — 전량을 읽어온 목록을 트리 노드 모양으로 맞춘다(자식 수는 그 목록에서 센다). */
-function toPickerNode(all: Page[]): (page: Page) => PageNode {
-  return (page) => ({
-    id: page.id,
-    parentId: page.parentId,
-    title: page.title,
-    type: page.type,
-    status: page.status,
-    position: page.position,
-    icon: page.icon ?? null,
-    updatedBy: page.updatedBy,
-    updatedAt: page.updatedAt,
-    childCount: all.filter((p) => p.parentId === page.id).length,
-  });
 }
 
 /** parentId 인접 리스트 → 트리. 형제는 position 오름차순. 로드된 것만 들어온다. */
@@ -148,10 +132,14 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
   // 스페이스 간 이동 — 대상 스페이스와 그 스페이스의 페이지 목록(부모 후보), 하위 처리 방식
   const [moveSpaceId, setMoveSpaceId] = useState<string>(spaceId);
   /**
-   * 다른 스페이스로 이동할 때의 부모 후보. **여기만 아직 그 스페이스 전량을 읽는다**
-   * (알려진 부채 2026-08-29) — 사용자가 다이얼로그를 열었을 때만 도는 경로라 우선순위를 뒤로 뒀다.
+   * 이동 대상 위치 후보(2026-08-29). 대상 스페이스의 **최상위 + 제목 검색 결과**다.
+   *
+   * 예전에는 대상 스페이스의 전 페이지를 받아 계층 select를 만들었다. 지연 트리에서는 그 목록이
+   * 없을뿐더러(같은 스페이스라도 안 펼친 가지는 로드돼 있지 않다) 전량 조회 자체가 규모 상한이다.
+   * 컨플루언스의 이동 다이얼로그처럼 "쳐서 찾는다".
    */
-  const [moveSpacePages, setMoveSpacePages] = useState<PageNode[] | null>(null);
+  const [moveQuery, setMoveQuery] = useState("");
+  const [moveCandidates, setMoveCandidates] = useState<PageNode[] | null>(null);
   const [moveChildren, setMoveChildren] = useState<"with" | "promote">("with");
   // 인라인 이름 바꾸기 — 트리 행의 라벨이 입력으로 바뀐다(모달 아님, 노션/컨플식)
   const [renameId, setRenameId] = useState<string | null>(null);
@@ -336,39 +324,60 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
 
   const openMoveDialog = (page: PageNode) => {
     setMoveSpaceId(spaceId);
-    setMoveSpacePages(null);
     setMoveChildren("with");
     setMoveParentId(page.parentId);
+    setMoveQuery("");
+    setMoveCandidates(null);
     setMoveTarget(page);
   };
 
   const changeMoveSpace = (nextSpaceId: string) => {
     setMoveSpaceId(nextSpaceId);
-    setMoveParentId(null); // 스페이스가 바뀌면 이전 부모는 무의미 — 루트부터 다시 고른다
-    if (nextSpaceId === spaceId) {
-      setMoveSpacePages(null); // 현재 스페이스는 이미 가진 pages를 쓴다
-      return;
-    }
-    setMoveSpacePages(null);
-    void listPages(nextSpaceId).then((all) => setMoveSpacePages(all.map(toPickerNode(all))));
+    setMoveParentId(null); // 스페이스가 바뀌면 이전 부모는 무의미 — 최상위부터 다시 고른다
+    setMoveQuery("");
+    setMoveCandidates(null);
   };
 
-  /** 이동 다이얼로그의 대상 부모 후보 — 자기 자신과 자손은 제외(순환) */
-  const moveOptions = (page: PageNode): FlatNode[] => {
-    if (moveSpaceId !== spaceId) {
-      // 다른 스페이스 — 로드한 그 스페이스 트리 전체가 후보(자기 서브트리는 그 스페이스에 없다)
-      if (moveSpacePages === null) return [];
-      const allIds = new Set(moveSpacePages.map((p) => p.id));
-      return flattenVisible(buildTree(moveSpacePages), allIds, null);
-    }
+  /**
+   * 대상 위치 후보를 채운다 — 검색어가 없으면 그 스페이스의 최상위, 있으면 제목 검색 결과.
+   * 다이얼로그가 열려 있는 동안에만 돈다.
+   */
+  useEffect(() => {
+    if (moveTarget === null) return;
+    let cancelled = false;
+    const q = moveQuery.trim();
+    const timer = setTimeout(() => {
+      const fetching = q.length === 0
+        ? listChildren(moveSpaceId, null)
+        : searchPageTitles(moveSpaceId, q);
+      void fetching
+        .then((found) => {
+          if (!cancelled) setMoveCandidates(found);
+        })
+        .catch(() => {
+          if (!cancelled) setMoveCandidates([]);
+        });
+    }, 200);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [moveTarget, moveSpaceId, moveQuery]);
+
+  /**
+   * 대상 부모 후보 — 같은 스페이스면 자기 자신·자손을 뺀다(순환).
+   * 자손 판정은 로드된 범위에서만 가능하다. 서버가 이동 시 순환을 최종 거부하므로 여기서는
+   * 명백한 것만 걸러 목록을 정리하는 용도다.
+   */
+  const moveOptions = (page: PageNode): PageNode[] => {
+    const candidates = moveCandidates ?? [];
+    if (moveSpaceId !== spaceId) return candidates;
     const excluded = descendantIdsOf(
       pages.map((p) => ({ id: p.id, parentId: p.parentId, depth: 0 })),
       page.id,
     );
     excluded.add(page.id);
-    // 이동 대상 후보는 로드된 것 전부를 펼쳐 보여준다(접힘 상태와 무관).
-    const allIds = new Set(pages.map((p) => p.id));
-    return flattenVisible(roots, allIds, null).filter((f) => !excluded.has(f.page.id));
+    return candidates.filter((c) => !excluded.has(c.id));
   };
 
   const renderNodes = (nodes: TreeNode[]) => (
@@ -601,8 +610,8 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
                 ))}
               </select>
             ) : null}
-            {moveSpaceId !== spaceId && moveSpacePages === null ? (
-              <p className="page-tree-move-loading" role="status">대상 스페이스 페이지를 불러오는 중…</p>
+            {moveCandidates === null ? (
+              <p className="page-tree-move-loading" role="status">대상 위치를 불러오는 중…</p>
             ) : (
               <select
                 className="page-tree-move-select"
@@ -611,9 +620,9 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
                 onChange={(e) => setMoveParentId(e.target.value === "" ? null : e.target.value)}
               >
                 <option value="">(맨 위)</option>
-                {moveOptions(moveTarget).map((f) => (
-                  <option key={f.page.id} value={f.page.id}>
-                    {`${" ".repeat(f.depth * 2)}${f.page.title}`}
+                {moveOptions(moveTarget).map((candidate) => (
+                  <option key={candidate.id} value={candidate.id}>
+                    {candidate.title}
                   </option>
                 ))}
               </select>

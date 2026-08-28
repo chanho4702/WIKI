@@ -4,7 +4,7 @@ import {
   addComment,
   deletePage,
   getPage,
-  listPages,
+  listChildren,
   listVersions,
   restoreVersion,
   updatePage,
@@ -136,9 +136,7 @@ describe("deletePage — 자식 처리 선택", () => {
     // 시드: pg1 아래 pg3(1) · pg4(2), pg3 아래 pg5. pg3을 지우면 pg5가 pg3의 자리로 올라온다.
     await deletePage("pg3", { children: "promote" });
 
-    const children = (await listPages("sp1"))
-      .filter((p) => p.parentId === "pg1")
-      .sort((a, b) => a.position - b.position);
+    const children = await listChildren("sp1", "pg1");
     expect(children.map((p) => p.id)).toEqual(["pg5", "pg4"]); // 뒤 형제 pg4는 뒤에 남는다
     expect(children.map((p) => p.position)).toEqual([1, 2]); // 1..n 연속
   });
@@ -183,7 +181,7 @@ describe("deletePage — 자식 처리 선택", () => {
 
   it("cascade: parentId가 순환하는 손상 데이터에서도 무한 루프하지 않는다", async () => {
     // movePage 순환 가드와 같은 방어 — 저장소를 직접 손상시켜 재현한다
-    await listPages("sp1"); // 시드를 localStorage에 내려놓는다
+    await listChildren("sp1", null); // 시드를 localStorage에 내려놓는다
     const raw = readRaw() as unknown as { pages: { id: string; parentId: string | null }[] };
     const byId = new Map(raw.pages.map((p) => [p.id, p]));
     byId.get("pg1")!.parentId = "pg5"; // pg1 → pg3 → pg5 → pg1 순환

@@ -192,7 +192,8 @@ describe("W2 페이지 편집·생성", () => {
       expect(screen.getByTestId("location").textContent).toMatch(/\/edit$/);
     });
     // 실제로 pg2(팀 규칙)의 하위인지 — 제목을 채워 게시한 뒤 pg2를 접으면 사라져야 한다
-    const title = screen.getByRole("textbox", { name: "페이지 제목" });
+    // (편집 화면은 문서를 서버에서 읽고 나서 그려진다 — 지연 트리 이후 컨텍스트에 본문이 없다)
+    const title = await screen.findByRole("textbox", { name: "페이지 제목" });
     await user.clear(title);
     await user.type(title, "회의록 규칙");
     await user.click(screen.getByRole("button", { name: "게시" }));

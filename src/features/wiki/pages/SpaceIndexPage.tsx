@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router";
 import { Avatar, Button, EmptyState } from "@chanho/react";
 import { ChevronRight, FileText, Folder, FolderOpen, Plus } from "lucide-react";
-import type { Page, User } from "../store/types";
-import { listPages, listUsers } from "../store/wikiStore";
+import type { PageNode, User } from "../store/types";
+import { listChildren, listRecentlyUpdated, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { displayUserName } from "../lib/userName";
 import { contentPathIn } from "../lib/contentPath";
@@ -13,82 +13,40 @@ import { CreateContentMenu } from "../components/CreateContentMenu";
 /** 최근 업데이트 목록에 보여줄 최대 개수 — 캡처(특정 스페이스 페이지.png)의 5건 + "더 보기" 없이 고정. */
 const RECENT_LIMIT = 8;
 
-interface TreeNode {
-  page: Page;
-  children: TreeNode[];
-}
-
-/**
- * parentId 계층을 중첩 노드로 변환한다(형제는 position 순). PageTree.tsx의 toNodes와 같은 규칙이지만
- * 이쪽은 사이드바가 아니라 본문 목록용이라 DnD/접힘 상태 없이 순수 구조만 만든다.
- * 고아 페이지(부모가 삭제됐거나 다른 스페이스인 경우)는 루트로 끌어올려 목록에서 사라지지 않게 한다.
- */
-function buildTree(pages: Page[]): TreeNode[] {
-  const ids = new Set(pages.map((p) => p.id));
-  const byParent = new Map<string | null, Page[]>();
-  for (const page of pages) {
-    // 부모 id가 이 스페이스에 없으면 루트 취급 — 조용히 누락시키지 않는다
-    const key = page.parentId !== null && ids.has(page.parentId) ? page.parentId : null;
-    const list = byParent.get(key);
-    if (list) list.push(page);
-    else byParent.set(key, [page]);
-  }
-
-  const build = (parentId: string | null, seen: Set<string>): TreeNode[] =>
-    (byParent.get(parentId) ?? [])
-      .slice()
-      .sort((a, b) => a.position - b.position)
-      .filter((page) => !seen.has(page.id)) // 순환 데이터 방어(parentId 사이클)
-      .map((page) => {
-        seen.add(page.id);
-        return { page, children: build(page.id, seen) };
-      });
-
-  return build(null, new Set());
-}
-
-/** 하위 페이지 총합(자기 자신 제외) — 폴더 항목의 "N개 항목" 표기용. */
-function countDescendants(node: TreeNode): number {
-  return node.children.reduce((sum, child) => sum + 1 + countDescendants(child), 0);
-}
-
-interface ContentTreeProps {
-  nodes: TreeNode[];
+interface ContentListProps {
+  nodes: PageNode[];
   spaceId: string;
-  depth?: number;
 }
 
 /**
- * 본문 콘텐츠 트리 — 자식이 있는 페이지는 폴더 아이콘(열림)으로, 말단은 문서 아이콘으로 구분한다.
- * 컨플루언스의 "콘텐츠" 트리처럼 스페이스 전체 구조가 한 화면에 펼쳐진 상태로 보이는 것이 목적이라
- * 접기 토글을 두지 않는다(탐색은 사이드바 트리가, 조망은 이 화면이 담당).
+ * 본문 콘텐츠 목록 — **최상위만** 보여준다(2026-08-29).
+ *
+ * 예전에는 스페이스 전체 계층을 한 화면에 펼쳤다. 그러려면 전 페이지를 받아야 했고, 그것이
+ * 이 화면의 규모 상한이었다. 조망은 "무엇이 있는지"까지면 충분하고, 그 아래로 내려가는 일은
+ * 사이드바 트리와 각 문서의 하위 목록이 맡는다.
  */
-function ContentTree({ nodes, spaceId, depth = 0 }: ContentTreeProps) {
+function ContentList({ nodes, spaceId }: ContentListProps) {
   return (
-    <ul className="space-overview-tree" data-depth={depth}>
+    <ul className="space-overview-tree" data-depth={0}>
       {nodes.map((node) => {
         // 아이콘은 "폴더 타입인가"로, 개수 표기는 "자식이 있는가"로 갈린다 — 하위 페이지를 가진
         // 일반 페이지도 개수는 알려주되 폴더로 오인시키지 않는다.
-        const isFolder = node.page.type === "folder";
-        const hasChildren = node.children.length > 0;
+        const isFolder = node.type === "folder";
         return (
-          <li key={node.page.id} className="space-overview-tree-item">
-            <Link to={contentPathIn(spaceId, node.page)} className="space-overview-tree-link">
+          <li key={node.id} className="space-overview-tree-item">
+            <Link to={contentPathIn(spaceId, node)} className="space-overview-tree-link">
               {isFolder ? (
                 <FolderOpen className="space-overview-tree-icon" size={16} aria-hidden="true" />
               ) : (
                 <FileText className="space-overview-tree-icon" size={16} aria-hidden="true" />
               )}
-              <span className="space-overview-tree-label">{node.page.title}</span>
+              <span className="space-overview-tree-label">{node.title}</span>
               {isFolder ? <span className="wiki-visually-hidden"> (폴더)</span> : null}
-              {hasChildren ? (
+              {node.childCount > 0 ? (
                 // 색·아이콘만이 아니라 텍스트로도 하위가 있음을 전달한다(WCAG 1.4.1)
-                <span className="space-overview-tree-count">{countDescendants(node)}개 항목</span>
+                <span className="space-overview-tree-count">하위 {node.childCount}개</span>
               ) : null}
             </Link>
-            {hasChildren ? (
-              <ContentTree nodes={node.children} spaceId={spaceId} depth={depth + 1} />
-            ) : null}
           </li>
         );
       })}
@@ -117,21 +75,28 @@ export function SpaceIndexPage() {
   const { spaceId } = useParams();
   const { space, reloadPages } = useOutletContext<WikiOutletContext>();
   /**
-   * 스페이스 개요는 트리 전체를 한눈에 보여주는 화면이라 여기서만 전량을 읽는다
-   * (알려진 부채 2026-08-29 — 큰 스페이스에서는 이 화면도 페이지네이션이 필요하다).
-   * 사이드바는 지연 트리로 바뀌어 더 이상 이 목록을 공유하지 않는다.
+   * 개요는 **최상위 목록 + 최근 업데이트**만 읽는다(2026-08-29).
+   * 전에는 전 페이지를 받아 계층을 펼치고 최근 항목을 직접 정렬했는데, 그게 이 화면의 규모 상한이었다.
    */
-  const [pages, setPages] = useState<Page[] | null>(null);
+  const [roots, setRoots] = useState<PageNode[] | null>(null);
+  const [recent, setRecent] = useState<PageNode[]>([]);
   useEffect(() => {
     if (!space) return;
     let cancelled = false;
-    setPages(null);
-    void listPages(space.id)
-      .then((all) => {
-        if (!cancelled) setPages(all);
+    setRoots(null);
+    void listChildren(space.id, null)
+      .then((found) => {
+        if (!cancelled) setRoots(found);
       })
       .catch(() => {
-        if (!cancelled) setPages([]);
+        if (!cancelled) setRoots([]);
+      });
+    void listRecentlyUpdated(space.id, RECENT_LIMIT)
+      .then((found) => {
+        if (!cancelled) setRecent(found);
+      })
+      .catch(() => {
+        if (!cancelled) setRecent([]);
       });
     return () => {
       cancelled = true;
@@ -144,7 +109,7 @@ export function SpaceIndexPage() {
     void listUsers().then(setUsers);
   }, []);
 
-  if (pages === null) {
+  if (roots === null) {
     return (
       <div className="space-overview">
         <span className="wiki-visually-hidden" role="status">
@@ -162,7 +127,7 @@ export function SpaceIndexPage() {
     );
   }
 
-  if (pages.length === 0) {
+  if (roots.length === 0) {
     return (
       <div className="empty-pages">
         <EmptyState
@@ -176,12 +141,6 @@ export function SpaceIndexPage() {
       </div>
     );
   }
-
-  const tree = buildTree(pages);
-  const recent = pages
-    .slice()
-    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0))
-    .slice(0, RECENT_LIMIT);
 
   return (
     <div className="space-overview">
@@ -211,7 +170,7 @@ export function SpaceIndexPage() {
           <Folder size={16} aria-hidden="true" />
           스페이스 콘텐츠
         </h2>
-        <ContentTree nodes={tree} spaceId={space.id} />
+        <ContentList nodes={roots} spaceId={space.id} />
       </section>
 
       <section className="space-overview-section" aria-label="최근 업데이트">
@@ -224,7 +183,7 @@ export function SpaceIndexPage() {
             // 작성자 이름을 못 찾으면 `사용자 #{id}` 폴백(백엔드 모드에서 users가 비는 경우) — 설계 §9
             const editor = users.find((u) => u.id === page.updatedBy);
             const editorName = editor?.name ?? (page.updatedBy ? displayUserName(page.updatedBy) : null);
-            const updated = formatDate(page.updatedAt);
+            const updated = formatDate(page.updatedAt ?? "");
             return (
               <li key={page.id} className="space-overview-recent-item">
                 <Link to={contentPathIn(space.id, page)} className="space-overview-recent-link">

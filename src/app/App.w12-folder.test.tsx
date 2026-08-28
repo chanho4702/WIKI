@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderApp } from "./testUtils";
-import { __resetForTest, listPages } from "../features/wiki/store/wikiStore";
+import { allPagesForTest, renderApp } from "./testUtils";
+import { __resetForTest } from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
 import type { WikiData } from "../features/wiki/store/types";
 
@@ -294,10 +294,10 @@ describe("W12 초안 만들기 → 게시", () => {
 describe("W12 폴더 이동·삭제 (A4)", () => {
   it("페이지를 폴더의 하위로 옮길 수 있다 — 폴더도 부모가 된다", async () => {
     localStorage.setItem("wiki.v1", JSON.stringify(seedWithFolder()));
-    const { movePage, listPages } = await import("../features/wiki/store/wikiStore");
+    const { movePage } = await import("../features/wiki/store/wikiStore");
 
     await movePage("pg2", { parentId: "fd1" }); // 팀 규칙 → 운영 문서 폴더 안으로
-    const pages = await listPages("sp1");
+    const pages = await allPagesForTest("sp1");
     expect(pages.find((p) => p.id === "pg2")?.parentId).toBe("fd1");
   });
 
@@ -401,11 +401,15 @@ describe("위치 지정해 만들기", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "새 콘텐츠 만들기" });
     await user.click(within(dialog).getByRole("radio", { name: "폴더" }));
-    await user.type(within(dialog).getByRole("textbox"), "자료실");
+    // 상위 위치 검색 입력이 생겨 다이얼로그에 textbox가 둘이다 — 라벨로 지정한다.
+    await user.type(
+      within(dialog).getByLabelText("폴더 이름 (비우면 기본 이름)"),
+      "자료실",
+    );
     await user.selectOptions(await within(dialog).findByLabelText("상위 위치"), "pg1");
     await user.click(within(dialog).getByRole("button", { name: "만들기" }));
 
-    const created = (await listPages("sp1")).find((p) => p.title === "자료실")!;
+    const created = (await allPagesForTest("sp1")).find((p) => p.title === "자료실")!;
     expect(created.type).toBe("folder");
     expect(created.parentId).toBe("pg1");
   });
@@ -419,11 +423,14 @@ describe("위치 지정해 만들기", () => {
     await user.click(await screen.findByRole("menuitem", { name: "페이지" }));
 
     const dialog = await screen.findByRole("dialog", { name: "새 콘텐츠 만들기" });
-    await user.type(within(dialog).getByRole("textbox"), "홈에서 만든 문서");
+    await user.type(
+      within(dialog).getByLabelText("제목 (비우면 초안 기본명)"),
+      "홈에서 만든 문서",
+    );
     await within(dialog).findByLabelText("상위 위치");
     await user.click(within(dialog).getByRole("button", { name: "만들기" }));
 
-    const created = (await listPages("sp1")).find((p) => p.title === "홈에서 만든 문서")!;
+    const created = (await allPagesForTest("sp1")).find((p) => p.title === "홈에서 만든 문서")!;
     expect(created.status).toBe("draft");
   });
 });

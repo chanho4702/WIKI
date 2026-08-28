@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import { Button, Spinner } from "@chanho/react";
 import type { Space } from "../features/wiki/store/types";
@@ -10,10 +10,28 @@ import { SpaceDirectoryPage } from "../features/wiki/pages/SpaceDirectoryPage";
 import { HomePage } from "../features/wiki/pages/HomePage";
 import { PageViewPage } from "../features/wiki/pages/PageViewPage";
 import { FolderPage } from "../features/wiki/pages/FolderPage";
-import { PageEditPage } from "../features/wiki/pages/PageEditPage";
 import { SearchPage } from "../features/wiki/pages/SearchPage";
 import { TrashPage } from "../features/wiki/pages/TrashPage";
 import { LabelsPage } from "../features/wiki/pages/LabelsPage";
+
+/**
+ * 편집 화면만 지연 로딩한다(2026-08-29).
+ *
+ * TipTap 확장 묶음이 번들의 큰 덩어리인데, 읽기만 하는 사용자는 한 번도 쓰지 않는다.
+ * 나머지 화면은 크기가 작아 쪼갤수록 왕복만 늘어 그대로 둔다.
+ */
+const PageEditPage = lazy(() =>
+  import("../features/wiki/pages/PageEditPage").then((m) => ({ default: m.PageEditPage })),
+);
+
+/** 편집 화면 청크를 받는 동안의 자리표시 — 보기 화면의 스켈레톤과 같은 톤. */
+function EditorFallback() {
+  return (
+    <div className="app-loading">
+      <Spinner size="large" label="편집기 불러오는 중" />
+    </div>
+  );
+}
 
 export function App() {
   const [spaces, setSpaces] = useState<Space[] | null>(null);
@@ -67,9 +85,23 @@ export function App() {
          * 컨텍스트(pages/space/reloadPages)를 그대로 소비한다. */}
         <Route path="/spaces/:spaceId">
           <Route index element={<SpaceIndexPage />} />
-          <Route path="pages/new" element={<PageEditPage key="new" />} />
+          <Route
+            path="pages/new"
+            element={
+              <Suspense fallback={<EditorFallback />}>
+                <PageEditPage key="new" />
+              </Suspense>
+            }
+          />
           <Route path="pages/:pageId" element={<PageViewPage />} />
-          <Route path="pages/:pageId/edit" element={<PageEditPage key="edit" />} />
+          <Route
+            path="pages/:pageId/edit"
+            element={
+              <Suspense fallback={<EditorFallback />}>
+                <PageEditPage key="edit" />
+              </Suspense>
+            }
+          />
           {/* 폴더는 본문이 없어 페이지와 다른 화면을 연다(기획 P1) — 경로도 분리한다 */}
           <Route path="folder/:folderId" element={<FolderPage />} />
           {/* 휴지통은 스페이스 스코프 — 컨플루언스 스페이스 설정의 휴지통 위치를 따른다 */}

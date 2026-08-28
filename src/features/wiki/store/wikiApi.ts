@@ -147,12 +147,6 @@ export async function createSpace(input: { key: string; name: string }): Promise
   return mapSpace(await json(res));
 }
 
-export async function listPages(spaceId: string): Promise<Page[]> {
-  const rows = await json<Parameters<typeof mapPageTree>[0]>(
-    await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/pages`),
-  );
-  return mapPageTree(rows);
-}
 export async function getPage(id: string): Promise<Page | null> {
   const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}`);
   if (res.status === 404) return null;
@@ -421,6 +415,10 @@ export async function lookupPagesByTitle(spaceId: string, titles: string[]): Pro
   if (wanted.length === 0) return [];
   const query = wanted.map((t) => `title=${encodeURIComponent(t)}`).join("&");
   return nodes(`/api/wiki/spaces/${toBackendId(spaceId)}/pages/lookup?${query}`);
+}
+
+export async function listRecentlyUpdated(spaceId: string, limit = 8): Promise<PageNode[]> {
+  return nodes(`/api/wiki/spaces/${toBackendId(spaceId)}/pages/recent?limit=${limit}`);
 }
 
 export async function listPagesByIds(spaceId: string, ids: string[]): Promise<PageNode[]> {

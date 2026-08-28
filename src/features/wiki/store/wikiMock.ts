@@ -146,13 +146,6 @@ export async function createSpace(input: { key: string; name: string }): Promise
 
 // ── pages ────────────────────────────────────────────────────
 
-export async function listPages(spaceId: string): Promise<Page[]> {
-  return clone(
-    load()
-      .pages.filter((p) => p.spaceId === spaceId)
-      .sort((a, b) => a.position - b.position),
-  );
-}
 
 export async function getPage(id: string): Promise<Page | null> {
   const page = load().pages.find((p) => p.id === id);
@@ -649,6 +642,16 @@ export async function lookupPagesByTitle(spaceId: string, titles: string[]): Pro
   if (wanted.size === 0) return [];
   return data.pages
     .filter((p) => p.spaceId === spaceId && wanted.has(p.title.trim().toLowerCase()))
+    .map((p) => toNode(data, p));
+}
+
+/** 최근 수정 순 — 스페이스 개요의 "최근 업데이트". 전량을 읽어 정렬하던 것을 대체한다. */
+export async function listRecentlyUpdated(spaceId: string, limit = 8): Promise<PageNode[]> {
+  const data = load();
+  return data.pages
+    .filter((p) => p.spaceId === spaceId)
+    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0))
+    .slice(0, Math.min(Math.max(limit, 1), TREE_SEARCH_LIMIT))
     .map((p) => toNode(data, p));
 }
 
