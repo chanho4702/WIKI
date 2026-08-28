@@ -69,6 +69,20 @@ export interface Comment {
   parentId: string | null; // null = 최상위, 값 있으면 답글 (중첩 1단 제한)
   createdAt: string;
   updatedAt: string | null; // 수정된 적 없으면 null — "(수정됨)" 표시 근거
+  /** "inline"이면 본문 구간에 붙은 댓글(W21-4). 없으면 "page"로 간주(이 필드 도입 이전 데이터). */
+  anchorType?: "page" | "inline";
+  /** 인라인 댓글이 가리키는 **렌더된 본문**의 텍스트. 못 찾으면 스레드는 "위치 없음"으로 남는다. */
+  anchorQuote?: string | null;
+  /** 같은 텍스트가 여러 번 나올 때 몇 번째인지(0부터). */
+  anchorOccurrence?: number | null;
+  /** 값이 있으면 해결된 스레드 — 본문 하이라이트에서 내려간다. */
+  resolvedAt?: string | null;
+}
+
+/** 인라인 댓글을 만들 때 넘기는 앵커 — 화면에서 드래그한 구간이다. */
+export interface CommentAnchor {
+  quote: string;
+  occurrence: number;
 }
 
 export interface Attachment {
@@ -252,6 +266,53 @@ export interface NotificationList {
   items: Notification[];
 }
 
+/**
+ * 휴지통 한 줄(W21-1). 사용자가 직접 버린 페이지만 항목이 되고, 함께 딸려간 하위는
+ * `descendantCount`로만 센다 — 하위 30개를 지운 사람에게 31줄을 보여주지 않는다.
+ */
+export interface TrashItem {
+  id: string;
+  title: string;
+  type: PageType;
+  icon?: string | null;
+  deletedAt: string;
+  deletedBy: string;
+  descendantCount: number;
+}
+
+/**
+ * 복원 결과. `reparentedToRoot`는 원래 부모가 사라져 최상위로 올라왔다는 뜻이다 —
+ * 화면이 알려주지 않으면 사용자가 문서를 엉뚱한 곳에서 찾는다.
+ */
+export interface PageRestoreResult {
+  page: Page;
+  reparentedToRoot: boolean;
+  restoredCount: number;
+}
+
+/**
+ * 지연 트리의 노드 하나(2026-08-28). 본문이 없고 `childCount`가 있다.
+ *
+ * childCount가 필요한 이유: 지연 트리는 자식을 불러오기 전에 펼침 화살표를 그릴지 정해야 한다.
+ * 없으면 "펼쳤더니 비어 있는" 노드가 생기거나, 화살표를 그리려고 전부 미리 불러오게 된다.
+ */
+export interface PageNode {
+  id: string;
+  parentId: string | null;
+  title: string;
+  type: PageType;
+  status: PageStatus;
+  position: number;
+  icon?: string | null;
+  childCount: number;
+}
+
+/** 스페이스 라벨 목록의 한 줄 — 사용 횟수가 있어야 어떤 라벨이 실제로 쓰이는지 보인다. */
+export interface LabelCount {
+  name: string;
+  count: number;
+}
+
 /** localStorage `wiki.v1`에 저장되는 루트 구조 */
 export interface WikiData {
   users: User[];
@@ -263,4 +324,25 @@ export interface WikiData {
   notifications?: Notification[];
   /** 페이지 제한(W18) — 목업 저장. 키 = pageId. 없던 저장분 호환 optional. */
   restrictions?: Record<string, { view: RestrictionPrincipal[]; edit: RestrictionPrincipal[] }>;
+  /**
+   * 휴지통(W21-1) — 목업 저장. 버려진 페이지를 살아 있는 배열에서 빼고 여기로 옮긴다.
+   * 백엔드는 같은 행에 deleted_at을 찍지만(V13), 목업은 별도 배열이 조회 경로를 건드리지 않아
+   * "버린 문서가 어딘가에서 되살아나는" 실수를 구조적으로 막는다.
+   */
+  trash?: TrashEntry[];
+  /** 페이지 라벨(W21-2) — 키 = pageId. 없던 저장분 호환 optional. */
+  labels?: Record<string, string[]>;
+  /** 페이지 구독(W21-4) — 키 = pageId, 값 = 구독자 id 목록. */
+  watches?: Record<string, string[]>;
+}
+
+/** 휴지통에 보관된 묶음 — 복원하려면 버전·댓글도 함께 보관해야 한다. */
+export interface TrashEntry {
+  page: Page;
+  deletedAt: string;
+  deletedBy: string;
+  /** 사용자가 직접 버린 페이지만 true — cascade로 딸려간 하위는 false(복원 묶음의 경계). */
+  root: boolean;
+  versions: PageVersion[];
+  comments: Comment[];
 }

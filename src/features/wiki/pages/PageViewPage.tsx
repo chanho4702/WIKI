@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
 import { Avatar, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
-import { Maximize2, Minimize2, MoreHorizontal, Trash2, Star, Lock } from "lucide-react";
+import { Download, Maximize2, Minimize2, MoreHorizontal, Trash2, Star, Lock } from "lucide-react";
 import type { DeletePageOptions, Page, PageRestrictions, User } from "../store/types";
 import { deletePage, getPage, listUsers, recordPageView , getPageRestrictions } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
@@ -12,6 +12,12 @@ import { HistoryModal } from "../components/HistoryModal";
 import { ChildPages } from "../components/ChildPages";
 import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { CommentSection } from "../components/CommentSection";
+import { PageLabels } from "../components/PageLabels";
+import { Backlinks } from "../components/Backlinks";
+import { PageAttachments } from "../components/PageAttachments";
+import { ExportDialog } from "../components/ExportDialog";
+import { WatchButton } from "../components/WatchButton";
+import { InlineCommentPanel } from "../components/InlineCommentPanel";
 import { usePageWidth } from "../lib/pageWidth";
 import { removeStarredPage, useStarredPages } from "../lib/starredPages";
 import { RestrictionsDialog } from "../components/RestrictionsDialog";
@@ -82,6 +88,8 @@ export function PageViewPage() {
   const { starred: starredPages, toggle: toggleStar } = useStarredPages();
   // 삭제 확인 다이얼로그(공통 ConfirmDialog) — "…" 드롭다운의 삭제에서 연다
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -280,6 +288,7 @@ export function PageViewPage() {
                 await reloadPages(); // 제목이 복원된 경우 사이드바 트리 반영
               }}
             />
+            <WatchButton pageId={page.id} />
             {/* 삭제는 "…" 드롭다운으로 이동 + confirm 다이얼로그 */}
             <Dropdown
               trigger={
@@ -295,6 +304,11 @@ export function PageViewPage() {
               }
               items={[
                 {
+                  label: "내보내기",
+                  icon: <Download size={16} aria-hidden="true" />,
+                  onSelect: () => setExportOpen(true),
+                },
+                {
                   label: "삭제",
                   danger: true,
                   icon: <Trash2 size={16} aria-hidden="true" />,
@@ -305,6 +319,7 @@ export function PageViewPage() {
           </>
         }
       />
+      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} page={page} />
       <DeleteContentDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -341,8 +356,15 @@ export function PageViewPage() {
       })()}
       {/* 본문에 명시 목차(::toc)가 있으면 자동 목차는 숨긴다 — 같은 목차가 두 번 보이는 중복 방지 */}
       {!/^\s*::toc\s*$/m.test(page.body) && <TableOfContents markdown={page.body} />}
-      <MarkdownView markdown={page.body} pages={pages} spaceId={space.id} />
-      <ChildPages pages={pages} currentPageId={page.id} spaceId={space.id} />
+      {/* 인라인 댓글이 하이라이트를 심을 대상 — 렌더된 본문 DOM이 앵커 기준이다(W21-4) */}
+      <div ref={bodyRef}>
+        <MarkdownView markdown={page.body} spaceId={space.id} />
+      </div>
+      <InlineCommentPanel pageId={page.id} body={page.body} users={users} bodyRef={bodyRef} />
+      <PageLabels pageId={page.id} spaceId={space.id} />
+      <ChildPages currentPageId={page.id} spaceId={space.id} />
+      <PageAttachments pageId={page.id} body={page.body} />
+      <Backlinks pageId={page.id} spaceId={space.id} />
       <CommentSection pageId={page.id} users={users} />
     </article>
   );

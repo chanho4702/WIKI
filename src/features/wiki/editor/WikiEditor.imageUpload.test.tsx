@@ -50,7 +50,7 @@ describe("WikiEditor 이미지 업로드", () => {
     });
     const ref = createRef<WikiEditorHandle>();
     const { container } = render(
-      <WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />,
+      <WikiEditor ref={ref} initialMarkdown="본문" spaceId="sp1" pageId="2" />,
     );
     await waitFor(() => expect(editorRegistry.current).toBeTruthy());
 
@@ -87,7 +87,7 @@ describe("WikiEditor 이미지 업로드", () => {
       <WikiEditor
         ref={ref}
         initialMarkdown=""
-        pages={[]}
+        spaceId="sp1"
         pageId="2"
         collaborationExtensions={buildCollaborationExtensions({ document })}
       />,
@@ -110,7 +110,7 @@ describe("WikiEditor 이미지 업로드", () => {
     store.uploadAttachment
       .mockResolvedValueOnce({ id: "8", pageId: "2", filename: "paste.png", contentType: "image/png", sizeBytes: 3 })
       .mockResolvedValueOnce({ id: "9", pageId: "2", filename: "drop.webp", contentType: "image/webp", sizeBytes: 3 });
-    const { container } = render(<WikiEditor initialMarkdown="본문" pages={[]} pageId="2" />);
+    const { container } = render(<WikiEditor initialMarkdown="본문" spaceId="sp1" pageId="2" />);
     await waitFor(() => expect(editorRegistry.current).toBeTruthy());
     const root = container.querySelector(".wiki-editor")!;
     const pasted = new File([new Uint8Array([1])], "paste.png", { type: "image/png" });
@@ -137,7 +137,7 @@ describe("WikiEditor 이미지 업로드", () => {
       .mockReturnValueOnce(new Promise((resolve) => { finishSecond = resolve; }));
     const ref = createRef<WikiEditorHandle>();
     const { container } = render(
-      <WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />,
+      <WikiEditor ref={ref} initialMarkdown="본문" spaceId="sp1" pageId="2" />,
     );
     const first = new File(["first"], "first.png", { type: "image/png" });
     const second = new File(["second"], "second.png", { type: "image/png" });
@@ -164,7 +164,7 @@ describe("WikiEditor 이미지 업로드", () => {
       sizeBytes: 10,
     });
     const ref = createRef<WikiEditorHandle>();
-    const { container } = render(<WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />);
+    const { container } = render(<WikiEditor ref={ref} initialMarkdown="본문" spaceId="sp1" pageId="2" />);
     const input = container.querySelector("input[type='file']") as HTMLInputElement;
     fireEvent.change(input, {
       target: { files: [new File(["<script>"], "fake.png", { type: "image/png" })] },
@@ -182,7 +182,7 @@ describe("WikiEditor 이미지 업로드", () => {
     const { container } = render(
       <WikiEditor
         initialMarkdown="본문"
-        pages={[]}
+        spaceId="sp1"
         pageId="2"
         onUploadStateChange={onUploadStateChange}
       />,
@@ -210,7 +210,7 @@ describe("WikiEditor 이미지 업로드", () => {
     }));
     const ref = createRef<WikiEditorHandle>();
     const { container } = render(
-      <WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />,
+      <WikiEditor ref={ref} initialMarkdown="본문" spaceId="sp1" pageId="2" />,
     );
     const input = container.querySelector("input[type='file']") as HTMLInputElement;
     const file = new File([new Uint8Array([1, 2, 3])], "slow.png", { type: "image/png" });
@@ -245,7 +245,7 @@ describe("WikiEditor 이미지 업로드", () => {
       sizeBytes: 3,
     });
     const ref = createRef<WikiEditorHandle>();
-    const { container } = render(<WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />);
+    const { container } = render(<WikiEditor ref={ref} initialMarkdown="본문" spaceId="sp1" pageId="2" />);
     const input = container.querySelector("input[type='file']") as HTMLInputElement;
     fireEvent.change(input, {
       target: { files: [new File(["png"], "kept.png", { type: "image/png" })] },
@@ -267,7 +267,7 @@ describe("WikiEditor 이미지 업로드", () => {
       sizeBytes: 3,
     });
     const ref = createRef<WikiEditorHandle>();
-    const firstRender = render(<WikiEditor ref={ref} initialMarkdown="본문" pages={[]} pageId="2" />);
+    const firstRender = render(<WikiEditor ref={ref} initialMarkdown="본문" spaceId="sp1" pageId="2" />);
     const { container } = firstRender;
     const input = container.querySelector("input[type='file']") as HTMLInputElement;
     const upload = () => fireEvent.change(input, {
@@ -285,7 +285,7 @@ describe("WikiEditor 이미지 업로드", () => {
     store.deleteAttachment.mockClear();
     const cancelRef = createRef<WikiEditorHandle>();
     const cancelRender = render(
-      <WikiEditor ref={cancelRef} initialMarkdown="본문" pages={[]} pageId="2" />,
+      <WikiEditor ref={cancelRef} initialMarkdown="본문" spaceId="sp1" pageId="2" />,
     );
     const cancelInput = cancelRender.container.querySelector("input[type='file']") as HTMLInputElement;
     fireEvent.change(cancelInput, {

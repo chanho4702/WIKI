@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Avatar, EmptyState, TextField } from "@chanho/react";
-import { ChevronRight, Clock, Compass, Grid3x3, House, Plus, Star } from "lucide-react";
+import { ChevronRight, Clock, Compass, Grid3x3, House, Plus, Star, Tag, Trash2 } from "lucide-react";
 import type { Page, Space } from "../store/types";
 import { PageTree } from "./PageTree";
 import { TreeSkeleton } from "./WikiSkeleton";
@@ -254,6 +254,16 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
                 />
               )}
             </section>
+            {/* 컨플루언스 스페이스 사이드바 하단의 설정 자리 — 지금은 휴지통만 산다.
+              * 스페이스 설정 화면이 생기면 이 자리에 함께 묶는다. */}
+            <NavLink to={`/spaces/${space.id}/labels`} className={navClass}>
+              <Tag className="global-nav-icon" size={16} aria-hidden="true" />
+              <span>라벨</span>
+            </NavLink>
+            <NavLink to={`/spaces/${space.id}/trash`} className={navClass}>
+              <Trash2 className="global-nav-icon" size={16} aria-hidden="true" />
+              <span>휴지통</span>
+            </NavLink>
           </div>
         </>
       ) : (

@@ -1,18 +1,21 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Editor } from "@tiptap/core";
 import { Link as LinkIcon, CreditCard, Type } from "lucide-react";
-import type { Page } from "../../store/types";
+import { getPage } from "../../store/wikiStore";
 import type { UrlPasteInfo } from "../extensions/urlPaste";
 import { BOOKMARK_NAME } from "../extensions/bookmarkCard";
 
-/** 내부 페이지 URL(/wiki/spaces/{s}/pages/{p})이면 해당 페이지, 아니면 null. */
-export function internalPageOf(url: string, pages: Page[]): Page | null {
+/**
+ * 내부 페이지 URL(/wiki/spaces/{s}/pages/{p})이면 그 페이지 id, 아니면 null.
+ * 제목은 여기서 알 수 없다 — 예전에는 스페이스 전 페이지 배열에서 찾았지만, 이제 id만 뽑고
+ * 제목은 필요할 때 서버에서 읽는다(2026-08-28).
+ */
+export function internalPageIdOf(url: string): string | null {
   try {
     const u = new URL(url, window.location.origin);
     if (u.origin !== window.location.origin) return null;
     const m = /\/wiki\/spaces\/[^/]+\/pages\/([^/?#]+)/.exec(u.pathname);
-    if (!m) return null;
-    return pages.find((p) => p.id === m[1]) ?? null;
+    return m ? m[1] : null;
   } catch {
     return null;
   }
@@ -30,7 +33,6 @@ export function fallbackTitleOf(url: string): string {
 export interface PasteLinkMenuProps {
   editor: Editor;
   info: UrlPasteInfo;
-  pages: Page[];
   anchor: { left: number; bottom: number };
   onClose: () => void;
 }
@@ -40,8 +42,27 @@ export interface PasteLinkMenuProps {
  * 인라인 제목(내부 페이지는 [[위키링크]], 외부는 호스트명 링크) / 미리보기 카드(::bookmark).
  * 다른 입력이 시작되면(문서 변경) WikiEditor가 닫는다 — 메뉴는 순간의 선택지다.
  */
-export function PasteLinkMenu({ editor, info, pages, anchor, onClose }: PasteLinkMenuProps) {
-  const internal = internalPageOf(info.url, pages);
+export function PasteLinkMenu({ editor, info, anchor, onClose }: PasteLinkMenuProps) {
+  const internalId = internalPageIdOf(info.url);
+  // 내부 페이지면 제목을 읽어 [[위키링크]]로 바꿔준다. 조회 전에는 호스트명 폴백을 보여준다.
+  const [internal, setInternal] = useState<{ title: string } | null>(null);
+  useEffect(() => {
+    if (internalId === null) {
+      setInternal(null);
+      return;
+    }
+    let cancelled = false;
+    void getPage(internalId)
+      .then((page) => {
+        if (!cancelled && page) setInternal({ title: page.title });
+      })
+      .catch(() => {
+        if (!cancelled) setInternal(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [internalId]);
   const inlineTitle = internal?.title ?? fallbackTitleOf(info.url);
 
   useEffect(() => {

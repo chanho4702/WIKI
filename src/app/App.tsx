@@ -12,6 +12,8 @@ import { PageViewPage } from "../features/wiki/pages/PageViewPage";
 import { FolderPage } from "../features/wiki/pages/FolderPage";
 import { PageEditPage } from "../features/wiki/pages/PageEditPage";
 import { SearchPage } from "../features/wiki/pages/SearchPage";
+import { TrashPage } from "../features/wiki/pages/TrashPage";
+import { LabelsPage } from "../features/wiki/pages/LabelsPage";
 
 export function App() {
   const [spaces, setSpaces] = useState<Space[] | null>(null);
@@ -70,6 +72,11 @@ export function App() {
           <Route path="pages/:pageId/edit" element={<PageEditPage key="edit" />} />
           {/* 폴더는 본문이 없어 페이지와 다른 화면을 연다(기획 P1) — 경로도 분리한다 */}
           <Route path="folder/:folderId" element={<FolderPage />} />
+          {/* 휴지통은 스페이스 스코프 — 컨플루언스 스페이스 설정의 휴지통 위치를 따른다 */}
+          <Route path="trash" element={<TrashPage />} />
+          {/* 라벨 탐색 — 트리로는 못 찾는 가로 분류(컨플루언스 "라벨로 찾아보기") */}
+          <Route path="labels" element={<LabelsPage />} />
+          <Route path="labels/:name" element={<LabelsPage />} />
         </Route>
         {/* "/" 포함 그 외 전부 → 첫 스페이스 (index는 스페이스 개요를 보여준다) */}
         <Route path="*" element={<Navigate to={`/spaces/${spaces[0].id}`} replace />} />

@@ -21,6 +21,23 @@ wiki-service가 붙으면 함수 내부만 `apiFetch`로 교체한다 — **함�
   백엔드 모드도 같은 의미론이다 — 서버가 `?children=promote|cascade`를 받아 한 트랜잭션에서
   처리하고, 옵션 없이 자식이 있으면 409를 준다(wiki-backend V2).
 - **코멘트**: 답글 중첩 1단만(답글의 답글 거부), 본인만 수정/삭제, 최상위 삭제 시 답글 연쇄 삭제.
+- **휴지통(W21-1)**: `deletePage`는 **소프트 삭제**다 — 페이지·버전·댓글이 사라지지 않고 휴지통으로
+  간다. `listTrash(spaceId)`는 사용자가 직접 버린 항목만 행으로 주고 함께 딸려간 하위는
+  `descendantCount`로 센다. `restorePage(id)`는 루트 + "따로 버리지 않은" 하위를 한 묶음으로
+  되살리고, 원래 부모가 사라졌으면 최상위로 올리며 `reparentedToRoot: true`를 준다.
+  `purgePage`/`emptyTrash`는 되돌릴 수 없다(백엔드는 스페이스 ADMIN만 허용).
+- **라벨(W21-2)**: 이름은 정규화한다 — trim + 소문자 + 내부 공백은 하이픈. `setLabels`는 **전량
+  교체**(부분 추가/삭제 API를 두지 않는다). 정렬은 코드유닛 기준(백엔드 SQL `order by name`과 일치) —
+  `localeCompare`를 쓰면 목업/백엔드 모드의 칩 순서가 갈린다.
+- **백링크(W21-2)**: 본문 `[[제목]]`의 역방향. 대상은 id가 아니라 **제목**이다(렌더러
+  `resolveWikiLinks`와 같은 기준) — 코드 구간(``` / `)의 대괄호는 링크로 세지 않는다.
+- **인라인 댓글(W21-4)**: `addComment(pageId, body, parentId, anchor)`의 anchor는 **렌더된 본문**의
+  `{quote, occurrence}`다. 마크다운 원문 오프셋이 아니다 — 서식을 가로지르는 선택을 표현할 수
+  없기 때문. 못 찾은 스레드는 지우지 않고 화면이 "위치 없음"으로 표시한다. `setCommentResolved`는
+  인라인 스레드에만 쓴다.
+- **구독(W21-4)**: 알림 대상은 `watches`가 단일 원장이다. 만들거나 고치거나 댓글을 달면 자동
+  구독되고 `setWatchState(pageId, false)`로 끌 수 있다. 구독 개념 이전 데이터는 `normalize`가
+  작성자·편집자를 구독자로 백필한다(백엔드 V15 백필과 같은 규칙).
 - **에러는 한국어 사용자 문구로 throw** — 화면이 메시지를 그대로 노출한다.
 - **편집 세션 낙관적 락**: 화면은 로드 때 받은 `Page.version`을 `updatePage(...,
   { expectedVersion })`에 넘긴다. API 어댑터가 저장 직전 조회한 최신 버전으로 바꾸면 stale 편집이

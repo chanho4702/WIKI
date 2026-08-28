@@ -2,7 +2,7 @@
 export { __resetForTest } from "./wikiMock";
 
 import { sharedApiFetch, sharedApiUpload, sharedCollaborationFetch } from "./apiClient";
-import { mapComment, mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, extractError, type CommentDto } from "./mapping";
+import { mapComment, mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, toClientId, extractError, type CommentDto, type PageDto, type TreeItemDto, mapPageNode, type PageNodeDto } from "./mapping";
 import {
   ContentSearchError,
   MoveImpactError,
@@ -25,8 +25,13 @@ import {
   type PageType,
   type PageVersion,
   type SearchContentInput,
+  type CommentAnchor,
+  type LabelCount,
+  type PageNode,
+  type PageRestoreResult,
   type SearchResults,
   type Space,
+  type TrashItem,
   type UpdatePageOptions,
   type User,
 } from "./types";
@@ -77,6 +82,7 @@ export async function addComment(
   pageId: string,
   body: string,
   parentId?: string | null,
+  anchor?: CommentAnchor | null,
 ): Promise<Comment> {
   const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/comments`, {
     method: "POST",
@@ -84,9 +90,35 @@ export async function addComment(
     body: JSON.stringify({
       body,
       parentId: parentId == null ? null : toBackendId(parentId),
+      ...(anchor ? { anchorQuote: anchor.quote, anchorOccurrence: anchor.occurrence } : {}),
     }),
   });
   return mapComment(await json<CommentDto>(res));
+}
+
+/* ── 인라인 댓글·구독(W21-4) ─────────────────────────────── */
+
+export async function setCommentResolved(id: string, resolved: boolean): Promise<Comment> {
+  const res = await sharedApiFetch(`/api/wiki/comments/${toBackendId(id)}/resolved`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resolved }),
+  });
+  return mapComment(await json<CommentDto>(res));
+}
+
+export async function getWatchState(pageId: string): Promise<boolean> {
+  const body = await json<{ watching: boolean }>(
+    await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/watch`));
+  return body.watching;
+}
+
+export async function setWatchState(pageId: string, watching: boolean): Promise<boolean> {
+  const body = await json<{ watching: boolean }>(
+    await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/watch`, {
+      method: watching ? "POST" : "DELETE",
+    }));
+  return body.watching;
 }
 
 export async function updateComment(id: string, body: string): Promise<Comment> {
@@ -360,6 +392,115 @@ export async function deletePage(id: string, options?: DeletePageOptions): Promi
   const query = options?.children ? `?children=${options.children}` : "";
   await json(await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}${query}`, { method: "DELETE" }));
 }
+
+/* ── 지연 트리(2026-08-28) ─────────────────── */
+
+async function nodes(path: string): Promise<PageNode[]> {
+  const rows = await json<PageNodeDto[]>(await sharedApiFetch(path));
+  return rows.map(mapPageNode);
+}
+
+export async function listChildren(
+  spaceId: string,
+  parentId: string | null = null,
+): Promise<PageNode[]> {
+  const query = parentId === null ? "" : `?parentId=${toBackendId(parentId)}`;
+  return nodes(`/api/wiki/spaces/${toBackendId(spaceId)}/pages/children${query}`);
+}
+
+export async function listAncestors(pageId: string): Promise<PageNode[]> {
+  return nodes(`/api/wiki/pages/${toBackendId(pageId)}/ancestors`);
+}
+
+export async function listDescendants(pageId: string): Promise<PageNode[]> {
+  return nodes(`/api/wiki/pages/${toBackendId(pageId)}/descendants`);
+}
+
+export async function lookupPagesByTitle(spaceId: string, titles: string[]): Promise<PageNode[]> {
+  const wanted = titles.map((t) => t.trim()).filter((t) => t.length > 0);
+  if (wanted.length === 0) return [];
+  const query = wanted.map((t) => `title=${encodeURIComponent(t)}`).join("&");
+  return nodes(`/api/wiki/spaces/${toBackendId(spaceId)}/pages/lookup?${query}`);
+}
+
+export async function searchPageTitles(spaceId: string, query: string): Promise<PageNode[]> {
+  const q = query.trim();
+  if (!q) return [];
+  return nodes(`/api/wiki/spaces/${toBackendId(spaceId)}/pages/search?q=${encodeURIComponent(q)}`);
+}
+
+/* ── 라벨·백링크(W21-2) ──────────────────────────────────── */
+
+export async function listLabels(pageId: string): Promise<string[]> {
+  return json<string[]>(await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/labels`));
+}
+
+export async function setLabels(pageId: string, labels: string[]): Promise<string[]> {
+  return json<string[]>(
+    await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/labels`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ labels }),
+    }),
+  );
+}
+
+export async function listSpaceLabels(spaceId: string): Promise<LabelCount[]> {
+  return json<LabelCount[]>(
+    await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/labels`));
+}
+
+export async function listPagesWithLabel(spaceId: string, name: string): Promise<Page[]> {
+  const items = await json<TreeItemDto[]>(await sharedApiFetch(
+    `/api/wiki/spaces/${toBackendId(spaceId)}/labels/${encodeURIComponent(name)}/pages`));
+  return mapPageTree(items);
+}
+
+export async function listBacklinks(pageId: string): Promise<Page[]> {
+  const items = await json<TreeItemDto[]>(
+    await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/backlinks`));
+  return mapPageTree(items);
+}
+
+/* ── 휴지통(W21-1) ───────────────────────────────────────── */
+
+export async function listTrash(spaceId: string): Promise<TrashItem[]> {
+  const rows = await json<Array<{
+    id: number; title: string; type: string; icon: string | null;
+    deletedAt: string; deletedBy: number; descendantCount: number;
+  }>>(await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/trash`));
+  return rows.map((r) => ({
+    id: toClientId(r.id),
+    title: r.title,
+    type: r.type === "folder" ? "folder" : "page",
+    icon: r.icon,
+    deletedAt: r.deletedAt,
+    deletedBy: toClientId(r.deletedBy),
+    descendantCount: r.descendantCount,
+  }));
+}
+
+export async function restorePage(id: string): Promise<PageRestoreResult> {
+  const body = await json<{
+    page: PageDto; reparentedToRoot: boolean; restoredCount: number;
+  }>(await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/restore`, { method: "POST" }));
+  return {
+    page: mapPage(body.page),
+    reparentedToRoot: body.reparentedToRoot,
+    restoredCount: body.restoredCount,
+  };
+}
+
+export async function purgePage(id: string): Promise<void> {
+  await json(await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/purge`, { method: "DELETE" }));
+}
+
+export async function emptyTrash(spaceId: string): Promise<number> {
+  const body = await json<{ purged: number }>(
+    await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/trash`, { method: "DELETE" }));
+  return body.purged;
+}
+
 /** 단일 페이지 복제 — 서버가 첨부 복사·본문 참조 재작성까지 한다(v1 계약). */
 export async function copyPage(id: string): Promise<Page> {
   const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/copy`, { method: "POST" });

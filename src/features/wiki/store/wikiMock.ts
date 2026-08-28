@@ -22,9 +22,16 @@ import type {
   UpdatePageOptions,
   User,
   WikiData,
+  TrashItem,
+  TrashEntry,
+  PageRestoreResult,
+  LabelCount,
+  CommentAnchor,
+  PageNode,
 } from "./types";
 import { CURRENT_USER_ID } from "../../../mock/users";
 import { createSeedData } from "../../../mock/seed";
+import { WIKI_LINK_SOURCE } from "../lib/wikiLinks";
 
 const STORAGE_KEY = "wiki.v1";
 
@@ -50,6 +57,18 @@ function normalize(data: WikiData): WikiData {
     page.type ??= "page";
     page.status ??= "published";
   }
+  // 구독 도입(W21-4) 이전 데이터 백필 — 그때까지 암묵적으로 알림을 받던 사람(작성자 + 버전을
+  // 남긴 사람)을 구독자로 옮긴다. 백엔드 V15 백필과 같은 규칙이다. 이 단계가 없으면 기존
+  // 문서의 알림이 조용히 끊긴다.
+  if (data.watches === undefined) {
+    const watches: Record<string, string[]> = {};
+    for (const page of data.pages) watches[page.id] = [page.createdBy];
+    for (const version of data.versions) {
+      const current = watches[version.pageId];
+      if (current && !current.includes(version.savedBy)) current.push(version.savedBy);
+    }
+    data.watches = watches;
+  }
   return data;
 }
 
@@ -66,7 +85,9 @@ function load(): WikiData {
     }
   }
   if (!cache) {
-    cache = createSeedData();
+    // 시드도 normalize를 태운다 — 구독 백필(W21-4) 같은 파생 데이터가 시드에만 빠지면
+    // "새 저장소에서만 알림이 안 온다"는 재현 어려운 차이가 생긴다.
+    cache = normalize(createSeedData());
     persist();
   }
   return cache;
@@ -203,6 +224,7 @@ export async function createPage(input: {
   };
   data.pages.push(page);
   snapshotVersion(data, page, now); // v1 자동 스냅샷
+  autoWatch(data, page.id, CURRENT_USER_ID); // 만든 문서는 자동 구독(W21-4)
   persist();
   return clone(page);
 }
@@ -241,6 +263,7 @@ export async function updatePage(
   page.updatedBy = CURRENT_USER_ID;
   page.updatedAt = new Date().toISOString();
   snapshotVersion(data, page, page.updatedAt); // 적용 후 내용을 새 버전(max+1)으로
+  autoWatch(data, page.id, CURRENT_USER_ID); // 고친 문서는 자동 구독(W21-4)
   notifyPageUpdated(data, page, oldBody, nextBody);
   persist();
   return clone(page);
@@ -333,11 +356,22 @@ function mentionIdsOf(body: string | undefined): Set<string> {
   return ids;
 }
 
+/**
+ * 알림 대상 = 구독자(W21-4) + 멘션된 사용자. 백엔드와 같은 규칙이다.
+ * 전에는 "작성자 + 버전을 남긴 사람"을 계산했는데 그러면 끌 수가 없었다.
+ */
 function interestedIn(data: WikiData, page: Page, mentions: Set<string>): Set<string> {
   const users = new Set(mentions);
-  users.add(page.createdBy);
-  for (const v of data.versions.filter((v) => v.pageId === page.id)) users.add(v.savedBy);
+  for (const watcher of data.watches?.[page.id] ?? []) users.add(watcher);
   return users;
+}
+
+/** 만들거나 고치거나 댓글을 단 문서는 자동 구독한다(컨플루언스와 같은 기본 동작). */
+function autoWatch(data: WikiData, pageId: string, userId: string): void {
+  data.watches ??= {};
+  const current = new Set(data.watches[pageId] ?? []);
+  current.add(userId);
+  data.watches[pageId] = [...current];
 }
 
 function deliver(data: WikiData, userId: string, type: NotificationType, page: Page) {
@@ -510,10 +544,314 @@ export async function deletePage(id: string, options?: DeletePageOptions): Promi
     });
   }
 
+  // W21-1: 지우지 않고 휴지통으로 옮긴다. 버전·댓글도 함께 보관해야 복원이 원래 상태를 되돌린다.
+  const deletedAt = new Date().toISOString();
+  data.trash ??= [];
+  for (const doomedId of doomed) {
+    const page = data.pages.find((p) => p.id === doomedId);
+    if (!page) continue;
+    data.trash.push({
+      page: clone(page),
+      deletedAt,
+      deletedBy: CURRENT_USER_ID,
+      root: doomedId === id,
+      versions: data.versions.filter((v) => v.pageId === doomedId).map(clone),
+      comments: data.comments.filter((c) => c.pageId === doomedId).map(clone),
+    });
+  }
   data.pages = data.pages.filter((p) => !doomed.has(p.id));
-  data.versions = data.versions.filter((v) => !doomed.has(v.pageId)); // 버전 연쇄 삭제
-  data.comments = data.comments.filter((c) => !doomed.has(c.pageId)); // 코멘트 연쇄 삭제
+  data.versions = data.versions.filter((v) => !doomed.has(v.pageId));
+  data.comments = data.comments.filter((c) => !doomed.has(c.pageId));
   persist();
+}
+
+/* ── 지연 트리(2026-08-28) ───────────────────────────────── */
+
+/**
+ * 목업은 전체 배열을 갖고 있지만, 백엔드와 **같은 모양·같은 상한**으로만 응답한다.
+ * 목업이 더 많이 주면 화면이 목업에서만 동작하고 백엔드 모드에서 조용히 깨진다.
+ */
+const TREE_SEARCH_LIMIT = 50;
+const TREE_LOOKUP_LIMIT = 200;
+
+function toNode(data: WikiData, page: Page): PageNode {
+  return {
+    id: page.id,
+    parentId: page.parentId,
+    title: page.title,
+    type: page.type,
+    status: page.status,
+    position: page.position,
+    icon: page.icon ?? null,
+    childCount: data.pages.filter((p) => p.parentId === page.id).length,
+  };
+}
+
+/** 직계 자식만(parentId 생략/null = 루트). */
+export async function listChildren(
+  spaceId: string,
+  parentId: string | null = null,
+): Promise<PageNode[]> {
+  const data = load();
+  return data.pages
+    .filter((p) => p.spaceId === spaceId && p.parentId === parentId)
+    .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))
+    .map((p) => toNode(data, p));
+}
+
+/** 루트→부모 순서(자기 자신 제외). 순환 데이터에서도 멈춘다. */
+export async function listAncestors(pageId: string): Promise<PageNode[]> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === pageId);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  const chain: Page[] = [];
+  const visited = new Set([pageId]);
+  let cursor = page.parentId;
+  while (cursor !== null && !visited.has(cursor)) {
+    visited.add(cursor);
+    const parent = data.pages.find((p) => p.id === cursor);
+    if (!parent) break;
+    chain.unshift(parent);
+    cursor = parent.parentId;
+  }
+  return chain.map((p) => toNode(data, p));
+}
+
+/** 후손 전체(자기 자신 제외) — 내보내기·삭제 영향 표시가 쓴다. */
+export async function listDescendants(pageId: string): Promise<PageNode[]> {
+  const data = load();
+  const found: Page[] = [];
+  const visited = new Set([pageId]);
+  const queue = [pageId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const child of data.pages.filter((p) => p.parentId === current)) {
+      if (visited.has(child.id)) continue;
+      visited.add(child.id);
+      found.push(child);
+      queue.push(child.id);
+    }
+  }
+  return found.map((p) => toNode(data, p));
+}
+
+/** 제목 정확 일치 — `[[제목]]` 해석. 렌더러와 같은 기준(trim + 소문자, 같은 스페이스). */
+export async function lookupPagesByTitle(spaceId: string, titles: string[]): Promise<PageNode[]> {
+  const data = load();
+  const wanted = new Set(
+    titles
+      .map((t) => t.trim().toLowerCase())
+      .filter((t) => t.length > 0)
+      .slice(0, TREE_LOOKUP_LIMIT),
+  );
+  if (wanted.size === 0) return [];
+  return data.pages
+    .filter((p) => p.spaceId === spaceId && wanted.has(p.title.trim().toLowerCase()))
+    .map((p) => toNode(data, p));
+}
+
+/** 제목 부분 일치 — 사이드바 필터와 `[[` 자동완성. */
+export async function searchPageTitles(spaceId: string, query: string): Promise<PageNode[]> {
+  const data = load();
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return data.pages
+    .filter((p) => p.spaceId === spaceId && p.title.toLowerCase().includes(q))
+    .sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0))
+    .slice(0, TREE_SEARCH_LIMIT)
+    .map((p) => toNode(data, p));
+}
+
+/* ── 라벨·백링크(W21-2) ──────────────────────────────────── */
+
+/** 백엔드 PageLabel.normalize와 같은 규칙 — 앞뒤 공백 제거 + 소문자 + 내부 공백은 하이픈. */
+export function normalizeLabel(raw: string): string {
+  const value = raw.trim().toLowerCase().replace(/\s+/g, "-");
+  if (!value) throw new Error("라벨을 입력하세요");
+  if (value.length > 64) throw new Error("라벨은 64자를 넘을 수 없습니다");
+  return value;
+}
+
+export async function listLabels(pageId: string): Promise<string[]> {
+  // 코드유닛 정렬(기본 sort) — 백엔드의 SQL `order by name`과 같은 기준을 쓴다.
+  // localeCompare는 한글을 라틴 앞에 놓아 목업/백엔드 모드의 칩 순서가 갈린다.
+  const data = load();
+  return [...(data.labels?.[pageId] ?? [])].sort();
+}
+
+/** 전량 교체 — 화면이 최종 상태를 보낸다(백엔드 PUT /labels와 같은 계약). */
+export async function setLabels(pageId: string, raw: string[]): Promise<string[]> {
+  const data = load();
+  if (!data.pages.some((p) => p.id === pageId)) throw new Error("페이지를 찾을 수 없습니다");
+  const names = [...new Set(raw.map(normalizeLabel))];
+  if (names.length > 30) throw new Error("라벨은 페이지당 30개까지입니다");
+  data.labels ??= {};
+  if (names.length === 0) delete data.labels[pageId];
+  else data.labels[pageId] = names;
+  persist();
+  return [...names].sort();
+}
+
+export async function listSpaceLabels(spaceId: string): Promise<LabelCount[]> {
+  const data = load();
+  const counts = new Map<string, number>();
+  for (const page of data.pages.filter((p) => p.spaceId === spaceId)) {
+    for (const name of data.labels?.[page.id] ?? []) {
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || (a.name < b.name ? -1 : 1));
+}
+
+export async function listPagesWithLabel(spaceId: string, name: string): Promise<Page[]> {
+  const data = load();
+  const target = normalizeLabel(name);
+  return data.pages
+    .filter((p) => p.spaceId === spaceId && (data.labels?.[p.id] ?? []).includes(target))
+    .map(clone);
+}
+
+/**
+ * 백링크 — 같은 스페이스에서 이 페이지 제목을 `[[ ]]`로 가리키는 문서.
+ * 목업은 저장된 그래프 없이 본문에서 매번 뽑는다: 본문의 파생물이라 계산이 곧 정본이고,
+ * 백엔드의 "저장 시 재색인"과 결과가 같다.
+ */
+export async function listBacklinks(pageId: string): Promise<Page[]> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === pageId);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  const title = page.title.trim().toLowerCase();
+  return data.pages
+    .filter((p) => p.spaceId === page.spaceId && p.id !== pageId)
+    .filter((p) => extractLinkTargets(p.body).has(title))
+    .sort((a, b) => (a.title < b.title ? -1 : 1))
+    .map(clone);
+}
+
+/** 코드 펜스·인라인 코드를 지운 뒤 `[[제목]]`을 모은다 — 렌더러와 같은 규칙. */
+export function extractLinkTargets(markdown: string): Set<string> {
+  const stripped = markdown.replace(new RegExp("```[\\s\\S]*?```|`[^`\\n]*`", "g"), " ");
+  const found = new Set<string>();
+  for (const match of stripped.matchAll(new RegExp(WIKI_LINK_SOURCE, "g"))) {
+    const title = match[1].trim().toLowerCase();
+    if (title) found.add(title);
+  }
+  return found;
+}
+
+/* ── 휴지통(W21-1) ───────────────────────────────────────── */
+
+/** 루트 항목만 행으로. 하위는 개수로 센다 — 백엔드 TrashService.list와 같은 규칙. */
+export async function listTrash(spaceId: string): Promise<TrashItem[]> {
+  const data = load();
+  const entries = (data.trash ?? []).filter((t) => t.page.spaceId === spaceId);
+  const childrenOf = new Map<string | null, TrashEntry[]>();
+  for (const entry of entries) {
+    const key = entry.page.parentId;
+    childrenOf.set(key, [...(childrenOf.get(key) ?? []), entry]);
+  }
+  return entries
+    .filter((t) => t.root)
+    .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))
+    .map((t) => ({
+      id: t.page.id,
+      title: t.page.title,
+      type: t.page.type,
+      icon: t.page.icon ?? null,
+      deletedAt: t.deletedAt,
+      deletedBy: t.deletedBy,
+      descendantCount: collectBatch(childrenOf, t.page.id).length,
+    }));
+}
+
+/**
+ * 루트와 "따로 버리지 않은" 하위를 되살린다. 하위를 먼저 따로 버려둔 묶음(root=true)은
+ * 상위 복원에 휩쓸리지 않는다 — 사용자의 두 결정을 각각 지킨다.
+ */
+export async function restorePage(id: string): Promise<PageRestoreResult> {
+  const data = load();
+  data.trash ??= [];
+  const root = data.trash.find((t) => t.page.id === id);
+  if (!root) throw new Error("휴지통에서 찾을 수 없습니다");
+
+  const childrenOf = new Map<string | null, TrashEntry[]>();
+  for (const entry of data.trash.filter((t) => t.page.spaceId === root.page.spaceId)) {
+    const key = entry.page.parentId;
+    childrenOf.set(key, [...(childrenOf.get(key) ?? []), entry]);
+  }
+  const batch = [root, ...collectBatch(childrenOf, id)];
+
+  // 원래 부모가 사라졌으면 최상위로 — 없는 부모를 그대로 두면 트리에 나타나지 않는 고아가 된다.
+  const parentAlive =
+    root.page.parentId === null || data.pages.some((p) => p.id === root.page.parentId);
+  const reparentedToRoot = !parentAlive;
+  const targetParent = parentAlive ? root.page.parentId : null;
+  const siblings = data.pages.filter(
+    (p) => p.spaceId === root.page.spaceId && p.parentId === targetParent,
+  );
+  root.page.parentId = targetParent;
+  root.page.position = siblings.length + 1;
+
+  const restoredIds = new Set(batch.map((t) => t.page.id));
+  for (const entry of batch) {
+    data.pages.push(clone(entry.page));
+    data.versions.push(...entry.versions.map(clone));
+    data.comments.push(...entry.comments.map(clone));
+  }
+  data.trash = data.trash.filter((t) => !restoredIds.has(t.page.id));
+  persist();
+  return {
+    page: clone(data.pages.find((p) => p.id === id)!),
+    reparentedToRoot,
+    restoredCount: batch.length,
+  };
+}
+
+/** 영구 삭제 — 되돌릴 수 없다. 루트와 함께 버린 하위를 통째로 없앤다. */
+export async function purgePage(id: string): Promise<void> {
+  const data = load();
+  data.trash ??= [];
+  const root = data.trash.find((t) => t.page.id === id);
+  if (!root) throw new Error("휴지통에서 찾을 수 없습니다");
+  const childrenOf = new Map<string | null, TrashEntry[]>();
+  for (const entry of data.trash.filter((t) => t.page.spaceId === root.page.spaceId)) {
+    const key = entry.page.parentId;
+    childrenOf.set(key, [...(childrenOf.get(key) ?? []), entry]);
+  }
+  const doomed = new Set([id, ...collectBatch(childrenOf, id).map((t) => t.page.id)]);
+  data.trash = data.trash.filter((t) => !doomed.has(t.page.id));
+  for (const gone of doomed) delete data.labels?.[gone];
+  persist();
+}
+
+export async function emptyTrash(spaceId: string): Promise<number> {
+  const data = load();
+  const doomed = (data.trash ?? []).filter((t) => t.page.spaceId === spaceId);
+  data.trash = (data.trash ?? []).filter((t) => t.page.spaceId !== spaceId);
+  for (const entry of doomed) delete data.labels?.[entry.page.id];
+  persist();
+  return doomed.length;
+}
+
+/** 함께 버려진 하위 — root=true인 노드는 별도 항목이므로 경계에서 멈춘다. */
+function collectBatch(
+  childrenOf: Map<string | null, TrashEntry[]>,
+  rootId: string,
+): TrashEntry[] {
+  const found: TrashEntry[] = [];
+  const visited = new Set([rootId]);
+  const queue: string[] = [rootId];
+  while (queue.length > 0) {
+    for (const child of childrenOf.get(queue.shift()!) ?? []) {
+      if (child.root || visited.has(child.page.id)) continue;
+      visited.add(child.page.id);
+      found.push(child);
+      queue.push(child.page.id);
+    }
+  }
+  return found;
 }
 
 export async function movePage(
@@ -654,6 +992,7 @@ export async function addComment(
   pageId: string,
   body: string,
   parentId?: string | null,
+  anchor?: CommentAnchor | null,
 ): Promise<Comment> {
   const data = load();
   if (!data.pages.some((p) => p.id === pageId)) {
@@ -668,6 +1007,12 @@ export async function addComment(
   }
   const trimmed = body.trim();
   if (!trimmed) throw new Error("코멘트 내용을 입력하세요");
+  if (anchor && resolvedParentId !== null) {
+    throw new Error("답글에는 본문 구간을 붙일 수 없습니다");
+  }
+  if (anchor && anchor.occurrence < 0) {
+    throw new Error("본문 구간 위치가 올바르지 않습니다");
+  }
   const comment: Comment = {
     id: nextId(),
     pageId,
@@ -676,12 +1021,47 @@ export async function addComment(
     parentId: resolvedParentId,
     createdAt: new Date().toISOString(),
     updatedAt: null,
+    anchorType: anchor ? "inline" : "page",
+    anchorQuote: anchor ? anchor.quote : null,
+    anchorOccurrence: anchor ? anchor.occurrence : null,
+    resolvedAt: null,
   };
   data.comments.push(comment);
+  autoWatch(data, pageId, CURRENT_USER_ID); // 댓글을 달면 그 대화에 참여한 것이다(W21-4)
   const page = data.pages.find((p) => p.id === pageId);
   if (page) notifyCommentAdded(data, page, trimmed);
   persist();
   return clone(comment);
+}
+
+/** 해결/재개(W21-4) — 인라인 스레드만 대상. 본인이 아니어도 닫을 수 있다(컨플루언스 규칙). */
+export async function setCommentResolved(id: string, resolved: boolean): Promise<Comment> {
+  const data = load();
+  const comment = data.comments.find((c) => c.id === id);
+  if (!comment) throw new Error("코멘트를 찾을 수 없습니다");
+  if (comment.anchorType !== "inline") throw new Error("인라인 댓글만 해결할 수 있습니다");
+  comment.resolvedAt = resolved ? new Date().toISOString() : null;
+  persist();
+  return clone(comment);
+}
+
+/* ── 구독(W21-4) ─────────────────────────────────────────── */
+
+export async function getWatchState(pageId: string): Promise<boolean> {
+  const data = load();
+  return (data.watches?.[pageId] ?? []).includes(CURRENT_USER_ID);
+}
+
+export async function setWatchState(pageId: string, watching: boolean): Promise<boolean> {
+  const data = load();
+  if (!data.pages.some((p) => p.id === pageId)) throw new Error("페이지를 찾을 수 없습니다");
+  data.watches ??= {};
+  const current = new Set(data.watches[pageId] ?? []);
+  if (watching) current.add(CURRENT_USER_ID);
+  else current.delete(CURRENT_USER_ID);
+  data.watches[pageId] = [...current];
+  persist();
+  return watching;
 }
 
 export async function updateComment(id: string, body: string): Promise<Comment> {

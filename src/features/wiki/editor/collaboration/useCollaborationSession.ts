@@ -4,7 +4,7 @@ import {
   getCurrentUser,
   requestCollaborationTicket,
 } from "../../store/wikiStore";
-import type { Page } from "../../store/types";
+import type { WikiLinkTarget } from "../../lib/wikiLinks";
 import type {
   CollaborationBinding,
   CollaborationConnectionStatus,
@@ -20,7 +20,11 @@ interface UseCollaborationSessionOptions {
   basePageVersion: number | null;
   initialTitle: string | null;
   initialMarkdown: string | null;
-  pages: Page[];
+  /**
+   * `[[제목]]` 판별용 후보를 동기로 읽는 게터(2026-08-28).
+   * 예전에는 스페이스의 전 페이지 배열을 받았다 — 공동 편집 세션 하나가 스페이스 전량을 붙들었다.
+   */
+  getLinkTargets: () => WikiLinkTarget[];
 }
 
 export interface CollaborationSessionState {
@@ -38,7 +42,7 @@ export function useCollaborationSession({
   basePageVersion,
   initialTitle,
   initialMarkdown,
-  pages,
+  getLinkTargets,
 }: UseCollaborationSessionOptions): CollaborationSessionState {
   const [retryKey, setRetryKey] = useState(0);
   const [status, setStatus] = useState<CollaborationConnectionStatus>(
@@ -54,8 +58,8 @@ export function useCollaborationSession({
   const sessionActiveRef = useRef(false);
   const bindingRef = useRef<CollaborationBinding | null>(null);
   const recoveryStateRef = useRef<Uint8Array | null>(null);
-  const pagesRef = useRef(pages);
-  pagesRef.current = pages;
+  const getLinkTargetsRef = useRef(getLinkTargets);
+  getLinkTargetsRef.current = getLinkTargets;
 
   useEffect(() => {
     const handleOnline = () => {
@@ -138,7 +142,7 @@ export function useCollaborationSession({
           initialTicket: socketTicket,
           initialState: recoveryStateRef.current ?? undefined,
           issueTicket: requestCollaborationTicket,
-          getPages: () => pagesRef.current,
+          getPages: () => getLinkTargetsRef.current(),
           onStatus: (nextStatus) => {
             if (nextStatus === "synced" && liveBinding && !liveBinding.title.toString().trim()) {
               setStatus("error");

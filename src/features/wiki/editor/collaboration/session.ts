@@ -2,7 +2,8 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 import { Editor, type Extensions } from "@tiptap/core";
 import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import * as Y from "yjs";
-import type { CollaborationTicket, Page, User } from "../../store/types";
+import type { CollaborationTicket, User } from "../../store/types";
+import type { WikiLinkTarget } from "../../lib/wikiLinks";
 import { safeParse } from "../markdown";
 import { buildCollaborationExtensions } from "../extensions/collaboration";
 import { COLLABORATION_TITLE_FIELD } from "./title";
@@ -40,7 +41,7 @@ export interface CreateCollaborationSessionOptions extends CollaborationSessionC
   initialTicket: CollaborationTicket;
   initialState?: Uint8Array;
   issueTicket: (pageId: string) => Promise<CollaborationTicket>;
-  getPages?: () => Page[];
+  getPages?: () => WikiLinkTarget[];
 }
 
 export interface CollaborationBinding {

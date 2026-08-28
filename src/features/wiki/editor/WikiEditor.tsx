@@ -14,7 +14,10 @@ import Placeholder from "@tiptap/extension-placeholder";
 import GlobalDragHandle from "tiptap-extension-global-drag-handle";
 import type { Editor, Extensions } from "@tiptap/core";
 import type { ReactNode } from "react";
-import type { Attachment, Page, User } from "../store/types";
+import type { Attachment, User } from "../store/types";
+import { useWikiLinkCache, type WikiLinkCache } from "../lib/useWikiLinkCache";
+import type { WikiLinkTarget } from "../lib/wikiLinks";
+import { listChildren, lookupPagesByTitle, searchPageTitles } from "../store/wikiStore";
 import { buildBaseExtensions } from "./extensions/base";
 import { WikiLinkSuggestion } from "./extensions/wikiLinkSuggestion";
 import { UserMentionSuggestion } from "./extensions/userMentionSuggestion";
@@ -63,8 +66,17 @@ export interface WikiEditorHandle {
 
 export interface WikiEditorProps {
   initialMarkdown: string;
-  /** [[링크]] 존재/부재 판별 + 자동완성 후보 */
-  pages: Page[];
+  /**
+   * `[[링크]]` 존재/부재 판별과 자동완성이 조회할 스페이스(2026-08-28).
+   * 예전에는 스페이스의 전 페이지 배열을 받았다 — 문서 하나를 편집하려고 스페이스 전량을
+   * 들고 있어야 했고, 그게 곧 규모 상한이었다.
+   */
+  spaceId: string;
+  /**
+   * `[[제목]]` 판별 캐시. 공동 편집 경로는 확장을 밖에서 만들기 때문에 같은 캐시를 넘겨받아야
+   * 링크 칩 판별이 두 경로에서 일관된다. 없으면 이 컴포넌트가 자체 캐시를 쓴다.
+   */
+  linkCache?: WikiLinkCache;
   /** `@` 멘션 자동완성 후보 — org 사용자 디렉터리. 생략하면 멘션 팝업이 뜨지 않는다. */
   users?: User[];
   /** 첨부 업로드 대상. 신규 페이지처럼 아직 ID가 없으면 파일 업로드를 막는다. */
@@ -91,7 +103,8 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
   function WikiEditor({
     initialMarkdown,
     users,
-    pages,
+    spaceId,
+    linkCache,
     pageId,
     onDirty,
     onUploadStateChange,
@@ -101,8 +114,65 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     // onUpdate는 useEditor 설정 시점에 캡처되므로 콜백을 ref로 최신화한다(재구독 없이).
     const onDirtyRef = useRef(onDirty);
     onDirtyRef.current = onDirty;
-    const pagesRef = useRef(pages);
-    pagesRef.current = pages;
+    const ownLinkCache = useWikiLinkCache();
+    const { targetsRef: linkTargetsRef, merge: mergeLinkTargets } = linkCache ?? ownLinkCache;
+    /**
+     * 자동완성 검색 — 확장이 동기라 여기서 비동기로 채운다.
+     * 같은 검색어를 두 번 조회하지 않고, 결과가 오면 열려 있는 팝업 목록을 그 자리에서 갱신한다.
+     */
+    const lastQueryRef = useRef<string | null>(null);
+    const refreshLinkMenuRef = useRef<() => void>(() => {});
+    const queryLinkCandidatesRef = useRef<(query: string) => void>(() => {});
+    queryLinkCandidatesRef.current = (query: string) => {
+      const q = query.trim();
+      if (q === lastQueryRef.current) return;
+      lastQueryRef.current = q;
+      // 검색어가 없으면 최상위 문서를 후보로 준다 — 서버 검색은 빈 질의를 받지 않는다(전량 스캔 방지).
+      const fetching = q.length === 0 ? listChildren(spaceId, null) : searchPageTitles(spaceId, q);
+      void fetching
+        .then((found) => {
+          mergeLinkTargets(found);
+          // 팝업이 열려 있으면 그 자리에서 채운다. 플러그인이 마지막 검색어로 다시 계산해야
+          // Enter·화살표가 새 목록 위에서 동작한다(React 상태만 바꾸면 키보드가 빈 목록을 본다).
+          refreshLinkMenuRef.current();
+        })
+        .catch(() => {
+          // 후보를 못 받아도 편집은 계속돼야 한다 — 목록이 비어 보일 뿐이다
+        });
+    };
+
+    /**
+     * 문서에 등장한 `[[제목]]`만 조회해 존재/부재 칩 판별에 쓴다(2026-08-28).
+     * 제목 집합이 그대로면 다시 묻지 않는다 — 타이핑마다 서버를 때리지 않기 위해서다.
+     * 결과가 오면 빈 트랜잭션을 흘려 데코레이션을 다시 계산시킨다(플러그인은 state 변화에만 반응한다).
+     */
+    const lastDocTitlesRef = useRef<string>("");
+    const syncDocLinkTargetsRef = useRef<(editor: Editor) => void>(() => {});
+    syncDocLinkTargetsRef.current = (editor: Editor) => {
+      const titles = new Set<string>();
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === "wikiLink" && typeof node.attrs.title === "string") {
+          titles.add(node.attrs.title);
+        }
+      });
+      const key = [...titles].sort().join("\u0000");
+      if (key === lastDocTitlesRef.current) return;
+      lastDocTitlesRef.current = key;
+      if (titles.size === 0) return;
+      void lookupPagesByTitle(spaceId, [...titles])
+        .then((found) => {
+          if (found.length === 0) return;
+          mergeLinkTargets(found);
+          const current = selfEditorRef.current;
+          if (current && !current.isDestroyed) {
+            current.view.dispatch(current.state.tr.setMeta("wikiLinkTargets", true));
+          }
+        })
+        .catch(() => {
+          // 판별에 실패하면 부재 스타일로 남을 뿐 — 편집을 막지 않는다
+        });
+    };
+
     const dirtyRef = useRef(false);
     // 이 컴포넌트 인스턴스가 만든 에디터 식별용 — onDestroy가 다른(더 최신) 인스턴스의
     // 레지스트리 등록을 잘못 지우지 않도록 신원을 대조한다 (비동기 create/destroy 경합 방지)
@@ -122,10 +192,10 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
     usersRef.current = users ?? [];
     // [[ 자동완성 팝업 상태 — WikiLinkSuggestion이 onStateChange로 밀어넣는다
     const [linkMenu, setLinkMenu] = useState<{
-      items: Page[];
+      items: WikiLinkTarget[];
       highlight: number;
       clientRect: DOMRect | null;
-      command: (item: Page) => void;
+      command: (item: WikiLinkTarget) => void;
     } | null>(null);
     // `@` 멘션 팝업 상태 — UserMentionSuggestion이 onStateChange로 밀어넣는다
     const [mentionMenu, setMentionMenu] = useState<{
@@ -160,11 +230,15 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
       immediatelyRender: true,
       extensions: [
         ...(collaborationExtensions
-          ?? buildBaseExtensions({ getPages: () => pagesRef.current })),
+          ?? buildBaseExtensions({ getPages: () => linkTargetsRef.current })),
         Placeholder.configure({ placeholder: "내용을 입력하세요. '/'로 블록을 추가합니다." }),
         WikiLinkSuggestion.configure({
-          getPages: () => pagesRef.current,
+          getPages: () => linkTargetsRef.current,
           onStateChange: setLinkMenu,
+          onQuery: (query) => queryLinkCandidatesRef.current(query),
+          registerRefresh: (refresh) => {
+            refreshLinkMenuRef.current = refresh;
+          },
         }),
         UserMentionSuggestion.configure({
           getUsers: () => usersRef.current,
@@ -194,11 +268,13 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
       onCreate({ editor }) {
         selfEditorRef.current = editor;
         editorRegistry.current = editor;
+        syncDocLinkTargetsRef.current(editor);
       },
-      onUpdate() {
+      onUpdate({ editor }) {
         const wasClean = !dirtyRef.current;
         dirtyRef.current = true;
         if (wasClean) onDirtyRef.current?.();
+        syncDocLinkTargetsRef.current(editor);
       },
       onDestroy() {
         if (editorRegistry.current === selfEditorRef.current) {
@@ -507,7 +583,6 @@ export const WikiEditor = forwardRef<WikiEditorHandle, WikiEditorProps>(
             <PasteLinkMenu
               editor={editor}
               info={pasteMenu}
-              pages={pages}
               anchor={{ left: rect.left, bottom: rect.bottom }}
               onClose={() => setPasteMenu(null)}
             />

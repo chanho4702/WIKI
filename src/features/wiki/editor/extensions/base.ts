@@ -20,7 +20,7 @@ import { DateMention } from "./dateMention";
 import { BgColor, TextColor } from "./textColors";
 import { CodeBlockView } from "../components/CodeBlockView";
 import { ImageView } from "../components/ImageView";
-import type { Page } from "../../store/types";
+import type { WikiLinkTarget } from "../../lib/wikiLinks";
 
 /** highlight.js common 언어 세트 — 뷰(rehype-highlight)와 동일한 hljs-* 토큰 클래스를 생성한다 */
 const lowlight = createLowlight(common);
@@ -50,8 +50,11 @@ const ImageWithView = Image.extend({
 });
 
 export interface BaseExtensionOptions {
-  /** 존재/부재 페이지 판별용 — 없으면 항상 빈 목록(모두 부재 처리) */
-  getPages?: () => Page[];
+  /**
+   * 존재/부재 페이지 판별용 — 없으면 항상 빈 목록(모두 부재 처리).
+   * 스페이스 전량이 아니라 **문서에 등장한 제목의 조회 결과**를 준다(2026-08-28).
+   */
+  getPages?: () => WikiLinkTarget[];
   /** Yjs Collaboration이 자체 undo manager를 쓸 때 StarterKit history를 중복 등록하지 않는다. */
   history?: boolean;
 }

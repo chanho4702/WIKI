@@ -10,14 +10,14 @@ import { buildCollaborationExtensions } from "./extensions/collaboration";
 describe("WikiEditor", () => {
   it("초기 마크다운을 렌더하고 getMarkdown으로 되돌린다", () => {
     const ref = createRef<WikiEditorHandle>();
-    render(<WikiEditor ref={ref} initialMarkdown={"# 제목\n\n본문"} pages={[]} />);
+    render(<WikiEditor ref={ref} initialMarkdown={"# 제목\n\n본문"} spaceId="sp1" />);
     expect(screen.getByText("제목")).toBeInTheDocument();
     expect(ref.current!.getMarkdown()).toContain("# 제목");
   });
 
   it("편집 전 isDirty=false, 내용 변경 후 true", async () => {
     const ref = createRef<WikiEditorHandle>();
-    render(<WikiEditor ref={ref} initialMarkdown="본문" pages={[]} />);
+    render(<WikiEditor ref={ref} initialMarkdown="본문" spaceId="sp1" />);
     expect(ref.current!.isDirty()).toBe(false);
     // tiptap의 onCreate는 setTimeout(0)으로 비동기 발화한다 — 레지스트리 채워질 때까지 대기
     await waitFor(() => expect(editorRegistry.current).toBeTruthy());
@@ -32,7 +32,7 @@ describe("WikiEditor", () => {
   });
 
   it("드래그 핸들 확장이 등록된다", async () => {
-    render(<WikiEditor initialMarkdown="본문" pages={[]} />);
+    render(<WikiEditor initialMarkdown="본문" spaceId="sp1" />);
     await waitFor(() => expect(editorRegistry.current).toBeTruthy());
     const names = editorRegistry.current!.extensionManager.extensions.map((e) => e.name);
     expect(names).toContain("globalDragHandle");
@@ -49,7 +49,7 @@ describe("WikiEditor", () => {
       <WikiEditor
         ref={ref}
         initialMarkdown="절대 다시 넣으면 안 되는 원문"
-        pages={[]}
+        spaceId="sp1"
         collaborationExtensions={buildCollaborationExtensions({ document })}
       />,
     );

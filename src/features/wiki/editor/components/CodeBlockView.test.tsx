@@ -8,7 +8,7 @@ describe("CodeBlockView", () => {
   it("언어 셀렉트가 보이고 변경이 직렬화에 반영된다", async () => {
     const user = userEvent.setup();
     const ref = createRef<WikiEditorHandle>();
-    render(<WikiEditor ref={ref} initialMarkdown={"```ts\nconst a = 1;\n```"} pages={[]} />);
+    render(<WikiEditor ref={ref} initialMarkdown={"```ts\nconst a = 1;\n```"} spaceId="sp1" />);
     const select = await screen.findByLabelText("코드 언어");
     expect((select as HTMLSelectElement).value).toBe("ts");
     await user.selectOptions(select, "python");
@@ -24,14 +24,14 @@ describe("CodeBlockView", () => {
       value: { writeText },
       configurable: true,
     });
-    render(<WikiEditor initialMarkdown={"```ts\nconst a = 1;\n```"} pages={[]} />);
+    render(<WikiEditor initialMarkdown={"```ts\nconst a = 1;\n```"} spaceId="sp1" />);
     await user.click(await screen.findByRole("button", { name: "코드 복사" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("const a = 1;"));
   });
 
   it("언어가 지정된 코드 블록은 lowlight가 붙인 hljs 토큰 span으로 렌더된다", async () => {
     const { container } = render(
-      <WikiEditor initialMarkdown={"```ts\nconst a = 1;\n```"} pages={[]} />,
+      <WikiEditor initialMarkdown={"```ts\nconst a = 1;\n```"} spaceId="sp1" />,
     );
     await screen.findByLabelText("코드 언어");
     await waitFor(() => {
@@ -40,7 +40,7 @@ describe("CodeBlockView", () => {
   });
 
   it("언어가 없는 코드 블록은 하이라이트 토큰 없이 렌더된다", async () => {
-    const { container } = render(<WikiEditor initialMarkdown={"```\nconst a = 1;\n```"} pages={[]} />);
+    const { container } = render(<WikiEditor initialMarkdown={"```\nconst a = 1;\n```"} spaceId="sp1" />);
     const select = await screen.findByLabelText("코드 언어");
     expect((select as HTMLSelectElement).value).toBe("plaintext");
     expect(container.querySelector('span[class^="hljs-"]')).toBeNull();

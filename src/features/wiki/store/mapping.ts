@@ -1,5 +1,5 @@
 // 백엔드(wiki-backend) DTO ↔ 프론트 도메인 타입 순수 변환. 부수효과 없음.
-import type { Comment, Page, PageStatus, PageType, PageVersion, Space } from "./types";
+import type { Comment, Page, PageNode, PageStatus, PageType, PageVersion, Space } from "./types";
 
 export function toClientId(n: number): string {
   return String(n);
@@ -24,7 +24,7 @@ export function mapSpace(dto: SpaceDto): Space {
   };
 }
 
-interface PageDto {
+export interface PageDto {
   id: number; spaceId: number; parentId: number | null; title: string; content: string; version: number;
   /** V9 형제 순서 — 구버전 응답 호환을 위해 optional */
   position?: number;
@@ -57,7 +57,7 @@ export function mapPage(dto: PageDto): Page {
   };
 }
 
-interface TreeItemDto { id: number; parentId: number | null; title: string; type?: PageType; status?: PageStatus   /** V9 형제 순서 — 구버전 응답 호환을 위해 optional */
+export interface TreeItemDto { id: number; parentId: number | null; title: string; type?: PageType; status?: PageStatus   /** V9 형제 순서 — 구버전 응답 호환을 위해 optional */
   position?: number;
   /** V10 — 트리에 이모지 아이콘 표시용. */
   icon?: string | null;
@@ -115,6 +115,29 @@ export interface CommentDto {
   createdAt: string;
   /** 서버의 editedAt — 수정된 적 없으면 null(프론트 "(수정됨)" 표시 근거). */
   updatedAt: string | null;
+  /** W21-4 인라인 댓글 — 구버전 응답 호환을 위해 optional. */
+  anchorType?: string;
+  anchorQuote?: string | null;
+  anchorOccurrence?: number | null;
+  resolvedAt?: string | null;
+}
+
+/** 지연 트리 노드 DTO — PageTreeItem + childCount(2026-08-28). */
+export interface PageNodeDto extends TreeItemDto {
+  childCount: number;
+}
+
+export function mapPageNode(dto: PageNodeDto): PageNode {
+  return {
+    id: toClientId(dto.id),
+    parentId: dto.parentId === null || dto.parentId === undefined ? null : toClientId(dto.parentId),
+    title: dto.title,
+    type: dto.type ?? "page",
+    status: dto.status ?? "published",
+    position: dto.position ?? 0,
+    icon: dto.icon ?? null,
+    childCount: dto.childCount ?? 0,
+  };
 }
 
 export function mapComment(dto: CommentDto): Comment {
@@ -127,5 +150,9 @@ export function mapComment(dto: CommentDto): Comment {
     body: dto.body,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt ?? null,
+    anchorType: dto.anchorType === "inline" ? "inline" : "page",
+    anchorQuote: dto.anchorQuote ?? null,
+    anchorOccurrence: dto.anchorOccurrence ?? null,
+    resolvedAt: dto.resolvedAt ?? null,
   };
 }

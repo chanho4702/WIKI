@@ -1,7 +1,7 @@
 import type { Extensions } from "@tiptap/core";
 import Collaboration from "@tiptap/extension-collaboration";
 import type * as Y from "yjs";
-import type { Page } from "../../store/types";
+import type { WikiLinkTarget } from "../../lib/wikiLinks";
 import { buildBaseExtensions } from "./base";
 
 /** Node 서비스와 프론트가 같은 Y.XmlFragment를 열도록 고정하는 교차 런타임 계약. */
@@ -9,7 +9,7 @@ export const COLLABORATION_FIELD = "prosemirror";
 
 interface CollaborationExtensionOptions {
   document: Y.Doc;
-  getPages?: () => Page[];
+  getPages?: () => WikiLinkTarget[];
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   setPageIcon,
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
+import { useWikiLinkCache } from "../lib/useWikiLinkCache";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
 import { DRAFT_TITLE } from "../lib/useCreateContent";
@@ -43,7 +44,10 @@ export function PageEditPage() {
   const parentId = searchParams.get("parent"); // 생성 모드 전용 — 없으면 루트에 생성
   const navigate = useNavigate();
   const toast = useToast();
-  const { pages, reloadPages } = useOutletContext<WikiOutletContext>();
+  const { reloadPages } = useOutletContext<WikiOutletContext>();
+  // 단독 편집(WikiEditor)과 공동 편집(useCollaborationSession)이 같은 링크 캐시를 봐야
+  // 링크 칩 판별이 두 경로에서 일관된다(2026-08-28).
+  const linkCache = useWikiLinkCache();
   const isEdit = pageId !== undefined;
 
   const editorRef = useRef<WikiEditorHandle>(null);
@@ -86,7 +90,7 @@ export function PageEditPage() {
     basePageVersion: baseVersion,
     initialTitle,
     initialMarkdown: initialBody,
-    pages: pages ?? [],
+    getLinkTargets: () => linkCache.targetsRef.current,
   });
   const collaborationRequired = COLLABORATION_ENABLED && isEdit;
   const collaborationReady = !collaborationRequired
@@ -473,7 +477,8 @@ export function PageEditPage() {
             </div>
           }
           initialMarkdown={initialBody}
-          pages={pages ?? []}
+          spaceId={spaceId}
+          linkCache={linkCache}
           users={users}
           pageId={pageId}
           onDirty={() => setBodyDirty(true)}

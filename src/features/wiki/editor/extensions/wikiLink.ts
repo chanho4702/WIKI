@@ -1,12 +1,12 @@
 import { Node, nodeInputRule } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import type { Page } from "../../store/types";
+import type { WikiLinkTarget } from "../../lib/wikiLinks";
 import { WIKI_LINK_SOURCE } from "../../lib/wikiLinks";
 
 export interface WikiLinkOptions {
   /** 존재/부재 판별용 — WikiEditor가 최신 pages를 ref로 공급한다 */
-  getPages: () => Page[];
+  getPages: () => WikiLinkTarget[];
 }
 
 /**

@@ -1,137 +1,77 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import type { Page } from "../store/types";
 import { ChildPages } from "./ChildPages";
+import { __resetForTest, createPage } from "../store/wikiStore";
+import { createSeedData } from "../../../mock/seed";
+
+/**
+ * 자식 목록은 서버(스토어)에서 직계만 읽는다(2026-08-28) — 예전에는 화면이 들고 있던
+ * 스페이스 전 페이지를 prop으로 받아 걸렀다. 그래서 이 테스트도 배열 조립 대신 스토어를 쓴다.
+ *
+ * 시드 sp1: pg1(시작하기) > pg3(개발 환경 설정, 1) · pg4(배포 가이드, 2), pg3 > pg5.
+ */
+function renderFor(pageId: string) {
+  return render(
+    <MemoryRouter>
+      <ChildPages currentPageId={pageId} spaceId="sp1" />
+    </MemoryRouter>,
+  );
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  __resetForTest();
+  localStorage.setItem("wiki.v1", JSON.stringify(createSeedData()));
+});
 
 describe("ChildPages", () => {
-  const createPage = (overrides: Partial<Page> = {}): Page => ({
-    id: "pg-test",
-    spaceId: "sp1",
-    parentId: null,
-    type: "page",
-    status: "published",
-    title: "테스트 페이지",
-    body: "# 테스트",
-    version: 1,
-    position: 1,
-    createdBy: "u1",
-    updatedBy: "u1",
-    createdAt: "2026-07-10T09:00:00.000Z",
-    updatedAt: "2026-07-10T09:00:00.000Z",
-    ...overrides,
+  it("자식 페이지가 없으면 아무것도 그리지 않는다", async () => {
+    const { container } = renderFor("pg2");
+
+    await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 
-  it("자식 페이지가 없으면 null을 반환한다", () => {
-    const pages: Page[] = [
-      createPage({ id: "pg1", title: "시작하기" }),
-      createPage({ id: "pg2", title: "팀 규칙" }),
-    ];
+  it("자식 페이지를 position 오름차순 링크 목록으로 렌더한다", async () => {
+    renderFor("pg1");
 
-    const { container } = render(
-      <MemoryRouter>
-        <ChildPages pages={pages} currentPageId="pg1" spaceId="sp1" />
-      </MemoryRouter>,
-    );
-
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it("자식 페이지들을 position 오름차순으로 정렬해 링크 목록으로 렌더한다", () => {
-    const pages: Page[] = [
-      createPage({ id: "pg1", title: "시작하기" }),
-      // pg1의 자식: position 순서 (2, 1, 3)로 입력 — 정렬 검증용
-      createPage({ id: "pg3", parentId: "pg1", title: "배포 가이드", position: 2 }),
-      createPage({ id: "pg2", parentId: "pg1", title: "개발 환경 설정", position: 1 }),
-      createPage({ id: "pg4", parentId: "pg1", title: "운영 수칙", position: 3 }),
-    ];
-
-    render(
-      <MemoryRouter>
-        <ChildPages pages={pages} currentPageId="pg1" spaceId="sp1" />
-      </MemoryRouter>,
-    );
-
-    // 제목 확인
-    expect(screen.getByRole("heading", { level: 2, name: "하위 페이지" })).toBeInTheDocument();
-
-    // position 정렬 순서 확인: pg2(1) → pg3(2) → pg4(3)
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "하위 페이지" }),
+    ).toBeInTheDocument();
     const links = screen.getAllByRole("link");
     expect(links[0]).toHaveTextContent("개발 환경 설정");
     expect(links[1]).toHaveTextContent("배포 가이드");
-    expect(links[2]).toHaveTextContent("운영 수칙");
   });
 
-  it("각 자식 페이지 링크가 올바른 URL을 가진다", () => {
-    const pages: Page[] = [
-      createPage({ id: "pg1", title: "시작하기" }),
-      createPage({ id: "pg3", parentId: "pg1", title: "개발 환경 설정", position: 1 }),
-      createPage({ id: "pg4", parentId: "pg1", title: "배포 가이드", position: 2 }),
-    ];
+  it("각 자식 페이지 링크가 올바른 URL을 가진다", async () => {
+    renderFor("pg1");
 
-    render(
-      <MemoryRouter>
-        <ChildPages pages={pages} currentPageId="pg1" spaceId="sp1" />
-      </MemoryRouter>,
-    );
-
-    const links = screen.getAllByRole("link");
+    const links = await screen.findAllByRole("link");
     expect(links[0]).toHaveAttribute("href", "/spaces/sp1/pages/pg3");
     expect(links[1]).toHaveAttribute("href", "/spaces/sp1/pages/pg4");
   });
 
-  it("다른 부모의 페이지는 포함하지 않는다 (필터링 정확성)", () => {
-    const pages: Page[] = [
-      createPage({ id: "pg1", title: "시작하기" }),
-      createPage({ id: "pg2", title: "팀 규칙" }),
-      // pg1의 자식
-      createPage({ id: "pg3", parentId: "pg1", title: "개발 환경 설정", position: 1 }),
-      // pg2의 자식
-      createPage({ id: "pg4", parentId: "pg2", title: "규칙 상세", position: 1 }),
-    ];
+  it("다른 부모의 자식은 포함하지 않는다", async () => {
+    await createPage({ spaceId: "sp1", parentId: "pg2", title: "규칙 상세" });
+    renderFor("pg1");
 
-    render(
-      <MemoryRouter>
-        <ChildPages pages={pages} currentPageId="pg1" spaceId="sp1" />
-      </MemoryRouter>,
-    );
-
-    // pg1만 요청했으므로 pg3만 표시되어야 함
-    const links = screen.getAllByRole("link");
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveTextContent("개발 환경 설정");
+    const links = await screen.findAllByRole("link");
+    expect(links).toHaveLength(2);
+    expect(links.map((l) => l.textContent)).not.toContain("규칙 상세");
   });
 
-  it("섹션 컨테이너에 올바른 클래스명을 적용한다", () => {
-    const pages: Page[] = [
-      createPage({ id: "pg1", title: "시작하기" }),
-      createPage({ id: "pg2", parentId: "pg1", title: "하위 페이지", position: 1 }),
-    ];
+  it("손자는 포함하지 않는다 — 직계만 읽는다", async () => {
+    renderFor("pg1");
 
-    const { container } = render(
-      <MemoryRouter>
-        <ChildPages pages={pages} currentPageId="pg1" spaceId="sp1" />
-      </MemoryRouter>,
-    );
-
-    const section = container.querySelector("section.child-pages");
-    expect(section).toBeInTheDocument();
+    const links = await screen.findAllByRole("link");
+    expect(links.map((l) => l.textContent)).not.toContain("로컬 DB 설정");
   });
 
-  it("리스트가 <ul> 요소로 렌더된다", () => {
-    const pages: Page[] = [
-      createPage({ id: "pg1", title: "시작하기" }),
-      createPage({ id: "pg2", parentId: "pg1", title: "하위 페이지", position: 1 }),
-    ];
+  it("섹션 컨테이너와 목록 구조를 유지한다", async () => {
+    const { container } = renderFor("pg1");
 
-    const { container } = render(
-      <MemoryRouter>
-        <ChildPages pages={pages} currentPageId="pg1" spaceId="sp1" />
-      </MemoryRouter>,
-    );
-
-    const list = container.querySelector("ul");
-    expect(list).toBeInTheDocument();
-    expect(list?.querySelectorAll("li")).toHaveLength(1);
+    await screen.findByRole("heading", { level: 2, name: "하위 페이지" });
+    expect(container.querySelector("section.child-pages")).toBeInTheDocument();
+    expect(container.querySelector("ul")?.querySelectorAll("li")).toHaveLength(2);
   });
 });

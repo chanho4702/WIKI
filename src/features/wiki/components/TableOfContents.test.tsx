@@ -115,7 +115,7 @@ describe("TableOfContents", () => {
     // 실사용(PageViewPage)과 동일하게 wikiMode(pages+spaceId)로 렌더 — [[ ]]가 실제로 링크 라벨로 치환된다
     const { container } = render(
       <MemoryRouter>
-        <MarkdownView markdown={md} pages={[]} spaceId="sp1" />
+        <MarkdownView markdown={md} spaceId="sp1" />
       </MemoryRouter>,
     );
     const heading = container.querySelector("h1");

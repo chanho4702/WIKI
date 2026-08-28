@@ -15,8 +15,8 @@ import {
   StickyNote,
   TriangleAlert,
 } from "lucide-react";
-import type { Page } from "../store/types";
 import { resolveWikiLinks } from "../lib/wikiLinks";
+import { useWikiLinkTargets } from "../lib/useWikiLinkTargets";
 import { useResolvedWikiImage } from "../lib/useResolvedWikiImage";
 import { remarkAlerts } from "../lib/remarkAlerts";
 import { remarkColumns } from "../lib/remarkColumns";
@@ -35,9 +35,17 @@ import { TableOfContents } from "./TableOfContents";
 export interface MarkdownViewProps {
   /** 마크다운 원문 (Page.body 또는 편집 중인 입력값) */
   markdown: string;
-  /** spaceId와 함께 주어지면 [[제목]]을 페이지 링크로 렌더한다 (같은 스페이스의 pages) */
-  pages?: Page[];
+  /**
+   * 주어지면 `[[제목]]`을 같은 스페이스의 페이지 링크로 렌더한다.
+   * 대상 조회는 본문에 등장한 제목만 서버에 묻는다(2026-08-28) — 화면이 스페이스 전량을
+   * 들고 있을 필요가 없다.
+   */
   spaceId?: string;
+  /**
+   * 링크 대상을 이미 알고 있을 때 넘긴다(제목 → 페이지 id). 내보내기처럼 렌더가 동기여야 하는
+   * 경로가 쓴다 — 넘기면 서버 조회를 하지 않는다.
+   */
+  linkTargets?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -243,9 +251,12 @@ function MarkdownImage({ src = "", alt = "", title, ...props }: ImgHTMLAttribute
  * rehype-slug가 heading에 id를 부여해 TableOfContents의 `#slug` 링크가 실제로 스크롤된다 —
  * TableOfContents는 같은 github-slugger 버전으로 별도 계산하므로 slug 값이 서로 일치한다.
  */
-export function MarkdownView({ markdown, pages, spaceId }: MarkdownViewProps) {
-  const wikiMode = pages !== undefined && spaceId !== undefined;
-  const source = wikiMode ? resolveWikiLinks(markdown, pages, spaceId) : markdown;
+export function MarkdownView({ markdown, spaceId, linkTargets }: MarkdownViewProps) {
+  // spaceId가 있어야 [[제목]]을 어느 스페이스에서 찾을지 정해진다 — 없으면 위키 링크 모드가 아니다.
+  const wikiMode = spaceId !== undefined;
+  const fetched = useWikiLinkTargets(linkTargets ? "" : markdown, spaceId);
+  const targets = linkTargets ?? fetched;
+  const source = wikiMode ? resolveWikiLinks(markdown, targets, spaceId) : markdown;
 
   // 목차는 본문 전체를 봐야 만들 수 있다 — div 렌더러가 source를 알아야 해서 여기서 닫는다.
   const components = useMemo(

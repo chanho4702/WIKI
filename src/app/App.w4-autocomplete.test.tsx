@@ -37,13 +37,16 @@ describe("W4 [[ 자동완성", () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/pages/new");
     await waitFor(() => expect(editorRegistry.current).toBeTruthy());
-    editorRegistry.current!.chain().focus().insertContent("[[").run(); // 전체 목록(최대 8) 표시
+    editorRegistry.current!.chain().focus().insertContent("[[").run();
     await screen.findByRole("listbox", { name: "페이지 링크 자동완성" });
-    expect(screen.getByRole("option", { name: "시작하기" })).toHaveAttribute("aria-selected", "true");
+    expect(
+      await screen.findByRole("option", { name: "시작하기" }),
+    ).toHaveAttribute("aria-selected", "true");
     await user.keyboard("{ArrowDown}");
-    // listPages()는 position 필드로 정렬(부모/자식 구분 없이) — sp1 시드 데이터에서 시작하기(위치1) 다음은
-    // "개발 환경 설정"(pg1의 자식, 위치1)이다. 목록 두 번째 항목이 하이라이트되는지만 검증한다.
-    expect(screen.getByRole("option", { name: "개발 환경 설정" })).toHaveAttribute("aria-selected", "true");
+    // 검색어가 없을 때의 초기 후보는 **최상위 문서**다(2026-08-28 지연 트리). 예전에는 스페이스
+    // 전 페이지를 들고 있어 하위 문서까지 섞어 보여줬지만, 그 목록 자체가 규모 상한이었다.
+    // sp1 시드의 루트는 시작하기(위치1) · 팀 규칙(위치2)이다.
+    expect(screen.getByRole("option", { name: "팀 규칙" })).toHaveAttribute("aria-selected", "true");
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     // 링크가 완성되지 않았음(위키 링크 노드로 승격되지 않음)만 확인 — 마크다운 직렬화 시

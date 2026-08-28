@@ -151,7 +151,8 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
     return <CommentSkeleton label="코멘트 로딩 중" />;
   }
 
-  const topLevel = comments.filter((c) => c.parentId === null);
+  // 인라인 스레드(W21-4)는 본문 옆 InlineCommentPanel이 맡는다 — 페이지 댓글 목록에 섞지 않는다.
+  const topLevel = comments.filter((c) => c.parentId === null && c.anchorType !== "inline");
   const repliesOf = (id: string) => comments.filter((c) => c.parentId === id);
 
   /**
