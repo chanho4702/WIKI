@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Avatar, EmptyState, TextField } from "@chanho/react";
-import { ChevronRight, Clock, Compass, Grid3x3, House, Plus, Star, Tag, Trash2 } from "lucide-react";
-import type { Page, Space } from "../store/types";
+import { ChevronRight, Clock, Compass, FileText, Folder, Grid3x3, House, Plus, Star, Tag, Trash2 } from "lucide-react";
+import type { PageNode, Space } from "../store/types";
+import type { SpaceTree } from "../lib/useSpaceTree";
+import { listPagesByIds, searchPageTitles } from "../store/wikiStore";
+import { contentPathIn } from "../lib/contentPath";
 import { PageTree } from "./PageTree";
 import { TreeSkeleton } from "./WikiSkeleton";
 import { useCreateContent } from "../lib/useCreateContent";
 import { CreateContentMenu } from "./CreateContentMenu";
 import { SidebarResizer } from "./SidebarResizer";
 import { SpaceFlyout } from "./SpaceFlyout";
-import { filterPagesWithAncestors } from "./filterPagesWithAncestors";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
 import { useStarredSpaces } from "../lib/starredSpaces";
 import { hydrateStarredPages, useStarredPages } from "../lib/starredPages";
@@ -20,9 +22,9 @@ export interface GlobalSidebarProps {
   spaces: Space[];
   /** 현재 스페이스 — 스페이스 라우트면 해당 스페이스, 홈·디렉토리면 null */
   space: Space | null;
-  /** 현재 스페이스의 페이지 트리 (AppShell이 로드) — 스페이스 밖이면 null */
-  pages: Page[] | null;
-  /** 페이지 이동 후 트리 재로드 (AppShell의 reloadPages) */
+  /** 지연 로딩 트리 (AppShell이 소유) — 스페이스 밖이면 null */
+  tree: SpaceTree | null;
+  /** 페이지 이동·생성 후 트리 재로드 */
   reloadPages: () => Promise<void>;
   /** 스페이스 플라이아웃/컨텍스트 하단의 "스페이스 만들기" — AppShell의 공유 모달을 연다 */
   onCreateSpace: () => void;
@@ -42,7 +44,7 @@ export interface GlobalSidebarProps {
  * 최근/별표/앱 항목의 플라이아웃과 스페이스 개요 페이지는 후속(설계 §3 4~5단계) — 이번 패스에서는
  * 추천·스페이스만 실제 라우트로 이동하고 최근·별표·앱은 자리표시 항목이다.
  */
-export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace }: GlobalSidebarProps) {
+export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace }: GlobalSidebarProps) {
   const navigate = useNavigate();
   const { width, setWidth } = useSidebarPrefs();
   const { starred } = useStarredSpaces();
@@ -75,11 +77,31 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
   // 페이지 트리 제목 검색 — 스페이스 전환 시 초기화한다.
   const [query, setQuery] = useState("");
   const spaceId = space?.id ?? null;
-  // 별표 스냅샷 최신화 — 이 스페이스 트리를 로드할 때 개명·이모지 변경을 반영하고
-  // 구버전(제목 없는) 엔트리를 채운다. 다른 스페이스의 별표는 건드리지 않는다.
+  /**
+   * 별표 스냅샷 최신화 — 개명·이모지 변경을 반영하고 구버전(제목 없는) 엔트리를 채운다.
+   * 지연 트리에서는 별표된 문서가 트리에 로드돼 있으리라는 보장이 없어, **별표된 id만** 서버에
+   * 물어본다(2026-08-29). 로드된 노드만으로 맞추면 접힌 가지의 별표 제목이 조용히 낡는다.
+   * 다른 스페이스의 별표는 건드리지 않는다.
+   */
+  const starredIdsKey = starredPageEntries
+    .filter((e) => e.spaceId === spaceId || e.spaceId === undefined)
+    .map((e) => e.id)
+    .sort()
+    .join(",");
   useEffect(() => {
-    if (spaceId !== null && pages !== null) hydrateStarredPages(spaceId, pages);
-  }, [spaceId, pages]);
+    if (spaceId === null || starredIdsKey.length === 0) return;
+    let cancelled = false;
+    void listPagesByIds(spaceId, starredIdsKey.split(","))
+      .then((found) => {
+        if (!cancelled && found.length > 0) hydrateStarredPages(spaceId, found);
+      })
+      .catch(() => {
+        // 스냅샷 최신화 실패는 표시만 낡을 뿐이라 조용히 넘긴다
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [spaceId, starredIdsKey]);
   useEffect(() => {
     setQuery("");
   }, [spaceId]);
@@ -102,7 +124,34 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
 
   const inSpace = space !== null;
   const searching = query.trim().length > 0;
-  const visiblePages = pages === null ? null : filterPagesWithAncestors(pages, query);
+  /**
+   * 제목 검색은 서버가 한다(2026-08-29). 예전에는 화면이 들고 있던 전 페이지를 걸렀다.
+   * 결과는 계층 없이 평면 목록으로 보여준다 — 매치마다 조상 체인을 따로 받아오면
+   * 한 번 타이핑에 요청이 수십 개가 된다.
+   */
+  const [results, setResults] = useState<PageNode[] | null>(null);
+  useEffect(() => {
+    const q = query.trim();
+    if (!space || q.length === 0) {
+      setResults(null);
+      return;
+    }
+    let cancelled = false;
+    // 타이핑마다 때리지 않도록 잠깐 기다린다.
+    const timer = setTimeout(() => {
+      void searchPageTitles(space.id, q)
+        .then((found) => {
+          if (!cancelled) setResults(found);
+        })
+        .catch(() => {
+          if (!cancelled) setResults([]);
+        });
+    }, 200);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query, space]);
   // 별표 스페이스 목록 — 홈·디렉토리 컨텍스트(space=null)에서만 렌더하므로 현재 스페이스 제외는 불필요.
   const starredSpaceList = spaces.filter((s) => starred.includes(s.id));
   // 주의: 페이지 별표는 여기서 prune하지 않는다 — 이 컴포넌트는 현재 스페이스의 페이지만
@@ -239,16 +288,43 @@ export function GlobalSidebar({ spaces, space, pages, reloadPages, onCreateSpace
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="제목으로 검색"
               />
-              {visiblePages === null ? (
+              {searching ? (
+                results === null ? (
+                  <TreeSkeleton label="검색 중" />
+                ) : results.length === 0 ? (
+                  <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
+                ) : (
+                  <nav aria-label="페이지 검색 결과">
+                    <ul className="page-tree-list">
+                      {results.map((page) => (
+                        <li key={page.id}>
+                          <NavLink
+                            to={contentPathIn(space.id, page)}
+                            className="page-tree-link"
+                          >
+                            {page.icon ? (
+                              <span className="page-tree-emoji" aria-hidden="true">{page.icon}</span>
+                            ) : page.type === "folder" ? (
+                              <Folder className="page-tree-icon" size={16} aria-hidden="true" />
+                            ) : (
+                              <FileText className="page-tree-icon" size={16} aria-hidden="true" />
+                            )}
+                            <span className="page-tree-label">{page.title}</span>
+                          </NavLink>
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
+                )
+              ) : tree === null || (tree.loading && tree.nodes.length === 0) ? (
                 <TreeSkeleton label="페이지 트리 로딩 중" />
-              ) : searching && visiblePages.length === 0 ? (
-                <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
               ) : (
                 <PageTree
                   spaceId={space.id}
-                  pages={visiblePages}
+                  pages={tree.nodes}
+                  expanded={tree.expanded}
+                  onToggle={tree.toggle}
                   spaces={spaces}
-                  forceExpand={searching}
                   onMoved={reloadPages}
                   onCreateChild={createContent}
                 />

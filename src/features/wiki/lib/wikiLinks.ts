@@ -33,12 +33,14 @@ function encodeTitleParam(title: string): string {
  * 이제 본문에 실제로 나온 제목만 서버에 물어 그 결과를 넘긴다.
  *
  * 없는 제목은 생성 화면 경로(new?title=) — MarkdownView가 danger 스타일을 입힌다.
- * 아직 조회가 끝나지 않았으면(맵이 비었으면) 없는 것과 같게 그린다 — 잘못된 링크로 보내는
- * 것보다 "만들기"로 보이는 편이 낫고, 조회가 끝나면 즉시 정상 링크로 바뀐다.
+ *
+ * `targets`가 null이면 **아직 조회가 끝나지 않은 상태**다. 이때는 링크를 만들지 않고 제목만
+ * 글자로 남긴다 — 조회 전에 "없는 문서"(빨간 링크)로 그리면 멀쩡한 링크가 페이지를 열 때마다
+ * 잠깐 빨갛게 깜빡이고, 그 사이에 클릭하면 엉뚱한 생성 화면으로 간다.
  */
 export function resolveWikiLinks(
   markdown: string,
-  targets: ReadonlyMap<string, string>,
+  targets: ReadonlyMap<string, string> | null,
   spaceId: string,
 ): string {
   const wikiLinkRegex = new RegExp(WIKI_LINK_SOURCE, "g");
@@ -48,6 +50,7 @@ export function resolveWikiLinks(
       if (index % 2 === 1) return segment; // 홀수 인덱스 = 코드 구간
       return segment.replace(wikiLinkRegex, (_match, raw: string) => {
         const title = raw.trim();
+        if (targets === null) return title; // 조회 전 — 글자만 남긴다
         const targetId = targets.get(normalizeWikiTitle(title));
         return targetId
           ? `[${title}](/spaces/${spaceId}/pages/${targetId})`

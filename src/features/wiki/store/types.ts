@@ -304,6 +304,9 @@ export interface PageNode {
   status: PageStatus;
   position: number;
   icon?: string | null;
+  /** 폴더 화면의 "마지막 편집" 열이 쓴다 — 그 때문에 페이지를 한 건씩 다시 읽는 편이 더 비싸다. */
+  updatedBy?: string;
+  updatedAt?: string;
   childCount: number;
 }
 

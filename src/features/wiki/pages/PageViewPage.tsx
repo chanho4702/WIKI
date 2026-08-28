@@ -3,8 +3,16 @@ import { Navigate, useNavigate, useOutletContext, useParams } from "react-router
 import { Avatar, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
 import { Download, Maximize2, Minimize2, MoreHorizontal, Trash2, Star, Lock } from "lucide-react";
-import type { DeletePageOptions, Page, PageRestrictions, User } from "../store/types";
-import { deletePage, getPage, listUsers, recordPageView , getPageRestrictions } from "../store/wikiStore";
+import type { DeletePageOptions, Page, PageNode, PageRestrictions, User } from "../store/types";
+import {
+  deletePage,
+  getPage,
+  getPageRestrictions,
+  listAncestors,
+  listChildren,
+  listUsers,
+  recordPageView,
+} from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
 import { TableOfContents } from "../components/TableOfContents";
@@ -33,22 +41,6 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
 }
 
-/** parentId 체인을 따라 조상 페이지를 루트→직계 부모 순서로 반환. 순환 데이터 방어(방문 집합). */
-function ancestorsOf(page: Page, pages: Page[]): Page[] {
-  const byId = new Map(pages.map((p) => [p.id, p]));
-  const chain: Page[] = [];
-  const visited = new Set<string>([page.id]);
-  let parentId = page.parentId;
-  while (parentId !== null) {
-    if (visited.has(parentId)) break; // 순환 — 무한 루프 방지
-    const parent = byId.get(parentId);
-    if (!parent) break;
-    visited.add(parentId);
-    chain.unshift(parent);
-    parentId = parent.parentId;
-  }
-  return chain;
-}
 
 /**
  * 페이지 로딩 자리표시 — 제목·메타·본문 문단의 자리를 미리 잡아 콘텐츠가 들어올 때 화면이
@@ -76,7 +68,14 @@ function PageViewSkeleton() {
 
 export function PageViewPage() {
   const { spaceId, pageId } = useParams();
-  const { pages, space, reloadPages } = useOutletContext<WikiOutletContext>();
+  const { space, reloadPages } = useOutletContext<WikiOutletContext>();
+  /**
+   * 경로(브레드크럼)와 삭제 다이얼로그의 하위 개수는 서버에서 읽는다(2026-08-29).
+   * 예전에는 화면이 들고 있던 스페이스 전 페이지를 거슬러 올라가 계산했다 —
+   * 그 배열이 사라지면(지연 트리) 조용히 빈 경로가 된다.
+   */
+  const [ancestors, setAncestors] = useState<PageNode[]>([]);
+  const [childCount, setChildCount] = useState(0);
   const navigate = useNavigate();
   const toast = useToast();
   // undefined = 로딩 중, null = 없음
@@ -95,6 +94,29 @@ export function PageViewPage() {
   useEffect(() => {
     void listUsers().then(setUsers);
   }, []);
+
+  // 경로·하위 개수 — 부가 정보라 실패해도 본문을 막지 않는다(빈 값으로 둔다).
+  useEffect(() => {
+    if (!pageId || !spaceId) return;
+    let cancelled = false;
+    void listAncestors(pageId)
+      .then((chain) => {
+        if (!cancelled) setAncestors(chain);
+      })
+      .catch(() => {
+        if (!cancelled) setAncestors([]);
+      });
+    void listChildren(spaceId, pageId)
+      .then((children) => {
+        if (!cancelled) setChildCount(children.length);
+      })
+      .catch(() => {
+        if (!cancelled) setChildCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pageId, spaceId]);
 
   // 조회수 — 진입 시 1회 기록하고 누적치를 표시한다. 부가 신호라 실패는 조용히 무시(표시 생략).
   const [views, setViews] = useState<number | null>(null);
@@ -161,7 +183,7 @@ export function PageViewPage() {
       </div>
     );
   }
-  if (page === undefined || pages === null) {
+  if (page === undefined) {
     return <PageViewSkeleton />;
   }
   if (page === null) {
@@ -172,7 +194,6 @@ export function PageViewPage() {
     return <Navigate to={`/spaces/${page.spaceId}/pages/${page.id}`} replace />;
   }
 
-  const ancestors = ancestorsOf(page, pages);
   const editor = users.find((u) => u.id === page.updatedBy);
 
   // 경로: 스페이스 → 조상들 → 현재 페이지(href 없음 = 현재 위치)
@@ -325,7 +346,7 @@ export function PageViewPage() {
         onOpenChange={setConfirmOpen}
         title={page.title}
         type={page.type}
-        childCount={pages.filter((p) => p.parentId === page.id).length}
+        childCount={childCount}
         loading={deleting}
         onConfirm={handleDelete}
       />

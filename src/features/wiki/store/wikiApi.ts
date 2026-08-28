@@ -423,6 +423,12 @@ export async function lookupPagesByTitle(spaceId: string, titles: string[]): Pro
   return nodes(`/api/wiki/spaces/${toBackendId(spaceId)}/pages/lookup?${query}`);
 }
 
+export async function listPagesByIds(spaceId: string, ids: string[]): Promise<PageNode[]> {
+  if (ids.length === 0) return [];
+  const query = ids.map((id) => `id=${toBackendId(id)}`).join("&");
+  return nodes(`/api/wiki/spaces/${toBackendId(spaceId)}/pages/by-ids?${query}`);
+}
+
 export async function searchPageTitles(spaceId: string, query: string): Promise<PageNode[]> {
   const q = query.trim();
   if (!q) return [];

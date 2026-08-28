@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { Button } from "@chanho/react";
 import { FolderPlus, MapPin, Plus } from "lucide-react";
-import type { Page, Space } from "../store/types";
-import { listPages } from "../store/wikiStore";
+import type { Space } from "../store/types";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { SpaceCreateModal } from "./SpaceCreateModal";
 import { WikiTopBar } from "./WikiTopBar";
@@ -11,6 +10,7 @@ import type { WikiOutletContext } from "./wikiContext";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
 import { pruneStarredSpaces } from "../lib/starredSpaces";
 import { useCreateContent } from "../lib/useCreateContent";
+import { useSpaceTree } from "../lib/useSpaceTree";
 import { CreateContentMenu } from "./CreateContentMenu";
 import { CreateContentDialog } from "./CreateContentDialog";
 
@@ -41,7 +41,11 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
   const space = spaceId ? spaces.find((s) => s.id === spaceId) ?? null : null;
   const currentId = space?.id ?? null;
 
-  const [pages, setPages] = useState<Page[] | null>(null);
+  /**
+   * 지연 로딩 트리(2026-08-29) — 예전에는 스페이스에 들어가는 순간 전 페이지를 받았다.
+   * 이제 최상위만 받고 펼칠 때 한 단계씩 받는다.
+   */
+  const tree = useSpaceTree(currentId);
   const [spaceModalOpen, setSpaceModalOpen] = useState(false);
 
   // 스페이스 목록이 로드/갱신될 때마다 별표 저장 배열에서 죽은 id를 정리한다(스페이스 삭제 등).
@@ -49,14 +53,15 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
     pruneStarredSpaces(spaces.map((s) => s.id));
   }, [spaces]);
 
+  // 깊은 링크로 들어오면 그 문서가 트리에 보이도록 조상 체인을 펼친다.
+  // (트리 전체를 받지 않으므로 펼쳐 주지 않으면 현재 위치가 사이드바에 나타나지 않는다.)
+  const revealTree = tree.reveal;
   useEffect(() => {
-    if (!currentId) {
-      setPages(null);
-      return;
-    }
-    setPages(null);
-    void listPages(currentId).then(setPages);
-  }, [currentId]);
+    const match = /^\/spaces\/[^/]+\/(?:pages|folder)\/([^/]+)/.exec(pathname);
+    const pageId = match?.[1];
+    if (!pageId || pageId === "new") return;
+    void revealTree(pageId);
+  }, [pathname, revealTree]);
 
   /**
    * 라우트 전환 시 본문 스크롤을 맨 위로 되돌린다. 뷰포트가 아니라 `.wiki-content`가 스크롤
@@ -76,10 +81,10 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
     if (el) el.scrollTop = 0;
   }, [pathname]);
 
+  const refreshTree = tree.refresh;
   const reloadPages = useCallback(async () => {
-    if (!currentId) return;
-    setPages(await listPages(currentId));
-  }, [currentId]);
+    await refreshTree();
+  }, [refreshTree]);
 
   // 페이지·폴더 생성은 useCreateContent 하나로 모았다 — 전에는 폴더 생성이 여기와 FolderPage에
   // 따로 복제돼 있었고, 그 탓에 헤더에서는 하위 폴더를 만들 방법이 아예 없었다(parentId 미지원).
@@ -138,7 +143,7 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
 
   // 홈·디렉토리 라우트도 이 컨텍스트를 받지만 space를 읽지 않는다(스페이스 페이지 화면만 읽는다).
   // 스페이스 라우트에서는 위 리다이렉트로 space가 non-null임이 보장되므로 캐스트가 안전하다.
-  const outletContext: WikiOutletContext = { pages, space: space as Space, reloadPages };
+  const outletContext: WikiOutletContext = { space: space as Space, reloadPages };
 
   return (
     <div className="wiki-layout">
@@ -157,7 +162,7 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
           <GlobalSidebar
             spaces={spaces}
             space={space}
-            pages={pages}
+            tree={space ? tree : null}
             reloadPages={reloadPages}
             onCreateSpace={() => setSpaceModalOpen(true)}
           />

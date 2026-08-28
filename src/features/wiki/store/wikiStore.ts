@@ -46,6 +46,7 @@ export const listAncestors = impl.listAncestors;
 export const listDescendants = impl.listDescendants;
 export const lookupPagesByTitle = impl.lookupPagesByTitle;
 export const searchPageTitles = impl.searchPageTitles;
+export const listPagesByIds = impl.listPagesByIds;
 export const listVersions = impl.listVersions;
 export const restoreVersion = impl.restoreVersion;
 export const listComments = impl.listComments;

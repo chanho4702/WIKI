@@ -28,7 +28,7 @@ describe("App 라우팅과 위키 W1 흐름", () => {
   // 트리 동작을 검증할 땐 반드시 nav로 스코프를 좁힌다(전역 쿼리는 다중 매치로 실패).
   const treeIn = () => within(screen.getByRole("navigation", { name: "페이지 트리" }));
 
-  it("루트 접근 시 첫 스페이스의 개요로 가고, 트리가 깊이 3 계층을 렌더한다", async () => {
+  it("루트 접근 시 첫 스페이스의 개요로 가고, 트리는 최상위부터 펼쳐 내려간다", async () => {
     renderApp();
     // 개요 화면이 생기기 전에는 첫 루트 페이지로 곧장 redirect했다 — 이제 스페이스에서 멈춘다.
     await waitFor(() => {
@@ -37,24 +37,31 @@ describe("App 라우팅과 위키 W1 흐름", () => {
     expect(screen.getByTestId("location")).not.toHaveTextContent("/pages/");
     // 트리는 페이지 목록 로드 후 스켈레톤을 대체한다 — 로드 완료를 기다린다(경합 방지)
     await screen.findByRole("navigation", { name: "페이지 트리" });
-    const tree = treeIn();
-    // 루트 2 + 하위 2 + 손자 1 전부 표시 (기본 펼침)
-    expect(tree.getByRole("link", { name: "시작하기" })).toBeInTheDocument();
-    expect(tree.getByRole("link", { name: "팀 규칙" })).toBeInTheDocument();
-    expect(tree.getByRole("link", { name: "개발 환경 설정" })).toBeInTheDocument();
-    expect(tree.getByRole("link", { name: "배포 가이드" })).toBeInTheDocument();
-    expect(tree.getByRole("link", { name: "로컬 DB 설정" })).toBeInTheDocument();
+    // 지연 트리(2026-08-29): 처음엔 최상위만 받는다. 하위는 펼칠 때 서버에서 온다.
+    expect(treeIn().getByRole("link", { name: "시작하기" })).toBeInTheDocument();
+    expect(treeIn().getByRole("link", { name: "팀 규칙" })).toBeInTheDocument();
+    expect(treeIn().queryByRole("link", { name: "개발 환경 설정" })).not.toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "시작하기 하위 펼치기" }));
+    expect(await treeIn().findByRole("link", { name: "개발 환경 설정" })).toBeInTheDocument();
+    expect(treeIn().getByRole("link", { name: "배포 가이드" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "개발 환경 설정 하위 펼치기" }));
+    expect(await treeIn().findByRole("link", { name: "로컬 DB 설정" })).toBeInTheDocument();
   });
 
-  it("토글로 하위를 접으면 손자 페이지가 사라지고, 다시 펼치면 나타난다", async () => {
+  /** 한 번 받아온 자식은 접었다 펼칠 때 다시 요청하지 않는다 — 다시 보이기만 하면 된다. */
+  it("펼친 하위를 접으면 사라지고, 다시 펼치면 나타난다", async () => {
     const user = userEvent.setup();
     renderApp();
     await screen.findByRole("navigation", { name: "페이지 트리" });
-    expect(treeIn().getByRole("link", { name: "로컬 DB 설정" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "개발 환경 설정 하위 접기" }));
-    expect(treeIn().queryByRole("link", { name: "로컬 DB 설정" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "개발 환경 설정 하위 펼치기" }));
-    expect(treeIn().getByRole("link", { name: "로컬 DB 설정" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "시작하기 하위 펼치기" }));
+    expect(await treeIn().findByRole("link", { name: "개발 환경 설정" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "시작하기 하위 접기" }));
+    expect(treeIn().queryByRole("link", { name: "개발 환경 설정" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "시작하기 하위 펼치기" }));
+    expect(treeIn().getByRole("link", { name: "개발 환경 설정" })).toBeInTheDocument();
   });
 
   it("트리에서 다른 페이지를 클릭하면 URL이 바뀌고 그 페이지가 표시되며 트리에 하이라이트된다", async () => {

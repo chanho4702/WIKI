@@ -16,7 +16,7 @@ import { ChevronRight, Copy, FileText, Folder, FolderInput, Link2, MoreHorizonta
 import { contentPathIn } from "../lib/contentPath";
 import type { ReactNode } from "react";
 import { MoveImpactError } from "../store/types";
-import type { Page, PageType, Space } from "../store/types";
+import type { Page, PageNode, PageType, Space } from "../store/types";
 import { copyPage, listPages, movePage, updatePage } from "../store/wikiStore";
 import {
   descendantIdsOf,
@@ -30,11 +30,14 @@ import { useStarredPages } from "../lib/starredPages";
 
 export interface PageTreeProps {
   spaceId: string;
-  pages: Page[];
+  /** 지금까지 로드한 노드(평면). 지연 트리라 "전부"가 아니다(2026-08-29). */
+  pages: PageNode[];
+  /** 펼쳐진 노드 id — 펼침이 곧 자식 로딩 트리거라 상태를 부모가 갖는다. */
+  expanded: Set<string>;
+  /** 펼치기/접기. 부모가 자식을 받아온다. */
+  onToggle: (id: string) => void;
   /** 이동 다이얼로그의 "다른 스페이스" 후보 — 생략하면 현재 스페이스 안 이동만 가능 */
   spaces?: Space[];
-  /** true면 접힘 상태를 무시하고 전부 펼친다(검색 중) — 접기 토글도 숨긴다 */
-  forceExpand?: boolean;
   /** 드래그로 페이지를 이동한 뒤 호출 — 주어지지 않으면 드래그 비활성 */
   onMoved?: () => void | Promise<void>;
   /** 행의 "+" — 해당 항목의 하위 콘텐츠를 만든다(타입은 드롭다운에서 고른다).
@@ -43,13 +46,29 @@ export interface PageTreeProps {
 }
 
 interface TreeNode {
-  page: Page;
+  page: PageNode;
   children: TreeNode[];
 }
 
-/** parentId 인접 리스트 → 트리. 형제는 position 오름차순. */
-function buildTree(pages: Page[]): TreeNode[] {
-  const byParent = new Map<string | null, Page[]>();
+/** 이동 다이얼로그용 — 전량을 읽어온 목록을 트리 노드 모양으로 맞춘다(자식 수는 그 목록에서 센다). */
+function toPickerNode(all: Page[]): (page: Page) => PageNode {
+  return (page) => ({
+    id: page.id,
+    parentId: page.parentId,
+    title: page.title,
+    type: page.type,
+    status: page.status,
+    position: page.position,
+    icon: page.icon ?? null,
+    updatedBy: page.updatedBy,
+    updatedAt: page.updatedAt,
+    childCount: all.filter((p) => p.parentId === page.id).length,
+  });
+}
+
+/** parentId 인접 리스트 → 트리. 형제는 position 오름차순. 로드된 것만 들어온다. */
+function buildTree(pages: PageNode[]): TreeNode[] {
+  const byParent = new Map<string | null, PageNode[]>();
   for (const page of pages) {
     const siblings = byParent.get(page.parentId) ?? [];
     siblings.push(page);
@@ -64,24 +83,23 @@ function buildTree(pages: Page[]): TreeNode[] {
 }
 
 interface FlatNode {
-  page: Page;
+  page: PageNode;
   depth: number;
 }
 
 /** 화면에 보이는 순서대로 평탄화 — activeId의 자손은 제외(드래그 중 함께 이동하므로) */
 function flattenVisible(
   roots: TreeNode[],
-  collapsed: Set<string>,
-  forceExpand: boolean,
+  expanded: Set<string>,
   activeId: string | null,
 ): FlatNode[] {
   const out: FlatNode[] = [];
   const walk = (nodes: TreeNode[], depth: number) => {
     for (const node of nodes) {
       out.push({ page: node.page, depth });
-      const hideChildren =
-        node.page.id === activeId || (!forceExpand && collapsed.has(node.page.id));
-      if (!hideChildren) walk(node.children, depth + 1);
+      // 지연 트리 기본값은 접힘이다 — 펼친 노드의 자식만 보여준다(드래그 중인 노드 제외).
+      const showChildren = node.page.id !== activeId && expanded.has(node.page.id);
+      if (showChildren) walk(node.children, depth + 1);
     }
   };
   walk(roots, 0);
@@ -119,18 +137,21 @@ function SortableRow({
   );
 }
 
-export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved, onCreateChild }: PageTreeProps) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, onCreateChild }: PageTreeProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   // 드래그 중 드롭 대상과 의도(앞/뒤/하위) — 시각 표시와 최종 이동이 같은 값을 쓴다
   const [dropIntent, setDropIntent] = useState<{ overId: string; mode: DropMode } | null>(null);
   // 이동 다이얼로그 대상 페이지 (null = 닫힘)
-  const [moveTarget, setMoveTarget] = useState<Page | null>(null);
+  const [moveTarget, setMoveTarget] = useState<PageNode | null>(null);
   const [moveParentId, setMoveParentId] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   // 스페이스 간 이동 — 대상 스페이스와 그 스페이스의 페이지 목록(부모 후보), 하위 처리 방식
   const [moveSpaceId, setMoveSpaceId] = useState<string>(spaceId);
-  const [moveSpacePages, setMoveSpacePages] = useState<Page[] | null>(null);
+  /**
+   * 다른 스페이스로 이동할 때의 부모 후보. **여기만 아직 그 스페이스 전량을 읽는다**
+   * (알려진 부채 2026-08-29) — 사용자가 다이얼로그를 열었을 때만 도는 경로라 우선순위를 뒤로 뒀다.
+   */
+  const [moveSpacePages, setMoveSpacePages] = useState<PageNode[] | null>(null);
   const [moveChildren, setMoveChildren] = useState<"with" | "promote">("with");
   // 인라인 이름 바꾸기 — 트리 행의 라벨이 입력으로 바뀐다(모달 아님, 노션/컨플식)
   const [renameId, setRenameId] = useState<string | null>(null);
@@ -144,19 +165,11 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
   const toast = useToast();
   const roots = buildTree(pages);
   // 검색 필터 중에는 부분 트리라 위치 계산이 모호하므로 드래그를 끈다 (스펙 4.1)
-  const dragEnabled = !forceExpand && onMoved !== undefined;
-  const flat = flattenVisible(roots, collapsed, forceExpand, activeId);
+  const dragEnabled = onMoved !== undefined;
+  const flat = flattenVisible(roots, expanded, activeId);
   // 클릭(네비게이션)과 드래그 구분 — 6px 이상 움직여야 드래그 시작
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  const toggle = (id: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   const dropNodes = (): FlatDropNode[] =>
     flat.map((f) => ({ id: f.page.id, parentId: f.page.parentId, depth: f.depth }));
@@ -243,7 +256,7 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
   };
 
   /** 링크 복사 — 게이트웨이 뒤 실제 주소(base "/wiki" 포함)를 클립보드에 넣는다. */
-  const handleCopyLink = async (page: Page) => {
+  const handleCopyLink = async (page: PageNode) => {
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
     const url = `${window.location.origin}${base}${contentPathIn(spaceId, page)}`;
     try {
@@ -255,7 +268,7 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
   };
 
   /** 인라인 이름 확정 — 빈 제목이면 취소와 동일(원래 이름 유지). */
-  const commitRename = async (page: Page) => {
+  const commitRename = async (page: PageNode) => {
     const next = renameValue.trim();
     setRenameId(null);
     if (!next || next === page.title || renaming) return;
@@ -279,7 +292,7 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
     }
   };
 
-  const handleCopy = async (page: Page) => {
+  const handleCopy = async (page: PageNode) => {
     try {
       const copy = await copyPage(page.id);
       toast({ title: `"${copy.title}"을(를) 만들었습니다`, appearance: "success" });
@@ -321,7 +334,7 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
     }
   };
 
-  const openMoveDialog = (page: Page) => {
+  const openMoveDialog = (page: PageNode) => {
     setMoveSpaceId(spaceId);
     setMoveSpacePages(null);
     setMoveChildren("with");
@@ -337,22 +350,25 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
       return;
     }
     setMoveSpacePages(null);
-    void listPages(nextSpaceId).then(setMoveSpacePages);
+    void listPages(nextSpaceId).then((all) => setMoveSpacePages(all.map(toPickerNode(all))));
   };
 
   /** 이동 다이얼로그의 대상 부모 후보 — 자기 자신과 자손은 제외(순환) */
-  const moveOptions = (page: Page): FlatNode[] => {
+  const moveOptions = (page: PageNode): FlatNode[] => {
     if (moveSpaceId !== spaceId) {
       // 다른 스페이스 — 로드한 그 스페이스 트리 전체가 후보(자기 서브트리는 그 스페이스에 없다)
       if (moveSpacePages === null) return [];
-      return flattenVisible(buildTree(moveSpacePages), new Set(), true, null);
+      const allIds = new Set(moveSpacePages.map((p) => p.id));
+      return flattenVisible(buildTree(moveSpacePages), allIds, null);
     }
     const excluded = descendantIdsOf(
       pages.map((p) => ({ id: p.id, parentId: p.parentId, depth: 0 })),
       page.id,
     );
     excluded.add(page.id);
-    return flattenVisible(roots, new Set(), true, null).filter((f) => !excluded.has(f.page.id));
+    // 이동 대상 후보는 로드된 것 전부를 펼쳐 보여준다(접힘 상태와 무관).
+    const allIds = new Set(pages.map((p) => p.id));
+    return flattenVisible(roots, allIds, null).filter((f) => !excluded.has(f.page.id));
   };
 
   const renderNodes = (nodes: TreeNode[]) => (
@@ -360,20 +376,20 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
       {nodes.map(({ page, children }) => {
         // 드래그 중인 노드의 자손은 임시로 접는다 (스펙 4.1) — flattenVisible의 제외와 일치,
         // 자손 위 드롭(무효)을 시각적으로도 차단한다
-        const isCollapsed =
-          page.id === activeId || (!forceExpand && collapsed.has(page.id));
+        const isExpanded = page.id !== activeId && expanded.has(page.id);
         const row = (
           <>
             <div className="page-tree-row">
-              {children.length > 0 && !forceExpand ? (
+              {/* 화살표는 서버가 준 childCount로 그린다 — 자식을 받아보기 전에도 알아야 한다 */}
+              {page.childCount > 0 ? (
                 <button
                   type="button"
                   className="page-tree-toggle"
-                  aria-expanded={!isCollapsed}
+                  aria-expanded={isExpanded}
                   aria-label={
-                    isCollapsed ? `${page.title} 하위 펼치기` : `${page.title} 하위 접기`
+                    isExpanded ? `${page.title} 하위 접기` : `${page.title} 하위 펼치기`
                   }
-                  onClick={() => toggle(page.id)}
+                  onClick={() => onToggle(page.id)}
                 >
                   <ChevronRight className="page-tree-toggle-icon" size={14} aria-hidden="true" />
                 </button>
@@ -516,7 +532,7 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
                 />
               ) : null}
             </div>
-            {children.length > 0 && !isCollapsed ? renderNodes(children) : null}
+            {isExpanded && children.length > 0 ? renderNodes(children) : null}
           </>
         );
         return dragEnabled ? (
@@ -602,7 +618,9 @@ export function PageTree({ spaceId, pages, spaces, forceExpand = false, onMoved,
                 ))}
               </select>
             )}
-            {moveSpaceId !== spaceId && pages.some((p) => p.parentId === moveTarget.id) ? (
+            {/* 자식 유무는 서버가 준 childCount로 판단한다 — 지연 트리에서는 아직 안 펼친
+              * 가지의 자식이 로드돼 있지 않아, 로드된 목록으로 세면 선택지가 통째로 사라진다. */}
+            {moveSpaceId !== spaceId && moveTarget.childCount > 0 ? (
               <RadioGroup
                 aria-label="하위 항목 처리"
                 value={moveChildren}

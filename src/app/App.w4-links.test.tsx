@@ -20,7 +20,8 @@ describe("W4 [[제목]] 페이지 링크", () => {
     renderApp("/spaces/sp1/pages/pg2");
     await screen.findByRole("heading", { level: 1, name: "팀 규칙" });
     const article = screen.getByRole("article"); // 사이드바 NavLink와 구분
-    const link = within(article).getByRole("link", { name: "시작하기" });
+    // 링크 대상 조회가 끝나기 전에는 링크를 만들지 않는다(빨간 깜빡임 방지) — 해석을 기다린다.
+    const link = await within(article).findByRole("link", { name: "시작하기" });
     expect(link).toHaveAttribute("href", "/spaces/sp1/pages/pg1");
     expect(link).not.toHaveClass("wiki-link-missing");
     await user.click(link);
@@ -33,7 +34,7 @@ describe("W4 [[제목]] 페이지 링크", () => {
     renderApp("/spaces/sp1/pages/pg2");
     await screen.findByRole("heading", { level: 1, name: "팀 규칙" });
     const article = screen.getByRole("article");
-    const link = within(article).getByRole("link", { name: "운영 런북" });
+    const link = await within(article).findByRole("link", { name: "운영 런북" });
     expect(link).toHaveClass("wiki-link-missing");
     await user.click(link);
     expect(await screen.findByPlaceholderText("제목 없음")).toHaveValue("운영 런북");

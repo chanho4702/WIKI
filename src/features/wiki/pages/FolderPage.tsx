@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router";
 import { Button, Dropdown, EmptyState, InlineEdit, useToast } from "@chanho/react";
 import { FileText, Folder, FolderPlus, MoreHorizontal, Plus, Trash2 } from "lucide-react";
-import type { Page, PageType, User } from "../store/types";
-import { deletePage, listUsers, updatePage } from "../store/wikiStore";
+import type { Page, PageNode, PageType, User } from "../store/types";
+import { deletePage, getPage, listChildren, listUsers, updatePage } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { contentPathIn } from "../lib/contentPath";
@@ -31,8 +31,15 @@ export function FolderPage() {
   const { spaceId, folderId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const { pages, space, reloadPages } = useOutletContext<WikiOutletContext>();
+  const { space, reloadPages } = useOutletContext<WikiOutletContext>();
   const [users, setUsers] = useState<User[]>([]);
+  /**
+   * 폴더 자체와 직계 자식만 서버에서 읽는다(2026-08-29).
+   * undefined = 로딩 중, null = 없음. 예전에는 화면이 들고 있던 스페이스 전 페이지에서 찾았다.
+   */
+  const [folder, setFolder] = useState<Page | null | undefined>(undefined);
+  const [children, setChildren] = useState<PageNode[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
   const { createContent } = useCreateContent(spaceId ?? null, reloadPages);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -41,7 +48,29 @@ export function FolderPage() {
     void listUsers().then(setUsers);
   }, []);
 
-  if (pages === null) {
+  useEffect(() => {
+    if (!folderId || !spaceId) return;
+    let cancelled = false;
+    void getPage(folderId)
+      .then((found) => {
+        if (!cancelled) setFolder(found);
+      })
+      .catch(() => {
+        if (!cancelled) setFolder(null);
+      });
+    void listChildren(spaceId, folderId)
+      .then((found) => {
+        if (!cancelled) setChildren(found);
+      })
+      .catch(() => {
+        if (!cancelled) setChildren([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [folderId, spaceId, reloadKey]);
+
+  if (folder === undefined) {
     return (
       <div className="folder-page">
         <span className="wiki-visually-hidden" role="status">
@@ -59,8 +88,7 @@ export function FolderPage() {
     );
   }
 
-  const folder = pages.find((p) => p.id === folderId);
-  if (!folder || folder.type !== "folder") {
+  if (folder === null || folder.type !== "folder") {
     // 폴더 id로 일반 페이지를 열려 했거나 삭제된 경우 — 조용히 빈 화면을 두지 않는다
     return (
       <div className="folder-page">
@@ -73,9 +101,6 @@ export function FolderPage() {
     );
   }
 
-  const children = pages
-    .filter((p) => p.parentId === folder.id)
-    .sort((a, b) => a.position - b.position);
   const owner = users.find((u) => u.id === folder.createdBy);
   const ownerName = owner?.name ?? (folder.createdBy ? displayUserName(folder.createdBy) : null);
 
@@ -84,7 +109,8 @@ export function FolderPage() {
     if (!title || title === folder.title) return; // 무변경·빈 이름은 무시(스토어도 거부한다)
     try {
       await updatePage(folder.id, { title });
-      await reloadPages(); // 트리·이 화면이 같은 pages를 보므로 함께 갱신된다
+      setReloadKey((n) => n + 1); // 이 화면의 폴더·자식 재조회
+      await reloadPages(); // 사이드바 트리 갱신
     } catch (error) {
       toast({
         title: "이름 변경 실패",
@@ -212,10 +238,10 @@ export function FolderPage() {
   );
 }
 
-function FolderRow({ item, spaceId, users }: { item: Page; spaceId: string; users: User[] }) {
+function FolderRow({ item, spaceId, users }: { item: PageNode; spaceId: string; users: User[] }) {
   const editor = users.find((u) => u.id === item.updatedBy);
   const editorName = editor?.name ?? (item.updatedBy ? displayUserName(item.updatedBy) : null);
-  const updated = formatDate(item.updatedAt);
+  const updated = formatDate(item.updatedAt ?? "");
   const isFolder = item.type === "folder";
   return (
     <tr>

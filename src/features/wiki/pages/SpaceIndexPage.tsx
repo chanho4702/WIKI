@@ -3,7 +3,7 @@ import { Link, useOutletContext, useParams } from "react-router";
 import { Avatar, Button, EmptyState } from "@chanho/react";
 import { ChevronRight, FileText, Folder, FolderOpen, Plus } from "lucide-react";
 import type { Page, User } from "../store/types";
-import { listUsers } from "../store/wikiStore";
+import { listPages, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { displayUserName } from "../lib/userName";
 import { contentPathIn } from "../lib/contentPath";
@@ -115,7 +115,28 @@ function formatDate(iso: string): string {
  */
 export function SpaceIndexPage() {
   const { spaceId } = useParams();
-  const { pages, space, reloadPages } = useOutletContext<WikiOutletContext>();
+  const { space, reloadPages } = useOutletContext<WikiOutletContext>();
+  /**
+   * 스페이스 개요는 트리 전체를 한눈에 보여주는 화면이라 여기서만 전량을 읽는다
+   * (알려진 부채 2026-08-29 — 큰 스페이스에서는 이 화면도 페이지네이션이 필요하다).
+   * 사이드바는 지연 트리로 바뀌어 더 이상 이 목록을 공유하지 않는다.
+   */
+  const [pages, setPages] = useState<Page[] | null>(null);
+  useEffect(() => {
+    if (!space) return;
+    let cancelled = false;
+    setPages(null);
+    void listPages(space.id)
+      .then((all) => {
+        if (!cancelled) setPages(all);
+      })
+      .catch(() => {
+        if (!cancelled) setPages([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [space]);
   const [users, setUsers] = useState<User[]>([]);
   const { createContent } = useCreateContent(spaceId ?? null, reloadPages);
 

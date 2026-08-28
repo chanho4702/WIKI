@@ -583,6 +583,8 @@ function toNode(data: WikiData, page: Page): PageNode {
     status: page.status,
     position: page.position,
     icon: page.icon ?? null,
+    updatedBy: page.updatedBy,
+    updatedAt: page.updatedAt,
     childCount: data.pages.filter((p) => p.parentId === page.id).length,
   };
 }
@@ -647,6 +649,15 @@ export async function lookupPagesByTitle(spaceId: string, titles: string[]): Pro
   if (wanted.size === 0) return [];
   return data.pages
     .filter((p) => p.spaceId === spaceId && wanted.has(p.title.trim().toLowerCase()))
+    .map((p) => toNode(data, p));
+}
+
+/** id 묶음 조회 — 별표 목록처럼 "아는 id들의 현재 제목"이 필요한 곳이 쓴다. */
+export async function listPagesByIds(spaceId: string, ids: string[]): Promise<PageNode[]> {
+  const data = load();
+  const wanted = new Set(ids.slice(0, TREE_LOOKUP_LIMIT));
+  return data.pages
+    .filter((p) => p.spaceId === spaceId && wanted.has(p.id))
     .map((p) => toNode(data, p));
 }
 

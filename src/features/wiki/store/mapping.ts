@@ -61,6 +61,9 @@ export interface TreeItemDto { id: number; parentId: number | null; title: strin
   position?: number;
   /** V10 — 트리에 이모지 아이콘 표시용. */
   icon?: string | null;
+  /** 2026-08-29 — 폴더 화면의 "마지막 편집" 열. 구버전 응답 호환을 위해 optional. */
+  updatedBy?: number | null;
+  updatedAt?: string | null;
 }
 export function mapPageTree(items: TreeItemDto[]): Page[] {
   // V9부터 서버가 형제 순서(position)를 저장한다(P1-001). 없던 시절 응답은 index+1 폴백.
@@ -136,6 +139,8 @@ export function mapPageNode(dto: PageNodeDto): PageNode {
     status: dto.status ?? "published",
     position: dto.position ?? 0,
     icon: dto.icon ?? null,
+    updatedBy: dto.updatedBy === null || dto.updatedBy === undefined ? undefined : toClientId(dto.updatedBy),
+    updatedAt: dto.updatedAt ?? undefined,
     childCount: dto.childCount ?? 0,
   };
 }
