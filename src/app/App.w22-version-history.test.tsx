@@ -71,6 +71,28 @@ describe("W22 버전 히스토리 — 화면", () => {
     expect(await screen.findByText("표 정리")).toBeInTheDocument();
   });
 
+  /**
+   * 요약 칸은 액션 바 높이(--edit-chrome-height)를 넘기지 않으려고 라벨을 화면에서 감춘다 —
+   * 넘기면 바로 아래 sticky 툴바가 그만큼 안 내려가 스크롤할 때 에디터를 덮는다.
+   * 감추는 것은 시각뿐이고 라벨-입력 연결은 남아야 한다.
+   */
+  it("변경 요약 칸은 라벨로 찾을 수 있고 그 요약이 버전에 붙는다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg2/edit");
+
+    const note = await screen.findByLabelText("변경 요약 (선택)");
+    await user.type(note, "머리말 정리");
+    // 요약만으로는 새 버전이 생기지 않는다 — 실제로 고친 것이 있어야 저장이 이력을 남긴다.
+    const title = screen.getByRole("textbox", { name: "페이지 제목" });
+    await user.clear(title);
+    await user.type(title, "팀 규칙 2026");
+    await user.click(screen.getByRole("button", { name: "업데이트" }));
+
+    await waitFor(async () => {
+      expect((await listVersions("pg2"))[0].changeNote).toBe("머리말 정리");
+    });
+  });
+
   it("비교 기준을 골라 임의의 두 버전을 견줄 수 있다", async () => {
     const user = userEvent.setup();
     await updatePage("pg2", { body: "두 번째" });
