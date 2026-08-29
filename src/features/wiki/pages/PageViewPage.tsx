@@ -25,7 +25,7 @@ import { Backlinks } from "../components/Backlinks";
 import { PageAttachments } from "../components/PageAttachments";
 import { ExportDialog } from "../components/ExportDialog";
 import { WatchButton } from "../components/WatchButton";
-import { InlineCommentPanel } from "../components/InlineCommentPanel";
+import { InlineCommentLayer } from "../components/InlineCommentLayer";
 import { usePageWidth } from "../lib/pageWidth";
 import { removeStarredPage, useStarredPages } from "../lib/starredPages";
 import { RestrictionsDialog } from "../components/RestrictionsDialog";
@@ -377,11 +377,16 @@ export function PageViewPage() {
       })()}
       {/* 본문에 명시 목차(::toc)가 있으면 자동 목차는 숨긴다 — 같은 목차가 두 번 보이는 중복 방지 */}
       {!/^\s*::toc\s*$/m.test(page.body) && <TableOfContents markdown={page.body} />}
-      {/* 인라인 댓글이 하이라이트를 심을 대상 — 렌더된 본문 DOM이 앵커 기준이다(W21-4) */}
-      <div ref={bodyRef}>
-        <MarkdownView markdown={page.body} spaceId={space.id} />
+      {/*
+        인라인 댓글이 하이라이트를 심을 대상 — 렌더된 본문 DOM이 앵커 기준이다(W21-4).
+        대화 상자는 이 스코프를 기준으로 그 줄 오른쪽에 절대 배치된다(W23).
+      */}
+      <div className="inline-comment-scope">
+        <div ref={bodyRef}>
+          <MarkdownView markdown={page.body} spaceId={space.id} />
+        </div>
+        <InlineCommentLayer pageId={page.id} body={page.body} users={users} bodyRef={bodyRef} />
       </div>
-      <InlineCommentPanel pageId={page.id} body={page.body} users={users} bodyRef={bodyRef} />
       <PageLabels pageId={page.id} spaceId={space.id} />
       <ChildPages currentPageId={page.id} spaceId={space.id} />
       <PageAttachments pageId={page.id} body={page.body} />

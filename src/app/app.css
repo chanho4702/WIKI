@@ -2175,13 +2175,43 @@ body {
   color: var(--chanho-color-text-subtlest);
   font-size: var(--chanho-font-size-75, 12px);
 }
-.starred-flyout .space-flyout-item-name {
+.starred-flyout .space-flyout-item-name,
+.nav-list-flyout .space-flyout-item-name {
   display: flex;
   align-items: center;
   gap: var(--chanho-space-100);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* 최근·스페이스 목록형 플라이아웃 — 별표(검색형)와 같은 상자, 다른 내용 */
+.nav-list-flyout {
+  top: 0;
+  left: calc(100% + var(--chanho-space-100));
+}
+
+/* 항목의 보조 문구(방문 시각·스페이스 키)는 오른쪽 끝으로 밀되 제목을 밀어내지 않는다 */
+.nav-list-flyout-meta {
+  margin-left: auto;
+  flex: none;
+  padding-left: var(--chanho-space-100);
+  color: var(--chanho-color-text-subtlest);
+  font-size: var(--chanho-font-size-75, 12px);
+}
+
+.nav-list-flyout .space-flyout-item-name > span:first-of-type {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nav-list-flyout-more {
+  display: block;
+  margin-top: var(--chanho-space-100);
+  padding-top: var(--chanho-space-100);
+  border-top: 1px solid var(--chanho-color-border-default);
+  font-size: var(--chanho-font-size-75, 12px);
 }
 
 /* 사용자 메뉴 트리거 — 아바타를 버튼으로 감싼다(드롭다운 접근성) */
@@ -4860,58 +4890,148 @@ body.is-column-reordering {
   flex-wrap: wrap;
 }
 
-/* ── 인라인 댓글(W21-4) ───────────────────────────────────── */
-/* 하이라이트는 읽기를 방해하지 않을 만큼만 — 배경만 얹고 글자색은 그대로 둔다 */
+/* ── 인라인 댓글(W23) ───────────────────────────────────── */
+/*
+ * 본문에는 "댓글이 달렸다"만 보인다 — 배경색 + 밑줄, 그리고 구간 끝의 말풍선.
+ * 밑줄을 함께 쓰는 이유는 배경색만으로는 검색 하이라이트·인용과 구분되지 않기 때문이다.
+ */
 .inline-comment-highlight {
   background: var(--chanho-color-background-warning-subtle, #fff0b3);
   color: inherit;
   border-radius: 2px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: solid;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--chanho-color-border-warning, #f5cd47);
 }
 
-.inline-comments {
-  margin-top: var(--chanho-space-400);
+.inline-comment-highlight:hover,
+.inline-comment-highlight:focus-visible {
+  background: var(--chanho-color-background-warning, #f8e6a0);
+}
+
+/* 구간이 서식을 가로질러 쪼개져도 말풍선은 마지막 조각에만 붙는다(inlineAnchors) */
+.inline-comment-highlight[data-comment-last="true"]::after {
+  content: "F4AC" attr(data-comment-count);
+  margin-left: 2px;
+  font-size: 0.7em;
+  vertical-align: super;
+  text-decoration: none;
+  color: var(--chanho-color-text-subtle);
+}
+
+/* 본문과 대화 상자의 공통 좌표계 */
+.inline-comment-scope {
+  position: relative;
+}
+
+/*
+ * 대화 상자는 그 줄 오른쪽에 뜬다 — 어느 문장 얘기인지가 눈에서 떨어지지 않아야 한다.
+ * 본문이 760px 중앙 정렬이라 오른쪽 여백이 실제로 남는 폭에서만 레일로 띄우고,
+ * 좁은 화면에서는 그 줄 바로 아래에 편다(레일을 우겨넣으면 본문을 덮는다).
+ */
+.inline-comment-box {
+  position: absolute;
+  top: var(--inline-comment-below, 0);
+  left: 0;
+  right: 0;
+  z-index: 5;
   display: flex;
   flex-direction: column;
-  gap: var(--chanho-space-200);
+  gap: var(--chanho-space-150);
+  padding: var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-surface-raised, var(--chanho-color-surface, #fff));
+  box-shadow: var(--chanho-shadow-overlay, 0 4px 12px rgb(9 30 66 / 0.15));
 }
 
-.inline-comments-title {
+@media (min-width: 1280px) {
+  .inline-comment-box {
+    top: var(--inline-comment-top, 0);
+    left: 100%;
+    right: auto;
+    width: 300px;
+    margin-left: var(--chanho-space-400);
+  }
+}
+
+.inline-comment-box-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: var(--chanho-space-100);
-  font-size: var(--chanho-font-size-200);
-  font-weight: var(--chanho-font-weight-semibold);
 }
 
-.inline-comments-list {
+.inline-comment-messages {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--chanho-space-200);
+  gap: var(--chanho-space-150);
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
-.inline-comments-list li {
+/* 답글은 한 단만 들여쓴다 — 페이지 댓글(CommentSection)과 같은 규칙이다 */
+.inline-comment-message--reply {
+  margin-left: var(--chanho-space-300);
+  padding-left: var(--chanho-space-150);
+  border-left: 2px solid var(--chanho-color-border-default);
+}
+
+.inline-comment-message-head {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+
+.inline-comment-box-actions {
+  display: flex;
+  gap: var(--chanho-space-100);
+  margin-top: var(--chanho-space-100);
+}
+
+/* 우클릭 메뉴 — 커서 위치에 뜨므로 뷰포트 고정 좌표다 */
+.inline-comment-menu {
+  position: fixed;
+  z-index: 20;
+  padding: var(--chanho-space-050);
   border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-medium);
-  padding: var(--chanho-space-200);
+  background: var(--chanho-color-surface-raised, var(--chanho-color-surface, #fff));
+  box-shadow: var(--chanho-shadow-overlay, 0 4px 12px rgb(9 30 66 / 0.15));
+}
+
+.inline-comment-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  width: 100%;
+  padding: var(--chanho-space-100) var(--chanho-space-150);
+  border: 0;
+  border-radius: var(--chanho-radius-small);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.inline-comment-menu button:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered, #f1f2f4);
 }
 
 .inline-comment-quote {
-  margin: 0 0 var(--chanho-space-100);
+  margin: 0;
   padding-left: var(--chanho-space-150);
   border-left: 3px solid var(--chanho-color-border-default);
   color: var(--chanho-color-text-subtle);
   font-size: var(--chanho-font-size-75);
-}
-
-/* 위치를 못 찾은 스레드는 지우지 않고 상태를 알린다 — 대화가 사라지는 쪽이 더 나쁘다 */
-.inline-comment-orphan {
-  display: block;
-  margin-bottom: var(--chanho-space-100);
-  font-size: var(--chanho-font-size-75);
-  color: var(--chanho-color-text-warning, #974f0c);
 }
 
 .inline-comment-body {
@@ -4919,27 +5039,39 @@ body.is-column-reordering {
   white-space: pre-wrap;
 }
 
-.inline-comment-meta {
-  display: flex;
-  align-items: center;
-  gap: var(--chanho-space-150);
-  margin-top: var(--chanho-space-100);
-  font-size: var(--chanho-font-size-75);
-  color: var(--chanho-color-text-subtle);
-}
-
-.inline-comment-composer {
+/* 하이라이트가 유일한 진입점이라, 본문에서 사라진 대화만 아래에 남긴다 */
+.inline-comment-strays {
+  margin-top: var(--chanho-space-300);
   display: flex;
   flex-direction: column;
-  gap: var(--chanho-space-100);
-  border: 1px solid var(--chanho-color-border-focused, var(--chanho-color-border-default));
-  border-radius: var(--chanho-radius-medium);
-  padding: var(--chanho-space-200);
+  align-items: flex-start;
+  gap: var(--chanho-space-150);
 }
 
-.inline-comment-composer-actions {
+.inline-comment-stray-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
   display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+
+.inline-comment-stray-list li {
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  padding: var(--chanho-space-200);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--chanho-space-100);
+}
+
+/* 위치를 못 찾은 스레드는 지우지 않고 상태를 알린다 — 대화가 사라지는 쪽이 더 나쁘다 */
+.inline-comment-orphan {
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-warning, #974f0c);
 }
 
 .inline-comment-resolved {

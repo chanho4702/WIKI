@@ -25,7 +25,7 @@ describe("W21-4 인라인 앵커", () => {
   it("지정한 등장만 하이라이트한다", () => {
     const root = container("<p>배포는 금요일. 배포는 금요일.</p>");
 
-    const found = applyHighlights(root, [{ id: "c1", quote: "금요일", occurrence: 1 }]);
+    const found = applyHighlights(root, [{ id: "c1", quote: "금요일", occurrence: 1, replyCount: 0 }]);
 
     expect(found).toEqual(new Set(["c1"]));
     const marks = root.querySelectorAll("mark[data-comment-id='c1']");
@@ -41,7 +41,7 @@ describe("W21-4 인라인 앵커", () => {
     const root = container("<p>배포는 <strong>금요일</strong>에 한다</p>");
 
     const found = applyHighlights(root, [
-      { id: "c1", quote: "배포는 금요일에", occurrence: 0 },
+      { id: "c1", quote: "배포는 금요일에", occurrence: 0, replyCount: 0 },
     ]);
 
     expect(found).toEqual(new Set(["c1"]));
@@ -54,8 +54,8 @@ describe("W21-4 인라인 앵커", () => {
     const root = container("<p>배포는 금요일에 한다</p>");
 
     const found = applyHighlights(root, [
-      { id: "c1", quote: "금요일", occurrence: 0 },
-      { id: "c2", quote: "화요일", occurrence: 0 },
+      { id: "c1", quote: "금요일", occurrence: 0, replyCount: 0 },
+      { id: "c2", quote: "화요일", occurrence: 0, replyCount: 0 },
     ]);
 
     expect(found).toEqual(new Set(["c1"]));
@@ -63,7 +63,7 @@ describe("W21-4 인라인 앵커", () => {
 
   it("하이라이트를 걷어내면 원래 마크업으로 돌아온다", () => {
     const root = container("<p>배포는 금요일에 한다</p>");
-    applyHighlights(root, [{ id: "c1", quote: "금요일", occurrence: 0 }]);
+    applyHighlights(root, [{ id: "c1", quote: "금요일", occurrence: 0, replyCount: 0 }]);
 
     clearHighlights(root);
 

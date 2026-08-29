@@ -16,6 +16,10 @@ import { useSidebarPrefs } from "../lib/sidebarPrefs";
 import { useStarredSpaces } from "../lib/starredSpaces";
 import { hydrateStarredPages, useStarredPages } from "../lib/starredPages";
 import { StarredFlyout } from "./StarredFlyout";
+import { NavListFlyout, NAV_FLYOUT_LIMIT, type NavListFlyoutItem } from "./NavListFlyout";
+import { getRecentVisits } from "../lib/recentVisits";
+import { relativeTime } from "../lib/relativeTime";
+import { getPage } from "../store/wikiStore";
 import { useDismissablePopover } from "../lib/useDismissablePopover";
 
 export interface GlobalSidebarProps {
@@ -59,6 +63,65 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
     triggerRef: starTriggerRef,
     open: starOpen,
     onClose: closeStarFlyout,
+  });
+
+  // "최근" — 방문 로그(id만 저장된다)를 열 때 하이드레이트한다. 사이드바가 매번 들고 있을 이유가 없다.
+  const [recentOpen, setRecentOpen] = useState(false);
+  const [recentItems, setRecentItems] = useState<NavListFlyoutItem[] | null>(null);
+  const recentContainerRef = useRef<HTMLLIElement>(null);
+  const recentTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeRecentFlyout = useCallback(() => setRecentOpen(false), []);
+  useDismissablePopover({
+    containerRef: recentContainerRef,
+    triggerRef: recentTriggerRef,
+    open: recentOpen,
+    onClose: closeRecentFlyout,
+  });
+
+  useEffect(() => {
+    if (!recentOpen) return;
+    let cancelled = false;
+    setRecentItems(null);
+    void (async () => {
+      const visits = getRecentVisits(NAV_FLYOUT_LIMIT);
+      // 지워진 페이지는 null로 떨어뜨린다 — 방문 로그가 죽은 링크를 남기지 않게 한다.
+      const pages = await Promise.all(visits.map((v) => getPage(v.id).catch(() => null)));
+      if (cancelled) return;
+      setRecentItems(
+        visits.flatMap((visit, i) => {
+          const page = pages[i];
+          if (!page) return [];
+          return [{
+            key: page.id,
+            icon: page.icon ? (
+              <span className="page-tree-emoji" aria-hidden="true">{page.icon}</span>
+            ) : page.type === "folder" ? (
+              <Folder size={14} aria-hidden="true" />
+            ) : (
+              <FileText size={14} aria-hidden="true" />
+            ),
+            label: page.title,
+            meta: relativeTime(visit.at),
+            path: contentPathIn(page.spaceId, page),
+          }];
+        }),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recentOpen]);
+
+  // "스페이스" — 목록은 이미 손에 있다(props). 열자마자 그린다.
+  const [spacesOpen, setSpacesOpen] = useState(false);
+  const spacesContainerRef = useRef<HTMLLIElement>(null);
+  const spacesTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeSpacesFlyout = useCallback(() => setSpacesOpen(false), []);
+  useDismissablePopover({
+    containerRef: spacesContainerRef,
+    triggerRef: spacesTriggerRef,
+    open: spacesOpen,
+    onClose: closeSpacesFlyout,
   });
 
   // 드래그 중 실시간 미리보기 폭 — pointermove마다 저장하지 않고 화면 표시만 갱신한다.
@@ -173,12 +236,35 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
               <span>추천</span>
             </NavLink>
           </li>
-          {/* 최근/별표 표시/앱은 플라이아웃 후속(설계 §3 4단계) — 이번 패스는 자리표시 항목 */}
-          <li>
-            <button type="button" className="global-nav-item" disabled>
+          {/* 앱은 플라이아웃 후속(설계 §3 4단계) — 이번 패스는 자리표시 항목 */}
+          <li ref={recentContainerRef} className="global-nav-star-anchor">
+            <button
+              ref={recentTriggerRef}
+              type="button"
+              className="global-nav-item"
+              aria-haspopup="dialog"
+              aria-expanded={recentOpen}
+              onClick={() => setRecentOpen((v) => !v)}
+            >
               <Clock className="global-nav-icon" size={16} aria-hidden="true" />
               <span>최근</span>
+              <ChevronRight className="global-nav-caret" size={14} aria-hidden="true" />
             </button>
+            {recentOpen ? (
+              <NavListFlyout
+                label="최근"
+                items={recentItems ?? []}
+                loading={recentItems === null}
+                emptyText="최근에 본 문서가 없습니다"
+                morePath="/home"
+                moreLabel="전체 보기"
+                onClose={closeRecentFlyout}
+                onNavigate={(path) => {
+                  setRecentOpen(false);
+                  navigate(path);
+                }}
+              />
+            ) : null}
           </li>
           <li ref={starContainerRef} className="global-nav-star-anchor">
             <button
@@ -205,11 +291,39 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
               />
             ) : null}
           </li>
-          <li>
-            <NavLink to="/spaces" end className={navClass}>
+          <li ref={spacesContainerRef} className="global-nav-star-anchor">
+            <button
+              ref={spacesTriggerRef}
+              type="button"
+              className="global-nav-item"
+              aria-haspopup="dialog"
+              aria-expanded={spacesOpen}
+              onClick={() => setSpacesOpen((v) => !v)}
+            >
               <Compass className="global-nav-icon" size={16} aria-hidden="true" />
               <span>스페이스</span>
-            </NavLink>
+              <ChevronRight className="global-nav-caret" size={14} aria-hidden="true" />
+            </button>
+            {spacesOpen ? (
+              <NavListFlyout
+                label="스페이스"
+                items={spaces.map((s) => ({
+                  key: s.id,
+                  icon: <Compass size={14} aria-hidden="true" />,
+                  label: s.name,
+                  meta: s.key,
+                  path: `/spaces/${s.id}`,
+                }))}
+                emptyText="스페이스가 없습니다"
+                morePath="/spaces"
+                moreLabel="전체 보기"
+                onClose={closeSpacesFlyout}
+                onNavigate={(path) => {
+                  setSpacesOpen(false);
+                  navigate(path);
+                }}
+              />
+            ) : null}
           </li>
           <li>
             <button type="button" className="global-nav-item" disabled>

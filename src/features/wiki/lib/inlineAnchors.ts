@@ -79,6 +79,8 @@ export interface HighlightTarget {
   id: string;
   quote: string;
   occurrence: number;
+  /** 답글 수 — 하이라이트 끝의 말풍선에 그린다. 본문에는 "댓글이 있다"만 보인다. */
+  replyCount: number;
 }
 
 /**
@@ -93,7 +95,7 @@ export function applyHighlights(container: HTMLElement, targets: HighlightTarget
     const { text, nodes, starts } = flatten(container);
     const at = offsetOfOccurrence(text, target.quote, target.occurrence);
     if (at < 0) continue;
-    if (wrapRange(nodes, starts, at, target.quote.length, target.id)) found.add(target.id);
+    if (wrapRange(nodes, starts, at, target.quote.length, target)) found.add(target.id);
   }
   return found;
 }
@@ -108,16 +110,22 @@ export function clearHighlights(container: HTMLElement): void {
   }
 }
 
-/** [at, at+length) 구간과 겹치는 텍스트 노드 조각을 각각 mark로 감싼다. */
+/**
+ * [at, at+length) 구간과 겹치는 텍스트 노드 조각을 각각 mark로 감싼다.
+ *
+ * 구간이 서식을 가로지르면(`배포는 **금요일**에`) mark가 여러 개로 쪼개진다 — 말풍선 표시는
+ * 마지막 조각에만 붙여야 한 구간에 말풍선이 여러 개 뜨지 않는다.
+ */
 function wrapRange(
   nodes: Text[],
   starts: number[],
   at: number,
   length: number,
-  commentId: string,
+  target: HighlightTarget,
 ): boolean {
   const end = at + length;
   let wrapped = false;
+  let last: HTMLElement | null = null;
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
     const nodeStart = starts[i];
@@ -133,11 +141,20 @@ function wrapRange(
     if (to - from < middle.data.length) middle.splitText(to - from);
 
     const mark = document.createElement("mark");
-    mark.dataset.commentId = commentId;
+    mark.dataset.commentId = target.id;
     mark.className = "inline-comment-highlight";
+    // 하이라이트 자체가 "여기를 누르면 대화가 열린다"는 유일한 신호다 — 키보드로도 닿아야 한다.
+    mark.tabIndex = 0;
+    mark.setAttribute("role", "button");
+    mark.setAttribute("aria-label", `본문 댓글 보기: ${target.quote}`);
     middle.parentNode?.insertBefore(mark, middle);
     mark.appendChild(middle);
+    last = mark;
     wrapped = true;
+  }
+  if (last) {
+    last.dataset.commentLast = "true";
+    last.dataset.commentCount = String(target.replyCount + 1);
   }
   return wrapped;
 }

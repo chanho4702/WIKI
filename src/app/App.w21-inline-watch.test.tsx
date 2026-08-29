@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
 import {
@@ -13,6 +13,34 @@ import {
   updatePage,
 } from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
+
+/**
+ * 본문에서 quote를 골라 실제 Selection을 만든다 — anchorFromSelection이 DOM 선택을 읽으므로
+ * 목으로 대체할 수 없다. 반환값은 우클릭 이벤트를 때릴 노드다.
+ *
+ * 탐색 범위를 본문 컨테이너로 좁힌다: 같은 낱말이 목차에도 있는데, 목차에서 고른 선택은
+ * 앵커 대상이 아니라 무시된다(본문 DOM만 앵커 기준이다).
+ */
+function selectTextInBody(quote: string): Element {
+  const scope = document.querySelector(".inline-comment-scope > div");
+  if (!scope) throw new Error("본문 컨테이너를 찾지 못했습니다");
+  const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode() as Text | null;
+  while (node) {
+    const at = node.data.indexOf(quote);
+    if (at >= 0 && node.parentElement) {
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + quote.length);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      return node.parentElement;
+    }
+    node = walker.nextNode() as Text | null;
+  }
+  throw new Error(`본문에서 ${quote}를 찾지 못했습니다`);
+}
 
 beforeEach(() => {
   localStorage.clear();
@@ -92,23 +120,83 @@ describe("W21-4 구독 — 스토어 계약", () => {
 });
 
 describe("W21-4 화면", () => {
-  it("인라인 댓글이 있으면 본문 댓글 섹션에 인용과 함께 보이고 해결할 수 있다", async () => {
+  /**
+   * W23부터 본문에는 "댓글이 달렸다"만 보인다 — 대화는 하이라이트를 눌러야 그 줄 옆에 뜬다.
+   * 스레드를 통째로 본문 아래 펼쳐 놓으면 인용문이 본문과 떨어져 어느 문장 얘기인지가 사라진다.
+   */
+  it("본문에는 하이라이트만 보이고, 누르면 그 줄 옆 상자에서 대화가 열린다", async () => {
     const user = userEvent.setup();
-    await addComment("pg1", "이 문장 확인 부탁", null, { quote: "온보딩", occurrence: 0 });
+    await addComment("pg1", "이 문장 확인 부탁", null, { quote: "시작 순서", occurrence: 0 });
     renderApp("/spaces/sp1/pages/pg1");
 
-    const section = await screen.findByRole("region", { name: "본문 댓글" });
-    expect(within(section).getByText("이 문장 확인 부탁")).toBeInTheDocument();
+    const mark = await screen.findByRole("button", { name: /본문 댓글 보기: 시작 순서/ });
+    expect(screen.queryByText("이 문장 확인 부탁")).not.toBeInTheDocument();
 
-    await user.click(within(section).getByRole("button", { name: /해결/ }));
+    await user.click(mark);
 
-    await waitFor(() => {
-      expect(within(section).getByRole("button", { name: /해결된 대화 1개 보기/ })).toBeInTheDocument();
+    const box = await screen.findByRole("complementary", { name: "본문 댓글" });
+    expect(within(box).getByText("이 문장 확인 부탁")).toBeInTheDocument();
+  });
+
+  it("상자에서 답글을 남기면 대화가 이어진다", async () => {
+    const user = userEvent.setup();
+    const thread = await addComment("pg1", "이 문장 확인 부탁", null, {
+      quote: "시작 순서",
+      occurrence: 0,
+    });
+    renderApp("/spaces/sp1/pages/pg1");
+
+    await user.click(await screen.findByRole("button", { name: /본문 댓글 보기: 시작 순서/ }));
+    const box = await screen.findByRole("complementary", { name: "본문 댓글" });
+    await user.type(within(box).getByLabelText("답글"), "확인했습니다");
+    await user.click(within(box).getByRole("button", { name: "답글 남기기" }));
+
+    expect(await within(box).findByText("확인했습니다")).toBeInTheDocument();
+    await waitFor(async () => {
+      const replies = (await listComments("pg1")).filter((c) => c.parentId === thread.id);
+      expect(replies).toHaveLength(1);
     });
   });
 
+  it("해결하면 하이라이트가 내려가고 해결된 대화 목록으로 옮겨간다", async () => {
+    const user = userEvent.setup();
+    await addComment("pg1", "이 문장 확인 부탁", null, { quote: "시작 순서", occurrence: 0 });
+    renderApp("/spaces/sp1/pages/pg1");
+
+    await user.click(await screen.findByRole("button", { name: /본문 댓글 보기: 시작 순서/ }));
+    const box = await screen.findByRole("complementary", { name: "본문 댓글" });
+    await user.click(within(box).getByRole("button", { name: /해결/ }));
+
+    expect(
+      await screen.findByRole("button", { name: /해결된 대화 1개 보기/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /본문 댓글 보기: 시작 순서/ })).not.toBeInTheDocument();
+  });
+
+  /** 고른 구간이 없는 우클릭은 브라우저 기본 메뉴를 그대로 둔다 — 링크 복사까지 뺏지 않는다. */
+  it("본문을 골라 우클릭하면 댓글 달기가 뜨고 그 자리에서 댓글을 남긴다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1");
+    await screen.findByRole("heading", { level: 1, name: "시작하기" });
+
+    const target = selectTextInBody("시작 순서");
+    fireEvent.contextMenu(target);
+
+    await user.click(await screen.findByRole("menuitem", { name: /댓글 달기/ }));
+    const box = await screen.findByRole("complementary", { name: "본문 댓글 작성" });
+    await user.type(within(box).getByLabelText("선택한 구간에 댓글"), "여기 설명 추가해주세요");
+    await user.click(within(box).getByRole("button", { name: "댓글 달기" }));
+
+    await waitFor(async () => {
+      const inline = (await listComments("pg1")).filter((c) => c.anchorType === "inline");
+      expect(inline).toHaveLength(1);
+      expect(inline[0].anchorQuote).toBe("시작 순서");
+    });
+    expect(await screen.findByRole("button", { name: /본문 댓글 보기: 시작 순서/ })).toBeInTheDocument();
+  });
+
   it("인라인 댓글은 페이지 댓글 목록에 섞이지 않는다", async () => {
-    await addComment("pg1", "인라인입니다", null, { quote: "온보딩", occurrence: 0 });
+    await addComment("pg1", "인라인입니다", null, { quote: "시작 순서", occurrence: 0 });
     renderApp("/spaces/sp1/pages/pg1");
 
     const comments = await screen.findByRole("region", { name: "코멘트" });
