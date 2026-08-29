@@ -29,6 +29,7 @@ import {
   type LabelCount,
   type PageNode,
   type PageRestoreResult,
+  type SpaceGrant,
   type SearchResults,
   type Space,
   type TrashItem,
@@ -247,6 +248,60 @@ export async function listTeams(): Promise<Team[]> {
   }
 }
 
+/* ── 스페이스 권한(W22) — org-service grant REST ─────────── */
+
+interface GrantDto {
+  id: number;
+  subjectType: string;
+  subjectId: number;
+  resourceType: string;
+  resourceId: string;
+  role: string;
+}
+
+function mapGrant(dto: GrantDto): SpaceGrant {
+  return {
+    id: String(dto.id),
+    subjectType: dto.subjectType === "TEAM" ? "team" : "user",
+    subjectId: String(dto.subjectId),
+    role: dto.role === "ADMIN" ? "admin" : dto.role === "EDITOR" ? "editor" : "viewer",
+  };
+}
+
+/**
+ * 이 스페이스의 권한 목록. 스페이스 ADMIN 또는 전역 관리자만 볼 수 있다(org-service 판정) —
+ * 권한이 없으면 403이 그대로 올라온다. 화면이 조용히 빈 목록으로 덮으면 "권한이 없는 건지
+ * 아무도 없는 건지"를 구분할 수 없다.
+ */
+export async function listSpaceGrants(spaceId: string): Promise<SpaceGrant[]> {
+  const rows = await json<GrantDto[]>(
+    await sharedApiFetch(`/api/org/grants?resourceType=SPACE&resourceId=${encodeURIComponent(spaceId)}`),
+  );
+  return rows.map(mapGrant);
+}
+
+export async function addSpaceGrant(
+  spaceId: string,
+  input: { subjectType: "user" | "team"; subjectId: string; role: "viewer" | "editor" | "admin" },
+): Promise<SpaceGrant> {
+  const res = await sharedApiFetch("/api/org/grants", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subjectType: input.subjectType.toUpperCase(),
+      subjectId: Number(input.subjectId),
+      resourceType: "SPACE",
+      resourceId: spaceId,
+      role: input.role.toUpperCase(),
+    }),
+  });
+  return mapGrant(await json<GrantDto>(res));
+}
+
+export async function removeSpaceGrant(grantId: string): Promise<void> {
+  await json(await sharedApiFetch(`/api/org/grants/${grantId}`, { method: "DELETE" }));
+}
+
 /** 알림 — 백엔드 V11 계약. 타입은 서버 enum(MENTIONED…)을 프론트 소문자로 매핑한다. */
 export async function listNotifications(): Promise<NotificationList> {
   const body = await json<{
@@ -420,6 +475,23 @@ export async function lookupPagesByTitle(spaceId: string, titles: string[]): Pro
 
 export async function listRecentlyUpdated(spaceId: string, limit = 8): Promise<PageNode[]> {
   return nodes(`/api/wiki/spaces/${toBackendId(spaceId)}/pages/recent?limit=${limit}`);
+}
+
+export async function updateSpace(
+  spaceId: string,
+  input: { name: string; description?: string },
+): Promise<Space> {
+  const res = await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: input.name.trim(), description: input.description ?? null }),
+  });
+  return mapSpace(await json(res));
+}
+
+/** 되돌릴 수 없다 — 페이지·첨부·이력까지 함께 사라진다(서버가 스페이스 ADMIN만 허용). */
+export async function deleteSpace(spaceId: string): Promise<void> {
+  await json(await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}`, { method: "DELETE" }));
 }
 
 export async function listPagesByIds(spaceId: string, ids: string[]): Promise<PageNode[]> {

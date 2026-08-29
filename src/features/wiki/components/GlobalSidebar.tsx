@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Avatar, EmptyState, TextField } from "@chanho/react";
-import { ChevronRight, Clock, Compass, FileText, Folder, Grid3x3, House, Plus, Star, Tag, Trash2 } from "lucide-react";
+import { ChevronRight, Clock, Compass, FileText, Folder, Grid3x3, House, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
 import type { PageNode, Space } from "../store/types";
 import type { SpaceTree } from "../lib/useSpaceTree";
 import { listPagesByIds, searchPageTitles } from "../store/wikiStore";
@@ -339,6 +339,10 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
             <NavLink to={`/spaces/${space.id}/trash`} className={navClass}>
               <Trash2 className="global-nav-icon" size={16} aria-hidden="true" />
               <span>휴지통</span>
+            </NavLink>
+            <NavLink to={`/spaces/${space.id}/settings`} className={navClass}>
+              <Settings className="global-nav-icon" size={16} aria-hidden="true" />
+              <span>스페이스 설정</span>
             </NavLink>
           </div>
         </>

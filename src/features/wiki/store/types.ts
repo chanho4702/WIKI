@@ -317,6 +317,17 @@ export interface PageNode {
   childCount: number;
 }
 
+/**
+ * 스페이스 멤버 권한 한 줄(org-service grant).
+ * 주체는 사용자 또는 팀이고, 역할은 세 단계다 — 보기·편집·관리.
+ */
+export interface SpaceGrant {
+  id: string;
+  subjectType: "user" | "team";
+  subjectId: string;
+  role: "viewer" | "editor" | "admin";
+}
+
 /** 스페이스 라벨 목록의 한 줄 — 사용 횟수가 있어야 어떤 라벨이 실제로 쓰이는지 보인다. */
 export interface LabelCount {
   name: string;
@@ -344,6 +355,8 @@ export interface WikiData {
   labels?: Record<string, string[]>;
   /** 페이지 구독(W21-4) — 키 = pageId, 값 = 구독자 id 목록. */
   watches?: Record<string, string[]>;
+  /** 스페이스 권한(W22) — 키 = spaceId. 백엔드 모드는 org-service가 원장이다. */
+  grants?: Record<string, SpaceGrant[]>;
 }
 
 /** 휴지통에 보관된 묶음 — 복원하려면 버전·댓글도 함께 보관해야 한다. */

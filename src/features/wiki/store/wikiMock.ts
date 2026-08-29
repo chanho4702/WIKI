@@ -28,6 +28,7 @@ import type {
   LabelCount,
   CommentAnchor,
   PageNode,
+  SpaceGrant,
 } from "./types";
 import { CURRENT_USER_ID } from "../../../mock/users";
 import { createSeedData } from "../../../mock/seed";
@@ -142,6 +143,70 @@ export async function createSpace(input: { key: string; name: string }): Promise
   data.spaces.push(space);
   persist();
   return clone(space);
+}
+
+export async function updateSpace(
+  spaceId: string,
+  input: { name: string; description?: string },
+): Promise<Space> {
+  const data = load();
+  const space = data.spaces.find((s) => s.id === spaceId);
+  if (!space) throw new Error("스페이스를 찾을 수 없습니다");
+  const name = input.name.trim();
+  if (!name) throw new Error("스페이스 이름을 입력하세요");
+  space.name = name;
+  space.description = input.description?.trim() || undefined;
+  persist();
+  return clone(space);
+}
+
+/** 되돌릴 수 없다 — 그 스페이스의 페이지·버전·댓글·라벨·휴지통까지 함께 사라진다. */
+export async function deleteSpace(spaceId: string): Promise<void> {
+  const data = load();
+  if (!data.spaces.some((s) => s.id === spaceId)) throw new Error("스페이스를 찾을 수 없습니다");
+  const doomed = new Set(data.pages.filter((p) => p.spaceId === spaceId).map((p) => p.id));
+  data.spaces = data.spaces.filter((s) => s.id !== spaceId);
+  data.pages = data.pages.filter((p) => p.spaceId !== spaceId);
+  data.versions = data.versions.filter((v) => !doomed.has(v.pageId));
+  data.comments = data.comments.filter((c) => !doomed.has(c.pageId));
+  data.trash = (data.trash ?? []).filter((t) => t.page.spaceId !== spaceId);
+  for (const id of doomed) delete data.labels?.[id];
+  persist();
+}
+
+/* ── 스페이스 권한(W22) ──────────────────────────────────── */
+
+/**
+ * 목업은 org-service가 없다. 저장소에 권한 목록을 두고 같은 계약으로만 응답한다 —
+ * 목업이 더 관대하면 화면이 목업에서만 동작하고 백엔드 모드에서 403으로 깨진다.
+ */
+export async function listSpaceGrants(spaceId: string): Promise<SpaceGrant[]> {
+  return clone((load().grants ?? {})[spaceId] ?? []);
+}
+
+export async function addSpaceGrant(
+  spaceId: string,
+  input: { subjectType: "user" | "team"; subjectId: string; role: "viewer" | "editor" | "admin" },
+): Promise<SpaceGrant> {
+  const data = load();
+  data.grants ??= {};
+  const current = data.grants[spaceId] ?? [];
+  if (current.some((g) => g.subjectType === input.subjectType && g.subjectId === input.subjectId)) {
+    throw new Error("이미 권한이 있는 대상입니다");
+  }
+  const grant: SpaceGrant = { id: nextId(), ...input };
+  data.grants[spaceId] = [...current, grant];
+  persist();
+  return clone(grant);
+}
+
+export async function removeSpaceGrant(grantId: string): Promise<void> {
+  const data = load();
+  data.grants ??= {};
+  for (const [spaceId, list] of Object.entries(data.grants)) {
+    data.grants[spaceId] = list.filter((g) => g.id !== grantId);
+  }
+  persist();
 }
 
 // ── pages ────────────────────────────────────────────────────
