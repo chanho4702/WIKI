@@ -1237,6 +1237,14 @@ function highlightSnippet(text: string, query: string): string | null {
   return `${prefix}${text.slice(start, index)}<em>${text.slice(index, index + query.length)}</em>${text.slice(index + query.length, end)}${suffix}`;
 }
 
+/** ISO 시각 또는 날짜(2026-08-01)를 밀리초로. 잘못된 값은 백엔드처럼 거부한다. */
+function toBoundaryMillis(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const parsed = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T00:00:00Z` : raw);
+  if (Number.isNaN(parsed)) throw new Error("기간은 날짜 형식이어야 합니다");
+  return parsed;
+}
+
 /** 목업 모드도 화면과 같은 검색 계약을 제공한다. 첨부파일은 목업 스토리지가 없어 PAGE만 검색한다. */
 export async function searchContent(input: SearchContentInput): Promise<SearchResults> {
   const query = input.query.trim();
@@ -1246,10 +1254,18 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
   const spaces = new Map(data.spaces.map((space) => [space.id, space]));
   const allowedSpaces = input.spaceIds ? new Set(input.spaceIds) : null;
   const pagesRequested = !input.docTypes || input.docTypes.length === 0 || input.docTypes.includes("PAGE");
+  // 작성자·기간 필터(W22) — 백엔드와 같은 규칙이다. 경계는 포함이고, 날짜만 오면 그 날의 시작으로 읽는다.
+  const authors = input.authorIds?.length ? new Set(input.authorIds) : null;
+  const after = toBoundaryMillis(input.updatedAfter);
+  const before = toBoundaryMillis(input.updatedBefore);
   const pageHits: SearchHit[] = !pagesRequested
     ? []
     : data.pages.flatMap((page): SearchHit[] => {
         if (page.status === "draft" || (allowedSpaces && !allowedSpaces.has(page.spaceId))) return [];
+        if (authors && !authors.has(page.updatedBy)) return [];
+        const updatedMillis = Date.parse(page.updatedAt);
+        if (after !== null && !(updatedMillis >= after)) return [];
+        if (before !== null && !(updatedMillis <= before)) return [];
         const space = spaces.get(page.spaceId);
         if (!space) return [];
         const titleHighlight = highlightSnippet(page.title, query);

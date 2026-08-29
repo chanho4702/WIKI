@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Banner, Button, EmptyState, Lozenge, PageHeader, Spinner } from "@chanho/react";
 import { FileText, Folder, Paperclip, SearchX } from "lucide-react";
-import { searchContent } from "../store/wikiStore";
+import { listUsers, searchContent } from "../store/wikiStore";
 import {
   ContentSearchError,
   type SearchHit,
   type SearchResults,
+  type User,
 } from "../store/types";
 import { SearchHighlights } from "../components/SearchHighlights";
 
@@ -41,10 +42,22 @@ export function SearchPage() {
   const [params, setParams] = useSearchParams();
   const query = (params.get("q") ?? "").trim();
   const page = normalizedPage(params.get("page"));
+  /**
+   * 필터는 URL에 남긴다(W22) — 걸러진 결과를 그대로 공유·북마크할 수 있어야 하고,
+   * 뒤로 가기가 필터를 잃으면 사용자는 처음부터 다시 좁혀야 한다.
+   */
+  const authorId = params.get("author") ?? "";
+  const updatedAfter = params.get("after") ?? "";
+  const updatedBefore = params.get("before") ?? "";
+  const [users, setUsers] = useState<User[]>([]);
   const [retryKey, setRetryKey] = useState(0);
   const [results, setResults] = useState<SearchResults | null>(null);
   const [error, setError] = useState<ContentSearchError | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    void listUsers().then(setUsers);
+  }, []);
 
   useEffect(() => {
     if (!query) {
@@ -57,7 +70,14 @@ export function SearchPage() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    void searchContent({ query, page: page - 1, size: PAGE_SIZE })
+    void searchContent({
+      query,
+      page: page - 1,
+      size: PAGE_SIZE,
+      ...(authorId ? { authorIds: [authorId] } : {}),
+      ...(updatedAfter ? { updatedAfter } : {}),
+      ...(updatedBefore ? { updatedBefore } : {}),
+    })
       .then((nextResults) => {
         if (!cancelled) setResults(nextResults);
       })
@@ -76,7 +96,18 @@ export function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, query, retryKey]);
+  }, [page, query, retryKey, authorId, updatedAfter, updatedBefore]);
+
+  /** 필터를 바꾸면 1페이지로 돌아간다 — 5페이지에서 좁히면 결과가 없어 빈 화면만 보인다. */
+  const setFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    next.delete("page");
+    setParams(next);
+  };
+
+  const filtered = authorId !== "" || updatedAfter !== "" || updatedBefore !== "";
 
   const movePage = (nextPage: number) => {
     const next = new URLSearchParams(params);
@@ -92,6 +123,51 @@ export function SearchPage() {
       <div id="search-page-title">
         <PageHeader title="검색" />
       </div>
+
+      {query ? (
+        <div className="search-filters">
+          <label className="search-filter">
+            <span>작성자</span>
+            <select value={authorId} onChange={(e) => setFilter("author", e.target.value)}>
+              <option value="">전체</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="search-filter">
+            <span>수정일 시작</span>
+            <input
+              type="date"
+              value={updatedAfter}
+              onChange={(e) => setFilter("after", e.target.value)}
+            />
+          </label>
+          <label className="search-filter">
+            <span>수정일 끝</span>
+            <input
+              type="date"
+              value={updatedBefore}
+              onChange={(e) => setFilter("before", e.target.value)}
+            />
+          </label>
+          {filtered ? (
+            <Button
+              size="small"
+              variant="subtle"
+              onClick={() => {
+                const next = new URLSearchParams(params);
+                ["author", "after", "before", "page"].forEach((k) => next.delete(k));
+                setParams(next);
+              }}
+            >
+              필터 지우기
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       {!query ? (
         <EmptyState
@@ -134,7 +210,8 @@ export function SearchPage() {
               {results.totalExact ? "개" : "개 이상"}
             </span>
           </div>
-          <ol className="search-result-list">
+          {/* 결과 목록에 이름을 준다 — 페이지 안에 목록이 여럿이라 스크린리더가 구분해야 한다 */}
+          <ol className="search-result-list" aria-label="검색 결과">
             {results.hits.map((hit) => {
               const title = hit.docType === "ATTACHMENT" ? hit.filename : hit.title;
               return (

@@ -185,6 +185,11 @@ export interface SearchContentInput {
   size?: number;
   spaceIds?: string[];
   docTypes?: SearchDocType[];
+  /** 마지막 수정자 — 첨부에는 없는 필드라 페이지만 걸린다(W22). */
+  authorIds?: string[];
+  /** ISO-8601 시각 또는 날짜(2026-08-01). 경계는 포함이다. */
+  updatedAfter?: string;
+  updatedBefore?: string;
 }
 
 export type ContentSearchErrorKind = "rate-limited" | "unavailable" | "unauthorized" | "unknown";
