@@ -18,6 +18,9 @@ describe("W10 트리 복제·이동", () => {
 
     await user.click(within(tree).getByRole("button", { name: "시작하기 더보기" }));
     await user.click(await screen.findByRole("menuitem", { name: "복제" }));
+    // W23부터 복제는 옵션(하위 포함·제한 포함)이 생겨 한 번 물어본다 — 기본은 단일 페이지다.
+    const dialog = await screen.findByRole("dialog", { name: "페이지 복제" });
+    await user.click(within(dialog).getByRole("button", { name: "복제" }));
 
     expect(await within(tree).findByText("시작하기 (사본)")).toBeInTheDocument();
     // 원본과 같은 부모·같은 본문의 새 페이지다

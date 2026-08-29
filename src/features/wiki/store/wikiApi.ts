@@ -27,7 +27,10 @@ import {
   type SearchContentInput,
   type CommentAnchor,
   type LabelCount,
+  type CopyPageOptions,
   type PagePath,
+  type PageTemplate,
+  type TemplateInput,
   type PageNode,
   type PageRestoreResult,
   type SpaceGrant,
@@ -597,10 +600,72 @@ export async function emptyTrash(spaceId: string): Promise<number> {
   return body.purged;
 }
 
-/** 단일 페이지 복제 — 서버가 첨부 복사·본문 참조 재작성까지 한다(v1 계약). */
-export async function copyPage(id: string): Promise<Page> {
-  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/copy`, { method: "POST" });
+/** 페이지 복제 — 서버가 첨부 복사·본문 참조 재작성·하위 계층까지 한다. */
+export async function copyPage(id: string, options?: CopyPageOptions): Promise<Page> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}/copy`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      includeDescendants: options?.includeDescendants ?? false,
+      includeRestrictions: options?.includeRestrictions ?? true,
+    }),
+  });
   return mapPage(await json(res));
+}
+
+/* ── 페이지 템플릿(W23) ──────────────────────────────────── */
+
+function mapTemplate(dto: {
+  id: number | string;
+  spaceId: number | string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  content: string;
+  updatedAt: string | null;
+}): PageTemplate {
+  return {
+    id: String(dto.id),
+    spaceId: String(dto.spaceId),
+    name: dto.name,
+    description: dto.description ?? null,
+    icon: dto.icon ?? null,
+    content: dto.content ?? "",
+    updatedAt: dto.updatedAt ?? null,
+  };
+}
+
+export async function listTemplates(spaceId: string): Promise<PageTemplate[]> {
+  const rows = await json<Parameters<typeof mapTemplate>[0][]>(
+    await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/templates`));
+  return rows.map(mapTemplate);
+}
+
+export async function createTemplate(spaceId: string, input: TemplateInput): Promise<PageTemplate> {
+  return mapTemplate(await json(await sharedApiFetch(
+    `/api/wiki/spaces/${toBackendId(spaceId)}/templates`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) })));
+}
+
+export async function updateTemplate(id: string, input: TemplateInput): Promise<PageTemplate> {
+  return mapTemplate(await json(await sharedApiFetch(
+    `/api/wiki/templates/${toBackendId(id)}`,
+    { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) })));
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  await sharedApiFetch(`/api/wiki/templates/${toBackendId(id)}`, { method: "DELETE" });
+}
+
+/** 지금 있는 페이지를 템플릿으로 — 이름을 생략하면 서버가 그 페이지 제목을 쓴다. */
+export async function savePageAsTemplate(pageId: string, name?: string): Promise<PageTemplate> {
+  return mapTemplate(await json(await sharedApiFetch(
+    `/api/wiki/pages/${toBackendId(pageId)}/save-as-template`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(name ? { name } : {}),
+    })));
 }
 
 export async function movePage(

@@ -103,7 +103,7 @@ export function SpaceIndexPage() {
     };
   }, [space]);
   const [users, setUsers] = useState<User[]>([]);
-  const { createContent } = useCreateContent(spaceId ?? null, reloadPages);
+  const { createContent, createFromTemplate } = useCreateContent(spaceId ?? null, reloadPages);
 
   useEffect(() => {
     void listUsers().then(setUsers);
@@ -160,6 +160,8 @@ export function SpaceIndexPage() {
             </Button>
           }
           onSelect={(type) => void createContent(type)}
+          spaceId={spaceId ?? null}
+          onSelectTemplate={(template) => void createFromTemplate(template)}
         />
       </header>
 

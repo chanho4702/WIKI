@@ -88,7 +88,7 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
 
   // 페이지·폴더 생성은 useCreateContent 하나로 모았다 — 전에는 폴더 생성이 여기와 FolderPage에
   // 따로 복제돼 있었고, 그 탓에 헤더에서는 하위 폴더를 만들 방법이 아예 없었다(parentId 미지원).
-  const { createContent } = useCreateContent(space?.id ?? null, reloadPages);
+  const { createContent, createFromTemplate } = useCreateContent(space?.id ?? null, reloadPages);
 
   // 위치 지정 만들기 다이얼로그 — 헤더 "만들기"의 상세 경로. null = 닫힘, 값 = 기본 타입.
   const [createDialogType, setCreateDialogType] = useState<"page" | "folder" | null>(null);
@@ -108,6 +108,8 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
         </Button>
       }
       onSelect={(type) => void createContent(type)}
+      spaceId={space.id}
+      onSelectTemplate={(template) => void createFromTemplate(template)}
       extraItems={[
         {
           label: "위치 지정해 만들기…",

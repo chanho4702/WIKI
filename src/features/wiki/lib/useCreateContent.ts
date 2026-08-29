@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 import { useToast } from "@chanho/react";
-import type { PageType } from "../store/types";
+import type { PageTemplate, PageType } from "../store/types";
 import { createPage } from "../store/wikiStore";
 import { contentPathIn } from "./contentPath";
 
@@ -34,6 +34,8 @@ export function useCreateContent(
   reloadPages: () => Promise<void>,
 ): {
   createContent: (type: PageType, parentId?: string | null) => Promise<void>;
+  /** 템플릿 본문으로 초안을 만든다 — 제목은 여전히 비워 둔다(그 템플릿의 모든 문서가 같은 제목이면 곤란하다). */
+  createFromTemplate: (template: PageTemplate, parentId?: string | null) => Promise<void>;
   creating: boolean;
 } {
   const navigate = useNavigate();
@@ -41,7 +43,7 @@ export function useCreateContent(
   const [creating, setCreating] = useState(false);
 
   const createContent = useCallback(
-    async (type: PageType, parentId: string | null = null) => {
+    async (type: PageType, parentId: string | null = null, template?: PageTemplate) => {
       if (!spaceId || creating) return;
       setCreating(true);
       try {
@@ -50,6 +52,7 @@ export function useCreateContent(
           parentId,
           title: type === "folder" ? FOLDER_TITLE : DRAFT_TITLE,
           type,
+          ...(template ? { body: template.content, icon: template.icon ?? undefined } : {}),
           // 폴더는 게시 개념이 없다 — 초안 상태를 주지 않는다(백엔드도 폴더는 published로 고정한다)
           ...(type === "folder" ? {} : { status: "draft" as const }),
         });
@@ -73,5 +76,11 @@ export function useCreateContent(
     [spaceId, creating, reloadPages, navigate, toast],
   );
 
-  return { createContent, creating };
+  const createFromTemplate = useCallback(
+    (template: PageTemplate, parentId: string | null = null) =>
+      createContent("page", parentId, template),
+    [createContent],
+  );
+
+  return { createContent, createFromTemplate, creating };
 }

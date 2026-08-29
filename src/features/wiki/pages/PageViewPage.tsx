@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
 import { Avatar, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
-import { Download, Maximize2, Minimize2, MoreHorizontal, Trash2, Star, Lock } from "lucide-react";
+import { Download, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Trash2, Star, Lock } from "lucide-react";
 import type { DeletePageOptions, Page, PageNode, PageRestrictions, User } from "../store/types";
 import {
   deletePage,
@@ -12,6 +12,7 @@ import {
   listChildren,
   listUsers,
   recordPageView,
+  savePageAsTemplate,
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
@@ -88,6 +89,24 @@ export function PageViewPage() {
   // 삭제 확인 다이얼로그(공통 ConfirmDialog) — "…" 드롭다운의 삭제에서 연다
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+
+  /**
+   * 본문만 템플릿으로 가져간다(서버가 그렇게 만든다) — 제목까지 가져오면 그 템플릿으로 만든
+   * 문서마다 같은 제목이 붙는다. 관리 권한이 없으면 서버가 거절하고 그 메시지를 그대로 보여준다.
+   */
+  const handleSaveAsTemplate = async () => {
+    if (!page) return;
+    try {
+      const template = await savePageAsTemplate(page.id);
+      toast({ title: `템플릿 "${template.name}"을(를) 저장했습니다`, appearance: "success" });
+    } catch (error) {
+      toast({
+        title: "템플릿 저장 실패",
+        description: error instanceof Error ? error.message : String(error),
+        appearance: "danger",
+      });
+    }
+  };
   const bodyRef = useRef<HTMLDivElement>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -328,6 +347,12 @@ export function PageViewPage() {
                   label: "내보내기",
                   icon: <Download size={16} aria-hidden="true" />,
                   onSelect: () => setExportOpen(true),
+                },
+                {
+                  // 템플릿을 처음부터 쓰는 사람은 드물다 — 이미 잘 쓴 문서 하나가 곧 형식이다
+                  label: "템플릿으로 저장",
+                  icon: <LayoutTemplate size={16} aria-hidden="true" />,
+                  onSelect: () => void handleSaveAsTemplate(),
                 },
                 {
                   label: "삭제",

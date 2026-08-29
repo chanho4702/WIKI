@@ -25,7 +25,10 @@ import type {
   TrashItem,
   TrashEntry,
   PageRestoreResult,
+  CopyPageOptions,
   LabelCount,
+  PageTemplate,
+  TemplateInput,
   PagePath,
   CommentAnchor,
   PageNode,
@@ -532,7 +535,7 @@ export async function publishPage(id: string): Promise<Page> {
  * 단일 페이지 복제 — 백엔드 v1 계약과 동일한 범위: 하위·댓글 미복사, 제목 "(사본)",
  * 부모·타입·상태 유지, 형제 맨 뒤. (목업엔 첨부 저장이 없어 첨부 복사는 해당 없음.)
  */
-export async function copyPage(id: string): Promise<Page> {
+export async function copyPage(id: string, options?: CopyPageOptions): Promise<Page> {
   const data = load();
   const source = data.pages.find((p) => p.id === id);
   if (!source) throw new Error("페이지를 찾을 수 없습니다");
@@ -540,20 +543,114 @@ export async function copyPage(id: string): Promise<Page> {
     (p) => p.spaceId === source.spaceId && p.parentId === source.parentId,
   );
   const now = new Date().toISOString();
-  const copy: Page = {
-    ...clone(source),
-    id: nextId(),
-    title: `${source.title} (사본)`,
-    position: Math.max(0, ...siblings.map((p) => p.position)) + 1,
-    version: 1,
-    createdBy: CURRENT_USER_ID,
-    updatedBy: CURRENT_USER_ID,
-    createdAt: now,
-    updatedAt: now,
-  };
-  data.pages.push(copy);
+
+  // 부모가 먼저 오는 순서로 모은다 — 자식이 부모의 새 id를 필요로 한다.
+  const ordered: Page[] = [source];
+  if (options?.includeDescendants) {
+    for (let i = 0; i < ordered.length; i++) {
+      ordered.push(...data.pages.filter((p) => p.parentId === ordered[i].id));
+    }
+  }
+
+  const newIdOf = new Map<string, string>();
+  let root: Page | null = null;
+  for (const original of ordered) {
+    const isRoot = original.id === source.id;
+    const copy: Page = {
+      ...clone(original),
+      id: nextId(),
+      // 사본 표시는 뿌리에만 — 하위까지 제목을 바꾸면 본문의 `[[제목]]`이 전부 어긋난다.
+      title: isRoot ? `${original.title} (사본)` : original.title,
+      parentId: isRoot ? original.parentId : (newIdOf.get(original.parentId ?? "") ?? null),
+      position: isRoot ? Math.max(0, ...siblings.map((p) => p.position)) + 1 : original.position,
+      version: 1,
+      createdBy: CURRENT_USER_ID,
+      updatedBy: CURRENT_USER_ID,
+      createdAt: now,
+      updatedAt: now,
+    };
+    newIdOf.set(original.id, copy.id);
+    data.pages.push(copy);
+    if (isRoot) root = copy;
+  }
   persist();
-  return clone(copy);
+  return clone(root as Page);
+}
+
+/* ── 페이지 템플릿(W23) ──────────────────────────────────── */
+
+function normalizeTemplateName(raw: string): string {
+  const value = raw.trim().replace(/\s+/g, " ");
+  if (!value) throw new Error("템플릿 이름을 입력하세요");
+  if (value.length > 100) throw new Error("템플릿 이름은 100자를 넘을 수 없습니다");
+  return value;
+}
+
+export async function listTemplates(spaceId: string): Promise<PageTemplate[]> {
+  const data = load();
+  return (data.templates ?? [])
+    .filter((t) => t.spaceId === spaceId)
+    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+    .map((t) => ({ ...t }));
+}
+
+export async function createTemplate(spaceId: string, input: TemplateInput): Promise<PageTemplate> {
+  const data = load();
+  data.templates ??= [];
+  const name = normalizeTemplateName(input.name);
+  if (data.templates.some((t) => t.spaceId === spaceId && t.name === name)) {
+    throw new Error(`같은 이름의 템플릿이 이미 있습니다: ${name}`);
+  }
+  if (data.templates.filter((t) => t.spaceId === spaceId).length >= 50) {
+    throw new Error("템플릿은 스페이스당 50개까지입니다");
+  }
+  const template: PageTemplate = {
+    id: nextId(),
+    spaceId,
+    name,
+    description: input.description ?? null,
+    icon: input.icon ?? null,
+    content: input.content ?? "",
+    updatedAt: new Date().toISOString(),
+  };
+  data.templates.push(template);
+  persist();
+  return { ...template };
+}
+
+export async function updateTemplate(id: string, input: TemplateInput): Promise<PageTemplate> {
+  const data = load();
+  const template = (data.templates ?? []).find((t) => t.id === id);
+  if (!template) throw new Error("템플릿을 찾을 수 없습니다");
+  const name = normalizeTemplateName(input.name);
+  if ((data.templates ?? []).some((t) => t.spaceId === template.spaceId && t.name === name && t.id !== id)) {
+    throw new Error(`같은 이름의 템플릿이 이미 있습니다: ${name}`);
+  }
+  template.name = name;
+  template.description = input.description ?? null;
+  template.icon = input.icon ?? null;
+  template.content = input.content ?? "";
+  template.updatedAt = new Date().toISOString();
+  persist();
+  return { ...template };
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  const data = load();
+  data.templates = (data.templates ?? []).filter((t) => t.id !== id);
+  persist();
+}
+
+/** 본문만 가져온다 — 제목까지 가져오면 그 템플릿으로 만든 문서마다 같은 제목이 붙는다. */
+export async function savePageAsTemplate(pageId: string, name?: string): Promise<PageTemplate> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === pageId);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  return createTemplate(page.spaceId, {
+    name: name ?? page.title,
+    icon: page.icon ?? null,
+    content: page.body,
+  });
 }
 
 export async function deletePage(id: string, options?: DeletePageOptions): Promise<void> {

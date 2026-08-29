@@ -183,7 +183,7 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
 
   // 콘텐츠 "+" 및 트리 행의 "+" — 공용 훅. 진입점마다 다르게 동작하면 어디서 만들었냐에 따라
   // 트리에 보였다 안 보였다 한다.
-  const { createContent, creating } = useCreateContent(space?.id ?? null, reloadPages);
+  const { createContent, createFromTemplate, creating } = useCreateContent(space?.id ?? null, reloadPages);
 
   const inSpace = space !== null;
   const searching = query.trim().length > 0;
@@ -394,6 +394,8 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
                     </button>
                   }
                   onSelect={(type) => void createContent(type)}
+                  spaceId={space.id}
+                  onSelectTemplate={(template) => void createFromTemplate(template)}
                 />
               </div>
               <TextField

@@ -199,6 +199,34 @@ export interface SearchContentInput {
 /** 두 검색 엔진(OpenSearch·라이트)이 같은 값으로 같은 순서를 낸다. */
 export type SearchSort = "RELEVANCE" | "UPDATED_DESC" | "UPDATED_ASC";
 
+export interface CopyPageOptions {
+  /** 하위 문서까지 복제. 볼 수 없는 하위는 사본에 들어가지 않는다. */
+  includeDescendants?: boolean;
+  /**
+   * 제한을 함께 복사. 생략하면 **복사한다**(true) — 제한된 문서의 사본이 열려 있으면
+   * 복사 한 번으로 스페이스 전체에 내용이 열린다.
+   */
+  includeRestrictions?: boolean;
+}
+
+/** 페이지 템플릿 — 그 스페이스가 합의한 문서 형태. */
+export interface PageTemplate {
+  id: string;
+  spaceId: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  content: string;
+  updatedAt: string | null;
+}
+
+export interface TemplateInput {
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  content: string;
+}
+
 /** 페이지의 조상 경로 — 루트부터 부모까지. 자기 자신은 없다(제목은 이미 크게 보인다). */
 export interface PagePath {
   id: string;
@@ -371,6 +399,8 @@ export interface WikiData {
   trash?: TrashEntry[];
   /** 페이지 라벨(W21-2) — 키 = pageId. 없던 저장분 호환 optional. */
   labels?: Record<string, string[]>;
+  /** 페이지 템플릿(W23) — 스페이스 스코프. */
+  templates?: PageTemplate[];
   /** 페이지 구독(W21-4) — 키 = pageId, 값 = 구독자 id 목록. */
   watches?: Record<string, string[]>;
   /** 스페이스 권한(W22) — 키 = spaceId. 백엔드 모드는 org-service가 원장이다. */

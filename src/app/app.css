@@ -5243,3 +5243,94 @@ body.is-column-reordering {
   color: var(--chanho-color-text-default);
   font-size: var(--chanho-font-size-100);
 }
+
+/* ── 페이지 템플릿(W23) ──────────────────────────────────── */
+/* 고르는 목록이라 이름과 설명이 한눈에 들어와야 한다 — 본문 미리보기는 넣지 않는다(길다) */
+.template-picker-list,
+.template-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.template-picker-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--chanho-space-150);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.template-picker-item:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered, #f1f2f4);
+}
+
+/* 고른 항목은 테두리로 표시한다 — 배경만 쓰면 hover와 구분되지 않는다 */
+.template-picker-item.is-chosen {
+  border-color: var(--chanho-color-border-selected, #0c66e4);
+  box-shadow: inset 0 0 0 1px var(--chanho-color-border-selected, #0c66e4);
+}
+
+.template-picker-name {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.template-picker-description {
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.template-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-200);
+  padding: var(--chanho-space-150);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+}
+
+.template-list-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.template-list-copy span {
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.template-list-actions {
+  display: flex;
+  gap: var(--chanho-space-050);
+  flex: none;
+}
+
+.template-form,
+.page-tree-copy-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-150);
+}
+
+.template-form-actions {
+  display: flex;
+  gap: var(--chanho-space-100);
+}

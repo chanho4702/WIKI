@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ConfirmDialog, Dropdown, Lozenge, Radio, RadioGroup, useToast } from "@chanho/react";
+import { Checkbox, ConfirmDialog, Dropdown, Lozenge, Radio, RadioGroup, useToast } from "@chanho/react";
 import { ChevronRight, Copy, FileText, Folder, FolderInput, Link2, MoreHorizontal, Pencil, Plus, Star } from "lucide-react";
 import { contentPathIn } from "../lib/contentPath";
 import type { ReactNode } from "react";
@@ -125,6 +125,11 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
   const [activeId, setActiveId] = useState<string | null>(null);
   // 드래그 중 드롭 대상과 의도(앞/뒤/하위) — 시각 표시와 최종 이동이 같은 값을 쓴다
   const [dropIntent, setDropIntent] = useState<{ overId: string; mode: DropMode } | null>(null);
+  // 복제 다이얼로그 대상 페이지 (null = 닫힘)
+  const [copyTarget, setCopyTarget] = useState<PageNode | null>(null);
+  const [copyDescendants, setCopyDescendants] = useState(false);
+  const [copyRestrictions, setCopyRestrictions] = useState(true);
+  const [copying, setCopying] = useState(false);
   // 이동 다이얼로그 대상 페이지 (null = 닫힘)
   const [moveTarget, setMoveTarget] = useState<PageNode | null>(null);
   const [moveParentId, setMoveParentId] = useState<string | null>(null);
@@ -280,9 +285,16 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
     }
   };
 
-  const handleCopy = async (page: PageNode) => {
+  const handleCopyConfirm = async () => {
+    const page = copyTarget;
+    if (!page) return;
+    setCopying(true);
     try {
-      const copy = await copyPage(page.id);
+      const copy = await copyPage(page.id, {
+        includeDescendants: copyDescendants,
+        includeRestrictions: copyRestrictions,
+      });
+      setCopyTarget(null);
       toast({ title: `"${copy.title}"을(를) 만들었습니다`, appearance: "success" });
     } catch (error) {
       toast({
@@ -291,6 +303,8 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
         appearance: "danger",
       });
       return;
+    } finally {
+      setCopying(false);
     }
     try {
       await onMoved?.();
@@ -320,6 +334,13 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
     } finally {
       setMoving(false);
     }
+  };
+
+  /** 복제는 옵션이 생겨 한 번 물어본다 — 하위까지 복사하는지는 결과가 크게 달라지는 선택이다. */
+  const openCopyDialog = (page: PageNode) => {
+    setCopyDescendants(false);
+    setCopyRestrictions(true);
+    setCopyTarget(page);
   };
 
   const openMoveDialog = (page: PageNode) => {
@@ -530,7 +551,7 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
                     {
                       label: "복제",
                       icon: <Copy size={16} aria-hidden="true" />,
-                      onSelect: () => void handleCopy(page),
+                      onSelect: () => openCopyDialog(page),
                     },
                     {
                       label: "이동…",
@@ -581,6 +602,35 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
       ) : (
         renderNodes(roots)
       )}
+      <ConfirmDialog
+        open={copyTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setCopyTarget(null);
+        }}
+        title="페이지 복제"
+        description={copyTarget ? `"${copyTarget.title}"을(를) 복제합니다.` : undefined}
+        confirmLabel="복제"
+        cancelLabel="취소"
+        loading={copying}
+        onConfirm={() => void handleCopyConfirm()}
+      >
+        <div className="page-tree-copy-form">
+          {copyTarget && copyTarget.childCount > 0 ? (
+            <Checkbox
+              label="하위 문서도 함께 복제"
+              checked={copyDescendants}
+              onCheckedChange={(next) => setCopyDescendants(next === true)}
+            />
+          ) : null}
+          {/* 기본은 켜 둔다 — 제한된 문서의 사본이 열려 있으면 복제 한 번으로 내용이 열린다 */}
+          <Checkbox
+            label="제한도 함께 복제"
+            checked={copyRestrictions}
+            onCheckedChange={(next) => setCopyRestrictions(next === true)}
+          />
+        </div>
+      </ConfirmDialog>
+
       <ConfirmDialog
         open={moveTarget !== null}
         onOpenChange={(open) => {

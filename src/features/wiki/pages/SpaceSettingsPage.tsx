@@ -13,6 +13,7 @@ import {
   updateSpace,
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
+import { TemplateSettings } from "../components/TemplateSettings";
 import { displayUserName } from "../lib/userName";
 
 const ROLE_LABEL: Record<SpaceGrant["role"], string> = {
@@ -264,6 +265,11 @@ export function SpaceSettingsPage() {
                 )}
               </div>
             ),
+          },
+          {
+            value: "templates",
+            label: "템플릿",
+            content: <TemplateSettings spaceId={space.id} />,
           },
           {
             value: "danger",
