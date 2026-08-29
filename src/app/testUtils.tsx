@@ -2,6 +2,12 @@ import { render } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router";
 import { ToastProvider } from "@chanho/react";
 import { App } from "./App";
+/*
+ * 편집 화면은 프로덕션에서 지연 로딩된다(번들 분리). 테스트에서는 그 동적 import가 테스트당
+ * 5초 예산 안에서 일어나 병렬 실행 중에 간헐적으로 초과했다 — 여기서 미리 불러 모듈 캐시를
+ * 데워 둔다. 앱 동작에는 영향이 없고, 테스트가 재는 것도 번들 크기가 아니다.
+ */
+import "../features/wiki/pages/PageEditPage";
 import type { PageNode } from "../features/wiki/store/types";
 
 /** 현재 pathname을 노출하는 테스트 프로브 */

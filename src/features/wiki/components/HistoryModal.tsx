@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Modal, Tabs, useToast } from "@chanho/react";
 import { SkeletonLines } from "./WikiSkeleton";
 import { History } from "lucide-react";
 import type { Page, PageVersion, User } from "../store/types";
-import { listVersions, restoreVersion } from "../store/wikiStore";
+import { getVersion, listVersions, restoreVersion } from "../store/wikiStore";
 import { displayUserName } from "../lib/userName";
 import { DiffView } from "./DiffView";
 import { MarkdownView } from "./MarkdownView";
@@ -33,12 +33,24 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
   // null = 로딩 중 — 모달이 열릴 때마다 재조회한다
   const [versions, setVersions] = useState<PageVersion[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /**
+   * 비교 기준 버전(W22). null이면 직전 버전과 비교한다 — 예전에는 그것만 가능했다.
+   * 버전이 수십 개가 되면 "3주 전 그 상태와 지금"을 봐야 하는데, 직전 비교로는 그걸 못 본다.
+   */
+  const [compareId, setCompareId] = useState<string | null>(null);
+  /**
+   * 본문 캐시 — 목록은 메타만 주므로 미리보기·비교에 필요한 버전만 그때 읽는다.
+   * 이력이 수십 개인 문서의 본문을 목록 한 번에 전부 싣지 않기 위한 계약이다.
+   */
+  const [bodies, setBodies] = useState<Record<string, PageVersion>>({});
   const toast = useToast();
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (next) {
       setVersions(null);
+      setCompareId(null);
+      setBodies({});
       void listVersions(page.id).then((list) => {
         setVersions(list); // 스토어가 version 내림차순(최신 먼저) 보장
         setSelectedId(list[0]?.id ?? null); // 최신 버전 기본 선택
@@ -46,7 +58,34 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
     }
   };
 
-  const selected = versions?.find((v) => v.id === selectedId) ?? null;
+  const selectedMeta = versions?.find((v) => v.id === selectedId) ?? null;
+  const baseMeta =
+    versions?.find((v) => v.id === compareId)
+    ?? (selectedMeta
+      ? versions?.find((v) => v.version === selectedMeta.version - 1) ?? null
+      : null);
+
+  // 화면에 필요한 두 버전의 본문만 읽어 캐시한다(이미 읽은 것은 다시 읽지 않는다).
+  useEffect(() => {
+    const wanted = [selectedMeta?.id, baseMeta?.id].filter(
+      (id): id is string => typeof id === "string" && !(id in bodies),
+    );
+    if (wanted.length === 0) return;
+    let cancelled = false;
+    void Promise.all(wanted.map((id) => getVersion(page.id, id).catch(() => null))).then((loaded) => {
+      if (cancelled) return;
+      const next: Record<string, PageVersion> = {};
+      loaded.forEach((v, i) => {
+        if (v) next[wanted[i]] = v;
+      });
+      if (Object.keys(next).length > 0) setBodies((prev) => ({ ...prev, ...next }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedMeta?.id, baseMeta?.id, bodies, page.id]);
+
+  const selected = selectedMeta ? bodies[selectedMeta.id] ?? selectedMeta : null;
   // 이름을 못 찾고 id가 있으면(백엔드 모드 — savedBy는 숫자 id) `사용자 #{id}` 폴백.
   const userName = (id: string) =>
     users.find((u) => u.id === id)?.name ?? (id ? displayUserName(id) : "알 수 없음");
@@ -103,6 +142,10 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
                   <span className="history-item-meta">
                     {userName(version.savedBy)} · {formatDateTime(version.savedAt)}
                   </span>
+                  {/* 변경 요약은 선택 입력이라 대개 없다 — 있을 때만 그린다 */}
+                  {version.changeNote ? (
+                    <span className="history-item-note">{version.changeNote}</span>
+                  ) : null}
                 </button>
               </li>
             ))}
@@ -111,8 +154,8 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
             <div className="history-preview">
               <h2>{selected.title}</h2>
               {(() => {
-                // 직전 버전 — v1이면 없음(전체 added)
-                const previous = versions?.find((v) => v.version === selected.version - 1) ?? null;
+                // 기준 버전 — 고르지 않았으면 직전 버전(v1이면 없음 = 전체 added)
+                const base = baseMeta ? bodies[baseMeta.id] ?? baseMeta : null;
                 return (
                   <Tabs
                     label="버전 미리보기"
@@ -127,12 +170,29 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
                         label: "변경사항",
                         content: (
                           <>
-                            {previous && previous.title !== selected.title ? (
+                            <div className="history-compare">
+                              <label htmlFor="history-compare-base">비교 기준</label>
+                              <select
+                                id="history-compare-base"
+                                value={compareId ?? ""}
+                                onChange={(e) => setCompareId(e.target.value || null)}
+                              >
+                                <option value="">직전 버전</option>
+                                {versions
+                                  ?.filter((v) => v.id !== selected.id)
+                                  .map((v) => (
+                                    <option key={v.id} value={v.id}>
+                                      v{v.version} · {formatDateTime(v.savedAt)}
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                            {base && base.title !== selected.title ? (
                               <p className="diff-title-change">
-                                제목: {previous.title} → {selected.title}
+                                제목: {base.title} → {selected.title}
                               </p>
                             ) : null}
-                            <DiffView oldText={previous?.body ?? ""} newText={selected.body} />
+                            <DiffView oldText={base?.body ?? ""} newText={selected.body} />
                           </>
                         ),
                       },

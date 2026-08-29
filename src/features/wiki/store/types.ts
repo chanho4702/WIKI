@@ -57,6 +57,11 @@ export interface PageVersion {
   body: string; // 그 시점의 내용
   savedBy: string;
   savedAt: string;
+  /**
+   * 변경 요약 — 저장할 때 남긴 한 줄(선택). 없으면 undefined.
+   * 버전이 수십 개가 되면 누가·언제만으로는 어느 것이 되돌릴 지점인지 알 수 없다.
+   */
+  changeNote?: string;
 }
 
 export interface Comment {
@@ -124,6 +129,8 @@ export interface CollaborationDraftCommitOptions {
 export interface UpdatePageOptions {
   /** 편집 시작 또는 마지막 성공 저장 때 받은 버전. 생략 시 비대화형 호출이 최신 버전을 조회한다. */
   expectedVersion?: number;
+  /** 변경 요약(선택) — 이 저장이 만든 버전의 이력에 붙는다. */
+  changeNote?: string;
 }
 
 /** 오래된 편집본 저장을 서버가 거부했을 때 로컬 작업과 최신 서버본을 함께 유지하기 위한 오류. */

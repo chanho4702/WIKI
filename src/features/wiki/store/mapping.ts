@@ -82,12 +82,19 @@ export function mapPageTree(items: TreeItemDto[]): Page[] {
   }));
 }
 
-interface RevMetaDto { version: number; editedBy: number; createdAt: string }
+interface RevMetaDto {
+  version: number;
+  editedBy: number;
+  createdAt: string;
+  /** 변경 요약(V17) — 선택 입력이라 대개 없다. */
+  changeNote?: string | null;
+}
 export function mapVersionMeta(dto: RevMetaDto, pageId: string): PageVersion {
   return {
     id: `${pageId}:${dto.version}`, pageId, version: dto.version,
     title: "", body: "",
     savedBy: toClientId(dto.editedBy), savedAt: dto.createdAt,
+    changeNote: dto.changeNote ?? undefined,
   };
 }
 interface RevFullDto { version: number; title: string; content: string; editedBy: number }

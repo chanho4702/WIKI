@@ -2,7 +2,7 @@
 export { __resetForTest } from "./wikiMock";
 
 import { sharedApiFetch, sharedApiUpload, sharedCollaborationFetch } from "./apiClient";
-import { mapComment, mapSpace, mapPage, mapPageTree, mapVersionMeta, toBackendId, toClientId, extractError, type CommentDto, type PageDto, type TreeItemDto, mapPageNode, type PageNodeDto } from "./mapping";
+import { mapComment, mapSpace, mapPage, mapPageTree, mapVersionMeta, mapVersionFull, toBackendId, toClientId, extractError, type CommentDto, type PageDto, type TreeItemDto, mapPageNode, type PageNodeDto } from "./mapping";
 import {
   ContentSearchError,
   MoveImpactError,
@@ -182,6 +182,7 @@ export async function updatePage(
       // 편집 화면은 load-time version을 넘긴다. 저장 직전 조회한 current.version으로 바꾸면
       // stale 편집도 통과해 다른 사용자의 저장을 조용히 덮어쓴다.
       expectedVersion: options.expectedVersion ?? current.version,
+      ...(options.changeNote ? { changeNote: options.changeNote } : {}),
     }),
   });
   if (res.status === 409) {
@@ -561,6 +562,18 @@ export async function listVersions(pageId: string): Promise<PageVersion[]> {
   );
   return metas.map((m) => mapVersionMeta(m, pageId)); // 백엔드가 최신순 보장
 }
+/**
+ * 한 버전의 본문까지 읽는다. 목록(listVersions)은 메타만 주므로 미리보기·비교는 이걸 쓴다 —
+ * 이력이 수십 개인 문서의 본문을 목록 한 번에 전부 실어 보낼 이유가 없다.
+ */
+export async function getVersion(pageId: string, versionId: string): Promise<PageVersion> {
+  const version = Number(versionId.split(":")[1]);
+  const dto = await json<Parameters<typeof mapVersionFull>[0]>(
+    await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/revisions/${version}`),
+  );
+  return mapVersionFull(dto, pageId);
+}
+
 export async function restoreVersion(pageId: string, versionId: string): Promise<Page> {
   // versionId는 어댑터가 만든 `${pageId}:${version}` — 버전 번호를 추출해 restore 엔드포인트 호출.
   const version = Number(versionId.split(":")[1]);

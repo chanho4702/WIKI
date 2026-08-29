@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
-import { Button, useToast } from "@chanho/react";
+import { Button, TextField, useToast } from "@chanho/react";
 import {
   commitCollaborationDraft,
   createPage,
@@ -65,6 +65,11 @@ export function PageEditPage() {
   const [pageSpaceId, setPageSpaceId] = useState<string | null>(null);
   // Task 5: 제목 변경 추적 (본문은 WikiEditor.isDirty()로 추적)
   const [titleDirty, setTitleDirty] = useState(false);
+  /**
+   * 변경 요약(W22) — 이 저장이 만드는 버전에 붙는 한 줄. 선택 입력이다.
+   * 새 문서(초안 게시)에는 비교 대상이 없어 요약도 의미가 없으므로 수정 화면에서만 받는다.
+   */
+  const [changeNote, setChangeNote] = useState("");
   // 페이지 이모지 아이콘 — 기존 페이지는 즉시 저장(메타데이터 변경), 새 문서는 저장 시 함께 적용
   const [icon, setIcon] = useState<string | null>(null);
   // 저장 진행 상태 — 업데이트 버튼 로딩 표시 + 중복 저장 차단
@@ -234,6 +239,7 @@ export function PageEditPage() {
             })).page
           : await updatePage(pageId, { title, body }, {
               expectedVersion: baseVersion ?? undefined,
+              changeNote: changeNote.trim() || undefined,
             });
         setBaseVersion(saved.version);
         await editorRef.current?.finalizePendingUploads();
@@ -393,6 +399,17 @@ export function PageEditPage() {
             >
               {width === "full" ? "기본 너비" : "전체 너비"}
             </Button>
+          ) : null}
+          {/* 이미 게시된 문서를 고칠 때만 요약을 받는다 — 첫 게시는 비교 대상이 없다 */}
+          {isEdit && !isDraft ? (
+            <TextField
+              className="edit-chrome-change-note"
+              label="변경 요약 (선택)"
+              value={changeNote}
+              onChange={(e) => setChangeNote(e.target.value)}
+              placeholder="무엇을 왜 고쳤는지 한 줄"
+              maxLength={500}
+            />
           ) : null}
           <Button
             onClick={handleSave}

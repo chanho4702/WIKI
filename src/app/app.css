@@ -4945,3 +4945,38 @@ body.is-column-reordering {
 .inline-comment-resolved {
   opacity: 0.7;
 }
+
+/* ── 버전 이력(W22) ───────────────────────────────────────── */
+/* 변경 요약은 보조 정보 — 버전 번호·작성자보다 약하게, 줄바꿈 없이 한 줄로 */
+.history-item-note {
+  display: block;
+  margin-top: var(--chanho-space-50, 4px);
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-compare {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  margin-bottom: var(--chanho-space-150);
+  font-size: var(--chanho-font-size-75);
+}
+
+.history-compare select {
+  padding: 2px var(--chanho-space-100);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-surface);
+  color: var(--chanho-color-text-default);
+}
+
+/* 액션 바에서 요약 입력이 버튼을 밀어내지 않게 — 남는 폭만 쓰고 상한을 둔다 */
+.edit-chrome-change-note {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 320px;
+}

@@ -153,7 +153,7 @@ export async function getPage(id: string): Promise<Page | null> {
 }
 
 /** 버전 스냅샷 부수효과: 현재 페이지 내용을 version = max+1로 쌓는다 */
-function snapshotVersion(data: WikiData, page: Page, at: string): void {
+function snapshotVersion(data: WikiData, page: Page, at: string, changeNote?: string): void {
   const maxVersion = data.versions
     .filter((v) => v.pageId === page.id)
     .reduce((max, v) => Math.max(max, v.version), 0);
@@ -167,6 +167,8 @@ function snapshotVersion(data: WikiData, page: Page, at: string): void {
     body: page.body,
     savedBy: CURRENT_USER_ID,
     savedAt: at,
+    // 공백만 있는 요약은 없는 것과 같다(백엔드와 같은 규칙) — 화면이 빈 칩을 그리지 않도록.
+    changeNote: changeNote?.trim() ? changeNote.trim() : undefined,
   });
 }
 
@@ -255,7 +257,7 @@ export async function updatePage(
   page.body = nextBody;
   page.updatedBy = CURRENT_USER_ID;
   page.updatedAt = new Date().toISOString();
-  snapshotVersion(data, page, page.updatedAt); // 적용 후 내용을 새 버전(max+1)으로
+  snapshotVersion(data, page, page.updatedAt, options.changeNote); // 적용 후 내용을 새 버전(max+1)으로
   autoWatch(data, page.id, CURRENT_USER_ID); // 고친 문서는 자동 구독(W21-4)
   notifyPageUpdated(data, page, oldBody, nextBody);
   persist();
@@ -984,12 +986,24 @@ export async function movePage(
   return clone(page);
 }
 
+/** 한 버전의 본문까지 — 백엔드 모드와 같은 계약(목록은 메타만, 본문은 단건 조회). */
+export async function getVersion(pageId: string, versionId: string): Promise<PageVersion> {
+  const version = load().versions.find((v) => v.id === versionId && v.pageId === pageId);
+  if (!version) throw new Error("버전을 찾을 수 없습니다");
+  return clone(version);
+}
+
 export async function restoreVersion(pageId: string, versionId: string): Promise<Page> {
   const data = load();
   const version = data.versions.find((v) => v.id === versionId && v.pageId === pageId);
   if (!version) throw new Error("버전을 찾을 수 없습니다");
-  // updatePage 경로 재사용 → 복원도 새 버전으로 쌓인다 (히스토리 안 끊김)
-  return updatePage(pageId, { title: version.title, body: version.body });
+  // updatePage 경로 재사용 → 복원도 새 버전으로 쌓인다 (히스토리 안 끊김).
+  // 어느 버전에서 되돌렸는지가 다음 사람에게 가장 중요한 정보다(백엔드와 같은 문구).
+  return updatePage(
+    pageId,
+    { title: version.title, body: version.body },
+    { changeNote: `v${version.version} 버전으로 복원` },
+  );
 }
 
 // ── comments ─────────────────────────────────────────────────

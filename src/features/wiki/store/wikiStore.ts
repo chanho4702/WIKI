@@ -48,6 +48,7 @@ export const searchPageTitles = impl.searchPageTitles;
 export const listPagesByIds = impl.listPagesByIds;
 export const listRecentlyUpdated = impl.listRecentlyUpdated;
 export const listVersions = impl.listVersions;
+export const getVersion = impl.getVersion;
 export const restoreVersion = impl.restoreVersion;
 export const listComments = impl.listComments;
 export const addComment = impl.addComment;
