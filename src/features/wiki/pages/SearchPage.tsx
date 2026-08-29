@@ -49,7 +49,14 @@ export function SearchPage() {
   const authorId = params.get("author") ?? "";
   const updatedAfter = params.get("after") ?? "";
   const updatedBefore = params.get("before") ?? "";
+  const labelParam = params.get("labels") ?? "";
+  const labels = labelParam.split(",").map((name) => name.trim()).filter((name) => name !== "");
   const [users, setUsers] = useState<User[]>([]);
+  /**
+   * 라벨만 입력 중인 값을 따로 들고 있다가 제출할 때 URL에 반영한다 — 날짜·작성자와 달리
+   * 자유 입력이라 키 하나마다 검색을 쏘면 "설계"를 치는 동안 요청이 두 번 더 나간다.
+   */
+  const [labelDraft, setLabelDraft] = useState(labelParam);
   const [retryKey, setRetryKey] = useState(0);
   const [results, setResults] = useState<SearchResults | null>(null);
   const [error, setError] = useState<ContentSearchError | null>(null);
@@ -58,6 +65,11 @@ export function SearchPage() {
   useEffect(() => {
     void listUsers().then(setUsers);
   }, []);
+
+  // 뒤로 가기·필터 지우기로 URL이 바뀌면 입력칸도 따라와야 한다.
+  useEffect(() => {
+    setLabelDraft(labelParam);
+  }, [labelParam]);
 
   useEffect(() => {
     if (!query) {
@@ -75,6 +87,7 @@ export function SearchPage() {
       page: page - 1,
       size: PAGE_SIZE,
       ...(authorId ? { authorIds: [authorId] } : {}),
+      ...(labels.length ? { labels } : {}),
       ...(updatedAfter ? { updatedAfter } : {}),
       ...(updatedBefore ? { updatedBefore } : {}),
     })
@@ -96,7 +109,7 @@ export function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, query, retryKey, authorId, updatedAfter, updatedBefore]);
+  }, [page, query, retryKey, authorId, updatedAfter, updatedBefore, labelParam]);
 
   /** 필터를 바꾸면 1페이지로 돌아간다 — 5페이지에서 좁히면 결과가 없어 빈 화면만 보인다. */
   const setFilter = (key: string, value: string) => {
@@ -107,7 +120,8 @@ export function SearchPage() {
     setParams(next);
   };
 
-  const filtered = authorId !== "" || updatedAfter !== "" || updatedBefore !== "";
+  const filtered =
+    authorId !== "" || updatedAfter !== "" || updatedBefore !== "" || labelParam !== "";
 
   const movePage = (nextPage: number) => {
     const next = new URLSearchParams(params);
@@ -153,13 +167,30 @@ export function SearchPage() {
               onChange={(e) => setFilter("before", e.target.value)}
             />
           </label>
+          <form
+            className="search-filter"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setFilter("labels", labelDraft.trim());
+            }}
+          >
+            <label htmlFor="search-filter-labels">라벨</label>
+            <input
+              id="search-filter-labels"
+              type="text"
+              value={labelDraft}
+              placeholder="쉼표로 구분"
+              onChange={(e) => setLabelDraft(e.target.value)}
+              onBlur={() => setFilter("labels", labelDraft.trim())}
+            />
+          </form>
           {filtered ? (
             <Button
               size="small"
               variant="subtle"
               onClick={() => {
                 const next = new URLSearchParams(params);
-                ["author", "after", "before", "page"].forEach((k) => next.delete(k));
+                ["author", "after", "before", "labels", "page"].forEach((k) => next.delete(k));
                 setParams(next);
               }}
             >

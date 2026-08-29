@@ -1258,11 +1258,16 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
   const authors = input.authorIds?.length ? new Set(input.authorIds) : null;
   const after = toBoundaryMillis(input.updatedAfter);
   const before = toBoundaryMillis(input.updatedBefore);
+  // 라벨은 저장할 때와 같은 규칙으로 정규화해 맞춘다 — 대소문자만 달라 안 걸리면 사용자는 이유를 모른다.
+  const wantedLabels = input.labels?.length
+    ? new Set(input.labels.map(normalizeLabel).filter((name) => name.length > 0))
+    : null;
   const pageHits: SearchHit[] = !pagesRequested
     ? []
     : data.pages.flatMap((page): SearchHit[] => {
         if (page.status === "draft" || (allowedSpaces && !allowedSpaces.has(page.spaceId))) return [];
         if (authors && !authors.has(page.updatedBy)) return [];
+        if (wantedLabels && !(data.labels?.[page.id] ?? []).some((name) => wantedLabels.has(name))) return [];
         const updatedMillis = Date.parse(page.updatedAt);
         if (after !== null && !(updatedMillis >= after)) return [];
         if (before !== null && !(updatedMillis <= before)) return [];

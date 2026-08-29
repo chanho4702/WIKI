@@ -190,6 +190,8 @@ export interface SearchContentInput {
   /** ISO-8601 시각 또는 날짜(2026-08-01). 경계는 포함이다. */
   updatedAfter?: string;
   updatedBefore?: string;
+  /** 라벨 — 여럿이면 하나라도 붙은 문서를 찾는다(OR). 저장할 때와 같은 규칙으로 정규화된다. */
+  labels?: string[];
 }
 
 export type ContentSearchErrorKind = "rate-limited" | "unavailable" | "unauthorized" | "unknown";

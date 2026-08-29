@@ -786,6 +786,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
           ...(input.authorIds?.length ? { authorIds: input.authorIds } : {}),
           ...(input.updatedAfter ? { updatedAfter: input.updatedAfter } : {}),
           ...(input.updatedBefore ? { updatedBefore: input.updatedBefore } : {}),
+          ...(input.labels?.length ? { labels: input.labels } : {}),
         },
       },
     }),
