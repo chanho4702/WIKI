@@ -26,6 +26,7 @@ import type {
   TrashEntry,
   PageRestoreResult,
   LabelCount,
+  PagePath,
   CommentAnchor,
   PageNode,
   SpaceGrant,
@@ -773,6 +774,43 @@ export async function setLabels(pageId: string, raw: string[]): Promise<string[]
   return [...names].sort();
 }
 
+/** 접근 가능한 스페이스 전체의 라벨 후보 — 백엔드와 같이 접두 일치, 건수 많은 순. */
+export async function suggestLabels(query: string): Promise<LabelCount[]> {
+  const data = load();
+  const prefix = query.trim() === "" ? "" : normalizeLabel(query);
+  const counts = new Map<string, number>();
+  for (const page of data.pages) {
+    for (const name of data.labels?.[page.id] ?? []) {
+      if (prefix !== "" && !name.startsWith(prefix)) continue;
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || (a.name < b.name ? -1 : 1))
+    .slice(0, 20);
+}
+
+/** 조상 경로 — 루트부터 부모까지, 자기 자신은 뺀다(백엔드 계약과 같다). */
+export async function listPagePaths(pageIds: string[]): Promise<PagePath[]> {
+  const data = load();
+  const byId = new Map(data.pages.map((p) => [p.id, p]));
+  return pageIds.flatMap((id) => {
+    if (!byId.has(id)) return [];
+    const titles: string[] = [];
+    const seen = new Set<string>([id]);
+    let cursor = byId.get(id)?.parentId ?? null;
+    while (cursor !== null && !seen.has(cursor)) {
+      seen.add(cursor);
+      const parent = byId.get(cursor);
+      if (!parent) break;
+      titles.unshift(parent.title);
+      cursor = parent.parentId;
+    }
+    return [{ id, titles }];
+  });
+}
+
 export async function listSpaceLabels(spaceId: string): Promise<LabelCount[]> {
   const data = load();
   const counts = new Map<string, number>();
@@ -1259,6 +1297,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
   const after = toBoundaryMillis(input.updatedAfter);
   const before = toBoundaryMillis(input.updatedBefore);
   // 라벨은 저장할 때와 같은 규칙으로 정규화해 맞춘다 — 대소문자만 달라 안 걸리면 사용자는 이유를 모른다.
+  const sort = input.sort ?? "RELEVANCE";
   const wantedLabels = input.labels?.length
     ? new Set(input.labels.map(normalizeLabel).filter((name) => name.length > 0))
     : null;
@@ -1292,7 +1331,16 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
         }];
       });
 
-  pageHits.sort((a, b) => b.score - a.score || (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+  // 정렬은 백엔드와 같은 규칙이다 — 동점은 방향을 따라 id로 가른다(페이지를 넘길 때 순서가 흔들리면 안 된다).
+  pageHits.sort((a, b) => {
+    if (sort === "UPDATED_DESC") {
+      return (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "") || b.id.localeCompare(a.id);
+    }
+    if (sort === "UPDATED_ASC") {
+      return (a.updatedAt ?? "").localeCompare(b.updatedAt ?? "") || a.id.localeCompare(b.id);
+    }
+    return b.score - a.score || (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "") || b.id.localeCompare(a.id);
+  });
   const page = Math.max(input.page ?? 0, 0);
   const size = Math.max(0, Math.min(input.size ?? 20, 100));
   return {

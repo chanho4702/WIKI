@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
-import { __resetForTest, searchContent, setLabels } from "../features/wiki/store/wikiStore";
+import {
+  __resetForTest,
+  listPagePaths,
+  searchContent,
+  setLabels,
+  suggestLabels,
+} from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
 
 beforeEach(() => {
@@ -68,6 +74,42 @@ describe("W22 검색 필터 — 스토어 계약", () => {
     expect(either.hits.map((h) => h.id)).toContain("pg5");
   });
 
+  /**
+   * 정렬·경로·라벨 후보는 세 배포(목업·OpenSearch·라이트)가 같은 계약을 낸다 — 경로와 라벨
+   * 후보는 아예 검색 엔진을 타지 않는 별도 조회다.
+   */
+  it("최근 수정순·오래된 수정순으로 정렬한다", async () => {
+    const desc = await searchContent({ query: "설정", sort: "UPDATED_DESC" });
+    const asc = await searchContent({ query: "설정", sort: "UPDATED_ASC" });
+
+    expect(desc.hits.length).toBeGreaterThan(1);
+    expect(asc.hits.map((h) => h.id)).toEqual([...desc.hits.map((h) => h.id)].reverse());
+  });
+
+  it("경로는 루트부터 부모까지고 자기 자신은 빼다", async () => {
+    // 시드: pg5(로컬 DB 설정) ← pg3(개발 환경 설정) ← pg1(시작하기)
+    const [path] = await listPagePaths(["pg5"]);
+
+    expect(path.titles).toEqual(["시작하기", "개발 환경 설정"]);
+  });
+
+  it("루트 문서의 경로는 비어 있다", async () => {
+    const [path] = await listPagePaths(["pg1"]);
+
+    expect(path.titles).toEqual([]);
+  });
+
+  it("라벨 후보는 접두 일치로 건수와 함께 온다", async () => {
+    await setLabels("pg3", ["설계"]);
+    await setLabels("pg5", ["설계"]);
+    await setLabels("pg1", ["설정"]);
+
+    const found = await suggestLabels("설");
+
+    expect(found.map((l) => l.name)).toEqual(["설계", "설정"]);
+    expect(found[0].count).toBe(2);
+  });
+
   it("잘못된 기간 형식은 거부한다", async () => {
     await expect(searchContent({ query: "시작하기", updatedAfter: "어제" })).rejects.toThrow(
       "기간은 날짜 형식이어야 합니다",
@@ -106,6 +148,27 @@ describe("W22 검색 필터 — 화면", () => {
     });
     const results = await screen.findByRole("list", { name: /검색 결과/ });
     expect(within(results).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("정렬을 바꾸면 URL에 남는다", async () => {
+    const user = userEvent.setup();
+    renderApp("/search?q=설정");
+    await screen.findByRole("heading", { name: "검색" });
+
+    await user.selectOptions(screen.getByLabelText("정렬"), "UPDATED_DESC");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("sort=UPDATED_DESC");
+    });
+  });
+
+  it("결과에 문서가 있는 위치를 보여준다", async () => {
+    renderApp("/search?q=로컬");
+    await screen.findByRole("heading", { name: "검색" });
+
+    const results = await screen.findByRole("list", { name: /검색 결과/ });
+    // 시드: pg5(로컬 DB 설정)는 개발 위키 / 시작하기 / 개발 환경 설정 아래에 있다
+    expect(await within(results).findByText(/개발 환경 설정/)).toBeInTheDocument();
   });
 
   it("필터 지우기로 원래 결과가 돌아온다", async () => {

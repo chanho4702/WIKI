@@ -27,6 +27,7 @@ import {
   type SearchContentInput,
   type CommentAnchor,
   type LabelCount,
+  type PagePath,
   type PageNode,
   type PageRestoreResult,
   type SpaceGrant,
@@ -522,6 +523,24 @@ export async function setLabels(pageId: string, labels: string[]): Promise<strin
   );
 }
 
+/**
+ * 접근 가능한 스페이스 전체의 라벨 후보 — 검색 화면의 라벨 필터 자동완성.
+ * 검색 엔진을 타지 않으므로 OpenSearch 배포와 라이트 배포가 같은 답을 낸다.
+ */
+export async function suggestLabels(query: string): Promise<LabelCount[]> {
+  return json<LabelCount[]>(
+    await sharedApiFetch(`/api/wiki/labels?q=${encodeURIComponent(query.trim())}`));
+}
+
+/** 검색 결과가 "어디에 있는 문서인지" 그리려고 여러 페이지의 조상 경로를 한 번에 받는다. */
+export async function listPagePaths(pageIds: string[]): Promise<PagePath[]> {
+  if (pageIds.length === 0) return [];
+  const query = pageIds.map((id) => `id=${toBackendId(id)}`).join("&");
+  const rows = await json<Array<{ id: number | string; titles: string[] }>>(
+    await sharedApiFetch(`/api/wiki/pages/paths?${query}`));
+  return rows.map((row) => ({ id: String(row.id), titles: row.titles ?? [] }));
+}
+
 export async function listSpaceLabels(spaceId: string): Promise<LabelCount[]> {
   return json<LabelCount[]>(
     await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/labels`));
@@ -787,6 +806,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
           ...(input.updatedAfter ? { updatedAfter: input.updatedAfter } : {}),
           ...(input.updatedBefore ? { updatedBefore: input.updatedBefore } : {}),
           ...(input.labels?.length ? { labels: input.labels } : {}),
+          ...(input.sort && input.sort !== "RELEVANCE" ? { sort: input.sort } : {}),
         },
       },
     }),

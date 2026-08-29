@@ -192,6 +192,17 @@ export interface SearchContentInput {
   updatedBefore?: string;
   /** 라벨 — 여럿이면 하나라도 붙은 문서를 찾는다(OR). 저장할 때와 같은 규칙으로 정규화된다. */
   labels?: string[];
+  /** 정렬. 생략하면 관련도. */
+  sort?: SearchSort;
+}
+
+/** 두 검색 엔진(OpenSearch·라이트)이 같은 값으로 같은 순서를 낸다. */
+export type SearchSort = "RELEVANCE" | "UPDATED_DESC" | "UPDATED_ASC";
+
+/** 페이지의 조상 경로 — 루트부터 부모까지. 자기 자신은 없다(제목은 이미 크게 보인다). */
+export interface PagePath {
+  id: string;
+  titles: string[];
 }
 
 export type ContentSearchErrorKind = "rate-limited" | "unavailable" | "unauthorized" | "unknown";
