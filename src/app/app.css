@@ -5716,3 +5716,39 @@ body.is-column-reordering {
   color: var(--chanho-color-text-subtle);
   font-size: var(--chanho-font-size-75);
 }
+
+/* ── 섹션 앵커(W23) ──────────────────────────────────────── */
+/* 헤딩에 마우스를 올렸을 때만 보인다 — 항상 떠 있으면 모든 헤딩 옆이 시끄럽다. 키보드 포커스에는 나타난다 */
+.markdown-body :is(h1, h2, h3, h4, h5, h6) {
+  position: relative;
+}
+
+.heading-anchor {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--chanho-space-100);
+  padding: 2px;
+  border: 0;
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  vertical-align: middle;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--chanho-transition-base);
+}
+
+.markdown-body :is(h1, h2, h3, h4, h5, h6):hover .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+.heading-anchor:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+/* 복사 직후 잠깐 — 토스트 대신 버튼이 결과를 말한다 */
+.heading-anchor.is-copied {
+  opacity: 1;
+  color: var(--chanho-color-text-success, #216e4e);
+}

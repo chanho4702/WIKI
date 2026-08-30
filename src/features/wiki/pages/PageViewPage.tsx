@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
+import { Navigate, useNavigate, useOutletContext, useParams, useLocation } from "react-router";
 import { Avatar, Banner, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
 import { Archive, Download, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock } from "lucide-react";
@@ -133,6 +133,17 @@ export function PageViewPage() {
     }
   };
   const bodyRef = useRef<HTMLDivElement>(null);
+  /**
+   * `#slug`로 들어오면 그 헤딩까지 내린다(W23). 본문은 비동기로 오므로 브라우저의 기본 앵커
+   * 점프는 대상이 아직 없을 때 일어나 빈손으로 끝난다 — 본문이 그려진 뒤 다시 한 번 찾는다.
+   */
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash || !page) return;
+    const id = decodeURIComponent(hash.slice(1));
+    const target = document.getElementById(id);
+    target?.scrollIntoView({ block: "start" });
+  }, [hash, page]);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {

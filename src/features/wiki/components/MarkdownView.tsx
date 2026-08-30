@@ -14,6 +14,7 @@ import {
   OctagonAlert,
   StickyNote,
   TriangleAlert,
+  Link2,
 } from "lucide-react";
 import { resolveWikiLinks } from "../lib/wikiLinks";
 import { useWikiLinkTargets } from "../lib/useWikiLinkTargets";
@@ -245,6 +246,55 @@ function MarkdownImage({ src = "", alt = "", title, ...props }: ImgHTMLAttribute
 }
 
 /**
+ * 헤딩 끝의 앵커 버튼(W23) — 누르면 이 섹션의 URL(`…#slug`)을 복사한다.
+ *
+ * rehype-slug가 id를 이미 붙여 두고 있었는데 그 id를 복사할 방법이 없어서, 문서의 한 절을
+ * 가리키려면 주소창에서 손으로 `#`을 붙여야 했다.
+ *
+ * 글자 없이 아이콘만 둔다 — 인라인 댓글 앵커가 렌더된 본문의 **텍스트**로 구간을 잡으므로,
+ * "#" 같은 글자가 헤딩 텍스트에 섞이면 인용 매칭이 어긋난다.
+ */
+function AnchorHeading({
+  level,
+  id,
+  children,
+  node: _node,
+  ...rest
+}: HTMLAttributes<HTMLHeadingElement> & { level: 1 | 2 | 3 | 4 | 5 | 6; node?: unknown }) {
+  // 토스트를 쓰지 않는다 — 이 렌더러는 미리보기·내보내기 등 Provider 밖에서도 그려진다.
+  // 복사 결과는 버튼 자체가 잠깐 "복사됨"으로 바뀌어 알린다.
+  const [copied, setCopied] = useState(false);
+  const Tag = `h${level}` as const;
+  const copy = async () => {
+    if (!id) return;
+    const url = `${window.location.origin}${window.location.pathname}#${id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // 클립보드가 막힌 환경(권한·비보안 컨텍스트) — 조용히 둔다. 주소창의 #은 그대로 쓸 수 있다.
+    }
+  };
+  return (
+    <Tag id={id} {...rest}>
+      {children}
+      {id ? (
+        <button
+          type="button"
+          className={copied ? "heading-anchor is-copied" : "heading-anchor"}
+          aria-label={copied ? "섹션 링크 복사됨" : "섹션 링크 복사"}
+          title="섹션 링크 복사"
+          onClick={() => void copy()}
+        >
+          {copied ? <Check size={14} aria-hidden="true" /> : <Link2 size={14} aria-hidden="true" />}
+        </button>
+      ) : null}
+    </Tag>
+  );
+}
+
+/**
  * 마크다운 렌더러 — react-markdown + remark-gfm(표) 래핑.
  * raw HTML은 렌더하지 않는다(react-markdown 기본값) — rehype-raw 추가 금지.
  * 요소 스타일은 app.css의 .markdown-body 스코프에서만 정의한다.
@@ -268,6 +318,12 @@ export function MarkdownView({ markdown, spaceId, linkTargets }: MarkdownViewPro
       ),
       // 멘션 칩은 모드와 무관하게 필요하다 — wikiMode가 아니면 멘션 외 링크는 기본 렌더로 흘린다
       a: wikiMode ? WikiAnchor : MentionOnlyAnchor,
+      h1: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={1} {...p} />,
+      h2: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={2} {...p} />,
+      h3: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={3} {...p} />,
+      h4: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={4} {...p} />,
+      h5: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={5} {...p} />,
+      h6: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={6} {...p} />,
     }),
     [source, wikiMode],
   );
