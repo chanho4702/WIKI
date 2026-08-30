@@ -985,6 +985,6 @@ REST를 curl로 때려야 했다.
 | 트리 루트 쿼리에서 제외(`findChildren`) | 부모가 null이라 그대로 두면 루트에 섞인다. 목록은 `GET /spaces/{id}/blog`가 따로 준다 |
 | 목록은 발췌만 | 글 수만큼 전문을 내리면 목록이 무거워진다. 발췌는 기호를 걷어낸 200자 — "무슨 글인지"만 보이면 된다 |
 
-**기술 부채**: common-proto(0.11.0) `PageType`에 BLOG가 없어 색인기에는 페이지로 보낸다. 검색
-결과의 타입 표시만 다르다(라이트 검색은 BLOG를 그대로 낸다). proto에 BLOG를 더하는 것은 태그·
-search-service 갱신이 따라오는 별도 작업이다.
+~~기술 부채: proto에 BLOG 없음~~ → common-proto **0.12.0**에 `BLOG = 3`을 더하고 search-service·
+wiki-backend GraphQL `enum PageType`에도 BLOG를 넣었다(2026-08-30). 두 검색 모드 모두 "블로그"로
+표시된다. enum에 BLOG가 없으면 글 하나가 검색 응답 전체를 깨뜨리므로 표시 문제가 아니라 오류였다.
