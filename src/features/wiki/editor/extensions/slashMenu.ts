@@ -21,6 +21,7 @@ import {
   Table,
   Image,
   Smile,
+  FileInput,
 } from "lucide-react";
 import { WIKI_LINK_OPEN_SOURCE } from "../../lib/wikiLinks";
 import { COLUMN_LAYOUT_ICONS } from "../components/ColumnLayoutIcon";
@@ -232,6 +233,36 @@ export const SLASH_ITEMS: SlashItem[] = [
     // 저장은 `::toc` 한 줄(remark-directive 리프 지시자, lib/remarkToc.ts).
     // 편집 화면에는 마커가 그대로 보이고 보기 화면에서 목차로 렌더된다 — 패널(`[!NOTE]`)과 같은 방식이다.
     run: (e) => e.chain().focus().insertContent({ type: "paragraph", content: [{ type: "text", text: "::toc" }] }).run(),
+  },
+  // 발췌(W23) — 컨플루언스 Excerpt / Excerpt Include. 저장은 지시자 텍스트(lib/excerpt.ts),
+  // 편집 화면에는 마커가 그대로 보이고 보기 화면에서 렌더된다 — 목차·패널과 같은 방식이다.
+  {
+    id: "excerpt",
+    label: "발췌 블록",
+    description: "다른 문서에서 가져다 쓸 부분을 지정합니다",
+    icon: Quote,
+    run: (e) =>
+      e
+        .chain()
+        .focus()
+        .insertContent([
+          { type: "paragraph", content: [{ type: "text", text: ":::excerpt" }] },
+          { type: "paragraph" },
+          { type: "paragraph", content: [{ type: "text", text: ":::" }] },
+        ])
+        .run(),
+  },
+  {
+    id: "excerptInclude",
+    label: "발췌 포함",
+    description: "다른 문서의 발췌 블록을 이 자리에 보여줍니다",
+    icon: FileInput,
+    run: (e) =>
+      e
+        .chain()
+        .focus()
+        .insertContent({ type: "paragraph", content: [{ type: "text", text: "::excerpt-include[문서 제목]" }] })
+        .run(),
   },
   // 열 레이아웃 — 저장 포맷은 `:::` 확장 문법(extensions/columns.ts).
   // 항목명·설명은 레퍼런스(`레이아웃.png`)의 "열 N개 레이아웃 / N개의 동일한 열 삽입"을 그대로 쓴다.

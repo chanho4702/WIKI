@@ -22,6 +22,9 @@ import { useResolvedWikiImage } from "../lib/useResolvedWikiImage";
 import { remarkAlerts } from "../lib/remarkAlerts";
 import { remarkColumns } from "../lib/remarkColumns";
 import { remarkDetails } from "../lib/remarkDetails";
+import { remarkExcerpt } from "../lib/remarkExcerpt";
+import { normalizeDirectiveEscapes } from "../lib/excerpt";
+import { ExcerptInclude } from "./ExcerptInclude";
 import { remarkTextColors } from "../lib/remarkTextColors";
 import { rehypeTableSpans } from "../lib/rehypeTableSpans";
 import { remarkBookmark } from "../lib/remarkBookmark";
@@ -42,6 +45,11 @@ export interface MarkdownViewProps {
    * 들고 있을 필요가 없다.
    */
   spaceId?: string;
+  /**
+   * 발췌 포함 깊이(W23). 0이 본문, 1이 발췌 안이다. 1에서는 `::excerpt-include`를 더 따라가지
+   * 않는다 — 서로를 포함하는 두 문서가 무한히 펼쳐지는 것을 막는다.
+   */
+  depth?: number;
   /**
    * 링크 대상을 이미 알고 있을 때 넘긴다(제목 → 페이지 id). 내보내기처럼 렌더가 동기여야 하는
    * 경로가 쓴다 — 넘기면 서버 조회를 하지 않는다.
@@ -139,12 +147,34 @@ function MarkdownDiv({
   children,
   node: _node,
   source,
+  spaceId,
+  depth = 0,
   ...rest
-}: HTMLAttributes<HTMLDivElement> & { node?: unknown; source?: string }) {
+}: HTMLAttributes<HTMLDivElement> & {
+  node?: unknown;
+  source?: string;
+  spaceId?: string;
+  depth?: number;
+  "data-title"?: string;
+}) {
   // 본문 목차(`::toc`) — remarkToc가 표시한 자리에 실제 목차를 그린다.
   // heading은 본문 전체에서 뽑으므로 사이드 목차와 같은 추출기를 쓴다(slug 계산도 동일).
   if (className?.split(/\s+/).includes("md-toc")) {
     return <TableOfContents markdown={source ?? ""} variant="inline" />;
+  }
+  // 발췌 포함(`::excerpt-include[제목]`, W23) — 스페이스를 알고 한 단계 안일 때만 실제로 가져온다.
+  if (className?.split(/\s+/).includes("md-excerpt-include")) {
+    const title = (rest["data-title"] ?? "").trim();
+    if (!spaceId || depth > 0 || !title) {
+      return <div className="md-excerpt-include is-inert">::excerpt-include[{title}]</div>;
+    }
+    return (
+      <ExcerptInclude
+        title={title}
+        spaceId={spaceId}
+        render={(md) => <MarkdownView markdown={md} spaceId={spaceId} depth={depth + 1} />}
+      />
+    );
   }
   const alertClass = className?.split(/\s+/).find((c) => c in ALERT_ICONS);
   if (!alertClass) {
@@ -301,12 +331,14 @@ function AnchorHeading({
  * rehype-slug가 heading에 id를 부여해 TableOfContents의 `#slug` 링크가 실제로 스크롤된다 —
  * TableOfContents는 같은 github-slugger 버전으로 별도 계산하므로 slug 값이 서로 일치한다.
  */
-export function MarkdownView({ markdown, spaceId, linkTargets }: MarkdownViewProps) {
+export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0 }: MarkdownViewProps) {
   // spaceId가 있어야 [[제목]]을 어느 스페이스에서 찾을지 정해진다 — 없으면 위키 링크 모드가 아니다.
   const wikiMode = spaceId !== undefined;
   const fetched = useWikiLinkTargets(linkTargets ? "" : markdown, spaceId);
   const targets = linkTargets ?? fetched;
-  const source = wikiMode ? resolveWikiLinks(markdown, targets, spaceId) : markdown;
+  // 편집기가 이스케이프한 발췌 지시자(`\:\:\:excerpt`)를 되돌린다 — 파서가 그 형태를 못 읽는다.
+  const normalized = normalizeDirectiveEscapes(markdown);
+  const source = wikiMode ? resolveWikiLinks(normalized, targets, spaceId) : normalized;
 
   // 목차는 본문 전체를 봐야 만들 수 있다 — div 렌더러가 source를 알아야 해서 여기서 닫는다.
   const components = useMemo(
@@ -314,7 +346,7 @@ export function MarkdownView({ markdown, spaceId, linkTargets }: MarkdownViewPro
       pre: CodeCopyBlock,
       img: MarkdownImage,
       div: (props: HTMLAttributes<HTMLDivElement> & { node?: unknown }) => (
-        <MarkdownDiv {...props} source={source} />
+        <MarkdownDiv {...props} source={source} spaceId={spaceId} depth={depth} />
       ),
       // 멘션 칩은 모드와 무관하게 필요하다 — wikiMode가 아니면 멘션 외 링크는 기본 렌더로 흘린다
       a: wikiMode ? WikiAnchor : MentionOnlyAnchor,
@@ -325,7 +357,7 @@ export function MarkdownView({ markdown, spaceId, linkTargets }: MarkdownViewPro
       h5: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={5} {...p} />,
       h6: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={6} {...p} />,
     }),
-    [source, wikiMode],
+    [source, wikiMode, spaceId, depth],
   );
 
   return (
@@ -335,7 +367,7 @@ export function MarkdownView({ markdown, spaceId, linkTargets }: MarkdownViewPro
       <ReactMarkdown
         // 기본 urlTransform은 http(s)·mailto 등만 허용해 `user:` 멘션 href를 지운다 — 이 스킴만 통과
         urlTransform={(url) => (mentionUserIdFromHref(url) || dateFromHref(url) ? url : defaultUrlTransform(url))}
-        remarkPlugins={[remarkGfm, remarkDirective, remarkTextColors, remarkBookmark, remarkDetails, remarkColumns, remarkAlerts, remarkToc]}
+        remarkPlugins={[remarkGfm, remarkDirective, remarkTextColors, remarkBookmark, remarkDetails, remarkExcerpt, remarkColumns, remarkAlerts, remarkToc]}
         rehypePlugins={[rehypeSlug, rehypeTableSpans, [rehypeHighlight, { detect: false }]]}
         components={components}
       >

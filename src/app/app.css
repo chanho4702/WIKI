@@ -5752,3 +5752,53 @@ body.is-column-reordering {
   opacity: 1;
   color: var(--chanho-color-text-success, #216e4e);
 }
+
+/* ── 발췌(W23) ───────────────────────────────────────────── */
+/* 원본 문서의 발췌 블록 — "이 부분이 밖으로 나간다"를 왼쪽 띠와 꼬리표로 알린다 */
+.markdown-body .md-excerpt {
+  position: relative;
+  margin: var(--chanho-space-200) 0;
+  padding: var(--chanho-space-150) var(--chanho-space-200);
+  border-left: 3px solid var(--chanho-color-border-selected, #0c66e4);
+  background: var(--chanho-color-background-neutral-subtle, #f7f8f9);
+  border-radius: 0 var(--chanho-radius-medium) var(--chanho-radius-medium) 0;
+}
+
+.markdown-body .md-excerpt::before {
+  content: "발췌";
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: var(--chanho-font-size-75, 12px);
+  color: var(--chanho-color-text-subtlest);
+}
+
+.markdown-body .md-excerpt-include {
+  margin: var(--chanho-space-200) 0;
+  padding: var(--chanho-space-150) var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+}
+
+.md-excerpt-include-head {
+  display: block;
+  margin-bottom: var(--chanho-space-100);
+  font-size: var(--chanho-font-size-75, 12px);
+  color: var(--chanho-color-text-subtle);
+}
+
+/* 깨진 포함(문서 없음·발췌 없음)은 경고 색으로 — 조용히 비어 있으면 왜 안 나오는지 모른다 */
+.markdown-body .md-excerpt-include.is-broken {
+  border-style: dashed;
+  color: var(--chanho-color-text-warning, #974f0c);
+}
+
+/* 스페이스 밖·중첩 안에서는 마커 텍스트만 — 목차 마커와 같은 칩 모양 */
+.markdown-body .md-excerpt-include.is-inert {
+  display: inline-block;
+  padding: 2px 8px;
+  border-style: dashed;
+  font-family: var(--chanho-font-family-code, monospace);
+  font-size: var(--chanho-font-size-75, 12px);
+  color: var(--chanho-color-text-subtle);
+}

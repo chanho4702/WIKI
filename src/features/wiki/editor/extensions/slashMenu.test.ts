@@ -14,6 +14,7 @@ describe("슬래시 메뉴", () => {
       // important(보라 노트 패널)는 렌더만 되고 삽입 경로가 없었다 — 기획 P7로 노출
       "note", "tip", "important", "warning", "caution",
       "toggle", "code", "divider", "table", "toc",
+      "excerpt", "excerptInclude",
       "columns1", "columns2", "columns3", "columns4", "columns5",
       "imageUpload", "image", "emoji",
     ]);
