@@ -891,7 +891,8 @@ export async function listChildren(
 export async function listBlogPosts(spaceId: string): Promise<BlogPost[]> {
   return load().pages
     .filter((p) => p.spaceId === spaceId && p.type === "blog" && !p.archivedAt)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+    // 같은 밀리초에 만든 글은 생성 순(position)이 시각보다 정확하다 — id는 무작위라 순서가 없다
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.position - a.position)
     .map((p) => ({
       id: p.id, title: p.title, status: p.status, icon: p.icon ?? null,
       createdBy: p.createdBy, updatedBy: p.updatedBy, createdAt: p.createdAt, updatedAt: p.updatedAt,
