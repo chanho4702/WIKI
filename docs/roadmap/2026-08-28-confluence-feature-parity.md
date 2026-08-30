@@ -996,3 +996,13 @@ wiki-backend GraphQL `enum PageType`에도 BLOG를 넣었다(2026-08-30). 두 �
 | **스페이스 삭제 기록**(V30) | `audit_log`의 space FK(cascade)를 풀어 기록이 스페이스보다 오래 남게 했다. `SPACE_DELETED`는 스페이스 안에서 읽을 수 없으니 전역 관리자의 `/admin/audit`이 읽는다. 별도 표를 만들지 않은 이유: 감사 기록은 한 종류여야 "어디 있지"가 안 생긴다 |
 | **하루 한 번 요약 메일**(V31) | `email_mode` IMMEDIATE/DAILY. 요약은 `emailed_at`이 빈 알림을 모은다 — 바로 보낸 것도 찍어 두어야 모드를 바꿨을 때 옛 알림이 다시 나가지 않는다. 7일 상한, 페이지가 사라진 알림도 "처리됨"으로. 시계는 `WIKI_MAIL_DIGEST_CRON`(기본 09:00), 인스턴스 하나만 켠다 |
 | **속성 보고서** | `::properties-report[라벨]`. 검색 색인이 아니라 라벨 API + 본문에서 읽는다 — OpenSearch 유무와 무관. 대신 문서 50건 상한. 셀은 렌더하지 않고 글자만(배지 이름·링크 텍스트) |
+
+## 37. W25 — 리비전 보관 정책 (2026-08-30 결정)
+
+무기한 보관이었다. **문서당 최근 100개는 항상 남기고, 그보다 오래된 것은 90일이 지나면 정리**한다
+(사용자 결정). 둘을 겹친 이유: 개수만 보면 하루에 200번 고친 문서의 어제 버전이 사라지고, 기간만
+보면 1년에 세 번 고친 문서의 이력이 텅 빈다. 현재 버전은 어떤 경우에도 지우지 않는다.
+
+`WIKI_REVISION_KEEP_COUNT`(100) · `WIKI_REVISION_RETENTION`(P90D) · `WIKI_REVISION_PRUNE_INTERVAL`(PT6H) ·
+`WIKI_REVISION_PRUNE_ENABLED`(무기한으로 되돌리려면 false). 정리는 6시간마다 도는 작업이며, 리비전이
+100개를 넘는 문서만 살핀다.
