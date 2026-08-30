@@ -79,6 +79,7 @@ export const listStars = impl.listStars;
 export const setPageStar = impl.setPageStar;
 export const setSpaceStar = impl.setSpaceStar;
 export const listRecentPages = impl.listRecentPages;
+export const listAudit = impl.listAudit;
 export const getSearchIndexStatus = impl.getSearchIndexStatus;
 export const startReindex = impl.startReindex;
 export const getReindexJob = impl.getReindexJob;

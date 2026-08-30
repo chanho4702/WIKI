@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router";
-import { ChevronLeft, LayoutTemplate, Settings, Trash2, Users } from "lucide-react";
+import { ChevronLeft, LayoutTemplate, ScrollText, Settings, Trash2, Users } from "lucide-react";
 import type { Space } from "../store/types";
 import { SECTION_LABEL, SETTINGS_SECTIONS } from "../pages/SpaceSettingsPage";
 import { SidebarResizer } from "./SidebarResizer";
@@ -10,6 +10,7 @@ const SECTION_ICON = {
   general: Settings,
   permissions: Users,
   templates: LayoutTemplate,
+  audit: ScrollText,
   danger: Trash2,
 } as const;
 

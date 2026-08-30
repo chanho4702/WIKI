@@ -1374,6 +1374,11 @@ export async function listRecentPages(_limit?: number): Promise<null> {
   return null; // 최근 방문도 브라우저 기록(lib/recentVisits)이 원장이다
 }
 
+/** 목업에는 감사 기록이 없다 — 빈 목록이면 화면이 "기록이 없습니다"로 접힌다. */
+export async function listAudit(_spaceId: string): Promise<import("./types").AuditEntry[]> {
+  return [];
+}
+
 /** 목업에는 검색 색인이 없다 — null은 "권한 없음"과 같은 취급을 받아 관리 메뉴가 뜨지 않는다. */
 export async function getSearchIndexStatus(): Promise<null> {
   return null;

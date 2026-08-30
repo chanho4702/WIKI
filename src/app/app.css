@@ -5536,3 +5536,41 @@ body.is-column-reordering {
   background: var(--chanho-color-background-neutral-subtle, #f1f2f4);
   font-size: var(--chanho-font-size-75);
 }
+
+/* ── 감사 로그(W23) ──────────────────────────────────────── */
+/* 훑어보는 표라 줄 간격을 좁게 — 시각과 대상이 세로로 정렬돼야 눈이 따라간다 */
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--chanho-font-size-75);
+}
+
+.audit-table th,
+.audit-table td {
+  text-align: left;
+  padding: var(--chanho-space-100) var(--chanho-space-150);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+  vertical-align: top;
+}
+
+.audit-table th {
+  color: var(--chanho-color-text-subtle);
+  font-weight: var(--chanho-font-weight-semibold);
+  white-space: nowrap;
+}
+
+.audit-time {
+  white-space: nowrap;
+  color: var(--chanho-color-text-subtle);
+}
+
+.audit-target {
+  display: block;
+  font-weight: var(--chanho-font-weight-medium, 500);
+}
+
+/* 보조 설명은 대상 이름 아래에 — 같은 줄에 두면 무엇이 이름인지 흐려진다 */
+.audit-detail {
+  display: block;
+  color: var(--chanho-color-text-subtle);
+}

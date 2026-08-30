@@ -258,6 +258,23 @@ export interface StarredPageRow {
   type: PageType;
 }
 
+/**
+ * 감사 로그 한 줄.
+ *
+ * `targetLabel`은 그때 그 이름의 스냅샷이다 — 지워진 대상도 읽혀야 하므로 id로 다시 조회하지
+ * 않는다.
+ */
+export interface AuditEntry {
+  id: string;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  targetLabel: string;
+  detail: string | null;
+  actorId: string;
+  createdAt: string | null;
+}
+
 /** 검색 색인 현황(전역 관리자). runningJob이 있으면 지금 재색인이 돌고 있다. */
 export interface SearchIndexStatus {
   pageIndex: string;

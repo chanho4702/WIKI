@@ -17,6 +17,26 @@ beforeEach(() => {
  * 목업 모드에는 색인이 없어 현황 조회가 null을 준다. 화면은 그것을 403(권한 없음)과 같게
  * 다뤄야 한다 — 두 경우 모두 "관리할 수 없는 상태"이고, 구분해 봐야 사용자가 할 일이 없다.
  */
+describe("W23 감사 로그", () => {
+  /** 목업에는 기록이 없다 — 빈 목록이면 "권한이 없는 건지 기록이 없는 건지"가 문구로 갈려야 한다. */
+  it("기록이 없으면 그 사실을 알린다", async () => {
+    renderApp("/spaces/sp1/settings/audit");
+    await screen.findByRole("heading", { level: 1, name: "감사 로그" });
+
+    expect(await screen.findByRole("heading", { name: "기록이 없습니다" })).toBeInTheDocument();
+  });
+
+  it("설정 사이드바에서 감사 로그로 갈 수 있다", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup();
+    renderApp("/spaces/sp1/settings");
+    await screen.findByRole("heading", { level: 1, name: "일반" });
+
+    await user.click(screen.getByRole("link", { name: "감사 로그" }));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "감사 로그" })).toBeInTheDocument();
+  });
+});
+
 describe("W23 검색 색인 관리", () => {
   it("관리할 수 없으면 그 사실을 알린다", async () => {
     renderApp("/admin/search");

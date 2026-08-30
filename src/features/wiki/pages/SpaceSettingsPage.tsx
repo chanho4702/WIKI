@@ -13,17 +13,19 @@ import {
   updateSpace,
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
+import { AuditSettings } from "../components/AuditSettings";
 import { TemplateSettings } from "../components/TemplateSettings";
 import { displayUserName } from "../lib/userName";
 
 /** 설정 섹션 — 사이드바 항목과 URL 조각이 같은 목록에서 나온다. */
-export const SETTINGS_SECTIONS = ["general", "permissions", "templates", "danger"] as const;
+export const SETTINGS_SECTIONS = ["general", "permissions", "templates", "audit", "danger"] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 
 export const SECTION_LABEL: Record<SettingsSection, string> = {
   general: "일반",
   permissions: "권한",
   templates: "템플릿",
+  audit: "감사 로그",
   danger: "스페이스 삭제",
 };
 
@@ -275,6 +277,10 @@ export function SpaceSettingsPage() {
               </div>
       ) : section === "templates" ? (
         <TemplateSettings spaceId={space.id} />
+      ) : section === "audit" ? (
+        <div className="space-settings-form">
+          <AuditSettings spaceId={space.id} />
+        </div>
       ) : (
         <div className="space-settings-form">
                 <p className="space-settings-warning">
