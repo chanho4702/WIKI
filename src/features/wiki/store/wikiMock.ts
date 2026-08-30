@@ -785,7 +785,7 @@ export async function listChildren(
 ): Promise<PageNode[]> {
   const data = load();
   return data.pages
-    .filter((p) => p.spaceId === spaceId && p.parentId === parentId)
+    .filter((p) => p.spaceId === spaceId && p.parentId === parentId && !p.archivedAt)
     .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))
     .map((p) => toNode(data, p));
 }
@@ -845,7 +845,7 @@ export async function lookupPagesByTitle(spaceId: string, titles: string[]): Pro
 export async function listRecentlyUpdated(spaceId: string, limit = 8): Promise<PageNode[]> {
   const data = load();
   return data.pages
-    .filter((p) => p.spaceId === spaceId)
+    .filter((p) => p.spaceId === spaceId && !p.archivedAt)
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0))
     .slice(0, Math.min(Math.max(limit, 1), TREE_SEARCH_LIMIT))
     .map((p) => toNode(data, p));
@@ -866,7 +866,7 @@ export async function searchPageTitles(spaceId: string, query: string): Promise<
   const q = query.trim().toLowerCase();
   if (!q) return [];
   return data.pages
-    .filter((p) => p.spaceId === spaceId && p.title.toLowerCase().includes(q))
+    .filter((p) => p.spaceId === spaceId && !p.archivedAt && p.title.toLowerCase().includes(q))
     .sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0))
     .slice(0, TREE_SEARCH_LIMIT)
     .map((p) => toNode(data, p));
@@ -991,6 +991,80 @@ export function extractLinkTargets(markdown: string): Set<string> {
 /* ── 휴지통(W21-1) ───────────────────────────────────────── */
 
 /** 루트 항목만 행으로. 하위는 개수로 센다 — 백엔드 TrashService.list와 같은 규칙. */
+/* ── 보관(W23) — 백엔드와 같은 규칙: 루트 표시 + 하위 cascade, 따로 보관한 묶음은 경계 ── */
+
+function archivedDescendants(data: WikiData, rootId: string): Page[] {
+  const out: Page[] = [];
+  const queue = [rootId];
+  while (queue.length) {
+    const cur = queue.shift() as string;
+    for (const p of data.pages) {
+      if (p.parentId === cur && p.archivedAt && !p.archivedRoot) {
+        out.push(p);
+        queue.push(p.id);
+      }
+    }
+  }
+  return out;
+}
+
+export async function listArchive(spaceId: string): Promise<TrashItem[]> {
+  const data = load();
+  return data.pages
+    .filter((p) => p.spaceId === spaceId && p.archivedAt && p.archivedRoot)
+    .sort((a, b) => (b.archivedAt ?? "").localeCompare(a.archivedAt ?? ""))
+    .map((p) => ({
+      id: p.id,
+      title: p.title,
+      type: p.type,
+      icon: p.icon ?? null,
+      deletedAt: p.archivedAt as string,
+      deletedBy: p.archivedBy ?? CURRENT_USER_ID,
+      descendantCount: archivedDescendants(data, p.id).length,
+    }));
+}
+
+export async function archivePage(id: string): Promise<Page> {
+  const data = load();
+  const root = data.pages.find((p) => p.id === id);
+  if (!root) throw new Error("페이지를 찾을 수 없습니다");
+  if (root.archivedAt) throw new Error("이미 보관된 문서입니다");
+  const now = new Date().toISOString();
+  const queue = [root.id];
+  root.archivedAt = now;
+  root.archivedBy = CURRENT_USER_ID;
+  root.archivedRoot = true;
+  while (queue.length) {
+    const cur = queue.shift() as string;
+    for (const p of data.pages) {
+      if (p.parentId === cur && !p.archivedAt) {
+        p.archivedAt = now;
+        p.archivedBy = CURRENT_USER_ID;
+        p.archivedRoot = false;
+        queue.push(p.id);
+      }
+    }
+  }
+  persist();
+  return clone(root);
+}
+
+export async function unarchivePage(id: string): Promise<Page> {
+  const data = load();
+  const root = data.pages.find((p) => p.id === id);
+  if (!root) throw new Error("페이지를 찾을 수 없습니다");
+  if (!root.archivedAt) throw new Error("보관되지 않은 문서입니다");
+  const parent = root.parentId ? data.pages.find((p) => p.id === root.parentId) : null;
+  if (parent?.archivedAt) throw new Error("상위 문서가 보관 중입니다. 상위 문서의 보관을 먼저 해제하세요");
+  for (const p of [root, ...archivedDescendants(data, root.id)]) {
+    p.archivedAt = null;
+    p.archivedBy = null;
+    p.archivedRoot = false;
+  }
+  persist();
+  return clone(root);
+}
+
 export async function listTrash(spaceId: string): Promise<TrashItem[]> {
   const data = load();
   const entries = (data.trash ?? []).filter((t) => t.page.spaceId === spaceId);
@@ -1535,7 +1609,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
   const pageHits: SearchHit[] = !pagesRequested
     ? []
     : data.pages.flatMap((page): SearchHit[] => {
-        if (page.status === "draft" || (allowedSpaces && !allowedSpaces.has(page.spaceId))) return [];
+        if (page.status === "draft" || page.archivedAt || (allowedSpaces && !allowedSpaces.has(page.spaceId))) return [];
         if (authors && !authors.has(page.updatedBy)) return [];
         if (wantedLabels && !(data.labels?.[page.id] ?? []).some((name) => wantedLabels.has(name))) return [];
         const updatedMillis = Date.parse(page.updatedAt);

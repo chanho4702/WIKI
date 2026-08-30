@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
-import { Avatar, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
+import { Avatar, Banner, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
-import { Download, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock } from "lucide-react";
+import { Archive, Download, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock } from "lucide-react";
 import type { DeletePageOptions, Page, PageNode, PageRestrictions, User } from "../store/types";
 import {
   deletePage,
@@ -13,6 +13,8 @@ import {
   listUsers,
   recordPageView,
   savePageAsTemplate,
+  archivePage,
+  unarchivePage,
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
@@ -97,6 +99,26 @@ export function PageViewPage() {
    * 본문만 템플릿으로 가져간다(서버가 그렇게 만든다) — 제목까지 가져오면 그 템플릿으로 만든
    * 문서마다 같은 제목이 붙는다. 관리 권한이 없으면 서버가 거절하고 그 메시지를 그대로 보여준다.
    */
+  /** 보관/해제 — 하위도 함께 간다(서버 규칙). 결과 Page로 즉시 갱신하고 트리를 다시 읽는다. */
+  const handleArchiveToggle = async () => {
+    if (!page) return;
+    try {
+      const next = page.archivedAt ? await unarchivePage(page.id) : await archivePage(page.id);
+      setPage(next);
+      await reloadPages();
+      toast({
+        title: next.archivedAt ? `"${next.title}"을(를) 보관했습니다` : `"${next.title}"의 보관을 해제했습니다`,
+        appearance: "success",
+      });
+    } catch (error) {
+      toast({
+        title: page.archivedAt ? "보관 해제 실패" : "보관 실패",
+        description: error instanceof Error ? error.message : String(error),
+        appearance: "danger",
+      });
+    }
+  };
+
   const handleSaveAsTemplate = async () => {
     if (!page) return;
     try {
@@ -316,12 +338,14 @@ export function PageViewPage() {
               </Button>
             </Tooltip>
             {/* 편집만 primary — 화면의 핵심 액션 */}
+            {page.archivedAt ? null : (
             <Button
               size="small"
               onClick={() => navigate(`/spaces/${space.id}/pages/${page.id}/edit`)}
             >
               편집
             </Button>
+            )}
             {/* 히스토리: 아이콘 버튼(HistoryModal 내부). 모달 트리거라 native title 사용 */}
             <HistoryModal
               page={page}
@@ -359,6 +383,12 @@ export function PageViewPage() {
                   label: "내보내기",
                   icon: <Download size={16} aria-hidden="true" />,
                   onSelect: () => setExportOpen(true),
+                },
+                {
+                  // 보관(W23) — 끝났지만 남겨 둘 문서. 트리·검색에서 빠지고 링크로는 열린다
+                  label: page.archivedAt ? "보관 해제" : "보관",
+                  icon: <Archive size={16} aria-hidden="true" />,
+                  onSelect: () => void handleArchiveToggle(),
                 },
                 {
                   // 템플릿을 처음부터 쓰는 사람은 드물다 — 이미 잘 쓴 문서 하나가 곧 형식이다
@@ -413,6 +443,12 @@ export function PageViewPage() {
           </div>
         );
       })()}
+      {/* 보관된 문서(W23) — 읽히지만 고칠 수 없다는 것을 본문 위에서 알린다 */}
+      {page.archivedAt ? (
+        <Banner variant="info" action={{ label: "보관 해제", onClick: () => void handleArchiveToggle() }}>
+          보관된 문서입니다. 트리와 검색에서 빠져 있고, 편집하려면 보관을 해제해야 합니다.
+        </Banner>
+      ) : null}
       {/* 본문에 명시 목차(::toc)가 있으면 자동 목차는 숨긴다 — 같은 목차가 두 번 보이는 중복 방지 */}
       {!/^\s*::toc\s*$/m.test(page.body) && <TableOfContents markdown={page.body} />}
       {/*

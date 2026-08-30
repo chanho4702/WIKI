@@ -25,6 +25,8 @@ export function mapSpace(dto: SpaceDto): Space {
 }
 
 export interface PageDto {
+  /** 보관 시각(W23) — 구버전 응답에는 없다. */
+  archivedAt?: string | null;
   id: number; spaceId: number; parentId: number | null; title: string; content: string; version: number;
   /** V9 형제 순서 — 구버전 응답 호환을 위해 optional */
   position?: number;
@@ -54,6 +56,7 @@ export function mapPage(dto: PageDto): Page {
     views: dto.views,
     position: dto.position ?? 0,
     createdBy: "", updatedBy: "", createdAt: now, updatedAt: now,
+    archivedAt: dto.archivedAt ?? null,
   };
 }
 

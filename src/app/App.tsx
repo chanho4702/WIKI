@@ -13,6 +13,7 @@ import { FolderPage } from "../features/wiki/pages/FolderPage";
 import { SearchPage } from "../features/wiki/pages/SearchPage";
 import { SearchAdminPage } from "../features/wiki/pages/SearchAdminPage";
 import { TrashPage } from "../features/wiki/pages/TrashPage";
+import { ArchivePage } from "../features/wiki/pages/ArchivePage";
 import { LabelsPage } from "../features/wiki/pages/LabelsPage";
 import { SpaceSettingsPage } from "../features/wiki/pages/SpaceSettingsPage";
 
@@ -110,6 +111,8 @@ export function App() {
           <Route path="folder/:folderId" element={<FolderPage />} />
           {/* 휴지통은 스페이스 스코프 — 컨플루언스 스페이스 설정의 휴지통 위치를 따른다 */}
           <Route path="trash" element={<TrashPage />} />
+          {/* 보관함(W23) — 끝났지만 남겨 둔 문서. 휴지통과 같은 표를 쓴다 */}
+          <Route path="archive" element={<ArchivePage />} />
           {/* 라벨 탐색 — 트리로는 못 찾는 가로 분류(컨플루언스 "라벨로 찾아보기") */}
           <Route path="labels" element={<LabelsPage />} />
           <Route path="labels/:name" element={<LabelsPage />} />

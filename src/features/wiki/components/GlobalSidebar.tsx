@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Avatar, Dropdown, EmptyState, TextField } from "@chanho/react";
-import { ChevronRight, Clock, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
+import { Archive, ChevronRight, Clock, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
 import type { PageNode, Space } from "../store/types";
 import type { SpaceTree } from "../lib/useSpaceTree";
 import { listPagesByIds, listRecentPages, searchPageTitles } from "../store/wikiStore";
@@ -410,6 +410,11 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
                     onSelect: () => navigate(`/spaces/${space.id}/labels`),
                   },
                   {
+                    label: "보관함",
+                    icon: <Archive size={16} aria-hidden="true" />,
+                    onSelect: () => navigate(`/spaces/${space.id}/archive`),
+                  },
+                  {
                     label: "휴지통",
                     icon: <Trash2 size={16} aria-hidden="true" />,
                     onSelect: () => navigate(`/spaces/${space.id}/trash`),
@@ -511,6 +516,10 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
             <NavLink to={`/spaces/${space.id}/labels`} className={navClass}>
               <Tag className="global-nav-icon" size={16} aria-hidden="true" />
               <span>라벨</span>
+            </NavLink>
+            <NavLink to={`/spaces/${space.id}/archive`} className={navClass}>
+              <Archive className="global-nav-icon" size={16} aria-hidden="true" />
+              <span>보관함</span>
             </NavLink>
             <NavLink to={`/spaces/${space.id}/trash`} className={navClass}>
               <Trash2 className="global-nav-icon" size={16} aria-hidden="true" />

@@ -47,6 +47,11 @@ export interface Page {
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
+  /** 보관 시각(W23). 값이 있으면 트리·검색에서 빠지되 링크로는 열린다. */
+  archivedAt?: string | null;
+  /** 목업 전용 — 백엔드 archived_by/archived_root에 해당(묶음 경계 계산용). */
+  archivedBy?: string | null;
+  archivedRoot?: boolean;
 }
 
 export interface PageVersion {
