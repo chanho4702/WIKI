@@ -30,6 +30,8 @@ import {
   type CopyPageOptions,
   type AttachmentVersion,
   type PagePath,
+  type StarredPageRow,
+  type StarsSnapshot,
   type PageTemplate,
   type TemplateInput,
   type PageNode,
@@ -807,6 +809,52 @@ export async function restoreAttachmentVersion(id: string, version: number): Pro
 /** 지난 버전 내려받기 — 인증이 필요한 경로라 화면이 fetch로 받아 저장한다. */
 export function attachmentVersionUrl(id: string, version: number): string {
   return `${import.meta.env.VITE_API_BASE ?? ""}/api/wiki/attachments/${toBackendId(id)}/versions/${version}`;
+}
+
+/* ── 별표·최근 방문(W23) ─────────────────────────────────── */
+
+interface StarRowDto {
+  page: TreeItemDto;
+  spaceId: number | string;
+  spaceName: string | null;
+}
+
+function mapStarRow(row: StarRowDto): StarredPageRow {
+  const page = mapPageTree([row.page])[0];
+  return {
+    id: page.id,
+    spaceId: String(row.spaceId),
+    spaceName: row.spaceName,
+    title: page.title,
+    icon: page.icon ?? null,
+    type: page.type,
+  };
+}
+
+export async function listStars(): Promise<StarsSnapshot> {
+  const dto = await json<{ spaceIds: string[]; pages: StarRowDto[] }>(
+    await sharedApiFetch("/api/wiki/stars"));
+  return {
+    spaceIds: (dto.spaceIds ?? []).map(String),
+    pages: (dto.pages ?? []).map(mapStarRow),
+  };
+}
+
+export async function setPageStar(pageId: string, starred: boolean): Promise<void> {
+  await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/star`, {
+    method: starred ? "PUT" : "DELETE",
+  });
+}
+
+export async function setSpaceStar(spaceId: string, starred: boolean): Promise<void> {
+  await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/star`, {
+    method: starred ? "PUT" : "DELETE",
+  });
+}
+
+export async function listRecentPages(limit = 10): Promise<StarredPageRow[]> {
+  const rows = await json<StarRowDto[]>(await sharedApiFetch(`/api/wiki/recent?limit=${limit}`));
+  return rows.map(mapStarRow);
 }
 
 export function attachmentUrl(id: string): string {

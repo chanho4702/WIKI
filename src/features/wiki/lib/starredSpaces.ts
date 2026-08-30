@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
+import { pushSpaceStar } from "./starSync";
 
 /**
  * 스페이스 별표(즐겨찾기) 설정 (W6 T3, W7 T6 리뷰 수정) — 컨플루언스식 스페이스 플라이아웃의
@@ -105,10 +106,11 @@ export function useStarredSpaces(): {
 
   const toggle = useCallback((spaceId: string) => {
     const current = getStarredSpaces();
-    const next = current.includes(spaceId)
-      ? current.filter((id) => id !== spaceId)
-      : [...current, spaceId];
+    const starred = !current.includes(spaceId);
+    const next = starred ? [...current, spaceId] : current.filter((id) => id !== spaceId);
     setStarredSpaces(next);
+    // 페이지 별표와 같은 규칙 — 사본을 먼저 바꾸고 서버로 보낸다(W23).
+    pushSpaceStar(spaceId, starred);
   }, []);
 
   return { starred, toggle };

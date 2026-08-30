@@ -238,6 +238,26 @@ export interface TemplateInput {
   content: string;
 }
 
+/**
+ * 서버가 들고 있는 별표 원장(W23).
+ *
+ * `listStars()`가 null을 주면 "이 모드에는 서버 원장이 없다"는 뜻이다(목업). 그때는 브라우저에
+ * 있는 것이 곧 전부이므로 동기화를 건너뛴다 — 빈 목록으로 덮어써서 별표를 날리면 안 된다.
+ */
+export interface StarsSnapshot {
+  spaceIds: string[];
+  pages: StarredPageRow[];
+}
+
+export interface StarredPageRow {
+  id: string;
+  spaceId: string;
+  spaceName: string | null;
+  title: string;
+  icon: string | null;
+  type: PageType;
+}
+
 /** 페이지의 조상 경로 — 루트부터 부모까지. 자기 자신은 없다(제목은 이미 크게 보인다). */
 export interface PagePath {
   id: string;

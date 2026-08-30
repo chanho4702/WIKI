@@ -1352,6 +1352,28 @@ export async function restoreAttachmentVersion(_id: string, _version: number): P
   throw new Error("목업 모드에서는 첨부를 지원하지 않습니다");
 }
 
+/**
+ * 목업에는 서버 원장이 없다 — null로 그 사실을 알린다.
+ *
+ * 빈 목록을 주면 동기화가 브라우저에 있던 별표를 지운다. "서버에 없다"와 "서버가 없다"는
+ * 다른 말이고, 이 구분을 흐리면 목업 모드에서 별표가 사라진다.
+ */
+export async function listStars(): Promise<null> {
+  return null;
+}
+
+export async function setPageStar(_pageId: string, _starred: boolean): Promise<void> {
+  // 목업은 브라우저 저장소가 곧 원장이다(lib/starredPages) — 여기서 더 할 일이 없다.
+}
+
+export async function setSpaceStar(_spaceId: string, _starred: boolean): Promise<void> {
+  // setPageStar와 같은 이유.
+}
+
+export async function listRecentPages(_limit?: number): Promise<null> {
+  return null; // 최근 방문도 브라우저 기록(lib/recentVisits)이 원장이다
+}
+
 export function attachmentVersionUrl(id: string, version: number): string {
   return `/api/wiki/attachments/${id}/versions/${version}`;
 }

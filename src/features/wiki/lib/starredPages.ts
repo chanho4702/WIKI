@@ -1,4 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
+import { pushPageStar } from "./starSync";
 
 /**
  * 페이지 별표(즐겨찾기) — starredSpaces.ts와 동일한 패턴(별도 키의 병렬 모듈,
@@ -161,13 +162,16 @@ export function useStarredPages(): {
     id: string; spaceId: string; title: string; icon?: string | null; type?: "page" | "folder";
   }) => {
     const current = getStarredPageEntries();
-    const next = current.some((e) => e.id === page.id)
-      ? current.filter((e) => e.id !== page.id)
-      : [...current, {
+    const starred = !current.some((e) => e.id === page.id);
+    const next = starred
+      ? [...current, {
           id: page.id, spaceId: page.spaceId, title: page.title,
           icon: page.icon ?? null, type: page.type === "folder" ? "folder" as const : "page" as const,
-        }];
+        }]
+      : current.filter((e) => e.id !== page.id);
     setStarredPageEntries(next);
+    // 사본을 먼저 바꾸고 서버로 보낸다 — 별 하나 누르는 데 왕복을 기다릴 이유가 없다(W23).
+    pushPageStar(page.id, starred);
   }, []);
   return { starred: entries.map((e) => e.id), entries, toggle };
 }

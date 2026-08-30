@@ -4,6 +4,7 @@ import { Button } from "@chanho/react";
 import { FolderPlus, MapPin, Plus } from "lucide-react";
 import type { Space } from "../store/types";
 import { GlobalSidebar } from "./GlobalSidebar";
+import { syncStarsFromServer } from "../lib/starSync";
 import { SpaceSettingsSidebar } from "./SpaceSettingsSidebar";
 import { SpaceCreateModal } from "./SpaceCreateModal";
 import { WikiTopBar } from "./WikiTopBar";
@@ -50,6 +51,11 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
    */
   const tree = useSpaceTree(currentId);
   const [spaceModalOpen, setSpaceModalOpen] = useState(false);
+
+  // 별표는 서버가 원장이다 — 앱이 뜰 때 한 번 맞춘다(W23). 실패해도 브라우저 사본으로 계속 돈다.
+  useEffect(() => {
+    void syncStarsFromServer();
+  }, []);
 
   // 스페이스 목록이 로드/갱신될 때마다 별표 저장 배열에서 죽은 id를 정리한다(스페이스 삭제 등).
   useEffect(() => {

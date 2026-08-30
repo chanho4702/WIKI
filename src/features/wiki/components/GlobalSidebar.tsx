@@ -4,7 +4,7 @@ import { Avatar, Dropdown, EmptyState, TextField } from "@chanho/react";
 import { ChevronRight, Clock, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
 import type { PageNode, Space } from "../store/types";
 import type { SpaceTree } from "../lib/useSpaceTree";
-import { listPagesByIds, searchPageTitles } from "../store/wikiStore";
+import { listPagesByIds, listRecentPages, searchPageTitles } from "../store/wikiStore";
 import { contentPathIn } from "../lib/contentPath";
 import { PageTree } from "./PageTree";
 import { TreeSkeleton } from "./WikiSkeleton";
@@ -48,6 +48,22 @@ export interface GlobalSidebarProps {
  * 최근/별표/앱 항목의 플라이아웃과 스페이스 개요 페이지는 후속(설계 §3 4~5단계) — 이번 패스에서는
  * 추천·스페이스만 실제 라우트로 이동하고 최근·별표·앱은 자리표시 항목이다.
  */
+/** 이모지가 있으면 그것을, 없으면 타입 아이콘을 — 트리와 같은 규칙이다. */
+function iconFor(icon: string | null | undefined, type: "page" | "folder") {
+  if (icon) {
+    return (
+      <span className="page-tree-emoji" aria-hidden="true">
+        {icon}
+      </span>
+    );
+  }
+  return type === "folder" ? (
+    <Folder size={14} aria-hidden="true" />
+  ) : (
+    <FileText size={14} aria-hidden="true" />
+  );
+}
+
 export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace }: GlobalSidebarProps) {
   const navigate = useNavigate();
   const { width, setWidth } = useSidebarPrefs();
@@ -83,6 +99,23 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
     let cancelled = false;
     setRecentItems(null);
     void (async () => {
+      /*
+       * 서버 기록이 먼저다(W23) — 기기를 옮겨도 이어지고, 권한이 회수된 문서는 서버가 걸러 준다.
+       * null이면 서버 원장이 없는 모드(목업)라 브라우저 기록으로 되돌아간다.
+       */
+      const fromServer = await listRecentPages(NAV_FLYOUT_LIMIT).catch(() => null);
+      if (cancelled) return;
+      if (fromServer !== null) {
+        setRecentItems(fromServer.map((row) => ({
+          key: row.id,
+          icon: iconFor(row.icon, row.type),
+          label: row.title,
+          meta: row.spaceName ?? undefined,
+          path: contentPathIn(row.spaceId, { id: row.id, type: row.type }),
+        })));
+        return;
+      }
+
       const visits = getRecentVisits(NAV_FLYOUT_LIMIT);
       // 지워진 페이지는 null로 떨어뜨린다 — 방문 로그가 죽은 링크를 남기지 않게 한다.
       const pages = await Promise.all(visits.map((v) => getPage(v.id).catch(() => null)));
@@ -93,13 +126,7 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
           if (!page) return [];
           return [{
             key: page.id,
-            icon: page.icon ? (
-              <span className="page-tree-emoji" aria-hidden="true">{page.icon}</span>
-            ) : page.type === "folder" ? (
-              <Folder size={14} aria-hidden="true" />
-            ) : (
-              <FileText size={14} aria-hidden="true" />
-            ),
+            icon: iconFor(page.icon, page.type),
             label: page.title,
             meta: relativeTime(visit.at),
             path: contentPathIn(page.spaceId, page),
