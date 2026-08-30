@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 명령어 — 패키지 매니저는 **pnpm** (npm 아님)
 
 ```bash
-pnpm install       # ../design-system/artifacts/*.tgz tarball 필요 (MSA_TEMPLATE 모노레포 체크아웃 전제)
+GH_PACKAGES_TOKEN=$(gh auth token) pnpm install   # 디자인시스템은 GitHub Packages(@chanho4702/*, pnpm alias로 @chanho/*). 최초 1회 ~/.npmrc에 `//npm.pkg.github.com/:_authToken=${GH_PACKAGES_TOKEN}` 추가
 pnpm dev           # Vite dev 서버 → http://localhost:5174/wiki/ (base "/wiki/")
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest run (전체)

@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@chanho/react':
-        specifier: file:../design-system/artifacts/chanho-react-0.6.0.tgz
-        version: file:../design-system/artifacts/chanho-react-0.6.0.tgz(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: npm:@chanho4702/react@0.7.0
+        version: '@chanho4702/react@0.7.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)'
       '@chanho/tokens':
         specifier: file:../design-system/artifacts/chanho-tokens-0.3.0.tgz
         version: file:../design-system/artifacts/chanho-tokens-0.3.0.tgz
@@ -267,16 +267,15 @@ packages:
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
 
-  '@chanho/react@file:../design-system/artifacts/chanho-react-0.6.0.tgz':
-    resolution: {integrity: sha512-p7bEc55YiNEOYnDjdFAnAqt/P+7zbPYf1cxjjADyLgXbGGiJkvBHtt7Q8G4TrL90HH+m/8fQj85u5oesSqV0/w==, tarball: file:../design-system/artifacts/chanho-react-0.6.0.tgz}
-    version: 0.6.0
-    peerDependencies:
-      react: ^19.0.0
-      react-dom: ^19.0.0
-
   '@chanho/tokens@file:../design-system/artifacts/chanho-tokens-0.3.0.tgz':
     resolution: {integrity: sha512-uo7YkgQpW3XOJker4v0i05qqZQgfy/mDn+PKA0u8fuQtMmr3ux9wvqKUjKgMSt8AQKqVVx7lBpybwfZy+oJAcw==, tarball: file:../design-system/artifacts/chanho-tokens-0.3.0.tgz}
     version: 0.3.0
+
+  '@chanho4702/react@0.7.0':
+    resolution: {integrity: sha512-S6jGLSdXJD6UOY8eY/EHKQmaBxQkL7iYr7eidKzr/cBbi0ZfMIH/Sn7PNPjeICO1L/5fCbtDrM2H25ouDQ850A==, tarball: https://npm.pkg.github.com/download/@chanho4702/react/0.7.0/77bbbf0eac823aba39e72c1c35f75f87172b2e39}
+    peerDependencies:
+      react: ^19.0.0
+      react-dom: ^19.0.0
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -2888,7 +2887,9 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@chanho/react@file:../design-system/artifacts/chanho-react-0.6.0.tgz(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@chanho/tokens@file:../design-system/artifacts/chanho-tokens-0.3.0.tgz': {}
+
+  '@chanho4702/react@0.7.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@chanho/tokens': file:../design-system/artifacts/chanho-tokens-0.3.0.tgz
       radix-ui: 1.6.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -2897,8 +2898,6 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
       - '@types/react-dom'
-
-  '@chanho/tokens@file:../design-system/artifacts/chanho-tokens-0.3.0.tgz': {}
 
   '@csstools/color-helpers@5.1.0': {}
 

@@ -24,7 +24,7 @@ MSA_TEMPLATE의 **위키(컨플루언스 클론) 프론트엔드**. 3개 프론�
 |---|---|
 | 빌드/런타임 | Vite 7 · React 19 · TypeScript |
 | 라우팅 | react-router 7 (`BrowserRouter basename="/wiki"`) |
-| 디자인 시스템 | `@chanho/react` 0.5.0 + `@chanho/tokens` 0.3.0 (tarball `file:../design-system/artifacts/*.tgz`) |
+| 디자인 시스템 | `@chanho/react` 0.5.0 + `@chanho/tokens` 0.3.0 (tarball `file:(레지스트리: GitHub Packages, `.npmrc` 참고)/*.tgz`) |
 | 에디터 | **TipTap 2.27** — `@tiptap/react` · `starter-kit` · 확장(link, image, table/row/header/cell, task-list/item, placeholder) + `tiptap-markdown`(마크다운 왕복) |
 | 공동 편집 | Yjs 13.6 · Hocuspocus Provider 4.6 — 본문·제목 CRDT, 인증 presence, 공동 커서, page+generation 원자 저장 (기능 플래그) |
 | 보기 렌더 | react-markdown 10 + remark-gfm 4 (표) |
@@ -64,7 +64,7 @@ UI는 100% `@chanho` 디자인 시스템으로 구성한다 — 타 UI 라이브
 ## 빠른 시작
 
 ```bash
-pnpm install     # ../design-system/artifacts 의 tarball 필요
+pnpm install     # (레지스트리: GitHub Packages, `.npmrc` 참고) 의 tarball 필요
 pnpm dev         # vite dev 서버
 pnpm typecheck   # tsc --noEmit
 pnpm test        # vitest run

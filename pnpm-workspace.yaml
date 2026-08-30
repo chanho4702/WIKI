@@ -2,5 +2,7 @@ packages:
   - "."
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@chanho4702/react@0.7.0'
 overrides:
   "@chanho/tokens": "file:../design-system/artifacts/chanho-tokens-0.3.0.tgz"
