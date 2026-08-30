@@ -1374,6 +1374,19 @@ export async function listRecentPages(_limit?: number): Promise<null> {
   return null; // 최근 방문도 브라우저 기록(lib/recentVisits)이 원장이다
 }
 
+/** 목업에는 검색 색인이 없다 — null은 "권한 없음"과 같은 취급을 받아 관리 메뉴가 뜨지 않는다. */
+export async function getSearchIndexStatus(): Promise<null> {
+  return null;
+}
+
+export async function startReindex(): Promise<never> {
+  throw new Error("목업 모드에서는 재색인을 지원하지 않습니다");
+}
+
+export async function getReindexJob(_jobId: string): Promise<never> {
+  throw new Error("목업 모드에서는 재색인을 지원하지 않습니다");
+}
+
 export function attachmentVersionUrl(id: string, version: number): string {
   return `/api/wiki/attachments/${id}/versions/${version}`;
 }

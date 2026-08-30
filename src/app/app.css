@@ -5503,3 +5503,36 @@ body.is-column-reordering {
   align-items: center;
   gap: var(--chanho-space-150);
 }
+
+/* ── 검색 색인 관리(W23) ─────────────────────────────────── */
+/* 사실 나열이라 라벨과 값을 두 열로 — 문장으로 풀면 오히려 안 읽힌다 */
+.search-admin-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-150);
+  margin: 0;
+}
+
+.search-admin-facts > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--chanho-space-200);
+}
+
+.search-admin-facts dt {
+  flex: none;
+  width: 96px;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.search-admin-facts dd {
+  margin: 0;
+}
+
+.search-admin-facts code {
+  padding: 2px 6px;
+  border-radius: var(--chanho-radius-small, 4px);
+  background: var(--chanho-color-background-neutral-subtle, #f1f2f4);
+  font-size: var(--chanho-font-size-75);
+}

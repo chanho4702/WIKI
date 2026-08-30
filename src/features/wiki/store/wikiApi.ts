@@ -30,6 +30,8 @@ import {
   type CopyPageOptions,
   type AttachmentVersion,
   type PagePath,
+  type ReindexJob,
+  type SearchIndexStatus,
   type StarredPageRow,
   type StarsSnapshot,
   type PageTemplate,
@@ -855,6 +857,28 @@ export async function setSpaceStar(spaceId: string, starred: boolean): Promise<v
 export async function listRecentPages(limit = 10): Promise<StarredPageRow[]> {
   const rows = await json<StarRowDto[]>(await sharedApiFetch(`/api/wiki/recent?limit=${limit}`));
   return rows.map(mapStarRow);
+}
+
+/* ── 검색 색인 관리(전역 관리자, W23) ────────────────────── */
+
+/**
+ * 색인 현황. **전역 관리자 여부를 확인하는 창구이기도 하다** — 아니면 403이 오고, 화면은
+ * 관리 메뉴 자체를 감춘다. 그래서 403을 오류가 아니라 "권한 없음"으로 구분해 돌려준다.
+ */
+export async function getSearchIndexStatus(): Promise<SearchIndexStatus | null> {
+  const res = await sharedApiFetch("/api/search/admin/reindex/status");
+  if (res.status === 403) return null;
+  return json<SearchIndexStatus>(res);
+}
+
+export async function startReindex(): Promise<ReindexJob> {
+  return json<ReindexJob>(
+    await sharedApiFetch("/api/search/admin/reindex", { method: "POST" }));
+}
+
+export async function getReindexJob(jobId: string): Promise<ReindexJob> {
+  return json<ReindexJob>(
+    await sharedApiFetch(`/api/search/admin/reindex/${encodeURIComponent(jobId)}`));
 }
 
 export function attachmentUrl(id: string): string {

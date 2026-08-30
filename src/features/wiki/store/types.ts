@@ -258,6 +258,29 @@ export interface StarredPageRow {
   type: PageType;
 }
 
+/** 검색 색인 현황(전역 관리자). runningJob이 있으면 지금 재색인이 돌고 있다. */
+export interface SearchIndexStatus {
+  pageIndex: string;
+  attachmentIndex: string;
+  /** -1이면 세지 못한 것 — 0건과 구분해야 한다. */
+  pageDocs: number;
+  attachmentDocs: number;
+  runningJob: ReindexJob | null;
+}
+
+export interface ReindexJob {
+  jobId: string;
+  state: "RUNNING" | "SUCCEEDED" | "FAILED";
+  aliasSwitched: boolean;
+  pagesIndexed: number;
+  attachmentsIndexed: number;
+  pageIndex: string | null;
+  attachmentIndex: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  failure: string | null;
+}
+
 /** 페이지의 조상 경로 — 루트부터 부모까지. 자기 자신은 없다(제목은 이미 크게 보인다). */
 export interface PagePath {
   id: string;

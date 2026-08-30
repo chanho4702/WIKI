@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Avatar, Button, Dropdown, TopBar } from "@chanho/react";
-import { PanelLeft, Settings } from "lucide-react";
+import { Database, PanelLeft, Settings } from "lucide-react";
 import type { User } from "../store/types";
-import { getCurrentUser } from "../store/wikiStore";
+import { getCurrentUser, getSearchIndexStatus } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
 import { useAuth } from "../../../auth/AuthGate";
 import { GlobalSearchField } from "./GlobalSearchField";
@@ -33,6 +33,28 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
   const { user: authUser, logout } = useAuth();
   const [me, setMe] = useState<User | null>(null);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+  const navigate = useNavigate();
+  /*
+   * 전역 관리자에게만 색인 관리 항목을 띄운다.
+   *
+   * 판단 근거는 org-service의 GLOBAL ADMIN grant다 — Keycloak realm role과는 다른 개념이라
+   * 토큰의 roles로 대신할 수 없다. 그래서 권위 있는 곳에 직접 물어본다: 현황 조회가 통하면
+   * 관리자다. 상단바는 앱당 한 번 마운트되므로 세션당 요청 하나로 끝난다.
+   */
+  const [canManageSearch, setCanManageSearch] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void getSearchIndexStatus()
+      .then((status) => {
+        if (!cancelled) setCanManageSearch(status !== null);
+      })
+      .catch(() => {
+        if (!cancelled) setCanManageSearch(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     void getCurrentUser().then(setMe);
@@ -82,6 +104,14 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
                 onSelect: toggle,
               },
               { label: "단축키 도움말", onSelect: () => setShortcutHelpOpen(true) },
+              // 전역 관리자에게만 보인다 — 아닌 사람에게 띄우면 눌러도 "권한 없음"만 나온다
+              ...(canManageSearch
+                ? [{
+                    label: "검색 색인 관리",
+                    icon: <Database size={16} aria-hidden="true" />,
+                    onSelect: () => navigate("/admin/search"),
+                  }]
+                : []),
             ]}
           />
           <ShortcutHelpModal open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
