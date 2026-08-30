@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router";
 import { Button, ConfirmDialog, EmptyState, TextField, useToast } from "@chanho/react";
-import { Trash2 } from "lucide-react";
+import { LayoutTemplate, ScrollText, Settings, Trash2, Users } from "lucide-react";
+import { SettingsHeader, SettingsItem } from "../components/SettingsItem";
 import type { SpaceGrant, Team, User } from "../store/types";
 import {
   addSpaceGrant,
@@ -28,6 +29,32 @@ export const SECTION_LABEL: Record<SettingsSection, string> = {
   templates: "템플릿",
   audit: "감사 로그",
   danger: "스페이스 삭제",
+};
+
+/** 설정은 아이콘 · 제목 · 한 줄 설명 구조다 — 사이드바 항목과 화면 머리가 같은 표에서 나온다. */
+export const SECTION_ICON = {
+  general: Settings,
+  permissions: Users,
+  templates: LayoutTemplate,
+  audit: ScrollText,
+  danger: Trash2,
+} as const;
+
+/** 사이드바용 짧은 설명 — 한 줄에 들어가야 한다. 긴 설명은 화면 머리(SECTION_DESC)에 있다. */
+export const SECTION_SHORT: Record<SettingsSection, string> = {
+  general: "이름 · 설명 · 내보내기",
+  permissions: "누가 보고 편집하는지",
+  templates: "새 문서의 틀",
+  audit: "권한 변경 기록",
+  danger: "되돌릴 수 없음",
+};
+
+export const SECTION_DESC: Record<SettingsSection, string> = {
+  general: "스페이스 이름과 설명을 바꾸고, 문서 전체를 내보냅니다.",
+  permissions: "누가 보고, 댓글 달고, 편집하고, 관리할지 정합니다.",
+  templates: "이 스페이스에서 새 문서를 만들 때 고를 수 있는 템플릿입니다.",
+  audit: "권한이 언제 누구에 의해 어떻게 바뀌었는지의 기록입니다.",
+  danger: "스페이스와 그 안의 모든 문서를 지웁니다. 되돌릴 수 없습니다.",
 };
 
 /** URL 조각은 사용자가 손댈 수 있다 — 모르는 값이면 조용히 첫 섹션으로 돌린다. */
@@ -159,12 +186,16 @@ export function SpaceSettingsPage() {
 
   return (
     <div className="space-settings">
-      <header>
-        <h1 className="space-settings-title">{SECTION_LABEL[section]}</h1>
-        <p className="space-settings-desc">
-          {space.name} ({space.key})
-        </p>
-      </header>
+      {(() => {
+        const Icon = SECTION_ICON[section];
+        return (
+          <SettingsHeader
+            icon={<Icon size={20} aria-hidden="true" />}
+            title={SECTION_LABEL[section]}
+            description={`${SECTION_DESC[section]} — ${space.name} (${space.key})`}
+          />
+        );
+      })()}
 
       {section === "general" ? (
         <>
@@ -289,17 +320,17 @@ export function SpaceSettingsPage() {
         </div>
       ) : (
         <div className="space-settings-form">
-                <p className="space-settings-warning">
-                  이 스페이스의 모든 문서와 이력, 첨부파일이 함께 사라집니다. 되돌릴 수 없습니다.
-                </p>
-                <Button
-                  variant="danger"
-                  iconBefore={<Trash2 size={16} aria-hidden="true" />}
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  스페이스 삭제
-                </Button>
-              </div>
+          <SettingsItem
+            icon={<Trash2 size={18} aria-hidden="true" />}
+            title="스페이스 삭제"
+            description="이 스페이스의 모든 문서와 이력, 첨부파일이 함께 사라집니다. 되돌릴 수 없습니다."
+            control={
+              <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+                스페이스 삭제
+              </Button>
+            }
+          />
+        </div>
       )}
 
       <ConfirmDialog

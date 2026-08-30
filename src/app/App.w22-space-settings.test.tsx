@@ -25,7 +25,7 @@ describe("W22 스페이스 설정", () => {
     await screen.findByRole("navigation", { name: "페이지 트리" });
 
     await user.click(screen.getByRole("button", { name: /스페이스 메뉴/ }));
-    await user.click(await screen.findByRole("menuitem", { name: "스페이스 설정" }));
+    await user.click(await screen.findByRole("menuitem", { name: /^스페이스 설정/ }));
     const nameField = await screen.findByLabelText("이름");
     await user.clear(nameField);
     await user.type(nameField, "개발 위키 2팀");

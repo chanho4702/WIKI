@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { Avatar, Button, Dropdown, TopBar } from "@chanho/react";
-import { Database, PanelLeft, Settings, Users } from "lucide-react";
+import { Bell, Database, Keyboard, LogOut, Moon, PanelLeft, Settings, Sun, Users } from "lucide-react";
 import type { User } from "../store/types";
 import { getCurrentUser, getSearchIndexStatus } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
@@ -99,22 +99,38 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
               </Button>
             }
             items={[
+              // 설정 항목은 아이콘 · 제목 · 한 줄 설명 구조다(SettingsItem과 같은 규칙)
               {
                 label: theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환",
+                description: "화면 색을 바꿉니다. 이 브라우저에만 저장됩니다",
+                icon: theme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />,
                 onSelect: toggle,
               },
-              { label: "단축키 도움말", onSelect: () => setShortcutHelpOpen(true) },
+              {
+                label: "알림 설정",
+                description: "어떤 알림을 이메일로도 받을지 고릅니다",
+                icon: <Bell size={16} aria-hidden="true" />,
+                onSelect: () => navigate("/settings/notifications"),
+              },
+              {
+                label: "단축키 도움말",
+                description: "키보드로 빠르게 다니는 법",
+                icon: <Keyboard size={16} aria-hidden="true" />,
+                onSelect: () => setShortcutHelpOpen(true),
+              },
               // 전역 관리자에게만 보인다 — 아닌 사람에게 띄우면 눌러도 "권한 없음"만 나온다
               // 두 항목 모두 전역 관리자용이라 같은 게이트를 쓴다 — 팀 쓰기는 org-service가 GLOBAL ADMIN을 요구한다
               ...(canManageSearch
                 ? [
                     {
                       label: "팀 관리",
+                      description: "스페이스 권한에 쓰는 팀을 만들고 구성원을 관리합니다",
                       icon: <Users size={16} aria-hidden="true" />,
                       onSelect: () => navigate("/admin/teams"),
                     },
                     {
                       label: "검색 색인 관리",
+                      description: "검색 색인 상태를 보고 다시 만듭니다",
                       icon: <Database size={16} aria-hidden="true" />,
                       onSelect: () => navigate("/admin/search"),
                     },
@@ -133,8 +149,20 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
               }
               items={[
                 { label: authUser?.name ?? authUser?.email ?? me.name, onSelect: () => {} },
-                { label: "알림 설정", onSelect: () => navigate("/settings/notifications") },
-                ...(authUser ? [{ label: "로그아웃", onSelect: () => void logout() }] : []),
+                {
+                  label: "알림 설정",
+                  description: "어떤 알림을 이메일로도 받을지 고릅니다",
+                  icon: <Bell size={16} aria-hidden="true" />,
+                  onSelect: () => navigate("/settings/notifications"),
+                },
+                ...(authUser
+                  ? [{
+                      label: "로그아웃",
+                      description: "이 기기에서 로그아웃합니다",
+                      icon: <LogOut size={16} aria-hidden="true" />,
+                      onSelect: () => void logout(),
+                    }]
+                  : []),
               ]}
             />
           ) : null}

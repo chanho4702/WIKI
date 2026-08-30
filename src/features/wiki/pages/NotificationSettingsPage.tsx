@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { Banner, Switch, useToast } from "@chanho/react";
+import { AtSign, Bell, FileText, Mail, MessageSquare, Share2 } from "lucide-react";
+import { SettingsHeader, SettingsItem } from "../components/SettingsItem";
 import type { NotificationPrefs, NotificationPrefsPatch } from "../store/types";
 import { getNotificationPrefs, updateNotificationPrefs } from "../store/wikiStore";
 
-const TYPE_ROWS: Array<{ key: keyof NotificationPrefsPatch & ("mentioned" | "pageUpdated" | "comment" | "shared"); label: string; hint: string }> = [
-  { key: "mentioned", label: "나를 멘션했을 때", hint: "본문이나 댓글에서 @이름으로 불렀을 때" },
-  { key: "pageUpdated", label: "구독한 문서가 업데이트됐을 때", hint: "내가 만들거나 고쳤거나 구독한 문서" },
-  { key: "comment", label: "구독한 문서에 댓글이 달렸을 때", hint: "" },
-  { key: "shared", label: "누군가 문서를 공유했을 때", hint: "공유 메모가 함께 옵니다" },
+const TYPE_ROWS: Array<{
+  key: "mentioned" | "pageUpdated" | "comment" | "shared";
+  icon: typeof Bell;
+  label: string;
+  hint: string;
+}> = [
+  { key: "mentioned", icon: AtSign, label: "나를 멘션했을 때", hint: "본문이나 댓글에서 @이름으로 나를 불렀을 때 보냅니다." },
+  { key: "pageUpdated", icon: FileText, label: "구독한 문서가 업데이트됐을 때", hint: "내가 만들거나 고쳤거나 직접 구독한 문서가 바뀌면 보냅니다." },
+  { key: "comment", icon: MessageSquare, label: "구독한 문서에 댓글이 달렸을 때", hint: "구독한 문서에 새 댓글이 달리면 보냅니다." },
+  { key: "shared", icon: Share2, label: "누군가 문서를 공유했을 때", hint: "공유한 사람의 메모가 함께 옵니다." },
 ];
 
 /**
@@ -63,12 +70,18 @@ export function NotificationSettingsPage() {
     [prefs, toast],
   );
 
+  const header = (
+    <SettingsHeader
+      icon={<Bell size={20} aria-hidden="true" />}
+      title="알림 설정"
+      description="알림함(벨)은 항상 켜져 있습니다. 여기서는 어떤 알림을 이메일로도 받을지 정합니다."
+    />
+  );
+
   if (error) {
     return (
       <div className="space-settings" role="alert">
-        <header>
-          <h1 className="space-settings-title">알림 설정</h1>
-        </header>
+        {header}
         <Banner variant="danger">{error}</Banner>
       </div>
     );
@@ -76,22 +89,15 @@ export function NotificationSettingsPage() {
   if (!prefs) {
     return (
       <div className="space-settings" role="status">
-        <header>
-          <h1 className="space-settings-title">알림 설정</h1>
-          <p className="space-settings-desc">불러오는 중…</p>
-        </header>
+        {header}
+        <p className="space-settings-desc">불러오는 중…</p>
       </div>
     );
   }
 
   return (
     <div className="space-settings">
-      <header>
-        <h1 className="space-settings-title">알림 설정</h1>
-        <p className="space-settings-desc">
-          알림함(벨)은 항상 켜져 있습니다. 여기서는 어떤 알림을 이메일로도 받을지 정합니다.
-        </p>
-      </header>
+      {header}
 
       <div className="space-settings-form">
         {!prefs.emailConfigured ? (
@@ -101,32 +107,45 @@ export function NotificationSettingsPage() {
           </Banner>
         ) : null}
 
-        <p className="notification-prefs-address">
-          받는 주소:{" "}
-          {prefs.email ? <strong>{prefs.email}</strong> : <span>아직 알 수 없음 — 로그인 계정의 이메일을 씁니다</span>}
-        </p>
+        <SettingsItem
+          icon={<Mail size={18} aria-hidden="true" />}
+          description={
+            <>
+              받는 주소:{" "}
+              {prefs.email ? <strong>{prefs.email}</strong> : <span>아직 알 수 없음 — 로그인 계정의 이메일을 씁니다.</span>}
+              {" "}이 스위치를 끄면 아래 항목과 무관하게 메일이 가지 않습니다.
+            </>
+          }
+          control={
+            <Switch
+              label="이메일로 알림 받기"
+              checked={prefs.emailEnabled}
+              disabled={saving}
+              onCheckedChange={(checked) => void save({ emailEnabled: checked })}
+            />
+          }
+        />
 
-        <div className="notification-prefs-master">
-          <Switch
-            label="이메일로 알림 받기"
-            checked={prefs.emailEnabled}
-            disabled={saving}
-            onCheckedChange={(checked) => void save({ emailEnabled: checked })}
-          />
-        </div>
-
-        <ul className="notification-prefs-list" aria-label="이메일로 받을 알림">
-          {TYPE_ROWS.map((row) => (
-            <li key={row.key}>
-              <Switch
-                label={row.label}
-                checked={prefs[row.key]}
-                disabled={saving || !prefs.emailEnabled}
-                onCheckedChange={(checked) => void save({ [row.key]: checked })}
-              />
-              {row.hint ? <span className="notification-prefs-hint">{row.hint}</span> : null}
-            </li>
-          ))}
+        <ul className="settings-item-list" aria-label="이메일로 받을 알림">
+          {TYPE_ROWS.map((row) => {
+            const Icon = row.icon;
+            return (
+              <li key={row.key}>
+                <SettingsItem
+                  icon={<Icon size={18} aria-hidden="true" />}
+                  description={row.hint}
+                  control={
+                    <Switch
+                      label={row.label}
+                      checked={prefs[row.key]}
+                      disabled={saving || !prefs.emailEnabled}
+                      onCheckedChange={(checked) => void save({ [row.key]: checked })}
+                    />
+                  }
+                />
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>

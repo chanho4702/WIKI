@@ -439,26 +439,31 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
                 items={[
                   {
                     label: "스페이스 설정",
+                    description: "이름·권한·템플릿·감사 로그·삭제",
                     icon: <Settings size={16} aria-hidden="true" />,
                     onSelect: () => navigate(`/spaces/${space.id}/settings`),
                   },
                   {
                     label: "블로그",
+                    description: "트리 밖에서 날짜순으로 읽는 글",
                     icon: <Newspaper size={16} aria-hidden="true" />,
                     onSelect: () => navigate(`/spaces/${space.id}/blog`),
                   },
                   {
                     label: "라벨",
+                    description: "라벨별로 문서를 모아 봅니다",
                     icon: <Tag size={16} aria-hidden="true" />,
                     onSelect: () => navigate(`/spaces/${space.id}/labels`),
                   },
                   {
                     label: "보관함",
+                    description: "보관한 문서 — 트리와 검색에서 빠지지만 링크로는 열립니다",
                     icon: <Archive size={16} aria-hidden="true" />,
                     onSelect: () => navigate(`/spaces/${space.id}/archive`),
                   },
                   {
                     label: "휴지통",
+                    description: "지운 문서를 되살리거나 영구 삭제합니다",
                     icon: <Trash2 size={16} aria-hidden="true" />,
                     onSelect: () => navigate(`/spaces/${space.id}/trash`),
                   },

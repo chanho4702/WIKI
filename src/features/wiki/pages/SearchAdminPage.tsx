@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Banner, Button, EmptyState, Spinner, useToast } from "@chanho/react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Database } from "lucide-react";
+import { SettingsHeader } from "../components/SettingsItem";
 import type { ReindexJob, SearchIndexStatus } from "../store/types";
 import { getReindexJob, getSearchIndexStatus, startReindex } from "../store/wikiStore";
 
@@ -98,10 +99,11 @@ export function SearchAdminPage() {
 
   return (
     <div className="space-settings">
-      <header>
-        <h1 className="space-settings-title">검색 색인</h1>
-        <p className="space-settings-desc">지금 서비스 중인 색인 세대와 문서 수입니다.</p>
-      </header>
+      <SettingsHeader
+        icon={<Database size={20} aria-hidden="true" />}
+        title="검색 색인"
+        description="지금 서비스 중인 색인 세대와 문서 수입니다."
+      />
 
       <div className="space-settings-form">
         <dl className="search-admin-facts">

@@ -1,18 +1,10 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router";
-import { ChevronLeft, LayoutTemplate, ScrollText, Settings, Trash2, Users } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import type { Space } from "../store/types";
-import { SECTION_LABEL, SETTINGS_SECTIONS } from "../pages/SpaceSettingsPage";
+import { SECTION_DESC, SECTION_ICON, SECTION_LABEL, SECTION_SHORT, SETTINGS_SECTIONS } from "../pages/SpaceSettingsPage";
 import { SidebarResizer } from "./SidebarResizer";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
-
-const SECTION_ICON = {
-  general: Settings,
-  permissions: Users,
-  templates: LayoutTemplate,
-  audit: ScrollText,
-  danger: Trash2,
-} as const;
 
 /**
  * 스페이스 설정 전용 사이드바(W23).
@@ -63,12 +55,19 @@ export function SpaceSettingsSidebar({ space }: { space: Space }) {
               <li key={section}>
                 <NavLink
                   to={`/spaces/${space.id}/settings/${section}`}
+                  title={SECTION_DESC[section]}
                   className={({ isActive }) =>
-                    isActive ? "global-nav-item global-nav-item--active" : "global-nav-item"
+                    isActive
+                      ? "global-nav-item settings-nav-item global-nav-item--active"
+                      : "global-nav-item settings-nav-item"
                   }
                 >
                   <Icon className="global-nav-icon" size={16} aria-hidden="true" />
-                  <span>{SECTION_LABEL[section]}</span>
+                  {/* 아이콘 · 제목 · 짧은 설명 — 설정 항목 공통 구조. 설명은 접근성 이름에서 뺀다(항목 이름은 제목이다) */}
+                  <span className="settings-nav-text">
+                    <span>{SECTION_LABEL[section]}</span>
+                    <span className="settings-nav-desc" aria-hidden="true">{SECTION_SHORT[section]}</span>
+                  </span>
                 </NavLink>
               </li>
             );
