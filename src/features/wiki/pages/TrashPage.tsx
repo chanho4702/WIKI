@@ -166,18 +166,18 @@ export function TrashPage() {
                     variant="subtle"
                     size="small"
                     disabled={busyId === item.id}
+                    iconBefore={<RotateCcw size={14} aria-hidden="true" />}
                     onClick={() => void handleRestore(item)}
                   >
-                    <RotateCcw size={14} aria-hidden="true" />
                     복원
                   </Button>
                   <Button
                     variant="danger"
                     size="small"
                     disabled={busyId === item.id}
+                    iconBefore={<Trash2 size={14} aria-hidden="true" />}
                     onClick={() => void handlePurge(item)}
                   >
-                    <Trash2 size={14} aria-hidden="true" />
                     영구 삭제
                   </Button>
                 </td>

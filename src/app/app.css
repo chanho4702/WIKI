@@ -5168,12 +5168,45 @@ body.is-column-reordering {
   color: var(--chanho-color-text-subtle);
 }
 
+/*
+ * 각 섹션은 면을 가진 판이다.
+ *
+ * 전에는 입력칸 몇 개가 넓은 빈 화면에 그냥 떠 있어서 "만들다 만 화면"으로 읽혔다. 테두리와
+ * 배경을 주면 어디까지가 이 설정인지가 눈에 들어오고, 섹션이 늘어나도 형태가 유지된다.
+ */
 .space-settings-form {
   display: flex;
   flex-direction: column;
-  gap: var(--chanho-space-200);
-  align-items: flex-start;
-  padding-top: var(--chanho-space-200);
+  gap: var(--chanho-space-250, 20px);
+  align-items: stretch;
+  padding: var(--chanho-space-300);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-surface, transparent);
+}
+
+/*
+ * 입력칸은 판 안에서 폭을 채우되 상한을 둔다. 폭을 안 주면 브라우저 기본(약 180px)이라
+ * 이름 하나 넣기에도 좁아 보이고, 무한정 늘리면 한 줄짜리 값에 화면 전체를 쓰게 된다.
+ */
+.space-settings-form > * {
+  max-width: 480px;
+}
+
+/* 폭 상한은 입력칸에만 건다 — 설명 문장까지 480px에 가두면 한 문장이 어색하게 꺾인다 */
+.space-settings-form > p,
+.space-settings-form > span,
+.space-settings-form > ul,
+.space-settings-form > table,
+.space-settings-form > form,
+.space-settings-form > button,
+.space-settings-form > .space-settings-grant-add {
+  max-width: none;
+}
+
+/* 버튼은 판 폭을 채우지 않는다 — 자기 글자만큼만 */
+.space-settings-form > button {
+  align-self: flex-start;
 }
 
 /* 대상 종류·대상·역할·추가가 한 줄 — 좁은 화면에서는 접힌다 */
@@ -5370,29 +5403,62 @@ body.is-column-reordering {
   display: flex;
   flex-direction: column;
   gap: var(--chanho-space-200);
-  padding: var(--chanho-space-200) 0;
+}
+
+/*
+ * 머리 줄은 아래 항목들과 **같은 정렬선**을 쓴다 — 아이콘 열이 한 칸이라도 어긋나면
+ * 사이드바가 급조된 티가 난다. 그래서 여백도 .space-settings-nav와 같은 값이다.
+ */
+.space-settings-head {
+  padding: var(--chanho-space-200) var(--chanho-space-200) 0;
 }
 
 .space-settings-back {
   display: flex;
   align-items: center;
-  gap: var(--chanho-space-100);
-  margin: 0 var(--chanho-space-200);
+  gap: var(--chanho-space-150);
+  min-width: 0;
   padding: var(--chanho-space-100);
   border-radius: var(--chanho-radius-small, 4px);
   color: var(--chanho-color-text-subtle);
-  font-size: var(--chanho-font-size-75);
+  text-decoration: none;
+  font-size: var(--chanho-font-size-75, 12px);
+  transition: background var(--chanho-transition-base), color var(--chanho-transition-base);
+}
+
+.space-settings-back:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+  color: var(--chanho-color-text-default);
+}
+
+.space-settings-back-name {
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.space-settings-back:hover {
-  background: var(--chanho-color-background-neutral-subtle-hovered, #f1f2f4);
+/* 항목의 좌우 여백은 글로벌 네비와 같은 값이다 — 다르면 화면을 옮길 때 아이콘 열이 어긋난다 */
+.space-settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+  padding: var(--chanho-space-150) var(--chanho-space-200);
+  border-top: 1px solid var(--chanho-color-border-default);
+}
+
+/* 소제목도 항목 글자와 같은 정렬선에 둔다(아이콘 폭 + gap 만큼 들여쓴다) */
+.space-settings-nav .wiki-sidebar-section-title {
+  padding-left: calc(16px + var(--chanho-space-150) + var(--chanho-space-100));
 }
 
 .space-settings-nav ul {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-25, 2px);
 }
+
+

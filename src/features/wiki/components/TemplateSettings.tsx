@@ -130,8 +130,7 @@ export function TemplateSettings({ spaceId }: { spaceId: string }) {
           </div>
         </form>
       ) : (
-        <Button onClick={startNew}>
-          <LayoutTemplate size={16} aria-hidden="true" />
+        <Button onClick={startNew} iconBefore={<LayoutTemplate size={16} aria-hidden="true" />}>
           템플릿 만들기
         </Button>
       )}
@@ -155,6 +154,7 @@ export function TemplateSettings({ spaceId }: { spaceId: string }) {
                 <Button
                   size="small"
                   variant="subtle"
+                  iconOnly
                   aria-label={`${template.name} 편집`}
                   onClick={() => startEdit(template)}
                 >
@@ -163,6 +163,7 @@ export function TemplateSettings({ spaceId }: { spaceId: string }) {
                 <Button
                   size="small"
                   variant="subtle"
+                  iconOnly
                   aria-label={`${template.name} 삭제`}
                   onClick={() => setPendingDelete(template)}
                 >

@@ -287,7 +287,7 @@ export function InlineCommentLayer({
             <blockquote className="inline-comment-quote">
               {target?.kind === "compose" ? target.anchor.quote : activeThread?.anchorQuote}
             </blockquote>
-            <Button size="small" variant="subtle" onClick={close} aria-label="닫기">
+            <Button size="small" variant="subtle" iconOnly onClick={close} aria-label="닫기">
               <X size={14} aria-hidden="true" />
             </Button>
           </div>
@@ -322,9 +322,9 @@ export function InlineCommentLayer({
                   size="small"
                   variant="subtle"
                   disabled={busy}
+                  iconBefore={<Check size={14} aria-hidden="true" />}
                   onClick={() => void toggleResolved(activeThread)}
                 >
-                  <Check size={14} aria-hidden="true" />
                   해결
                 </Button>
               ) : null}
@@ -352,9 +352,9 @@ export function InlineCommentLayer({
                     size="small"
                     variant="subtle"
                     disabled={busy}
+                    iconBefore={<Check size={14} aria-hidden="true" />}
                     onClick={() => void toggleResolved(thread)}
                   >
-                    <Check size={14} aria-hidden="true" />
                     해결
                   </Button>
                 </li>
@@ -377,9 +377,9 @@ export function InlineCommentLayer({
                         size="small"
                         variant="subtle"
                         disabled={busy}
+                        iconBefore={<RotateCcw size={14} aria-hidden="true" />}
                         onClick={() => void toggleResolved(thread)}
                       >
-                        <RotateCcw size={14} aria-hidden="true" />
                         다시 열기
                       </Button>
                     </li>

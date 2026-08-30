@@ -33,13 +33,28 @@ export function SpaceSettingsSidebar({ space }: { space: Space }) {
 
   return (
     <aside className="wiki-sidebar space-settings-sidebar" style={{ width: displayWidth }}>
-      <NavLink to={`/spaces/${space.id}`} className="space-settings-back">
-        <ChevronLeft size={16} aria-hidden="true" />
-        <span>{space.name}(으)로 돌아가기</span>
-      </NavLink>
+      {/*
+        머리에 스페이스를 세운다 — 설정 화면에는 트리가 없어서, 이 줄이 "어느 스페이스의 설정인가"를
+        말해 주는 유일한 자리이자 돌아가는 유일한 길이다.
+      */}
+      <div className="space-settings-head">
+        {/*
+          보이는 글자는 스페이스 이름뿐이지만 접근성 이름은 "무엇을 하는 링크인가"여야 한다 —
+          화살표는 aria-hidden이라 읽히지 않고, 이름만으로는 돌아가는 길인지 알 수 없다.
+        */}
+        <NavLink
+          to={`/spaces/${space.id}`}
+          className="space-settings-back"
+          aria-label={`${space.name}(으)로 돌아가기`}
+        >
+          {/* 아이콘은 아래 항목들과 같은 열에 온다 — 한 칸이라도 어긋나면 붙여 놓은 티가 난다 */}
+          <ChevronLeft className="global-nav-icon" size={16} aria-hidden="true" />
+          <span className="space-settings-back-name">{space.name}</span>
+        </NavLink>
+      </div>
 
       <nav className="space-settings-nav" aria-label="스페이스 설정">
-        <h2 className="wiki-sidebar-section-title">스페이스 설정</h2>
+        <h2 className="wiki-sidebar-section-title">설정</h2>
         <ul>
           {SETTINGS_SECTIONS.map((section) => {
             const Icon = SECTION_ICON[section];

@@ -280,8 +280,11 @@ export function SpaceSettingsPage() {
                 <p className="space-settings-warning">
                   이 스페이스의 모든 문서와 이력, 첨부파일이 함께 사라집니다. 되돌릴 수 없습니다.
                 </p>
-                <Button variant="danger" onClick={() => setConfirmDelete(true)}>
-                  <Trash2 size={16} aria-hidden="true" />
+                <Button
+                  variant="danger"
+                  iconBefore={<Trash2 size={16} aria-hidden="true" />}
+                  onClick={() => setConfirmDelete(true)}
+                >
                   스페이스 삭제
                 </Button>
               </div>
