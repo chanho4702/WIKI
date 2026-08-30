@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
-import { Avatar, Dropdown, EmptyState, TextField } from "@chanho/react";
-import { Archive, ChevronRight, Clock, ListChecks, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
+import { Avatar, Dropdown, EmptyState, TextField, useToast } from "@chanho/react";
+import { Archive, ChevronRight, Clock, ListChecks, UserRound, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
 import type { PageNode, Space } from "../store/types";
 import type { SpaceTree } from "../lib/useSpaceTree";
-import { listPagesByIds, listRecentPages, searchPageTitles } from "../store/wikiStore";
+import { ensurePersonalSpace, listPagesByIds, listRecentPages, searchPageTitles } from "../store/wikiStore";
 import { contentPathIn } from "../lib/contentPath";
 import { PageTree } from "./PageTree";
 import { TreeSkeleton } from "./WikiSkeleton";
@@ -32,6 +32,8 @@ export interface GlobalSidebarProps {
   reloadPages: () => Promise<void>;
   /** 스페이스 플라이아웃/컨텍스트 하단의 "스페이스 만들기" — AppShell의 공유 모달을 연다 */
   onCreateSpace: () => void;
+  /** 개인 스페이스가 방금 만들어졌을 때 목록을 다시 읽는다(W23). */
+  onSpacesChanged: () => void | Promise<void>;
 }
 
 /**
@@ -64,8 +66,27 @@ function iconFor(icon: string | null | undefined, type: "page" | "folder") {
   );
 }
 
-export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace }: GlobalSidebarProps) {
+export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace, onSpacesChanged }: GlobalSidebarProps) {
+  /**
+   * 내 스페이스(W23) — 없으면 그 자리에서 만든다. 별도 "만들기" 단계를 두지 않는 이유: 개인
+   * 스페이스는 한 사람에 하나이고 이름·키가 정해져 있어 물어볼 것이 없다.
+   */
+  const [openingPersonal, setOpeningPersonal] = useState(false);
+  const openPersonal = async () => {
+    if (openingPersonal) return;
+    setOpeningPersonal(true);
+    try {
+      const mine = await ensurePersonalSpace();
+      if (!spaces.some((s) => s.id === mine.id)) await onSpacesChanged();
+      navigate(`/spaces/${mine.id}`);
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : String(e), appearance: "danger" });
+    } finally {
+      setOpeningPersonal(false);
+    }
+  };
   const navigate = useNavigate();
+  const toast = useToast();
   const { width, setWidth } = useSidebarPrefs();
   const { starred } = useStarredSpaces();
   const { entries: starredPageEntries } = useStarredPages();
@@ -351,6 +372,17 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
                 }}
               />
             ) : null}
+          </li>
+          <li>
+            <button
+              type="button"
+              className="global-nav-item"
+              disabled={openingPersonal}
+              onClick={() => void openPersonal()}
+            >
+              <UserRound className="global-nav-icon" size={16} aria-hidden="true" />
+              <span>내 스페이스</span>
+            </button>
           </li>
           <li>
             <NavLink to="/tasks" end className={navClass}>

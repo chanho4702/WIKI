@@ -10,13 +10,14 @@ export function toBackendId(s: string): number {
   return n;
 }
 
-interface SpaceDto { id: number; key: string; name: string; description?: string | null }
+interface SpaceDto { id: number; key: string; name: string; description?: string | null; ownerId?: number | string | null }
 export function mapSpace(dto: SpaceDto): Space {
   return {
     id: toClientId(dto.id),
     key: dto.key,
     name: dto.name,
     description: dto.description ?? undefined,
+    ownerId: dto.ownerId === null || dto.ownerId === undefined ? null : String(dto.ownerId),
     // 백엔드 SpaceResponse엔 createdAt이 없다 → 빈 문자열. ⚠️ 백엔드 모드에서 화면이 이 값을
     // new Date("")로 포맷하면 "Invalid Date"가 노출된다 — 디렉토리 생성일 "-" 폴백은 후속 화면 배선 필요
     // (설계 §7 backend-mode 알려진 한계). 목업 모드는 실제 createdAt이 있어 무관.

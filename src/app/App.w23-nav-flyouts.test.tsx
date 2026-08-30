@@ -45,7 +45,7 @@ describe("W23 글로벌 네비 플라이아웃", () => {
     renderApp("/home");
     await screen.findByRole("heading", { name: "마지막 작업하던 곳에서 다시 시작" });
 
-    await user.click(screen.getByRole("button", { name: /스페이스/ }));
+    await user.click(screen.getByRole("button", { name: "스페이스" }));
     const panel = await screen.findByRole("dialog", { name: "스페이스" });
     await user.click(within(panel).getByRole("button", { name: /개발 위키/ }));
 
@@ -59,7 +59,7 @@ describe("W23 글로벌 네비 플라이아웃", () => {
     renderApp("/home");
     await screen.findByRole("heading", { name: "마지막 작업하던 곳에서 다시 시작" });
 
-    await user.click(screen.getByRole("button", { name: /스페이스/ }));
+    await user.click(screen.getByRole("button", { name: "스페이스" }));
     const panel = await screen.findByRole("dialog", { name: "스페이스" });
     await user.click(within(panel).getByRole("link", { name: "전체 보기" }));
 

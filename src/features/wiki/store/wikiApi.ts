@@ -935,6 +935,11 @@ export async function sharePage(pageId: string, userIds: string[], note?: string
   return (await json<{ delivered: number }>(res)).delivered;
 }
 
+/** 내 개인 스페이스 — 없으면 서버가 만든다(멱등). */
+export async function ensurePersonalSpace(): Promise<Space> {
+  return mapSpace(await json(await sharedApiFetch("/api/wiki/spaces/personal", { method: "POST" })));
+}
+
 /* ── 액션 아이템(W23) ────────────────────────────────────── */
 interface TaskDto {
   pageId: number | string; spaceId: number | string; spaceName: string | null; pageTitle: string;

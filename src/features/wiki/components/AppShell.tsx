@@ -179,6 +179,7 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
             tree={space ? tree : null}
             reloadPages={reloadPages}
             onCreateSpace={() => setSpaceModalOpen(true)}
+            onSpacesChanged={onSpacesChanged}
           />
         )}
         {/* tabIndex={-1}: 스킵 링크(#wiki-main)의 앵커 점프가 포커스까지 옮기려면 대상이

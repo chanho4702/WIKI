@@ -109,6 +109,7 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
                   type="button"
                   className="space-directory-card-name"
                   aria-label={`${space.name} (${space.key})`}
+            title={space.ownerId ? "개인 스페이스" : undefined}
                   onClick={() => navigate(`/spaces/${space.id}`)}
                 >
                   {space.name}

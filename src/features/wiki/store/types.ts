@@ -9,6 +9,8 @@ export interface Space {
   name: string;
   description?: string;
   createdAt: string;
+  /** 개인 스페이스의 주인(W23). 없으면 팀 스페이스. */
+  ownerId?: string | null;
 }
 
 /**

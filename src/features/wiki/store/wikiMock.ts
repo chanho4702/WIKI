@@ -137,6 +137,24 @@ export async function listSpaces(): Promise<Space[]> {
   return clone(load().spaces);
 }
 
+/** 개인 스페이스(W23) — 백엔드와 같이 key는 `me-{id}`, 한 사람에 하나(멱등). */
+export async function ensurePersonalSpace(): Promise<Space> {
+  const data = load();
+  const existing = data.spaces.find((s) => s.ownerId === CURRENT_USER_ID);
+  if (existing) return clone(existing);
+  const me = data.users.find((u) => u.id === CURRENT_USER_ID);
+  const space: Space = {
+    id: nextId(),
+    key: `me-${CURRENT_USER_ID}`,
+    name: `${me?.name ?? "사용자"}의 스페이스`,
+    createdAt: new Date().toISOString(),
+    ownerId: CURRENT_USER_ID,
+  };
+  data.spaces.push(space);
+  persist();
+  return clone(space);
+}
+
 export async function createSpace(input: { key: string; name: string }): Promise<Space> {
   const data = load();
   const key = input.key.trim().toUpperCase();
