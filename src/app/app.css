@@ -5802,3 +5802,83 @@ body.is-column-reordering {
   font-size: var(--chanho-font-size-75, 12px);
   color: var(--chanho-color-text-subtle);
 }
+
+/* ── 내 작업(W23) ────────────────────────────────────────── */
+.tasks-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--chanho-space-400) var(--chanho-space-400) var(--chanho-space-600);
+}
+
+.tasks-page-desc {
+  margin: 0 0 var(--chanho-space-300);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-150);
+  padding: var(--chanho-space-100) 0;
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
+
+.task-item.is-done .task-text {
+  text-decoration: line-through;
+  color: var(--chanho-color-text-subtle);
+}
+
+.task-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 기한은 숫자라 고정폭이 정렬을 지킨다. 지난 기한은 붉게 — 목록에서 그것만 눈에 띄어야 한다 */
+.task-due {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+
+.task-due.is-overdue {
+  color: var(--chanho-color-text-danger, #c9372c);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.task-source {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--chanho-font-size-75);
+}
+
+.tasks-done {
+  margin-top: var(--chanho-space-300);
+}
+
+.tasks-done-toggle {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--chanho-color-text-subtle);
+  font: inherit;
+  font-size: var(--chanho-font-size-75);
+  cursor: pointer;
+}
+
+/* 본문 체크박스가 살아 있을 때 — 손 모양으로 "눌린다"를 알린다 */
+.markdown-body input[type="checkbox"]:not(:disabled) {
+  cursor: pointer;
+}

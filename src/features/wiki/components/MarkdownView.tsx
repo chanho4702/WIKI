@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { AnchorHTMLAttributes, HTMLAttributes, ImgHTMLAttributes, ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { AnchorHTMLAttributes, HTMLAttributes, ImgHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkDirective from "remark-directive";
@@ -45,6 +45,11 @@ export interface MarkdownViewProps {
    * 들고 있을 필요가 없다.
    */
   spaceId?: string;
+  /**
+   * 체크박스 토글(W23). 주어지면 본문의 체크박스가 눌리고, 그 줄 번호(1부터)와 새 상태를 돌려준다.
+   * 없으면 이전처럼 읽기 전용이다(미리보기·발췌·내보내기).
+   */
+  onTaskToggle?: (lineNo: number, done: boolean) => void;
   /**
    * 발췌 포함 깊이(W23). 0이 본문, 1이 발췌 안이다. 1에서는 `::excerpt-include`를 더 따라가지
    * 않는다 — 서로를 포함하는 두 문서가 무한히 펼쳐지는 것을 막는다.
@@ -275,6 +280,25 @@ function MarkdownImage({ src = "", alt = "", title, ...props }: ImgHTMLAttribute
   );
 }
 
+/** li의 원문 줄 번호 — 그 안의 체크박스가 어느 줄을 토글할지 안다(W23). */
+const TaskLineContext = createContext<number | null>(null);
+
+function TaskCheckbox({
+  onTaskToggle,
+  ...p
+}: InputHTMLAttributes<HTMLInputElement> & { onTaskToggle?: (lineNo: number, done: boolean) => void }) {
+  const line = useContext(TaskLineContext);
+  if (p.type !== "checkbox" || !onTaskToggle || line === null) return <input disabled {...p} />;
+  return (
+    <input
+      {...p}
+      disabled={false}
+      aria-label={p.checked ? "작업 완료 취소" : "작업 완료"}
+      onChange={(e) => onTaskToggle(line, e.target.checked)}
+    />
+  );
+}
+
 /**
  * 헤딩 끝의 앵커 버튼(W23) — 누르면 이 섹션의 URL(`…#slug`)을 복사한다.
  *
@@ -331,7 +355,7 @@ function AnchorHeading({
  * rehype-slug가 heading에 id를 부여해 TableOfContents의 `#slug` 링크가 실제로 스크롤된다 —
  * TableOfContents는 같은 github-slugger 버전으로 별도 계산하므로 slug 값이 서로 일치한다.
  */
-export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0 }: MarkdownViewProps) {
+export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTaskToggle }: MarkdownViewProps) {
   // spaceId가 있어야 [[제목]]을 어느 스페이스에서 찾을지 정해진다 — 없으면 위키 링크 모드가 아니다.
   const wikiMode = spaceId !== undefined;
   const fetched = useWikiLinkTargets(linkTargets ? "" : markdown, spaceId);
@@ -350,6 +374,21 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0 }: Mark
       ),
       // 멘션 칩은 모드와 무관하게 필요하다 — wikiMode가 아니면 멘션 외 링크는 기본 렌더로 흘린다
       a: wikiMode ? WikiAnchor : MentionOnlyAnchor,
+      // 작업 체크박스 — remark-gfm은 disabled로 그린다. 토글 핸들러가 있으면 살려서 그 줄 번호를 돌려준다.
+      // 줄 번호는 체크박스가 아니라 **li의 position**에서 온다 — 체크박스 요소는 gfm이 만들어 낸 것이라
+      // 원문 위치가 없다. 정규화·링크 해석은 줄 수를 바꾸지 않으므로 번호가 서버와 같다.
+      li: ({
+        node,
+        children,
+        ...p
+      }: HTMLAttributes<HTMLLIElement> & { node?: { position?: { start?: { line?: number } } } }) => (
+        <TaskLineContext.Provider value={node?.position?.start?.line ?? null}>
+          <li {...p}>{children}</li>
+        </TaskLineContext.Provider>
+      ),
+      input: ({ node: _node, disabled: _disabled, ...p }: InputHTMLAttributes<HTMLInputElement> & { node?: unknown }) => (
+        <TaskCheckbox {...p} onTaskToggle={onTaskToggle} />
+      ),
       h1: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={1} {...p} />,
       h2: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={2} {...p} />,
       h3: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={3} {...p} />,
@@ -357,7 +396,7 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0 }: Mark
       h5: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={5} {...p} />,
       h6: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={6} {...p} />,
     }),
-    [source, wikiMode, spaceId, depth],
+    [source, wikiMode, spaceId, depth, onTaskToggle],
   );
 
   return (

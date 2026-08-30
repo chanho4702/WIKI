@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Avatar, Dropdown, EmptyState, TextField } from "@chanho/react";
-import { Archive, ChevronRight, Clock, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
+import { Archive, ChevronRight, Clock, ListChecks, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
 import type { PageNode, Space } from "../store/types";
 import type { SpaceTree } from "../lib/useSpaceTree";
 import { listPagesByIds, listRecentPages, searchPageTitles } from "../store/wikiStore";
@@ -351,6 +351,12 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
                 }}
               />
             ) : null}
+          </li>
+          <li>
+            <NavLink to="/tasks" end className={navClass}>
+              <ListChecks className="global-nav-icon" size={16} aria-hidden="true" />
+              <span>내 작업</span>
+            </NavLink>
           </li>
           <li>
             <button type="button" className="global-nav-item" disabled>

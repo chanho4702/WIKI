@@ -1,5 +1,6 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
 import { MoveImpactError, PageConflictError, REACTION_EMOJIS } from "./types";
+import { parseTasks, toggleTaskLine, type ParsedTask } from "../lib/tasks";
 import type {
   Attachment,
   CollaborationDraftCommit,
@@ -27,6 +28,7 @@ import type {
   PageRestoreResult,
   CopyPageOptions,
   LabelCount,
+  MyTask,
   ReactionSummary,
   PageTemplate,
   TemplateInput,
@@ -1321,6 +1323,53 @@ export async function listComments(pageId: string): Promise<Comment[]> {
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       .map((c) => ({ ...c, reactions: summarizeReactions(data, `COMMENT:${c.id}`) })),
   );
+}
+
+/* ── 액션 아이템(W23) — 본문에서 매번 파싱한다(목업은 파생 표가 없다) ── */
+
+export async function listMyTasks(done: boolean): Promise<MyTask[]> {
+  const data = load();
+  const spaces = new Map(data.spaces.map((s) => [s.id, s]));
+  const out: MyTask[] = [];
+  for (const page of data.pages) {
+    if (page.archivedAt) continue;
+    for (const t of parseTasks(page.body)) {
+      if (t.assigneeId !== CURRENT_USER_ID || t.done !== done) continue;
+      out.push({
+        pageId: page.id,
+        spaceId: page.spaceId,
+        spaceName: spaces.get(page.spaceId)?.name ?? null,
+        pageTitle: page.title,
+        ...t,
+      });
+    }
+  }
+  // 백엔드와 같은 순서 — 기한 있는 것이 먼저(임박한 순), 없는 것은 뒤
+  return out.sort((a, b) => {
+    if (a.dueDate === null && b.dueDate !== null) return 1;
+    if (a.dueDate !== null && b.dueDate === null) return -1;
+    return (a.dueDate ?? "").localeCompare(b.dueDate ?? "") || a.pageId.localeCompare(b.pageId) || a.lineNo - b.lineNo;
+  });
+}
+
+export async function setTaskDone(pageId: string, lineNo: number, done: boolean): Promise<MyTask> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === pageId);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  if (page.archivedAt) throw new Error("보관된 문서는 편집할 수 없습니다. 먼저 보관을 해제하세요");
+  const next = toggleTaskLine(page.body, lineNo, done);
+  if (next === null) throw new Error("그 줄은 더 이상 작업 항목이 아닙니다. 문서를 새로고침하세요");
+  // 편집이다 — 버전·리비전이 따라간다(updatePage와 같은 경로)
+  await updatePage(pageId, { body: next }, { changeNote: done ? "작업 완료 표시" : "작업 다시 열기" });
+  const refreshed = load().pages.find((p) => p.id === pageId) as Page;
+  const task = parseTasks(refreshed.body).find((t) => t.lineNo === lineNo) as ParsedTask;
+  return {
+    pageId,
+    spaceId: refreshed.spaceId,
+    spaceName: load().spaces.find((s) => s.id === refreshed.spaceId)?.name ?? null,
+    pageTitle: refreshed.title,
+    ...task,
+  };
 }
 
 /* ── 리액션(W23) — 백엔드와 같은 규칙: 고정 집합, 사용자·이모지당 하나, 집합 순서로 집계 ── */

@@ -315,6 +315,20 @@ export interface ReindexJob {
   failure: string | null;
 }
 
+/** 내 작업 한 줄(W23) — 문서를 가로지르므로 스페이스 이름을 함께 준다. */
+export interface MyTask {
+  pageId: string;
+  spaceId: string;
+  spaceName: string | null;
+  pageTitle: string;
+  /** 본문 줄 번호(1부터) — 토글이 이 줄을 다시 쓴다. */
+  lineNo: number;
+  text: string;
+  assigneeId: string | null;
+  dueDate: string | null;
+  done: boolean;
+}
+
 /** 페이지의 조상 경로 — 루트부터 부모까지. 자기 자신은 없다(제목은 이미 크게 보인다). */
 export interface PagePath {
   id: string;

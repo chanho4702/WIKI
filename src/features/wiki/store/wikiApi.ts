@@ -30,6 +30,7 @@ import {
   type CopyPageOptions,
   type AttachmentVersion,
   type AuditEntry,
+  type MyTask,
   type PagePath,
   type ReactionSummary,
   type ReindexJob,
@@ -932,6 +933,37 @@ export async function sharePage(pageId: string, userIds: string[], note?: string
     body: JSON.stringify({ userIds: userIds.map(toBackendId), note: note?.trim() || null }),
   });
   return (await json<{ delivered: number }>(res)).delivered;
+}
+
+/* ── 액션 아이템(W23) ────────────────────────────────────── */
+interface TaskDto {
+  pageId: number | string; spaceId: number | string; spaceName: string | null; pageTitle: string;
+  lineNo: number; text: string; assigneeId: number | string | null; dueDate: string | null; done: boolean;
+}
+function mapTask(t: TaskDto): MyTask {
+  return {
+    pageId: String(t.pageId),
+    spaceId: String(t.spaceId),
+    spaceName: t.spaceName,
+    pageTitle: t.pageTitle,
+    lineNo: t.lineNo,
+    text: t.text,
+    assigneeId: t.assigneeId === null ? null : String(t.assigneeId),
+    dueDate: t.dueDate,
+    done: t.done,
+  };
+}
+
+export async function listMyTasks(done: boolean): Promise<MyTask[]> {
+  const rows = await json<TaskDto[]>(await sharedApiFetch(`/api/wiki/tasks/mine?done=${done}`));
+  return rows.map(mapTask);
+}
+
+/** 체크 토글은 그 문서의 본문을 다시 쓰는 편집이다 — 리비전이 남는다. */
+export async function setTaskDone(pageId: string, lineNo: number, done: boolean): Promise<MyTask> {
+  return mapTask(await json<TaskDto>(await sharedApiFetch(
+    `/api/wiki/pages/${toBackendId(pageId)}/tasks/${lineNo}`,
+    { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done }) })));
 }
 
 /* ── 리액션(W23) ─────────────────────────────────────────── */

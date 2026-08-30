@@ -15,6 +15,7 @@ import {
   savePageAsTemplate,
   archivePage,
   unarchivePage,
+  setTaskDone,
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
@@ -99,6 +100,22 @@ export function PageViewPage() {
    * 본문만 템플릿으로 가져간다(서버가 그렇게 만든다) — 제목까지 가져오면 그 템플릿으로 만든
    * 문서마다 같은 제목이 붙는다. 관리 권한이 없으면 서버가 거절하고 그 메시지를 그대로 보여준다.
    */
+  /** 본문 체크박스 토글(W23) — 편집이라 리비전이 남는다. 결과 Page로 즉시 갱신한다. */
+  const handleTaskToggle = async (lineNo: number, done: boolean) => {
+    if (!page) return;
+    try {
+      await setTaskDone(page.id, lineNo, done);
+      const refreshed = await getPage(page.id);
+      if (refreshed) setPage(refreshed);
+    } catch (error) {
+      toast({
+        title: "작업 상태를 바꾸지 못했습니다",
+        description: error instanceof Error ? error.message : String(error),
+        appearance: "danger",
+      });
+    }
+  };
+
   /** 보관/해제 — 하위도 함께 간다(서버 규칙). 결과 Page로 즉시 갱신하고 트리를 다시 읽는다. */
   const handleArchiveToggle = async () => {
     if (!page) return;
@@ -468,7 +485,12 @@ export function PageViewPage() {
       */}
       <div className="inline-comment-scope">
         <div ref={bodyRef}>
-          <MarkdownView markdown={page.body} spaceId={space.id} />
+          <MarkdownView
+            markdown={page.body}
+            spaceId={space.id}
+            // 보관 중엔 편집이 막힌다 — 체크박스도 읽기 전용으로 둔다
+            onTaskToggle={page.archivedAt ? undefined : handleTaskToggle}
+          />
         </div>
         <InlineCommentLayer pageId={page.id} body={page.body} users={users} bodyRef={bodyRef} />
       </div>

@@ -11,6 +11,7 @@ import { HomePage } from "../features/wiki/pages/HomePage";
 import { PageViewPage } from "../features/wiki/pages/PageViewPage";
 import { FolderPage } from "../features/wiki/pages/FolderPage";
 import { SearchPage } from "../features/wiki/pages/SearchPage";
+import { TasksPage } from "../features/wiki/pages/TasksPage";
 import { SearchAdminPage } from "../features/wiki/pages/SearchAdminPage";
 import { TrashPage } from "../features/wiki/pages/TrashPage";
 import { ArchivePage } from "../features/wiki/pages/ArchivePage";
@@ -84,6 +85,8 @@ export function App() {
         <Route path="/home" element={<HomePage />} />
         <Route path="/spaces" element={<SpaceDirectoryPage spaces={spaces} />} />
         <Route path="/search" element={<SearchPage />} />
+        {/* 내 작업(W23) — 담당자가 나인 체크박스 항목을 문서를 가로질러 모은다 */}
+        <Route path="/tasks" element={<TasksPage />} />
         {/* 검색 색인 관리 — 전역 관리자 전용. 아니면 화면이 스스로 "권한 없음"을 보여준다 */}
         <Route path="/admin/search" element={<SearchAdminPage />} />
         {/* 스페이스 컨텍스트 — element 없이 경로만 묶는다. 하위 페이지 화면은 AppShell의 Outlet
