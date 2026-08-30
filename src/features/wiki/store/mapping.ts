@@ -92,21 +92,22 @@ interface RevMetaDto {
   createdAt: string;
   /** 변경 요약(V17) — 선택 입력이라 대개 없다. */
   changeNote?: string | null;
+  editedByName?: string | null;
 }
 export function mapVersionMeta(dto: RevMetaDto, pageId: string): PageVersion {
   return {
     id: `${pageId}:${dto.version}`, pageId, version: dto.version,
     title: "", body: "",
-    savedBy: toClientId(dto.editedBy), savedAt: dto.createdAt,
+    savedBy: toClientId(dto.editedBy), savedByName: dto.editedByName ?? null, savedAt: dto.createdAt,
     changeNote: dto.changeNote ?? undefined,
   };
 }
-interface RevFullDto { version: number; title: string; content: string; editedBy: number }
+interface RevFullDto { version: number; title: string; content: string; editedBy: number; editedByName?: string | null }
 export function mapVersionFull(dto: RevFullDto, pageId: string, savedAt = ""): PageVersion {
   return {
     id: `${pageId}:${dto.version}`, pageId, version: dto.version,
     title: dto.title, body: dto.content,
-    savedBy: toClientId(dto.editedBy), savedAt,
+    savedBy: toClientId(dto.editedBy), savedByName: dto.editedByName ?? null, savedAt,
   };
 }
 

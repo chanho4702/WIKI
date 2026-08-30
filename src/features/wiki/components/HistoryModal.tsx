@@ -86,9 +86,10 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
   }, [selectedMeta?.id, baseMeta?.id, bodies, page.id]);
 
   const selected = selectedMeta ? bodies[selectedMeta.id] ?? selectedMeta : null;
-  // 이름을 못 찾고 id가 있으면(백엔드 모드 — savedBy는 숫자 id) `사용자 #{id}` 폴백.
-  const userName = (id: string) =>
-    users.find((u) => u.id === id)?.name ?? (id ? displayUserName(id) : "알 수 없음");
+  // 디렉터리(ACTIVE만)에서 못 찾으면 저장 시점 스냅샷 이름(W23), 그것도 없으면 `사용자 #{id}`.
+  // 퇴사한 사람이 고친 버전도 이름으로 읽혀야 한다.
+  const userName = (id: string, snapshot?: string | null) =>
+    users.find((u) => u.id === id)?.name ?? snapshot ?? (id ? displayUserName(id) : "알 수 없음");
 
   const handleRestore = async () => {
     if (!selected) return;
@@ -140,7 +141,7 @@ export function HistoryModal({ page, users, onRestored }: HistoryModalProps) {
                 >
                   <strong>v{version.version}</strong>
                   <span className="history-item-meta">
-                    {userName(version.savedBy)} · {formatDateTime(version.savedAt)}
+                    {userName(version.savedBy, version.savedByName)} · {formatDateTime(version.savedAt)}
                   </span>
                   {/* 변경 요약은 선택 입력이라 대개 없다 — 있을 때만 그린다 */}
                   {version.changeNote ? (

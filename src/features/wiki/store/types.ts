@@ -63,6 +63,8 @@ export interface PageVersion {
   title: string;
   body: string; // 그 시점의 내용
   savedBy: string;
+  /** 저장 시점 편집자 이름 스냅샷(W23). 디렉터리에서 사라진 사람도 이름으로 남는다. 없으면 id로 폴백. */
+  savedByName?: string | null;
   savedAt: string;
   /**
    * 변경 요약 — 저장할 때 남긴 한 줄(선택). 없으면 undefined.

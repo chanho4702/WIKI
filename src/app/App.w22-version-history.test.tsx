@@ -60,6 +60,14 @@ describe("W22 변경 요약 — 스토어 계약", () => {
 });
 
 describe("W22 버전 히스토리 — 화면", () => {
+  /** 편집자 이름 스냅샷(W23) — 디렉터리에서 못 찾는 사람도 그때 이름으로 보인다. */
+  it("버전에 저장 시점 편집자 이름이 남는다", async () => {
+    await updatePage("pg2", { body: "고침" });
+
+    const [latest] = await listVersions("pg2");
+    expect(latest.savedByName).toBeTruthy();
+  });
+
   it("이력에 변경 요약이 함께 보인다", async () => {
     const user = userEvent.setup();
     await updatePage("pg2", { body: "고침" }, { changeNote: "표 정리" });

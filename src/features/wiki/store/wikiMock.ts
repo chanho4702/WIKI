@@ -257,6 +257,7 @@ function snapshotVersion(data: WikiData, page: Page, at: string, changeNote?: st
     title: page.title,
     body: page.body,
     savedBy: CURRENT_USER_ID,
+    savedByName: data.users.find((u) => u.id === CURRENT_USER_ID)?.name ?? null,
     savedAt: at,
     // 공백만 있는 요약은 없는 것과 같다(백엔드와 같은 규칙) — 화면이 빈 칩을 그리지 않도록.
     changeNote: changeNote?.trim() ? changeNote.trim() : undefined,
