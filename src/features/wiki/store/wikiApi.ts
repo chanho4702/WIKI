@@ -319,11 +319,14 @@ export async function listNotifications(): Promise<NotificationList> {
     unreadCount: number;
     items: Array<{
       id: number; type: string; pageId: number; spaceId: number | null; pageTitle: string;
-      actorId: number; createdAt: string; read: boolean;
+      actorId: number; createdAt: string; read: boolean; note?: string | null;
     }>;
   }>(await sharedApiFetch("/api/wiki/notifications"));
   const typeOf = (t: string): NotificationType =>
-    t === "MENTIONED" ? "mentioned" : t === "COMMENT" ? "comment" : "page_updated";
+    t === "MENTIONED" ? "mentioned"
+      : t === "COMMENT" ? "comment"
+        : t === "SHARED" ? "shared"
+          : "page_updated";
   return {
     unreadCount: body.unreadCount,
     items: body.items.map((n) => ({
@@ -336,6 +339,7 @@ export async function listNotifications(): Promise<NotificationList> {
       actorId: String(n.actorId),
       createdAt: n.createdAt,
       read: n.read,
+      note: n.note ?? null,
     })),
   };
 }
@@ -890,6 +894,16 @@ export async function listAudit(spaceId: string): Promise<AuditEntry[]> {
 export async function listGrantAudit(spaceId: string): Promise<AuditEntry[]> {
   return json<AuditEntry[]>(await sharedApiFetch(
     `/api/org/grants/audit?resourceType=SPACE&resourceId=${encodeURIComponent(spaceId)}`));
+}
+
+/** 페이지 공유(W23) — 돌려주는 값은 실제로 전달된 수(볼 수 없는 수신자는 조용히 빠진다). */
+export async function sharePage(pageId: string, userIds: string[], note?: string): Promise<number> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/share`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userIds: userIds.map(toBackendId), note: note?.trim() || null }),
+  });
+  return (await json<{ delivered: number }>(res)).delivered;
 }
 
 /* ── 리액션(W23) ─────────────────────────────────────────── */

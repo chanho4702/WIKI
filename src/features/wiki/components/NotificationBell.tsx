@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@chanho/react";
-import { AtSign, Bell, FileText, MessageSquare } from "lucide-react";
+import { AtSign, Bell, FileText, MessageSquare, Share2 } from "lucide-react";
 import type { NotificationList, NotificationType, User } from "../store/types";
 import { listNotifications, listUsers, markNotificationsRead } from "../store/wikiStore";
 import { relativeTime } from "../lib/relativeTime";
@@ -12,6 +12,7 @@ const TYPE_META: Record<NotificationType, { icon: typeof Bell; text: (actor: str
   mentioned: { icon: AtSign, text: (actor) => `${actor}님이 나를 멘션했습니다` },
   page_updated: { icon: FileText, text: (actor) => `${actor}님이 페이지를 업데이트했습니다` },
   comment: { icon: MessageSquare, text: (actor) => `${actor}님이 댓글을 남겼습니다` },
+  shared: { icon: Share2, text: (actor) => `${actor}님이 이 문서를 공유했습니다` },
 };
 
 /**
@@ -108,6 +109,8 @@ export function NotificationBell() {
                       <span className="notification-item-body">
                         <span className="notification-item-title">{n.pageTitle || "삭제된 페이지"}</span>
                         <span className="notification-item-text">{meta.text(actorName(n.actorId))}</span>
+                        {/* 공유 메모 — "왜 봐야 하는지"가 곧 이 알림의 내용이다 */}
+                        {n.note ? <span className="notification-item-note">“{n.note}”</span> : null}
                       </span>
                       <span className="notification-item-time">{relativeTime(n.createdAt)}</span>
                     </button>

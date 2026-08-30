@@ -485,6 +485,36 @@ function notifyCommentAdded(data: WikiData, page: Page, commentBody: string): vo
   for (const id of interested) deliver(data, id, "comment", page);
 }
 
+/** 공유(W23) — 수신자마다 shared 알림 한 건. 합치지 않는다(멘션과 같은 규칙). 자신은 건너뛴다. */
+export async function sharePage(pageId: string, userIds: string[], note?: string): Promise<number> {
+  if (userIds.length === 0) throw new Error("받는 사람을 한 명 이상 고르세요");
+  const trimmed = note?.trim() ?? "";
+  if (trimmed.length > 300) throw new Error("메모는 300자를 넘을 수 없습니다");
+  const data = load();
+  const page = data.pages.find((p) => p.id === pageId);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  const rows = (data.notifications ??= []);
+  let delivered = 0;
+  for (const userId of new Set(userIds)) {
+    if (userId === CURRENT_USER_ID) continue;
+    rows.push({
+      id: `n${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      userId,
+      type: "shared",
+      pageId: page.id,
+      spaceId: page.spaceId,
+      pageTitle: page.title,
+      actorId: CURRENT_USER_ID,
+      createdAt: new Date().toISOString(),
+      read: false,
+      note: trimmed || null,
+    });
+    delivered++;
+  }
+  persist();
+  return delivered;
+}
+
 export async function listNotifications(): Promise<NotificationList> {
   const rows = (load().notifications ?? [])
     .filter((n) => n.userId === CURRENT_USER_ID)

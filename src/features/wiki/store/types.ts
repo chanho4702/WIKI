@@ -381,7 +381,7 @@ export class MoveImpactError extends Error {
   }
 }
 
-export type NotificationType = "mentioned" | "page_updated" | "comment";
+export type NotificationType = "mentioned" | "page_updated" | "comment" | "shared";
 
 export interface Notification {
   id: string;
@@ -395,6 +395,8 @@ export interface Notification {
   actorId: string;
   createdAt: string;
   read: boolean;
+  /** 공유 메모(shared). 다른 타입은 없다. */
+  note?: string | null;
 }
 
 export interface NotificationList {

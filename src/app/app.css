@@ -5655,3 +5655,64 @@ body.is-column-reordering {
 .reaction-picker-item:hover {
   background: var(--chanho-color-background-neutral-subtle-hovered, #f1f2f4);
 }
+
+/* ── 페이지 공유(W23) ────────────────────────────────────── */
+.share-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-150);
+}
+
+.share-link-row {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+}
+
+/* URL은 한 줄로 두고 넘치면 말줄임 — 두 줄로 꺾이면 복사 버튼 자리가 흔들린다 */
+.share-link {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 4px 8px;
+  border-radius: var(--chanho-radius-small, 4px);
+  background: var(--chanho-color-background-neutral-subtle, #f1f2f4);
+  font-size: var(--chanho-font-size-75);
+}
+
+.share-user-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+}
+
+.share-user {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  padding: var(--chanho-space-100) var(--chanho-space-150);
+  cursor: pointer;
+}
+
+.share-user:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered, #f1f2f4);
+}
+
+.share-empty,
+.share-hint {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.notification-item-note {
+  display: block;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}

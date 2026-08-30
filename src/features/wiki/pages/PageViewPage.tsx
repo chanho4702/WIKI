@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams } from "react-router";
 import { Avatar, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
-import { Download, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Trash2, Star, Lock } from "lucide-react";
+import { Download, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock } from "lucide-react";
 import type { DeletePageOptions, Page, PageNode, PageRestrictions, User } from "../store/types";
 import {
   deletePage,
@@ -25,6 +25,7 @@ import { PageLabels } from "../components/PageLabels";
 import { Backlinks } from "../components/Backlinks";
 import { PageAttachments } from "../components/PageAttachments";
 import { ExportDialog } from "../components/ExportDialog";
+import { ShareDialog } from "../components/ShareDialog";
 import { WatchButton } from "../components/WatchButton";
 import { InlineCommentLayer } from "../components/InlineCommentLayer";
 import { PageReactions } from "../components/PageReactions";
@@ -90,6 +91,7 @@ export function PageViewPage() {
   // 삭제 확인 다이얼로그(공통 ConfirmDialog) — "…" 드롭다운의 삭제에서 연다
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   /**
    * 본문만 템플릿으로 가져간다(서버가 그렇게 만든다) — 제목까지 가져오면 그 템플릿으로 만든
@@ -330,6 +332,15 @@ export function PageViewPage() {
               }}
             />
             <WatchButton pageId={page.id} />
+            {/* 공유(W23) — 보는 사람이면 누구나. 헤더 액션 중 가장 자주 눌리는 것이라 드롭다운에 숨기지 않는다 */}
+            <Button
+              size="small"
+              variant="subtle"
+              iconBefore={<Share2 size={16} aria-hidden="true" />}
+              onClick={() => setShareOpen(true)}
+            >
+              공유
+            </Button>
             {/* 삭제는 "…" 드롭다운으로 이동 + confirm 다이얼로그 */}
             <Dropdown
               trigger={
@@ -367,6 +378,7 @@ export function PageViewPage() {
         }
       />
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} page={page} />
+      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} page={page} users={users} />
       <DeleteContentDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}

@@ -80,6 +80,7 @@ export const setPageStar = impl.setPageStar;
 export const setSpaceStar = impl.setSpaceStar;
 export const listRecentPages = impl.listRecentPages;
 export const listAudit = impl.listAudit;
+export const sharePage = impl.sharePage;
 export const listPageReactions = impl.listPageReactions;
 export const setPageReaction = impl.setPageReaction;
 export const setCommentReaction = impl.setCommentReaction;
