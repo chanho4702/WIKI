@@ -22,6 +22,8 @@ import {
   Image,
   Smile,
   FileInput,
+  BadgeCheck,
+  Table2,
 } from "lucide-react";
 import { WIKI_LINK_OPEN_SOURCE } from "../../lib/wikiLinks";
 import { COLUMN_LAYOUT_ICONS } from "../components/ColumnLayoutIcon";
@@ -233,6 +235,33 @@ export const SLASH_ITEMS: SlashItem[] = [
     // 저장은 `::toc` 한 줄(remark-directive 리프 지시자, lib/remarkToc.ts).
     // 편집 화면에는 마커가 그대로 보이고 보기 화면에서 목차로 렌더된다 — 패널(`[!NOTE]`)과 같은 방식이다.
     run: (e) => e.chain().focus().insertContent({ type: "paragraph", content: [{ type: "text", text: "::toc" }] }).run(),
+  },
+  // 상태 배지·페이지 속성(W23) — 컨플루언스 Status / Page Properties. 저장은 지시자 텍스트(lib/remarkStatus.ts).
+  {
+    id: "status",
+    label: "상태",
+    description: "진행 중·완료 같은 상태 배지를 넣습니다",
+    icon: BadgeCheck,
+    run: (e) => e.chain().focus().insertContent(":status[진행 중]{.info}").run(),
+  },
+  {
+    id: "properties",
+    label: "페이지 속성",
+    description: "문서 머리에 담당자·상태·기한 같은 속성을 둡니다",
+    icon: Table2,
+    run: (e) =>
+      e
+        .chain()
+        .focus()
+        .insertContent([
+          { type: "paragraph", content: [{ type: "text", text: ":::properties" }] },
+          { type: "paragraph", content: [{ type: "text", text: "| 항목 | 값 |" }] },
+          { type: "paragraph", content: [{ type: "text", text: "| --- | --- |" }] },
+          { type: "paragraph", content: [{ type: "text", text: "| 담당자 |  |" }] },
+          { type: "paragraph", content: [{ type: "text", text: "| 상태 | :status[진행 중]{.info} |" }] },
+          { type: "paragraph", content: [{ type: "text", text: ":::" }] },
+        ])
+        .run(),
   },
   // 발췌(W23) — 컨플루언스 Excerpt / Excerpt Include. 저장은 지시자 텍스트(lib/excerpt.ts),
   // 편집 화면에는 마커가 그대로 보이고 보기 화면에서 렌더된다 — 목차·패널과 같은 방식이다.

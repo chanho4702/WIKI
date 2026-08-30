@@ -6,6 +6,7 @@ import remarkDirective from "remark-directive";
 import rehypeSlug from "rehype-slug";
 import rehypeHighlight from "rehype-highlight";
 import { Link } from "react-router";
+import { Lozenge } from "@chanho/react";
 import {
   Check,
   CircleCheck,
@@ -23,6 +24,7 @@ import { remarkAlerts } from "../lib/remarkAlerts";
 import { remarkColumns } from "../lib/remarkColumns";
 import { remarkDetails } from "../lib/remarkDetails";
 import { remarkExcerpt } from "../lib/remarkExcerpt";
+import { remarkStatus, statusAppearance } from "../lib/remarkStatus";
 import { normalizeDirectiveEscapes } from "../lib/excerpt";
 import { ExcerptInclude } from "./ExcerptInclude";
 import { remarkTextColors } from "../lib/remarkTextColors";
@@ -389,6 +391,17 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTask
       input: ({ node: _node, disabled: _disabled, ...p }: InputHTMLAttributes<HTMLInputElement> & { node?: unknown }) => (
         <TaskCheckbox {...p} onTaskToggle={onTaskToggle} />
       ),
+      // 상태 배지(`:status[…]{.info}`, W23) — DS Lozenge로 그린다. 다른 span(글자색 등)은 그대로 흘린다.
+      span: ({ node: _node, className, children, ...p }: HTMLAttributes<HTMLSpanElement> & { node?: unknown; "data-appearance"?: string }) => {
+        if (className?.split(/\s+/).includes("md-status")) {
+          return (
+            <Lozenge appearance={statusAppearance(p["data-appearance"])} className="md-status">
+              {children}
+            </Lozenge>
+          );
+        }
+        return <span className={className} {...p}>{children}</span>;
+      },
       h1: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={1} {...p} />,
       h2: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={2} {...p} />,
       h3: (p: HTMLAttributes<HTMLHeadingElement>) => <AnchorHeading level={3} {...p} />,
@@ -406,7 +419,7 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTask
       <ReactMarkdown
         // 기본 urlTransform은 http(s)·mailto 등만 허용해 `user:` 멘션 href를 지운다 — 이 스킴만 통과
         urlTransform={(url) => (mentionUserIdFromHref(url) || dateFromHref(url) ? url : defaultUrlTransform(url))}
-        remarkPlugins={[remarkGfm, remarkDirective, remarkTextColors, remarkBookmark, remarkDetails, remarkExcerpt, remarkColumns, remarkAlerts, remarkToc]}
+        remarkPlugins={[remarkGfm, remarkDirective, remarkTextColors, remarkBookmark, remarkDetails, remarkExcerpt, remarkStatus, remarkColumns, remarkAlerts, remarkToc]}
         rehypePlugins={[rehypeSlug, rehypeTableSpans, [rehypeHighlight, { detect: false }]]}
         components={components}
       >

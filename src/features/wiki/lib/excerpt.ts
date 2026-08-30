@@ -21,7 +21,9 @@ export function normalizeDirectiveEscapes(markdown: string): string {
   return markdown
     .split("\n")
     .map((line) => (ESCAPED_DIRECTIVE_LINE.test(line) ? line.replace(/\\:/g, ":") : line))
-    .join("\n");
+    .join("\n")
+    // 인라인 상태 배지(`\:status[…]`)는 줄 전체가 아니라 토큰으로 푼다 — 그 토큰은 본문에 달리 나올 수 없다
+    .replace(/\\:status\[/g, ":status[");
 }
 
 const OPEN_RE = /^:{3,}[ \t]*excerpt[ \t]*$/;

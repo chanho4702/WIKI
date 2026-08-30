@@ -6010,3 +6010,43 @@ body.is-column-reordering {
   color: var(--chanho-color-text-subtle);
   font-size: var(--chanho-font-size-75);
 }
+
+/* ── 상태 배지·페이지 속성(W23) ─────────────────────────── */
+.markdown-body .md-status {
+  vertical-align: middle;
+}
+
+/* 속성 표는 문서 머리의 요약이다 — 본문 표와 구분되게 면을 주고, 첫 열(항목명)을 라벨처럼 */
+.markdown-body .md-properties {
+  margin: 0 0 var(--chanho-space-300);
+  padding: var(--chanho-space-150) var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-neutral-subtle, #f7f8f9);
+}
+
+.markdown-body .md-properties table {
+  margin: 0;
+  width: 100%;
+}
+
+.markdown-body .md-properties th,
+.markdown-body .md-properties td {
+  border: 0;
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
+
+.markdown-body .md-properties tr:last-child td {
+  border-bottom: 0;
+}
+
+.markdown-body .md-properties td:first-child {
+  width: 30%;
+  color: var(--chanho-color-text-subtle);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+/* 머리글 행은 감춘다 — "항목 | 값"은 표를 만들려고 넣는 것이지 읽으라고 있는 것이 아니다 */
+.markdown-body .md-properties thead {
+  display: none;
+}

@@ -28,6 +28,9 @@ export function remarkColumns() {
       if (node.type !== "containerDirective") return;
       // details는 remarkDetails 담당 — 여기 폴백(div 덮어쓰기)에 걸리면 <details>가 사라진다
       if ((node as { name?: string }).name === "details") return;
+      // 앞선 플러그인이 이미 렌더 노드를 정했으면(excerpt·properties 등) 그 결정을 지우지 않는다(W23).
+      // 이름을 하나씩 나열하면 새 지시자를 더할 때마다 여기도 고쳐야 한다 — "처리됐는가"로 본다.
+      if ((node as { data?: { hName?: string } }).data?.hName) return;
 
       // mdast의 directive 노드 타입은 remark-directive가 확장한 것이라 여기서만 좁힌다
       const directive = node as typeof node & {
