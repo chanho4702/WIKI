@@ -100,7 +100,7 @@
 | 스페이스 권한 | ✅ | org-service `grant_entry` + gRPC fail-closed |
 | 페이지 제한·상속 | ✅ | V12 + `EffectivePermissionService` 전 지점 적용(W18) |
 | 그룹 | ✅ | `team`으로 대체. 팀 관리 화면(`/admin/teams`, 전역 관리자)에서 만들고 팀원을 넣고 뺀다(W23) |
-| COMMENT 전용 권한 | ⚠️ | 댓글이 VIEW 기준선 |
+| COMMENT 전용 권한 | ✅ | `commenter` 역할 — 보고 댓글만. 댓글 작성은 COMMENT 액션(W23) |
 | **스페이스 관리 화면** | ✅ | W22로 해소 — 일반(이름·설명)·권한·삭제 |
 | **감사 로그** | ✅ | 위키 조작 + 권한 부여·회수(W23). 두 원장을 화면에서 합친다 |
 | 익명 접근·공개 링크 | ⏸ | 내부 플랫폼 우선 |
@@ -907,3 +907,20 @@ REST를 curl로 때려야 했다.
 - 루트마다 후손을 따로 묻는다(루트 수만큼 왕복). 스페이스 전량을 한 번에 주는 API를 다시 두지
   않기 위해서다 — 그 API는 규모 대응(2026-08-29)에서 일부러 없앴다
 - 보관함·휴지통의 문서는 빠진다(트리 조회에서 이미 빠진다)
+
+## 31. W23 — COMMENT 권한 (2026-08-30)
+
+보는 사람 모두가 댓글을 달 수 있었다. 공지·규정처럼 "읽기만" 열어야 하는 스페이스에서는 그것이
+문제다 — 컨플루언스의 "댓글 추가" 권한이 없었다.
+
+| 곳 | 변경 |
+|---|---|
+| common-proto 0.11.0 | `Action.COMMENT`, `Role.COMMENTER` |
+| org-service | 계층 VIEW < COMMENT < EDIT < ADMIN, 역할 VIEWER < COMMENTER < EDITOR < ADMIN |
+| wiki-backend | 댓글 **작성**은 COMMENT. 읽기는 VIEW 그대로 — 못 다는 사람도 남들의 댓글은 본다 |
+| wiki-front | 스페이스 권한에 "댓글" 역할 |
+
+**기존 VIEWER는 더는 댓글을 못 단다.** 그것이 이 역할을 두는 이유다. 보던 사람이 댓글도 달아야
+하면 역할을 댓글(commenter)로 올린다. EDITOR·ADMIN은 계층상 COMMENT를 품어 손댈 것이 없다.
+
+리액션·구독은 VIEW로 뒀다 — "잘 봤다"와 "알려 줘"는 발언이 아니다.

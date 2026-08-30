@@ -295,7 +295,7 @@ export async function listSpaceGrants(spaceId: string): Promise<SpaceGrant[]> {
 
 export async function addSpaceGrant(
   spaceId: string,
-  input: { subjectType: "user" | "team"; subjectId: string; role: "viewer" | "editor" | "admin" },
+  input: { subjectType: "user" | "team"; subjectId: string; role: SpaceGrant["role"] },
 ): Promise<SpaceGrant> {
   const res = await sharedApiFetch("/api/org/grants", {
     method: "POST",

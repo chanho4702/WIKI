@@ -484,7 +484,8 @@ export interface SpaceGrant {
   id: string;
   subjectType: "user" | "team";
   subjectId: string;
-  role: "viewer" | "editor" | "admin";
+  /** commenter(W23): 보고 댓글만. 계층은 viewer < commenter < editor < admin(org-service). */
+  role: "viewer" | "commenter" | "editor" | "admin";
 }
 
 /** 스페이스 라벨 목록의 한 줄 — 사용 횟수가 있어야 어떤 라벨이 실제로 쓰이는지 보인다. */

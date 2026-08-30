@@ -37,6 +37,7 @@ function normalizedSection(raw: string | undefined): SettingsSection {
 
 const ROLE_LABEL: Record<SpaceGrant["role"], string> = {
   viewer: "보기",
+  commenter: "댓글",
   editor: "편집",
   admin: "관리",
 };
@@ -225,7 +226,7 @@ export function SpaceSettingsPage() {
                         value={role}
                         onChange={(e) => setRole(e.target.value as SpaceGrant["role"])}
                       >
-                        {(["viewer", "editor", "admin"] as const).map((r) => (
+                        {(["viewer", "commenter", "editor", "admin"] as const).map((r) => (
                           <option key={r} value={r}>
                             {ROLE_LABEL[r]}
                           </option>

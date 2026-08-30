@@ -58,6 +58,21 @@ describe("W22 스페이스 설정", () => {
     });
   });
 
+  /** COMMENT 권한(W23) — 보고 댓글만 다는 역할이 목록에 있어야 부여할 수 있다. */
+  it("댓글 역할을 부여할 수 있다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/settings/permissions");
+    await screen.findByRole("heading", { level: 1, name: "권한" });
+
+    await user.selectOptions(await screen.findByLabelText("대상"), "u2");
+    await user.selectOptions(screen.getByLabelText("역할"), "commenter");
+    await user.click(screen.getByRole("button", { name: "추가" }));
+
+    const row = await screen.findByRole("row", { name: /댓글/ });
+    expect(row).toBeInTheDocument();
+    expect((await listSpaceGrants("sp1"))[0].role).toBe("commenter");
+  });
+
   it("같은 대상을 두 번 추가하면 거부한다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/settings");
