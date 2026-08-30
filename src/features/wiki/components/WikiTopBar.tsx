@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { Avatar, Button, Dropdown, TopBar } from "@chanho/react";
-import { Database, PanelLeft, Settings } from "lucide-react";
+import { Database, PanelLeft, Settings, Users } from "lucide-react";
 import type { User } from "../store/types";
 import { getCurrentUser, getSearchIndexStatus } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
@@ -105,12 +105,20 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
               },
               { label: "단축키 도움말", onSelect: () => setShortcutHelpOpen(true) },
               // 전역 관리자에게만 보인다 — 아닌 사람에게 띄우면 눌러도 "권한 없음"만 나온다
+              // 두 항목 모두 전역 관리자용이라 같은 게이트를 쓴다 — 팀 쓰기는 org-service가 GLOBAL ADMIN을 요구한다
               ...(canManageSearch
-                ? [{
-                    label: "검색 색인 관리",
-                    icon: <Database size={16} aria-hidden="true" />,
-                    onSelect: () => navigate("/admin/search"),
-                  }]
+                ? [
+                    {
+                      label: "팀 관리",
+                      icon: <Users size={16} aria-hidden="true" />,
+                      onSelect: () => navigate("/admin/teams"),
+                    },
+                    {
+                      label: "검색 색인 관리",
+                      icon: <Database size={16} aria-hidden="true" />,
+                      onSelect: () => navigate("/admin/search"),
+                    },
+                  ]
                 : []),
             ]}
           />

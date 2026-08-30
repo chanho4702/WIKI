@@ -31,6 +31,7 @@ import {
   type AttachmentVersion,
   type AuditEntry,
   type MyTask,
+  type TeamMember,
   type PagePath,
   type ReactionSummary,
   type ReindexJob,
@@ -938,6 +939,36 @@ export async function sharePage(pageId: string, userIds: string[], note?: string
 /** 내 개인 스페이스 — 없으면 서버가 만든다(멱등). */
 export async function ensurePersonalSpace(): Promise<Space> {
   return mapSpace(await json(await sharedApiFetch("/api/wiki/spaces/personal", { method: "POST" })));
+}
+
+/* ── 팀 관리(W23) — org-service. 쓰기는 GLOBAL ADMIN, 서버가 403으로 거절한다 ── */
+export async function createTeam(name: string): Promise<Team> {
+  const t = await json<{ id: number; name: string }>(await sharedApiFetch("/api/org/teams", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  }));
+  return { id: String(t.id), name: t.name };
+}
+
+export async function deleteTeam(teamId: string): Promise<void> {
+  await sharedApiFetch(`/api/org/teams/${encodeURIComponent(teamId)}`, { method: "DELETE" });
+}
+
+export async function listTeamMembers(teamId: string): Promise<TeamMember[]> {
+  const rows = await json<Array<{ memberId: number; displayName: string | null; role: string }>>(
+    await sharedApiFetch(`/api/org/teams/${encodeURIComponent(teamId)}/members`));
+  return rows.map((r) => ({ memberId: String(r.memberId), displayName: r.displayName, role: r.role }));
+}
+
+export async function addTeamMember(teamId: string, memberId: string): Promise<void> {
+  await sharedApiFetch(
+    `/api/org/teams/${encodeURIComponent(teamId)}/members/${toBackendId(memberId)}`, { method: "PUT" });
+}
+
+export async function removeTeamMember(teamId: string, memberId: string): Promise<void> {
+  await sharedApiFetch(
+    `/api/org/teams/${encodeURIComponent(teamId)}/members/${toBackendId(memberId)}`, { method: "DELETE" });
 }
 
 /* ── 액션 아이템(W23) ────────────────────────────────────── */

@@ -388,6 +388,13 @@ export interface Team {
   name: string;
 }
 
+/** 팀원 한 줄(W23). 이름은 서버가 함께 준다 — 디렉터리를 다시 뒤지지 않는다. */
+export interface TeamMember {
+  memberId: string;
+  displayName: string | null;
+  role: string;
+}
+
 /**
  * 이동 영향(W18 §5) — 새 조상의 보기 제한이 이 페이지에 새로 적용될 때 서버(또는 목업)가
  * 확인 없는 이동을 이 오류로 멈춘다. 화면이 확인을 받으면 confirmImpact로 재시도한다.
@@ -509,6 +516,9 @@ export interface WikiData {
   reactions?: Record<string, Record<string, string[]>>;
   /** 페이지 템플릿(W23) — 스페이스 스코프. */
   templates?: PageTemplate[];
+  /** 팀(W23) — 시드 두 팀 외에 만든 것. 팀원은 팀 id → 사용자 id 목록. */
+  teams?: Team[];
+  teamMembers?: Record<string, string[]>;
   /** 페이지 구독(W21-4) — 키 = pageId, 값 = 구독자 id 목록. */
   watches?: Record<string, string[]>;
   /** 스페이스 권한(W22) — 키 = spaceId. 백엔드 모드는 org-service가 원장이다. */

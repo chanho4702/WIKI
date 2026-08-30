@@ -29,6 +29,7 @@ import type {
   CopyPageOptions,
   LabelCount,
   MyTask,
+  TeamMember,
   ReactionSummary,
   PageTemplate,
   TemplateInput,
@@ -384,11 +385,59 @@ export async function recordPageView(id: string): Promise<number> {
  * 백엔드 모드의 몫). 자물쇠 다이얼로그 기능 검증용. ────────────────────── */
 
 /** 목업 팀 디렉터리 — org-service teams의 자리. UI(주체 선택)를 검증할 최소 데이터. */
+/* ── 팀(W23) — 목업은 시드 두 팀에 더해 만든 팀을 저장한다. 팀원은 사용자 id 목록 ── */
+const SEED_TEAMS: Team[] = [
+  { id: "t1", name: "플랫폼팀" },
+  { id: "t2", name: "디자인팀" },
+];
+
 export async function listTeams(): Promise<Team[]> {
-  return [
-    { id: "t1", name: "플랫폼팀" },
-    { id: "t2", name: "디자인팀" },
-  ];
+  const data = load();
+  return [...SEED_TEAMS, ...(data.teams ?? [])].map((t) => ({ ...t }));
+}
+
+export async function createTeam(name: string): Promise<Team> {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("팀 이름을 입력하세요");
+  if ((await listTeams()).some((t) => t.name === trimmed)) throw new Error(`이미 존재하는 팀 이름: ${trimmed}`);
+  const data = load();
+  const team: Team = { id: nextId(), name: trimmed };
+  (data.teams ??= []).push(team);
+  persist();
+  return { ...team };
+}
+
+export async function deleteTeam(teamId: string): Promise<void> {
+  const data = load();
+  if (SEED_TEAMS.some((t) => t.id === teamId)) throw new Error("기본 팀은 지울 수 없습니다");
+  data.teams = (data.teams ?? []).filter((t) => t.id !== teamId);
+  if (data.teamMembers) delete data.teamMembers[teamId];
+  persist();
+}
+
+export async function listTeamMembers(teamId: string): Promise<TeamMember[]> {
+  const data = load();
+  return (data.teamMembers?.[teamId] ?? []).map((id) => ({
+    memberId: id,
+    displayName: data.users.find((u) => u.id === id)?.name ?? null,
+    role: "MEMBER",
+  }));
+}
+
+export async function addTeamMember(teamId: string, memberId: string): Promise<void> {
+  const data = load();
+  data.teamMembers ??= {};
+  const set = new Set(data.teamMembers[teamId] ?? []);
+  set.add(memberId); // 멱등 — 백엔드와 같다
+  data.teamMembers[teamId] = [...set];
+  persist();
+}
+
+export async function removeTeamMember(teamId: string, memberId: string): Promise<void> {
+  const data = load();
+  if (!data.teamMembers?.[teamId]) return;
+  data.teamMembers[teamId] = data.teamMembers[teamId].filter((id) => id !== memberId);
+  persist();
 }
 
 export async function getPageRestrictions(pageId: string): Promise<PageRestrictions> {

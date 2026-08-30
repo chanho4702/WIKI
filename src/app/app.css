@@ -5882,3 +5882,118 @@ body.is-column-reordering {
 .markdown-body input[type="checkbox"]:not(:disabled) {
   cursor: pointer;
 }
+
+/* ── 팀 관리(W23) ────────────────────────────────────────── */
+.teams-admin {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--chanho-space-400) var(--chanho-space-400) var(--chanho-space-600);
+}
+
+/* 왼쪽 목록 + 오른쪽 상세 — 팀이 늘어도 상세가 밀리지 않는다 */
+.teams-admin-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: var(--chanho-space-300);
+}
+
+@media (max-width: 720px) {
+  .teams-admin-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.teams-admin-list ul {
+  list-style: none;
+  margin: var(--chanho-space-200) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.teams-admin-create {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+  align-items: flex-start;
+}
+
+.teams-admin-item {
+  width: 100%;
+  text-align: left;
+  padding: var(--chanho-space-100) var(--chanho-space-150);
+  border: 0;
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.teams-admin-item:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.teams-admin-item.is-selected {
+  background: var(--wiki-chip-accent-blue-subtle-bg);
+  color: var(--wiki-chip-accent-blue-text);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.teams-admin-empty {
+  margin: var(--chanho-space-200) 0 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.teams-admin-detail {
+  padding: var(--chanho-space-300);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+
+.teams-admin-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.teams-admin-detail-head h2 {
+  margin: 0;
+  font-size: var(--chanho-font-size-300);
+}
+
+.teams-admin-add {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--chanho-space-100);
+}
+
+.teams-admin-add-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--chanho-font-size-75);
+}
+
+.teams-admin-add-label select {
+  padding: 4px var(--chanho-space-100);
+}
+
+.teams-admin-members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.teams-admin-members li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--chanho-space-100) 0;
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
