@@ -4,8 +4,7 @@ import {
   fetchInlineAttachment,
   getPage,
   listDescendants,
-  lookupPagesByTitle,
-} from "../store/wikiStore";
+  lookupPagesByTitle, listChildren } from "../store/wikiStore";
 import { extractWikiLinkTitles, normalizeWikiTitle } from "./wikiLinks";
 
 /**
@@ -89,11 +88,48 @@ async function linkTargetsFor(pages: Page[], spaceId: string): Promise<Map<strin
 }
 
 export async function buildMarkdownExport(input: ExportInput): Promise<string> {
-  const ordered = await loadPages(input);
-  return ordered
+  return renderMarkdown(await loadPages(input));
+}
+
+function renderMarkdown(pages: Page[]): string {
+  return pages
     .map((page) => `# ${page.title}\n\n${page.body}`.trimEnd())
     .join("\n\n---\n\n")
     .concat("\n");
+}
+
+/* ── 스페이스 내보내기(W23) ──────────────────────────────── */
+
+/**
+ * 스페이스의 살아 있는 문서 전부를 트리 순서로 — 루트를 순번대로, 각 루트 아래를 깊이 우선으로.
+ * 보관·휴지통 문서는 트리 조회에서 이미 빠진다.
+ *
+ * 루트마다 후손을 따로 묻는다(루트 수만큼 왕복). 스페이스 전량을 한 번에 주는 API를 다시 두지
+ * 않기 위해서다 — 그 API는 규모 대응(2026-08-29)에서 일부러 없앴다.
+ */
+export async function loadSpacePages(spaceId: string): Promise<Page[]> {
+  const roots = await listChildren(spaceId, null);
+  const out: Page[] = [];
+  for (const rootNode of roots) {
+    const root = await getPage(rootNode.id);
+    if (!root) continue;
+    out.push(...(await loadPages({ root, includeChildren: true })));
+  }
+  return out;
+}
+
+export async function countForSpaceExport(spaceId: string): Promise<number> {
+  const roots = await listChildren(spaceId, null);
+  const counts = await Promise.all(roots.map(async (r) => 1 + (await listDescendants(r.id)).length));
+  return counts.reduce((a, b) => a + b, 0);
+}
+
+export async function buildSpaceMarkdownExport(spaceId: string): Promise<string> {
+  return renderMarkdown(await loadSpacePages(spaceId));
+}
+
+export async function buildSpaceHtmlExport(spaceId: string, spaceName: string): Promise<string> {
+  return renderHtml(await loadSpacePages(spaceId), spaceName, spaceId);
 }
 
 /**
@@ -139,12 +175,15 @@ function escapeHtml(value: string): string {
  * 렌더가 동기라 링크 대상은 미리 조회해 넘긴다(MarkdownView의 linkTargets).
  */
 export async function buildHtmlExport(input: ExportInput): Promise<string> {
+  return renderHtml(await loadPages(input), input.root.title, input.root.spaceId);
+}
+
+async function renderHtml(ordered: Page[], title: string, spaceId: string): Promise<string> {
   const [{ renderToStaticMarkup }, { MarkdownView }] = await Promise.all([
     import("react-dom/server"),
     import("../components/MarkdownView"),
   ]);
-  const ordered = await loadPages(input);
-  const targets = await linkTargetsFor(ordered, input.root.spaceId);
+  const targets = await linkTargetsFor(ordered, spaceId);
   const sections = await Promise.all(
     ordered.map(async (page) => {
       const body = await embedImages(page.body);
@@ -158,7 +197,7 @@ export async function buildHtmlExport(input: ExportInput): Promise<string> {
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>${escapeHtml(input.root.title)}</title>
+<title>${escapeHtml(title)}</title>
 <style>
   body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6;
          max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #172b4d; }

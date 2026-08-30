@@ -15,6 +15,7 @@ import {
 import type { WikiOutletContext } from "../components/wikiContext";
 import { AuditSettings } from "../components/AuditSettings";
 import { TemplateSettings } from "../components/TemplateSettings";
+import { SpaceExportPanel } from "../components/SpaceExportPanel";
 import { displayUserName } from "../lib/userName";
 
 /** 설정 섹션 — 사이드바 항목과 URL 조각이 같은 목록에서 나온다. */
@@ -165,6 +166,7 @@ export function SpaceSettingsPage() {
       </header>
 
       {section === "general" ? (
+        <>
         <div className="space-settings-form">
                 <TextField
                   label="이름"
@@ -181,6 +183,9 @@ export function SpaceSettingsPage() {
                   저장
                 </Button>
               </div>
+              {/* 스페이스 내보내기(W23) — 문서 하나씩 받던 것을 스페이스 단위로. 관리자가 백업·이관에 쓴다 */}
+              <SpaceExportPanel spaceId={space.id} spaceName={space.name} />
+        </>
       ) : section === "permissions" ? (
         <div className="space-settings-form">
                 {grantError ? (

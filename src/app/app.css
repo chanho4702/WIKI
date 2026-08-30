@@ -5997,3 +5997,16 @@ body.is-column-reordering {
   padding: var(--chanho-space-100) 0;
   border-bottom: 1px solid var(--chanho-color-border-default);
 }
+
+/* ── 스페이스 내보내기(W23) ──────────────────────────────── */
+.space-export-title {
+  margin: 0;
+  font-size: var(--chanho-font-size-200);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.space-export-desc {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
