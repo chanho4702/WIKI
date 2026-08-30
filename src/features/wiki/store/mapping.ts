@@ -130,6 +130,7 @@ export interface CommentDto {
   anchorQuote?: string | null;
   anchorOccurrence?: number | null;
   resolvedAt?: string | null;
+  reactions?: Array<{ emoji: string; count: number; reacted: boolean }>;
 }
 
 /** 지연 트리 노드 DTO — PageTreeItem + childCount(2026-08-28). */
@@ -166,5 +167,6 @@ export function mapComment(dto: CommentDto): Comment {
     anchorQuote: dto.anchorQuote ?? null,
     anchorOccurrence: dto.anchorOccurrence ?? null,
     resolvedAt: dto.resolvedAt ?? null,
+    reactions: dto.reactions ?? [],
   };
 }

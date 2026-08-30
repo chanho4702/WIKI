@@ -82,7 +82,19 @@ export interface Comment {
   anchorOccurrence?: number | null;
   /** 값이 있으면 해결된 스레드 — 본문 하이라이트에서 내려간다. */
   resolvedAt?: string | null;
+  /** 리액션 집계(W23). 목록이 한 번에 준다 — 댓글마다 따로 묻지 않는다. */
+  reactions?: ReactionSummary[];
 }
+
+/** 리액션 한 칩 — 누가 눌렀는지는 주지 않는다("누가 안 눌렀나"까지 읽히는 화면이 된다). */
+export interface ReactionSummary {
+  emoji: string;
+  count: number;
+  reacted: boolean;
+}
+
+/** 고정 집합 — 서버와 같은 순서다. 아무 문자나 받으면 집계가 예측 불가능한 기호로 찬다. */
+export const REACTION_EMOJIS = ["👍", "❤️", "🎉", "👀", "😄", "🙏"] as const;
 
 /** 인라인 댓글을 만들 때 넘기는 앵커 — 화면에서 드래그한 구간이다. */
 export interface CommentAnchor {
@@ -470,6 +482,8 @@ export interface WikiData {
   trash?: TrashEntry[];
   /** 페이지 라벨(W21-2) — 키 = pageId. 없던 저장분 호환 optional. */
   labels?: Record<string, string[]>;
+  /** 리액션(W23) — 키 = "PAGE:id" | "COMMENT:id", 값 = 사용자별 이모지 목록. */
+  reactions?: Record<string, Record<string, string[]>>;
   /** 페이지 템플릿(W23) — 스페이스 스코프. */
   templates?: PageTemplate[];
   /** 페이지 구독(W21-4) — 키 = pageId, 값 = 구독자 id 목록. */

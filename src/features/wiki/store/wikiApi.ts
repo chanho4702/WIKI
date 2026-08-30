@@ -31,6 +31,7 @@ import {
   type AttachmentVersion,
   type AuditEntry,
   type PagePath,
+  type ReactionSummary,
   type ReindexJob,
   type SearchIndexStatus,
   type StarredPageRow,
@@ -889,6 +890,25 @@ export async function listAudit(spaceId: string): Promise<AuditEntry[]> {
 export async function listGrantAudit(spaceId: string): Promise<AuditEntry[]> {
   return json<AuditEntry[]>(await sharedApiFetch(
     `/api/org/grants/audit?resourceType=SPACE&resourceId=${encodeURIComponent(spaceId)}`));
+}
+
+/* ── 리액션(W23) ─────────────────────────────────────────── */
+/** 응답은 바뀐 뒤의 집계다 — 화면이 낙관적으로 그린 것을 이 값으로 덮는다. */
+export async function listPageReactions(pageId: string): Promise<ReactionSummary[]> {
+  return json<ReactionSummary[]>(
+    await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/reactions`));
+}
+
+export async function setPageReaction(pageId: string, emoji: string, on: boolean): Promise<ReactionSummary[]> {
+  return json<ReactionSummary[]>(await sharedApiFetch(
+    `/api/wiki/pages/${toBackendId(pageId)}/reactions/${encodeURIComponent(emoji)}`,
+    { method: on ? "PUT" : "DELETE" }));
+}
+
+export async function setCommentReaction(commentId: string, emoji: string, on: boolean): Promise<ReactionSummary[]> {
+  return json<ReactionSummary[]>(await sharedApiFetch(
+    `/api/wiki/comments/${toBackendId(commentId)}/reactions/${encodeURIComponent(emoji)}`,
+    { method: on ? "PUT" : "DELETE" }));
 }
 
 /* ── 검색 색인 관리(전역 관리자, W23) ────────────────────── */

@@ -27,6 +27,7 @@ import { PageAttachments } from "../components/PageAttachments";
 import { ExportDialog } from "../components/ExportDialog";
 import { WatchButton } from "../components/WatchButton";
 import { InlineCommentLayer } from "../components/InlineCommentLayer";
+import { PageReactions } from "../components/PageReactions";
 import { usePageWidth } from "../lib/pageWidth";
 import { removeStarredPage, useStarredPages } from "../lib/starredPages";
 import { RestrictionsDialog } from "../components/RestrictionsDialog";
@@ -412,6 +413,8 @@ export function PageViewPage() {
         </div>
         <InlineCommentLayer pageId={page.id} body={page.body} users={users} bodyRef={bodyRef} />
       </div>
+      {/* 본문 바로 아래 — 다 읽고 나서 누르는 자리다(W23) */}
+      <PageReactions pageId={page.id} />
       <PageLabels pageId={page.id} spaceId={space.id} />
       <ChildPages currentPageId={page.id} spaceId={space.id} />
       <PageAttachments pageId={page.id} body={page.body} />

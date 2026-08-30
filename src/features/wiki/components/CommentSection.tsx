@@ -12,7 +12,8 @@ import type { CommentAction } from "@chanho/react";
 import { MessageSquare } from "lucide-react";
 import { CommentSkeleton } from "./WikiSkeleton";
 import type { Comment, User } from "../store/types";
-import { addComment, deleteComment, getCurrentUser, listComments, updateComment } from "../store/wikiStore";
+import { addComment, deleteComment, getCurrentUser, listComments, setCommentReaction, updateComment } from "../store/wikiStore";
+import { ReactionBar } from "./ReactionBar";
 
 export interface CommentSectionProps {
   pageId: string;
@@ -224,7 +225,14 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
               </div>
             </div>
           ) : (
-            <span data-testid="comment-body">{comment.body}</span>
+            <>
+              <span data-testid="comment-body">{comment.body}</span>
+              <ReactionBar
+                label="댓글 리액션"
+                reactions={comment.reactions ?? []}
+                onToggle={(emoji, on) => setCommentReaction(comment.id, emoji, on)}
+              />
+            </>
           )}
         </CommentBlock>
         {replies !== null && replies.length > 0 ? (

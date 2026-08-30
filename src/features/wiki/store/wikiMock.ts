@@ -1,5 +1,5 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
-import { MoveImpactError, PageConflictError } from "./types";
+import { MoveImpactError, PageConflictError, REACTION_EMOJIS } from "./types";
 import type {
   Attachment,
   CollaborationDraftCommit,
@@ -27,6 +27,7 @@ import type {
   PageRestoreResult,
   CopyPageOptions,
   LabelCount,
+  ReactionSummary,
   PageTemplate,
   TemplateInput,
   PagePath,
@@ -1209,11 +1210,56 @@ export async function restoreVersion(pageId: string, versionId: string): Promise
 // ── comments ─────────────────────────────────────────────────
 
 export async function listComments(pageId: string): Promise<Comment[]> {
+  const data = load();
   return clone(
-    load()
-      .comments.filter((c) => c.pageId === pageId)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    data.comments
+      .filter((c) => c.pageId === pageId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((c) => ({ ...c, reactions: summarizeReactions(data, `COMMENT:${c.id}`) })),
   );
+}
+
+/* ── 리액션(W23) — 백엔드와 같은 규칙: 고정 집합, 사용자·이모지당 하나, 집합 순서로 집계 ── */
+
+function summarizeReactions(data: WikiData, key: string): ReactionSummary[] {
+  const byUser = data.reactions?.[key] ?? {};
+  return REACTION_EMOJIS.flatMap((emoji) => {
+    const users = Object.entries(byUser).filter(([, emojis]) => emojis.includes(emoji)).map(([u]) => u);
+    return users.length === 0
+      ? []
+      : [{ emoji, count: users.length, reacted: users.includes(CURRENT_USER_ID) }];
+  });
+}
+
+function setReaction(key: string, emoji: string, on: boolean): ReactionSummary[] {
+  if (!(REACTION_EMOJIS as readonly string[]).includes(emoji)) {
+    throw new Error(`지원하지 않는 리액션입니다: ${emoji}`);
+  }
+  const data = load();
+  data.reactions ??= {};
+  data.reactions[key] ??= {};
+  const mine = new Set(data.reactions[key][CURRENT_USER_ID] ?? []);
+  if (on) mine.add(emoji);
+  else mine.delete(emoji);
+  data.reactions[key][CURRENT_USER_ID] = [...mine];
+  persist();
+  return summarizeReactions(data, key);
+}
+
+export async function listPageReactions(pageId: string): Promise<ReactionSummary[]> {
+  const data = load();
+  if (!data.pages.some((p) => p.id === pageId)) throw new Error("페이지를 찾을 수 없습니다");
+  return summarizeReactions(data, `PAGE:${pageId}`);
+}
+
+export async function setPageReaction(pageId: string, emoji: string, on: boolean): Promise<ReactionSummary[]> {
+  if (!load().pages.some((p) => p.id === pageId)) throw new Error("페이지를 찾을 수 없습니다");
+  return setReaction(`PAGE:${pageId}`, emoji, on);
+}
+
+export async function setCommentReaction(commentId: string, emoji: string, on: boolean): Promise<ReactionSummary[]> {
+  if (!load().comments.some((c) => c.id === commentId)) throw new Error("코멘트를 찾을 수 없습니다");
+  return setReaction(`COMMENT:${commentId}`, emoji, on);
 }
 
 export async function addComment(
