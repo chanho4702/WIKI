@@ -880,6 +880,17 @@ export async function listAudit(spaceId: string): Promise<AuditEntry[]> {
   }));
 }
 
+/**
+ * 스페이스 권한 변경 이력(org-service).
+ *
+ * 위키 감사와 **같은 모양**으로 온다 — 화면이 두 기록을 한 목록으로 합치기 때문이다.
+ * 권한이 없으면 403이 그대로 올라온다(위키 감사와 같은 취급).
+ */
+export async function listGrantAudit(spaceId: string): Promise<AuditEntry[]> {
+  return json<AuditEntry[]>(await sharedApiFetch(
+    `/api/org/grants/audit?resourceType=SPACE&resourceId=${encodeURIComponent(spaceId)}`));
+}
+
 /* ── 검색 색인 관리(전역 관리자, W23) ────────────────────── */
 
 /**

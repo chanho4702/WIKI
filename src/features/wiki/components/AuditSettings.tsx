@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { EmptyState } from "@chanho/react";
 import type { AuditEntry, User } from "../store/types";
-import { listAudit, listUsers } from "../store/wikiStore";
+import { listAudit, listGrantAudit, listUsers } from "../store/wikiStore";
 import { displayUserName } from "../lib/userName";
 
 /**
@@ -11,6 +11,10 @@ import { displayUserName } from "../lib/userName";
  * 것은 본문 리비전뿐이고, 지우기·제한 변경처럼 되돌리기 어려운 조작은 흔적이 없었다.
  *
  * 대상 이름은 서버가 **그때의 스냅샷**으로 준다 — 지워진 문서를 id로 다시 조회할 수는 없다.
+ *
+ * 기록은 두 곳에서 온다: 위키 조작(wiki-backend)과 권한 부여·회수(org-service). 스페이스 권한은
+ * org-service가 소유하고 프론트가 직접 부르므로 wiki는 그 조작을 보지 못한다 — 감사에서 가장
+ * 궁금한 것이 "누가 이 사람에게 권한을 줬나"라, 두 목록을 시각순으로 합쳐 하나로 보여준다.
  */
 
 const ACTION_LABEL: Record<string, string> = {
@@ -19,6 +23,8 @@ const ACTION_LABEL: Record<string, string> = {
   PAGE_PURGED: "문서 영구 삭제",
   PAGE_RESTRICTIONS_CHANGED: "문서 제한 변경",
   ATTACHMENT_DELETED: "첨부 삭제",
+  GRANT_GRANTED: "권한 부여",
+  GRANT_REVOKED: "권한 회수",
   SPACE_UPDATED: "스페이스 정보 변경",
   TEMPLATE_CREATED: "템플릿 추가",
   TEMPLATE_UPDATED: "템플릿 수정",
@@ -45,7 +51,19 @@ export function AuditSettings({ spaceId }: { spaceId: string }) {
 
   const reload = useCallback(async () => {
     try {
-      setEntries(await listAudit(spaceId));
+      /*
+       * 두 원장을 함께 읽어 시각순으로 합친다.
+       *
+       * 권한 이력을 못 읽는다고 위키 기록까지 감추지는 않는다 — 권한 조회 범위가 더 좁을 수
+       * 있고(전역 관리자 정책), 그때 화면이 통째로 비면 있는 기록도 못 보게 된다.
+       */
+      const [wiki, grants] = await Promise.all([
+        listAudit(spaceId),
+        listGrantAudit(spaceId).catch(() => [] as AuditEntry[]),
+      ]);
+      setEntries(
+        [...wiki, ...grants].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
+      );
       setError(null);
     } catch (reason) {
       setEntries([]);

@@ -1379,6 +1379,10 @@ export async function listAudit(_spaceId: string): Promise<import("./types").Aud
   return [];
 }
 
+export async function listGrantAudit(_spaceId: string): Promise<import("./types").AuditEntry[]> {
+  return []; // 목업에는 org 원장이 없다 — 위키 감사와 같이 빈 목록이다
+}
+
 /** 목업에는 검색 색인이 없다 — null은 "권한 없음"과 같은 취급을 받아 관리 메뉴가 뜨지 않는다. */
 export async function getSearchIndexStatus(): Promise<null> {
   return null;
