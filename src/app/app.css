@@ -4845,6 +4845,8 @@ body.is-column-reordering {
   display: flex;
   align-items: center;
   gap: var(--chanho-space-150);
+  /* 버전 이력이 펼쳐지면 그 줄 아래로 내려가야 한다(W23) — 한 줄에 우겨넣으면 파일명이 밀린다 */
+  flex-wrap: wrap;
 }
 
 .page-attachments-list a {
@@ -5462,3 +5464,42 @@ body.is-column-reordering {
 }
 
 
+
+/* ── 첨부 버전(W23) ──────────────────────────────────────── */
+/* 이력 버튼은 지난 버전이 있는 첨부에만 나온다 — 없는 곳에 두면 눌러도 빈 목록이다 */
+.page-attachments-history {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 0;
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  cursor: pointer;
+}
+
+.page-attachments-history:hover,
+.page-attachments-history[aria-expanded="true"] {
+  background: var(--chanho-color-background-neutral-hovered);
+  color: var(--chanho-color-text-default);
+}
+
+/* 이력은 그 첨부 줄 아래에 들여써서 편다 — 어느 파일의 이력인지가 자리로 드러난다 */
+.page-attachments-versions {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-050, 4px);
+  list-style: none;
+  margin: var(--chanho-space-100) 0 var(--chanho-space-150);
+  padding: 0 0 0 var(--chanho-space-300);
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+
+.page-attachments-versions li {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-150);
+}

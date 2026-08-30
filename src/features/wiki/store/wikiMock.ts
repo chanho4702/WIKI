@@ -1342,6 +1342,20 @@ export async function confirmAttachments(_pageId: string, _attachmentIds: string
   // 목업 모드는 첨부 자체를 지원하지 않는다.
 }
 
+export async function listAttachmentVersions(
+  _id: string,
+): Promise<import("./types").AttachmentVersion[]> {
+  return []; // 첨부가 없으니 버전도 없다 — 화면이 빈 목록으로 조용히 접힌다
+}
+
+export async function restoreAttachmentVersion(_id: string, _version: number): Promise<Attachment> {
+  throw new Error("목업 모드에서는 첨부를 지원하지 않습니다");
+}
+
+export function attachmentVersionUrl(id: string, version: number): string {
+  return `/api/wiki/attachments/${id}/versions/${version}`;
+}
+
 export function attachmentUrl(_id: string): string {
   return "";
 }

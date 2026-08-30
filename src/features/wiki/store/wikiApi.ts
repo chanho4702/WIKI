@@ -28,6 +28,7 @@ import {
   type CommentAnchor,
   type LabelCount,
   type CopyPageOptions,
+  type AttachmentVersion,
   type PagePath,
   type PageTemplate,
   type TemplateInput,
@@ -739,10 +740,12 @@ export async function restoreVersion(pageId: string, versionId: string): Promise
 
 interface AttDto {
   id: number;
+  pageId?: number;
   filename: string;
   contentType: string;
   sizeBytes: number;
   checksumSha256?: string | null;
+  version?: number;
 }
 function mapAtt(d: AttDto, pageId: string): Attachment {
   return {
@@ -752,6 +755,7 @@ function mapAtt(d: AttDto, pageId: string): Attachment {
     contentType: d.contentType,
     sizeBytes: d.sizeBytes,
     checksumSha256: d.checksumSha256,
+    version: d.version,
   };
 }
 
@@ -782,6 +786,29 @@ export async function confirmAttachments(pageId: string, attachmentIds: string[]
     body: JSON.stringify({ attachmentIds: attachmentIds.map(toBackendId) }),
   }));
 }
+export async function listAttachmentVersions(id: string): Promise<AttachmentVersion[]> {
+  const rows = await json<Array<{
+    version: number;
+    contentType: string;
+    sizeBytes: number;
+    uploadedBy: number | string;
+    createdAt: string | null;
+  }>>(await sharedApiFetch(`/api/wiki/attachments/${toBackendId(id)}/versions`));
+  return rows.map((r) => ({ ...r, uploadedBy: String(r.uploadedBy) }));
+}
+
+export async function restoreAttachmentVersion(id: string, version: number): Promise<Attachment> {
+  const res = await sharedApiFetch(
+    `/api/wiki/attachments/${toBackendId(id)}/versions/${version}/restore`, { method: "POST" });
+  const dto = await json<AttDto>(res);
+  return mapAtt(dto, String(dto.pageId));
+}
+
+/** 지난 버전 내려받기 — 인증이 필요한 경로라 화면이 fetch로 받아 저장한다. */
+export function attachmentVersionUrl(id: string, version: number): string {
+  return `${import.meta.env.VITE_API_BASE ?? ""}/api/wiki/attachments/${toBackendId(id)}/versions/${version}`;
+}
+
 export function attachmentUrl(id: string): string {
   return `${import.meta.env.VITE_API_BASE ?? ""}/api/wiki/attachments/${toBackendId(id)}`;
 }

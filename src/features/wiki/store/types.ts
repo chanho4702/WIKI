@@ -97,6 +97,17 @@ export interface Attachment {
   contentType: string;
   sizeBytes: number;
   checksumSha256?: string | null;
+  /** 1부터. 같은 이름으로 다시 올리면 오른다 — id는 그대로다(W23). */
+  version?: number;
+}
+
+/** 첨부의 지난 버전 한 줄. 현재 내용은 여기 없다(Attachment 자체가 곧 현재다). */
+export interface AttachmentVersion {
+  version: number;
+  contentType: string;
+  sizeBytes: number;
+  uploadedBy: string;
+  createdAt: string | null;
 }
 
 /**
