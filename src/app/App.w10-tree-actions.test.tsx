@@ -115,7 +115,7 @@ describe("트리 인라인 이름 바꾸기·별표", () => {
     await user.click(within(tree).getByRole("button", { name: "시작하기 더보기" }));
     await user.click(await screen.findByRole("menuitem", { name: "이름 바꾸기" }));
 
-    const input = within(tree).getByRole("textbox", { name: "시작하기 이름 바꾸기" });
+    const input = await within(tree).findByRole("textbox", { name: "시작하기 이름 바꾸기" });
     await user.clear(input);
     await user.type(input, "온보딩 가이드{Enter}");
 
