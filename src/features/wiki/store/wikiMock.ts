@@ -906,6 +906,11 @@ export async function listChildren(
     .map((p) => toNode(data, p));
 }
 
+/** PDF는 서버 렌더러(W26)가 만든다 — 목업에는 없다. 다이얼로그가 목업에서는 인쇄 버튼을 대신 보여준다. */
+export async function downloadPagePdf(): Promise<void> {
+  throw new Error("PDF 내보내기는 백엔드 연결에서만 동작합니다 — 브라우저 인쇄를 쓰세요");
+}
+
 /** 블로그(W24) — 최신 작성순. 발췌는 백엔드 BlogPostView.excerptOf와 같은 규칙(기호 걷어내고 200자). */
 export async function listBlogPosts(spaceId: string): Promise<BlogPost[]> {
   return load().pages

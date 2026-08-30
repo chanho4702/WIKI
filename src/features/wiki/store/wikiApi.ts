@@ -318,6 +318,31 @@ export async function removeSpaceGrant(grantId: string): Promise<void> {
   await json(await sharedApiFetch(`/api/org/grants/${grantId}`, { method: "DELETE" }));
 }
 
+/**
+ * 페이지 PDF 내보내기(W26) — 서버 렌더(flexmark + openhtmltopdf, NanumGothic 임베드).
+ * md/html 내보내기와 달리 클라이언트에서 만들 수 없어(폰트·페이지 레이아웃) 파일을 받아 저장한다.
+ */
+export async function downloadPagePdf(pageId: string, includeChildren: boolean, title: string): Promise<void> {
+  const res = await sharedApiFetch(
+    `/api/wiki/pages/${toBackendId(pageId)}/export.pdf?includeChildren=${includeChildren}`,
+  );
+  if (!res.ok) {
+    let message = "PDF를 만들지 못했습니다";
+    try {
+      message = extractError(res.status, await res.json());
+    } catch {
+      // 본문이 JSON이 아니면 기본 문구
+    }
+    throw new Error(message);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${(title.trim() || "문서").replace(/[\\/:*?"<>|]/g, "_")}.pdf`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 /** 블로그(W24) — 트리 밖 글 목록, 최신순. 서버가 권한 필터와 발췌를 한다. */
 export async function listBlogPosts(spaceId: string): Promise<BlogPost[]> {
   const rows = await json<Array<{

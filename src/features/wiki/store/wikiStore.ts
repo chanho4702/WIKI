@@ -24,6 +24,7 @@ export const updatePage = impl.updatePage;
 export const setPageIcon = impl.setPageIcon;
 export const recordPageView = impl.recordPageView;
 export const listBlogPosts = impl.listBlogPosts;
+export const downloadPagePdf = impl.downloadPagePdf;
 export const listNotifications = impl.listNotifications;
 export const markNotificationsRead = impl.markNotificationsRead;
 export const getNotificationPrefs = impl.getNotificationPrefs;

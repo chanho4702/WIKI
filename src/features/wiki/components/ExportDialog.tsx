@@ -8,11 +8,16 @@ import {
   downloadFile,
   toFileName,
 } from "../lib/exportContent";
+import { USE_BACKEND } from "../store/apiClient";
+import { downloadPagePdf } from "../store/wikiStore";
 
 /**
  * 내보내기(W21-3). Markdown은 저장 형식 그대로라 무손실이고, HTML은 받는 사람이 그냥 열 수
- * 있도록 이미지를 파일 안에 심는다. PDF는 브라우저 인쇄로 넘긴다 — 자체 렌더러 없이 만든 PDF는
- * 표·코드 블록이 화면과 어긋나 오히려 못 쓴다.
+ * 있도록 이미지를 파일 안에 심는다.
+ *
+ * PDF는 서버 렌더러(W26, flexmark + openhtmltopdf — 2026-08-31 사용자 요청)가 만든다. 예전에는
+ * 브라우저 인쇄로 넘겼는데, 인쇄는 브라우저·용지 설정마다 결과가 다르고 하위 문서 묶음을 한
+ * 파일로 만들 수 없었다. 목업 모드에는 서버가 없어 인쇄 버튼을 그대로 둔다.
  */
 export function ExportDialog({
   open,
@@ -43,6 +48,18 @@ export function ExportDialog({
       cancelled = true;
     };
   }, [open, page, includeChildren]);
+
+  const runPdf = async () => {
+    setBusy(true);
+    try {
+      await downloadPagePdf(page.id, includeChildren, page.title);
+      onOpenChange(false);
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : String(e), appearance: "danger" });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const run = async (format: "md" | "html") => {
     setBusy(true);
@@ -82,9 +99,15 @@ export function ExportDialog({
           <Button variant="secondary" disabled={busy} onClick={() => void run("html")}>
             HTML
           </Button>
-          <Button variant="subtle" disabled={busy} onClick={() => window.print()}>
-            인쇄 (PDF로 저장)
-          </Button>
+          {USE_BACKEND ? (
+            <Button variant="subtle" disabled={busy} onClick={() => void runPdf()}>
+              PDF
+            </Button>
+          ) : (
+            <Button variant="subtle" disabled={busy} onClick={() => window.print()}>
+              인쇄 (PDF로 저장)
+            </Button>
+          )}
         </div>
       </div>
     </Modal>

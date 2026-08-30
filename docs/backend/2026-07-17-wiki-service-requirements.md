@@ -58,6 +58,7 @@
 | listBlogPosts(spaceId) | GET /api/wiki/spaces/{id}/blog | **W24** `[{id,title,status,icon,createdBy,updatedBy,createdAt,updatedAt,excerpt}]` 최신순, 권한 필터. 글 생성은 POST /pages `type:"blog"`(parentId 있으면 400, move 400) |
 | getNotificationPrefs() | GET /api/wiki/notifications/prefs | **V29** `{emailConfigured,email,emailEnabled,mentioned,pageUpdated,comment,shared}`. 없으면 기본값(모두 켜짐) 생성. email은 토큰 클레임 스냅샷 |
 | updateNotificationPrefs(patch) | PUT /api/wiki/notifications/prefs | **V29/V31** `{emailEnabled,emailMode(IMMEDIATE\|DAILY),mentioned,pageUpdated,comment,shared}` → 같은 응답. 발송은 `WIKI_MAIL_HOST`가 있을 때만(emailConfigured). DAILY는 매일 `WIKI_MAIL_DIGEST_CRON`(기본 09:00)에 한 통 |
+| downloadPagePdf(pageId, includeChildren, title) | GET /api/wiki/pages/{id}/export.pdf?includeChildren= | **W26** application/pdf 파일. 서버 렌더(flexmark+openhtmltopdf, NanumGothic 임베드), 하위 포함 시 트리 순서·가시성 필터, 100건 상한 |
 | listSpaceDeletions() | GET /api/wiki/audit/space-deletions | **V30** 전역 관리자만. `audit_log`의 SPACE_DELETED 행(스페이스 FK를 풀어 삭제 뒤에도 남는다) |
 | getPageRestrictions(pageId) | GET /api/wiki/pages/{id}/restrictions | **V12(W18)** `{view[], edit[], inherited[]}` — principal `{type: USER\|TEAM, id}`. 이름 해석은 프론트(org 디렉터리) |
 | setPageRestrictions(pageId, {view, edit}) | PUT /api/wiki/pages/{id}/restrictions | **V12** 전체 교체. effective EDIT 통과자 또는 space ADMIN. 비ADMIN 셀프 락아웃 400 |

@@ -1006,3 +1006,19 @@ wiki-backend GraphQL `enum PageType`에도 BLOG를 넣었다(2026-08-30). 두 �
 `WIKI_REVISION_KEEP_COUNT`(100) · `WIKI_REVISION_RETENTION`(P90D) · `WIKI_REVISION_PRUNE_INTERVAL`(PT6H) ·
 `WIKI_REVISION_PRUNE_ENABLED`(무기한으로 되돌리려면 false). 정리는 6시간마다 도는 작업이며, 리비전이
 100개를 넘는 문서만 살핀다.
+
+## 38. W26 — PDF 내보내기 (2026-08-31)
+
+브라우저 인쇄(window.print)로 대신하던 것을 서버 렌더로 바꿨다(사용자 요청 "md to pdf 오픈소스
+적용"). 인쇄는 브라우저·용지 설정마다 결과가 다르고, 하위 문서 묶음을 한 파일로 만들 수 없었다.
+
+| 선택 | 이유 |
+|---|---|
+| [flexmark-java](https://github.com/vsch/flexmark-java) (MD→HTML) | GFM 표·취소선·체크박스 확장. raw HTML은 이스케이프 — 보기 렌더러와 같은 XSS 정책 |
+| [openhtmltopdf 커뮤니티 포크](https://github.com/openhtmltopdf/openhtmltopdf) 1.1.37 (HTML→PDF) | 순수 JVM(PDFBox 3), 2026-01에도 릴리스되는 유지 포크. 헤드리스 크롬은 온프렘 단일 머신에 의존이 너무 무겁다 |
+| NanumGothic(OFL) 임베드 | 폰트를 심지 않으면 한글이 전부 빈 네모다. 리소스로 품어 서버 환경과 무관하게 같은 결과 |
+| jsoup으로 XHTML 정규화 | openhtmltopdf는 잘 닫힌 XML만 받는다 |
+
+위키 고유 문법은 PDF에서 읽히게 정리한다: 지시자 마커(`:::`)는 걷어내되 안의 내용(속성 표 등)은
+남기고, `:status`·멘션·날짜는 글자만. 하위 포함은 트리 순서 + effective VIEW 필터(안 보이는 문서는
+조용히 빠진다), 100건 상한. 목업 모드에는 서버가 없어 기존 인쇄 버튼이 남는다.
