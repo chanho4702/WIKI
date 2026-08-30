@@ -926,6 +926,17 @@ export async function listRecentPages(limit = 10): Promise<StarredPageRow[]> {
   return rows.map(mapStarRow);
 }
 
+/** 스페이스 삭제 기록(V30) — 전역 관리자만. 아니면 403이 그대로 올라온다. */
+export async function listSpaceDeletions(): Promise<AuditEntry[]> {
+  const rows = await json<Array<{
+    id: number | string; action: string; targetType: string; targetId: number | string | null;
+    targetLabel: string; detail: string | null; actorId: number | string; createdAt: string | null;
+  }>>(await sharedApiFetch("/api/wiki/audit/space-deletions"));
+  return rows.map((r) => ({
+    ...r, id: String(r.id), targetId: r.targetId === null ? null : String(r.targetId), actorId: String(r.actorId),
+  }));
+}
+
 /** 스페이스 감사 로그(W23) — 스페이스 ADMIN만. 아니면 403이 그대로 올라온다. */
 export async function listAudit(spaceId: string): Promise<AuditEntry[]> {
   const rows = await json<Array<{

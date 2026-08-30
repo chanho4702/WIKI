@@ -263,6 +263,18 @@ export const SLASH_ITEMS: SlashItem[] = [
         ])
         .run(),
   },
+  {
+    id: "propertiesReport",
+    label: "속성 보고서",
+    description: "라벨이 붙은 문서들의 속성을 한눈에 모읍니다",
+    icon: Table2,
+    run: (e) =>
+      e
+        .chain()
+        .focus()
+        .insertContent({ type: "paragraph", content: [{ type: "text", text: "::properties-report[라벨]" }] })
+        .run(),
+  },
   // 발췌(W23) — 컨플루언스 Excerpt / Excerpt Include. 저장은 지시자 텍스트(lib/excerpt.ts),
   // 편집 화면에는 마커가 그대로 보이고 보기 화면에서 렌더된다 — 목차·패널과 같은 방식이다.
   {

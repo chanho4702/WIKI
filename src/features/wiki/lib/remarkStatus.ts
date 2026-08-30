@@ -41,6 +41,16 @@ export function remarkStatus() {
         const data = (directive.data ??= {});
         data.hName = "div";
         data.hProperties = { className: ["md-properties"] };
+        return;
+      }
+      // 속성 보고서(`::properties-report[라벨]`) — 리프 지시자의 라벨은 자식 인라인으로 온다(발췌 포함과 같다)
+      if (node.type === "leafDirective" && directive.name === "properties-report") {
+        const children = ((node as { children?: Array<{ type: string; value?: string }> }).children ?? []);
+        const label = children.map((c) => (c.type === "text" ? (c.value ?? "") : "")).join("").trim();
+        const data = (directive.data ??= {});
+        data.hName = "div";
+        data.hProperties = { className: ["md-properties-report"], "data-label": label };
+        (node as { children?: unknown[] }).children = [];
       }
     });
   };

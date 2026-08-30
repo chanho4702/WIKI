@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Banner, Switch, useToast } from "@chanho/react";
-import { AtSign, Bell, FileText, Mail, MessageSquare, Share2 } from "lucide-react";
+import { Banner, Radio, RadioGroup, Switch, useToast } from "@chanho/react";
+import { AtSign, Bell, Clock, FileText, Mail, MessageSquare, Share2 } from "lucide-react";
 import { SettingsHeader, SettingsItem } from "../components/SettingsItem";
 import type { NotificationPrefs, NotificationPrefsPatch } from "../store/types";
 import { getNotificationPrefs, updateNotificationPrefs } from "../store/wikiStore";
@@ -49,6 +49,7 @@ export function NotificationSettingsPage() {
       if (!prefs) return;
       const next: NotificationPrefsPatch = {
         emailEnabled: prefs.emailEnabled,
+        emailMode: prefs.emailMode,
         mentioned: prefs.mentioned,
         pageUpdated: prefs.pageUpdated,
         comment: prefs.comment,
@@ -125,6 +126,23 @@ export function NotificationSettingsPage() {
             />
           }
         />
+
+        {/* 요약 모드 — 멘션이 잦은 사람에게 건당 메일은 폭주다. 하루 한 번 한 통으로 모은다 */}
+        <SettingsItem
+          icon={<Clock size={18} aria-hidden="true" />}
+          title="보내는 방식"
+          description="바로 보내면 일이 생길 때마다 한 통, 하루 한 번이면 그날 있었던 일을 아침 9시에 한 통으로 모읍니다."
+        >
+          <RadioGroup
+            aria-label="보내는 방식"
+            value={prefs.emailMode}
+            disabled={saving || !prefs.emailEnabled}
+            onValueChange={(v: string) => void save({ emailMode: v === "DAILY" ? "DAILY" : "IMMEDIATE" })}
+          >
+            <Radio value="IMMEDIATE" label="바로 보내기" />
+            <Radio value="DAILY" label="하루 한 번 모아서" />
+          </RadioGroup>
+        </SettingsItem>
 
         <ul className="settings-item-list" aria-label="이메일로 받을 알림">
           {TYPE_ROWS.map((row) => {

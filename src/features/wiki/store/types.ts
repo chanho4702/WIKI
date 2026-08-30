@@ -443,6 +443,8 @@ export interface NotificationPrefs {
   /** 서버가 토큰에서 스냅샷한 수신 주소. 아직 모르면 null. */
   email: string | null;
   emailEnabled: boolean;
+  /** 바로 보낼지(IMMEDIATE), 하루 한 번 모아 보낼지(DAILY). */
+  emailMode: "IMMEDIATE" | "DAILY";
   mentioned: boolean;
   pageUpdated: boolean;
   comment: boolean;
@@ -451,7 +453,7 @@ export interface NotificationPrefs {
 
 export type NotificationPrefsPatch = Pick<
   NotificationPrefs,
-  "emailEnabled" | "mentioned" | "pageUpdated" | "comment" | "shared"
+  "emailEnabled" | "emailMode" | "mentioned" | "pageUpdated" | "comment" | "shared"
 >;
 
 /** 블로그 목록 한 줄(W24) — 본문 대신 발췌. 글 자체는 Page(type "blog")로 열고 고친다. */
@@ -545,6 +547,8 @@ export interface WikiData {
   notifications?: Notification[];
   /** 알림 설정(W23) — 목업 저장. 키 = userId. */
   notificationPrefs?: Record<string, NotificationPrefsPatch>;
+  /** 스페이스 삭제 기록 — 목업 저장. 백엔드는 audit_log의 SPACE_DELETED 행(V30). */
+  spaceAudit?: AuditEntry[];
   /** 페이지 제한(W18) — 목업 저장. 키 = pageId. 없던 저장분 호환 optional. */
   restrictions?: Record<string, { view: RestrictionPrincipal[]; edit: RestrictionPrincipal[] }>;
   /**

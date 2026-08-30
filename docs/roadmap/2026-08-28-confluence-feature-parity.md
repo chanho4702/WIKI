@@ -64,7 +64,7 @@
 | 목차 매크로 | ✅ | `remarkToc` + `TableOfContents` |
 | 하위 페이지 매크로 | ✅ | `ChildPages` |
 | 발췌(excerpt)·발췌 포함 | ✅ | `:::excerpt` / `::excerpt-include[제목]` (W23) |
-| 상태 배지·페이지 속성 매크로 | ✅ | `:status[…]{.info}` 배지, `:::properties` 속성 표(W23). 속성 보고서(집계)는 없음 |
+| 상태 배지·페이지 속성 매크로 | ✅ | `:status[…]{.info}` 배지, `:::properties` 속성 표, `::properties-report[라벨]` 속성 보고서(W23) |
 | 앵커·문단 링크 | ✅ | 헤딩 hover 시 링크 복사 버튼, `#slug`로 진입하면 그 절로 스크롤(W23) |
 
 ### 3.3 에디터
@@ -988,3 +988,11 @@ REST를 curl로 때려야 했다.
 ~~기술 부채: proto에 BLOG 없음~~ → common-proto **0.12.0**에 `BLOG = 3`을 더하고 search-service·
 wiki-backend GraphQL `enum PageType`에도 BLOG를 넣었다(2026-08-30). 두 검색 모드 모두 "블로그"로
 표시된다. enum에 BLOG가 없으면 글 하나가 검색 응답 전체를 깨뜨리므로 표시 문제가 아니라 오류였다.
+
+## 36. 후속 셋 — 스페이스 삭제 기록 · 요약 메일 · 속성 보고서 (2026-08-30)
+
+| 항목 | 결정 |
+|---|---|
+| **스페이스 삭제 기록**(V30) | `audit_log`의 space FK(cascade)를 풀어 기록이 스페이스보다 오래 남게 했다. `SPACE_DELETED`는 스페이스 안에서 읽을 수 없으니 전역 관리자의 `/admin/audit`이 읽는다. 별도 표를 만들지 않은 이유: 감사 기록은 한 종류여야 "어디 있지"가 안 생긴다 |
+| **하루 한 번 요약 메일**(V31) | `email_mode` IMMEDIATE/DAILY. 요약은 `emailed_at`이 빈 알림을 모은다 — 바로 보낸 것도 찍어 두어야 모드를 바꿨을 때 옛 알림이 다시 나가지 않는다. 7일 상한, 페이지가 사라진 알림도 "처리됨"으로. 시계는 `WIKI_MAIL_DIGEST_CRON`(기본 09:00), 인스턴스 하나만 켠다 |
+| **속성 보고서** | `::properties-report[라벨]`. 검색 색인이 아니라 라벨 API + 본문에서 읽는다 — OpenSearch 유무와 무관. 대신 문서 50건 상한. 셀은 렌더하지 않고 글자만(배지 이름·링크 텍스트) |

@@ -27,6 +27,7 @@ import { remarkExcerpt } from "../lib/remarkExcerpt";
 import { remarkStatus, statusAppearance } from "../lib/remarkStatus";
 import { normalizeDirectiveEscapes } from "../lib/excerpt";
 import { ExcerptInclude } from "./ExcerptInclude";
+import { PropertiesReport } from "./PropertiesReport";
 import { remarkTextColors } from "../lib/remarkTextColors";
 import { rehypeTableSpans } from "../lib/rehypeTableSpans";
 import { remarkBookmark } from "../lib/remarkBookmark";
@@ -162,12 +163,20 @@ function MarkdownDiv({
   source?: string;
   spaceId?: string;
   depth?: number;
-  "data-title"?: string;
+  "data-title"?: string; "data-label"?: string;
 }) {
   // 본문 목차(`::toc`) — remarkToc가 표시한 자리에 실제 목차를 그린다.
   // heading은 본문 전체에서 뽑으므로 사이드 목차와 같은 추출기를 쓴다(slug 계산도 동일).
   if (className?.split(/\s+/).includes("md-toc")) {
     return <TableOfContents markdown={source ?? ""} variant="inline" />;
+  }
+  // 속성 보고서(`::properties-report[라벨]`, W23) — 발췌 포함과 같은 조건에서만 실제로 모은다.
+  if (className?.split(/\s+/).includes("md-properties-report")) {
+    const label = (rest["data-label"] ?? "").trim();
+    if (!spaceId || depth > 0 || !label) {
+      return <div className="md-properties-report is-inert">::properties-report[{label}]</div>;
+    }
+    return <PropertiesReport label={label} spaceId={spaceId} />;
   }
   // 발췌 포함(`::excerpt-include[제목]`, W23) — 스페이스를 알고 한 단계 안일 때만 실제로 가져온다.
   if (className?.split(/\s+/).includes("md-excerpt-include")) {

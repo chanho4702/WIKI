@@ -15,6 +15,7 @@ import { TasksPage } from "../features/wiki/pages/TasksPage";
 import { NotificationSettingsPage } from "../features/wiki/pages/NotificationSettingsPage";
 import { SearchAdminPage } from "../features/wiki/pages/SearchAdminPage";
 import { TeamsAdminPage } from "../features/wiki/pages/TeamsAdminPage";
+import { SpaceAuditAdminPage } from "../features/wiki/pages/SpaceAuditAdminPage";
 import { TrashPage } from "../features/wiki/pages/TrashPage";
 import { ArchivePage } from "../features/wiki/pages/ArchivePage";
 import { LabelsPage } from "../features/wiki/pages/LabelsPage";
@@ -96,6 +97,8 @@ export function App() {
         <Route path="/admin/search" element={<SearchAdminPage />} />
         {/* 팀 관리 — 전역 관리자 전용(서버가 판정). 스페이스 권한 부여에 쓰는 팀을 여기서 만든다 */}
         <Route path="/admin/teams" element={<TeamsAdminPage />} />
+        {/* 스페이스 삭제 기록 — 전역 관리자 전용(서버가 판정). 스페이스 안에서는 읽을 곳이 없는 기록 */}
+        <Route path="/admin/audit" element={<SpaceAuditAdminPage />} />
         {/* 스페이스 컨텍스트 — element 없이 경로만 묶는다. 하위 페이지 화면은 AppShell의 Outlet
          * 컨텍스트(pages/space/reloadPages)를 그대로 소비한다. */}
         <Route path="/spaces/:spaceId">

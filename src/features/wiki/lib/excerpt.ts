@@ -15,7 +15,7 @@
  * 일반 텍스트(`\:` 리터럴)를 건드리지 않는다.
  */
 
-const ESCAPED_DIRECTIVE_LINE = /^(\\?:){2,}(?:(?:excerpt-include\[[^\]]*\])|excerpt)?[ \t]*$/;
+const ESCAPED_DIRECTIVE_LINE = /^(\\?:){2,}(?:(?:excerpt-include\[[^\]]*\])|(?:properties-report\[[^\]]*\])|excerpt|properties)?[ \t]*$/;
 
 export function normalizeDirectiveEscapes(markdown: string): string {
   return markdown

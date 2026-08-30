@@ -7,6 +7,7 @@ import type {
   CollaborationDraftCommitOptions,
   Comment,
   DeletePageOptions,
+  AuditEntry,
   BlogPost,
   NotificationList,
   NotificationPrefs,
@@ -192,8 +193,20 @@ export async function updateSpace(
 /** 되돌릴 수 없다 — 그 스페이스의 페이지·버전·댓글·라벨·휴지통까지 함께 사라진다. */
 export async function deleteSpace(spaceId: string): Promise<void> {
   const data = load();
-  if (!data.spaces.some((s) => s.id === spaceId)) throw new Error("스페이스를 찾을 수 없습니다");
+  const space = data.spaces.find((s) => s.id === spaceId);
+  if (!space) throw new Error("스페이스를 찾을 수 없습니다");
   const doomed = new Set(data.pages.filter((p) => p.spaceId === spaceId).map((p) => p.id));
+  // 삭제 기록은 스페이스보다 오래 남는다(백엔드 V30과 같은 규칙)
+  (data.spaceAudit ??= []).unshift({
+    id: `sa${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    action: "SPACE_DELETED",
+    targetType: "SPACE",
+    targetId: spaceId,
+    targetLabel: `${space.name} (${space.key})`,
+    detail: `문서 ${doomed.size}건 함께 삭제`,
+    actorId: CURRENT_USER_ID,
+    createdAt: new Date().toISOString(),
+  });
   data.spaces = data.spaces.filter((s) => s.id !== spaceId);
   data.pages = data.pages.filter((p) => p.spaceId !== spaceId);
   data.versions = data.versions.filter((v) => !doomed.has(v.pageId));
@@ -603,12 +616,18 @@ export async function listNotifications(): Promise<NotificationList> {
 /* ── 알림 설정(W23) — 목업은 발송 구성이 없다(emailConfigured=false). 스위치만 저장한다. */
 
 const DEFAULT_PREFS: NotificationPrefsPatch = {
-  emailEnabled: true, mentioned: true, pageUpdated: true, comment: true, shared: true,
+  emailEnabled: true, emailMode: "IMMEDIATE", mentioned: true, pageUpdated: true, comment: true, shared: true,
 };
 
 function prefsView(data: WikiData): NotificationPrefs {
-  const saved = data.notificationPrefs?.[CURRENT_USER_ID] ?? DEFAULT_PREFS;
+  // 이 필드 도입 이전 저장분은 emailMode가 없다 — 기본값으로 채운다
+  const saved = { ...DEFAULT_PREFS, ...(data.notificationPrefs?.[CURRENT_USER_ID] ?? {}) };
   return { ...saved, emailConfigured: false, email: null };
+}
+
+/** 스페이스 삭제 기록 — 목업은 전역 관리자 판정이 없어 그대로 돌려준다. */
+export async function listSpaceDeletions(): Promise<AuditEntry[]> {
+  return [...(load().spaceAudit ?? [])];
 }
 
 export async function getNotificationPrefs(): Promise<NotificationPrefs> {

@@ -86,6 +86,7 @@ export const setPageStar = impl.setPageStar;
 export const setSpaceStar = impl.setSpaceStar;
 export const listRecentPages = impl.listRecentPages;
 export const listAudit = impl.listAudit;
+export const listSpaceDeletions = impl.listSpaceDeletions;
 export const sharePage = impl.sharePage;
 export const ensurePersonalSpace = impl.ensurePersonalSpace;
 export const createTeam = impl.createTeam;
