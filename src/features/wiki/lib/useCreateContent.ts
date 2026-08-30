@@ -9,6 +9,8 @@ import { contentPathIn } from "./contentPath";
 export const DRAFT_TITLE = "제목 없음";
 /** 새 폴더의 임시 이름 — 폴더 화면에서 인라인으로 고친다(폴더는 편집 화면이 없다). */
 export const FOLDER_TITLE = "제목 없는 폴더";
+/** 새 블로그 글의 임시 제목(W24). */
+export const BLOG_TITLE = "제목 없는 글";
 
 /**
  * 새 콘텐츠(페이지 또는 폴더)를 **먼저 만들고** 해당 화면으로 보낸다.
@@ -49,8 +51,9 @@ export function useCreateContent(
       try {
         const created = await createPage({
           spaceId,
-          parentId,
-          title: type === "folder" ? FOLDER_TITLE : DRAFT_TITLE,
+          // 블로그 글은 트리 밖이다 — 트리 행의 +에서 눌렀어도 부모를 주지 않는다(백엔드는 400)
+          parentId: type === "blog" ? null : parentId,
+          title: type === "folder" ? FOLDER_TITLE : type === "blog" ? BLOG_TITLE : DRAFT_TITLE,
           type,
           ...(template ? { body: template.content, icon: template.icon ?? undefined } : {}),
           // 폴더는 게시 개념이 없다 — 초안 상태를 주지 않는다(백엔드도 폴더는 published로 고정한다)

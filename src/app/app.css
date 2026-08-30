@@ -6090,3 +6090,57 @@ body.is-column-reordering {
   font-size: var(--chanho-font-size-075);
   color: var(--chanho-color-text-subtle);
 }
+
+/* ── 블로그(W24) ─────────────────────────────────────────── */
+.blog-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--chanho-space-200);
+}
+
+.blog-list {
+  list-style: none;
+  margin: var(--chanho-space-300) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.blog-item {
+  padding: var(--chanho-space-250) 0;
+  border-top: 1px solid var(--chanho-color-border-default);
+}
+
+.blog-item-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  font-size: var(--chanho-font-size-075);
+  color: var(--chanho-color-text-subtle);
+}
+
+.blog-item-title {
+  margin: var(--chanho-space-050) 0 0;
+  font-size: var(--chanho-font-size-200, 1.25rem);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.blog-item-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.blog-item-title a:hover {
+  text-decoration: underline;
+}
+
+.blog-item-icon {
+  margin-right: var(--chanho-space-100);
+}
+
+.blog-item-excerpt {
+  margin: var(--chanho-space-100) 0 0;
+  color: var(--chanho-color-text-subtle);
+  line-height: 1.6;
+}

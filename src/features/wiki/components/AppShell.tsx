@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { Button } from "@chanho/react";
 import { FolderPlus, MapPin, Plus } from "lucide-react";
-import type { Space } from "../store/types";
+import type { PageType, Space } from "../store/types";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { syncStarsFromServer } from "../lib/starSync";
 import { SpaceSettingsSidebar } from "./SpaceSettingsSidebar";
@@ -100,7 +100,7 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
   const { createContent, createFromTemplate } = useCreateContent(space?.id ?? null, reloadPages);
 
   // 위치 지정 만들기 다이얼로그 — 헤더 "만들기"의 상세 경로. null = 닫힘, 값 = 기본 타입.
-  const [createDialogType, setCreateDialogType] = useState<"page" | "folder" | null>(null);
+  const [createDialogType, setCreateDialogType] = useState<PageType | null>(null);
 
   // 존재하지 않는 스페이스 ID로 접근하면(스페이스 라우트인데 매칭 실패) 첫 스페이스로 돌린다.
   // 홈(/home)·디렉토리(/spaces)는 spaceId가 없으므로 여기에 해당하지 않는다.

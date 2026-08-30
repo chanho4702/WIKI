@@ -22,7 +22,7 @@ export interface StarredPageEntry {
   title: string;
   icon?: string | null;
   /** 라우트 분기용(폴더는 folder 화면) — 구버전 엔트리는 "page"로 간주. */
-  type?: "page" | "folder";
+  type?: "page" | "folder" | "blog";
 }
 
 function isEntry(v: unknown): v is StarredPageEntry {
@@ -111,7 +111,7 @@ export function setStarredPageEntries(entries: StarredPageEntry[]): void {
  */
 export function hydrateStarredPages(
   spaceId: string,
-  pages: Array<{ id: string; title: string; icon?: string | null; type?: "page" | "folder" }>,
+  pages: Array<{ id: string; title: string; icon?: string | null; type?: "page" | "folder" | "blog" }>,
 ): void {
   const current = getStarredPageEntries();
   const byId = new Map(pages.map((p) => [p.id, p]));
@@ -154,12 +154,12 @@ export function useStarredPages(): {
   /** 메타데이터 포함 엔트리 — 별표 검색 패널용. */
   entries: StarredPageEntry[];
   toggle: (page: {
-    id: string; spaceId: string; title: string; icon?: string | null; type?: "page" | "folder";
+    id: string; spaceId: string; title: string; icon?: string | null; type?: "page" | "folder" | "blog";
   }) => void;
 } {
   const entries = useSyncExternalStore(subscribe, getSnapshot);
   const toggle = useCallback((page: {
-    id: string; spaceId: string; title: string; icon?: string | null; type?: "page" | "folder";
+    id: string; spaceId: string; title: string; icon?: string | null; type?: "page" | "folder" | "blog";
   }) => {
     const current = getStarredPageEntries();
     const starred = !current.some((e) => e.id === page.id);

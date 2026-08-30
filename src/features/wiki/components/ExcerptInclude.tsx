@@ -29,8 +29,8 @@ export function ExcerptInclude({
   const [state, setState] = useState<
     | { kind: "loading" }
     | { kind: "missing" }
-    | { kind: "no-excerpt"; pageId: string; type: "page" | "folder" }
-    | { kind: "ok"; pageId: string; type: "page" | "folder"; excerpt: string }
+    | { kind: "no-excerpt"; pageId: string; type: "page" | "folder" | "blog" }
+    | { kind: "ok"; pageId: string; type: "page" | "folder" | "blog"; excerpt: string }
   >({ kind: "loading" });
 
   useEffect(() => {

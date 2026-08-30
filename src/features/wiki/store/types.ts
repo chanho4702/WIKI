@@ -20,7 +20,11 @@ export interface Space {
  * 폴더도 body/version 필드를 형식적으로 갖지만 **쓰지 않는다** — 폴더 화면은 본문 대신 자식 목록을
  * 보여주고, 편집 화면으로 들어가는 경로도 없다.
  */
-export type PageType = "page" | "folder";
+/**
+ * 콘텐츠 타입. "blog"(W24)는 트리 밖에 사는 문서다 — 부모가 없고 날짜순으로 읽힌다.
+ * 본문·리비전·댓글·라벨·검색·권한은 페이지와 같고, 다른 것은 "어디에 놓이는가"뿐이다.
+ */
+export type PageType = "page" | "folder" | "blog";
 
 /**
  * 게시 상태 — 사이드바 "+"로 즉시 만든 문서는 초안(draft)으로 트리에 나타나고, 편집 화면에서
@@ -183,7 +187,7 @@ export interface AttachmentUploadOptions {
 }
 
 export type SearchDocType = "PAGE" | "ATTACHMENT";
-export type SearchPageType = "PAGE" | "FOLDER";
+export type SearchPageType = "PAGE" | "FOLDER" | "BLOG";
 
 export interface SearchHit {
   id: string;
@@ -449,6 +453,19 @@ export type NotificationPrefsPatch = Pick<
   NotificationPrefs,
   "emailEnabled" | "mentioned" | "pageUpdated" | "comment" | "shared"
 >;
+
+/** 블로그 목록 한 줄(W24) — 본문 대신 발췌. 글 자체는 Page(type "blog")로 열고 고친다. */
+export interface BlogPost {
+  id: string;
+  title: string;
+  status: PageStatus;
+  icon: string | null;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  excerpt: string;
+}
 
 export interface NotificationList {
   unreadCount: number;

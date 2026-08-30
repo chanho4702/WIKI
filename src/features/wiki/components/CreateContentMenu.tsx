@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { ConfirmDialog, Dropdown, EmptyState } from "@chanho/react";
-import { FileText, Folder, LayoutTemplate } from "lucide-react";
+import { FileText, Folder, LayoutTemplate, Newspaper } from "lucide-react";
 import type { PageTemplate, PageType } from "../store/types";
 import { listTemplates } from "../store/wikiStore";
 
@@ -72,6 +72,12 @@ export function CreateContentMenu({
           label: "폴더",
           icon: <Folder size={16} aria-hidden="true" />,
           onSelect: () => onSelect("folder"),
+        },
+        // 블로그 글(W24) — 트리 밖에서 날짜순으로 읽는 글. 어디서 눌렀든 부모 없이 만들어진다.
+        {
+          label: "블로그 글",
+          icon: <Newspaper size={16} aria-hidden="true" />,
+          onSelect: () => onSelect("blog"),
         },
         ...(templatesEnabled
           ? [{

@@ -4,7 +4,7 @@ import { ConfirmDialog, Radio, RadioGroup, TextField, useToast } from "@chanho/r
 import type { PageNode, PageType, Space } from "../store/types";
 import { createPage, listChildren, searchPageTitles } from "../store/wikiStore";
 import { contentPathIn } from "../lib/contentPath";
-import { DRAFT_TITLE, FOLDER_TITLE } from "../lib/useCreateContent";
+import { BLOG_TITLE, DRAFT_TITLE, FOLDER_TITLE } from "../lib/useCreateContent";
 
 export interface CreateContentDialogProps {
   open: boolean;
@@ -83,8 +83,9 @@ export function CreateContentDialog({
     try {
       const created = await createPage({
         spaceId,
-        parentId,
-        title: title.trim() || (type === "folder" ? FOLDER_TITLE : DRAFT_TITLE),
+        // 블로그 글(W24)은 트리 밖이다 — 상위 위치를 골랐더라도 버린다
+        parentId: type === "blog" ? null : parentId,
+        title: title.trim() || (type === "folder" ? FOLDER_TITLE : type === "blog" ? BLOG_TITLE : DRAFT_TITLE),
         type,
         // 폴더는 게시 개념이 없다 — useCreateContent와 같은 규칙
         ...(type === "folder" ? {} : { status: "draft" as const }),
@@ -125,6 +126,7 @@ export function CreateContentDialog({
         >
           <Radio value="page" label="페이지" />
           <Radio value="folder" label="폴더" />
+          <Radio value="blog" label="블로그 글" />
         </RadioGroup>
         <TextField
           label={type === "folder" ? "폴더 이름 (비우면 기본 이름)" : "제목 (비우면 초안 기본명)"}
@@ -148,13 +150,19 @@ export function CreateContentDialog({
             ))}
           </select>
         ) : null}
+        {/* 블로그 글은 상위 위치가 없다 — 고를 수 없는 것을 보여 주면 "왜 안 먹지"가 된다 */}
+        {type === "blog" ? (
+          <p className="page-tree-move-loading">블로그 글은 트리 밖에서 날짜순으로 읽힙니다. 상위 위치가 없습니다.</p>
+        ) : null}
+        {type !== "blog" ? (
         <TextField
           label="상위 위치 검색"
           value={parentQuery}
           onChange={(e) => setParentQuery(e.target.value)}
           placeholder="제목으로 검색 (비우면 최상위 문서)"
         />
-        {candidates === null ? (
+        ) : null}
+        {type === "blog" ? null : candidates === null ? (
           <p className="page-tree-move-loading" role="status">
             상위 위치를 불러오는 중…
           </p>

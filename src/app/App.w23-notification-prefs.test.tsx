@@ -15,7 +15,7 @@ describe("W23 알림 설정", () => {
     renderApp("/settings/notifications");
 
     expect(await screen.findByRole("heading", { name: "알림 설정" })).toBeInTheDocument();
-    expect(screen.getByText(/이메일 발송이 구성되어 있지 않습니다/)).toBeInTheDocument();
+    expect(await screen.findByText(/이메일 발송이 구성되어 있지 않습니다/)).toBeInTheDocument();
   });
 
   it("스위치는 누르는 즉시 저장되고 다시 열어도 남는다", async () => {
@@ -23,7 +23,7 @@ describe("W23 알림 설정", () => {
     renderApp("/settings/notifications");
     await screen.findByRole("heading", { name: "알림 설정" });
 
-    const mention = screen.getByRole("switch", { name: "나를 멘션했을 때" });
+    const mention = await screen.findByRole("switch", { name: "나를 멘션했을 때" });
     expect(mention).toBeChecked();
     await user.click(mention);
     await waitFor(() => expect(mention).not.toBeChecked());
@@ -37,7 +37,7 @@ describe("W23 알림 설정", () => {
     renderApp("/settings/notifications");
     await screen.findByRole("heading", { name: "알림 설정" });
 
-    await user.click(screen.getByRole("switch", { name: "이메일로 알림 받기" }));
+    await user.click(await screen.findByRole("switch", { name: "이메일로 알림 받기" }));
 
     // 전체 스위트 부하에서는 클릭 뒤 상태 반영이 한 틱 늦을 수 있다 — 결과로 기다린다
     const list = screen.getByRole("list", { name: "이메일로 받을 알림" });

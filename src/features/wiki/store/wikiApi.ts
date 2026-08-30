@@ -14,6 +14,7 @@ import {
   type CollaborationDraftCommitOptions,
   type CollaborationTicket,
   type DeletePageOptions,
+  type BlogPost,
   type NotificationList,
   type NotificationPrefs,
   type NotificationPrefsPatch,
@@ -315,6 +316,19 @@ export async function addSpaceGrant(
 
 export async function removeSpaceGrant(grantId: string): Promise<void> {
   await json(await sharedApiFetch(`/api/org/grants/${grantId}`, { method: "DELETE" }));
+}
+
+/** 블로그(W24) — 트리 밖 글 목록, 최신순. 서버가 권한 필터와 발췌를 한다. */
+export async function listBlogPosts(spaceId: string): Promise<BlogPost[]> {
+  const rows = await json<Array<{
+    id: number; title: string; status: PageStatus; icon: string | null;
+    createdBy: number; updatedBy: number; createdAt: string; updatedAt: string; excerpt: string;
+  }>>(await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/blog`));
+  return rows.map((r) => ({
+    id: String(r.id), title: r.title, status: r.status ?? "published", icon: r.icon ?? null,
+    createdBy: toClientId(r.createdBy), updatedBy: toClientId(r.updatedBy),
+    createdAt: r.createdAt, updatedAt: r.updatedAt, excerpt: r.excerpt ?? "",
+  }));
 }
 
 /** 알림 설정(W23) — 이메일 채널 스위치. 주소는 서버가 토큰에서 스냅샷한다(V29). */

@@ -55,6 +55,7 @@
 | recordPageView(id) | POST /api/wiki/pages/{id}/views | **V10** 조회 1회 기록 → `{views}` 누적치. 실패해도 화면 진행(프론트가 조용히 무시) |
 | listNotifications() | GET /api/wiki/notifications | **V11** `{unreadCount, items[{id,type,pageId,spaceId,pageTitle,actorId,createdAt,read}]}` 최신 30건. type: MENTIONED\|PAGE_UPDATED\|COMMENT |
 | markNotificationsRead(ids?) | POST /api/wiki/notifications/read | **V11** ids 비우면 전체 읽음. 본인 행만 |
+| listBlogPosts(spaceId) | GET /api/wiki/spaces/{id}/blog | **W24** `[{id,title,status,icon,createdBy,updatedBy,createdAt,updatedAt,excerpt}]` 최신순, 권한 필터. 글 생성은 POST /pages `type:"blog"`(parentId 있으면 400, move 400) |
 | getNotificationPrefs() | GET /api/wiki/notifications/prefs | **V29** `{emailConfigured,email,emailEnabled,mentioned,pageUpdated,comment,shared}`. 없으면 기본값(모두 켜짐) 생성. email은 토큰 클레임 스냅샷 |
 | updateNotificationPrefs(patch) | PUT /api/wiki/notifications/prefs | **V29** `{emailEnabled,mentioned,pageUpdated,comment,shared}` → 같은 응답. 발송은 `WIKI_MAIL_HOST`가 있을 때만(emailConfigured) |
 | getPageRestrictions(pageId) | GET /api/wiki/pages/{id}/restrictions | **V12(W18)** `{view[], edit[], inherited[]}` — principal `{type: USER\|TEAM, id}`. 이름 해석은 프론트(org 디렉터리) |

@@ -18,6 +18,7 @@ import { TeamsAdminPage } from "../features/wiki/pages/TeamsAdminPage";
 import { TrashPage } from "../features/wiki/pages/TrashPage";
 import { ArchivePage } from "../features/wiki/pages/ArchivePage";
 import { LabelsPage } from "../features/wiki/pages/LabelsPage";
+import { BlogPage } from "../features/wiki/pages/BlogPage";
 import { SpaceSettingsPage } from "../features/wiki/pages/SpaceSettingsPage";
 
 /**
@@ -123,6 +124,8 @@ export function App() {
           {/* 보관함(W23) — 끝났지만 남겨 둔 문서. 휴지통과 같은 표를 쓴다 */}
           <Route path="archive" element={<ArchivePage />} />
           {/* 라벨 탐색 — 트리로는 못 찾는 가로 분류(컨플루언스 "라벨로 찾아보기") */}
+          {/* 블로그(W24) — 트리 밖 글 목록. 글 자체는 pages/:pageId로 연다 */}
+          <Route path="blog" element={<BlogPage />} />
           <Route path="labels" element={<LabelsPage />} />
           <Route path="labels/:name" element={<LabelsPage />} />
           {/*

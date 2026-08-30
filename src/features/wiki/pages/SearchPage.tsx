@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Banner, Button, EmptyState, Lozenge, PageHeader, Spinner } from "@chanho/react";
-import { FileText, Folder, Paperclip, SearchX } from "lucide-react";
+import { FileText, Folder, Newspaper, Paperclip, SearchX } from "lucide-react";
 import { listPagePaths, listUsers, searchContent, suggestLabels } from "../store/wikiStore";
 import {
   ContentSearchError,
@@ -26,12 +26,14 @@ function resultPath(hit: SearchHit): string {
 
 function resultLabel(hit: SearchHit): string {
   if (hit.docType === "ATTACHMENT") return "첨부파일";
-  return hit.pageType === "FOLDER" ? "폴더" : "페이지";
+  if (hit.pageType === "FOLDER") return "폴더";
+  return hit.pageType === "BLOG" ? "블로그" : "페이지";
 }
 
 function resultIcon(hit: SearchHit) {
   if (hit.docType === "ATTACHMENT") return <Paperclip size={18} aria-hidden="true" />;
   if (hit.pageType === "FOLDER") return <Folder size={18} aria-hidden="true" />;
+  if (hit.pageType === "BLOG") return <Newspaper size={18} aria-hidden="true" />;
   return <FileText size={18} aria-hidden="true" />;
 }
 

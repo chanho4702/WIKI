@@ -7,6 +7,7 @@ import type {
   CollaborationDraftCommitOptions,
   Comment,
   DeletePageOptions,
+  BlogPost,
   NotificationList,
   NotificationPrefs,
   NotificationPrefsPatch,
@@ -302,6 +303,7 @@ export async function createPage(input: {
     type: input.type ?? "page",
     // 폴더는 게시 개념이 없다 — status를 넘겨도 무시하고 항상 게시 상태로 둔다.
     status: input.type === "folder" ? "published" : (input.status ?? "published"),
+    ...(input.type === "blog" ? { parentId: null } : {}),
     title,
     body: input.body ?? "",
     version: 1,
@@ -879,9 +881,37 @@ export async function listChildren(
 ): Promise<PageNode[]> {
   const data = load();
   return data.pages
-    .filter((p) => p.spaceId === spaceId && p.parentId === parentId && !p.archivedAt)
+    // 블로그 글(W24)은 부모가 없어도 트리가 아니다 — 백엔드 findChildren과 같은 제외
+    .filter((p) => p.spaceId === spaceId && p.parentId === parentId && !p.archivedAt && p.type !== "blog")
     .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))
     .map((p) => toNode(data, p));
+}
+
+/** 블로그(W24) — 최신 작성순. 발췌는 백엔드 BlogPostView.excerptOf와 같은 규칙(기호 걷어내고 200자). */
+export async function listBlogPosts(spaceId: string): Promise<BlogPost[]> {
+  return load().pages
+    .filter((p) => p.spaceId === spaceId && p.type === "blog" && !p.archivedAt)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
+    .map((p) => ({
+      id: p.id, title: p.title, status: p.status, icon: p.icon ?? null,
+      createdBy: p.createdBy, updatedBy: p.updatedBy, createdAt: p.createdAt, updatedAt: p.updatedAt,
+      excerpt: excerptOf(p.body),
+    }));
+}
+
+function excerptOf(markdown: string): string {
+  const text = markdown
+    .replace(/^\s*:{2,}[^\n]*$/gm, " ")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s{0,3}#{1,6}\s*/gm, "")
+    .replace(/^\s*[-*+]\s+\[[ xX]\]\s*/gm, "")
+    .replace(/^\s*[-*+>]\s+/gm, "")
+    .replace(/[*_`~|]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length <= 200 ? text : `${text.slice(0, 200).trim()}…`;
 }
 
 /** 루트→부모 순서(자기 자신 제외). 순환 데이터에서도 멈춘다. */
@@ -1768,7 +1798,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
           spaceKey: space.key,
           spaceName: space.name,
           pageId: null,
-          pageType: page.type === "folder" ? "FOLDER" : "PAGE",
+          pageType: page.type === "folder" ? "FOLDER" : page.type === "blog" ? "BLOG" : "PAGE",
           title: page.title,
           filename: null,
           highlights: [titleHighlight, bodyHighlight].filter((value): value is string => value !== null),

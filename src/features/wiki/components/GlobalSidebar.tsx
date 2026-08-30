@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Avatar, Dropdown, EmptyState, TextField, useToast } from "@chanho/react";
-import { Archive, ChevronRight, Clock, ListChecks, UserRound, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
+import { Archive, ChevronRight, Clock, ListChecks, UserRound, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Newspaper, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
 import type { PageNode, Space } from "../store/types";
 import type { SpaceTree } from "../lib/useSpaceTree";
 import { ensurePersonalSpace, listPagesByIds, listRecentPages, searchPageTitles } from "../store/wikiStore";
@@ -51,7 +51,7 @@ export interface GlobalSidebarProps {
  * 추천·스페이스만 실제 라우트로 이동하고 최근·별표·앱은 자리표시 항목이다.
  */
 /** 이모지가 있으면 그것을, 없으면 타입 아이콘을 — 트리와 같은 규칙이다. */
-function iconFor(icon: string | null | undefined, type: "page" | "folder") {
+function iconFor(icon: string | null | undefined, type: "page" | "folder" | "blog") {
   if (icon) {
     return (
       <span className="page-tree-emoji" aria-hidden="true">
@@ -443,6 +443,11 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
                     onSelect: () => navigate(`/spaces/${space.id}/settings`),
                   },
                   {
+                    label: "블로그",
+                    icon: <Newspaper size={16} aria-hidden="true" />,
+                    onSelect: () => navigate(`/spaces/${space.id}/blog`),
+                  },
+                  {
                     label: "라벨",
                     icon: <Tag size={16} aria-hidden="true" />,
                     onSelect: () => navigate(`/spaces/${space.id}/labels`),
@@ -551,6 +556,11 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
             </section>
             {/* 라벨·휴지통은 자주 쓰는 탐색이라 사이드바에 남긴다 — 설정은 이름 옆 "…" 메뉴로
               * 옮겼다(진입점이 둘이면 어디가 정본인지 알 수 없다). */}
+            {/* 블로그(W24)는 트리에 없어서 이 링크가 유일한 입구다 */}
+            <NavLink to={`/spaces/${space.id}/blog`} className={navClass}>
+              <Newspaper className="global-nav-icon" size={16} aria-hidden="true" />
+              <span>블로그</span>
+            </NavLink>
             <NavLink to={`/spaces/${space.id}/labels`} className={navClass}>
               <Tag className="global-nav-icon" size={16} aria-hidden="true" />
               <span>라벨</span>
