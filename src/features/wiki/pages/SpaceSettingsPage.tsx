@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router";
-import { Button, ConfirmDialog, EmptyState, Tabs, TextField, useToast } from "@chanho/react";
+import { Button, ConfirmDialog, EmptyState, TextField, useToast } from "@chanho/react";
 import { Trash2 } from "lucide-react";
 import type { SpaceGrant, Team, User } from "../store/types";
 import {
@@ -15,6 +15,22 @@ import {
 import type { WikiOutletContext } from "../components/wikiContext";
 import { TemplateSettings } from "../components/TemplateSettings";
 import { displayUserName } from "../lib/userName";
+
+/** 설정 섹션 — 사이드바 항목과 URL 조각이 같은 목록에서 나온다. */
+export const SETTINGS_SECTIONS = ["general", "permissions", "templates", "danger"] as const;
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+export const SECTION_LABEL: Record<SettingsSection, string> = {
+  general: "일반",
+  permissions: "권한",
+  templates: "템플릿",
+  danger: "스페이스 삭제",
+};
+
+/** URL 조각은 사용자가 손댈 수 있다 — 모르는 값이면 조용히 첫 섹션으로 돌린다. */
+function normalizedSection(raw: string | undefined): SettingsSection {
+  return SETTINGS_SECTIONS.includes(raw as SettingsSection) ? (raw as SettingsSection) : "general";
+}
 
 const ROLE_LABEL: Record<SpaceGrant["role"], string> = {
   viewer: "보기",
@@ -33,7 +49,8 @@ const ROLE_LABEL: Record<SpaceGrant["role"], string> = {
  * "권한이 없는 건지 아무도 없는 건지"를 구분할 수 없다.
  */
 export function SpaceSettingsPage() {
-  const { spaceId } = useParams();
+  const params = useParams();
+  const spaceId = params.spaceId;
   const navigate = useNavigate();
   const toast = useToast();
   const { space, reloadPages } = useOutletContext<WikiOutletContext>();
@@ -133,23 +150,20 @@ export function SpaceSettingsPage() {
 
   const candidates = subjectType === "team" ? teams : users;
 
+  /** 어떤 섹션을 그릴지는 URL이 정한다 — 설정 화면을 그대로 공유·북마크할 수 있어야 한다. */
+  const section = normalizedSection(params.section);
+
   return (
     <div className="space-settings">
       <header>
-        <h1 className="space-settings-title">스페이스 설정</h1>
+        <h1 className="space-settings-title">{SECTION_LABEL[section]}</h1>
         <p className="space-settings-desc">
           {space.name} ({space.key})
         </p>
       </header>
 
-      <Tabs
-        label="스페이스 설정"
-        items={[
-          {
-            value: "general",
-            label: "일반",
-            content: (
-              <div className="space-settings-form">
+      {section === "general" ? (
+        <div className="space-settings-form">
                 <TextField
                   label="이름"
                   value={name}
@@ -165,13 +179,8 @@ export function SpaceSettingsPage() {
                   저장
                 </Button>
               </div>
-            ),
-          },
-          {
-            value: "permissions",
-            label: "권한",
-            content: (
-              <div className="space-settings-form">
+      ) : section === "permissions" ? (
+        <div className="space-settings-form">
                 {grantError ? (
                   <EmptyState
                     title="권한을 볼 수 없습니다"
@@ -264,18 +273,10 @@ export function SpaceSettingsPage() {
                   </>
                 )}
               </div>
-            ),
-          },
-          {
-            value: "templates",
-            label: "템플릿",
-            content: <TemplateSettings spaceId={space.id} />,
-          },
-          {
-            value: "danger",
-            label: "삭제",
-            content: (
-              <div className="space-settings-form">
+      ) : section === "templates" ? (
+        <TemplateSettings spaceId={space.id} />
+      ) : (
+        <div className="space-settings-form">
                 <p className="space-settings-warning">
                   이 스페이스의 모든 문서와 이력, 첨부파일이 함께 사라집니다. 되돌릴 수 없습니다.
                 </p>
@@ -284,10 +285,7 @@ export function SpaceSettingsPage() {
                   스페이스 삭제
                 </Button>
               </div>
-            ),
-          },
-        ]}
-      />
+      )}
 
       <ConfirmDialog
         open={confirmDelete}

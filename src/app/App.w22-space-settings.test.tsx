@@ -18,12 +18,14 @@ beforeEach(() => {
  * 한번 만든 스페이스는 이름도 못 고치고 지울 수도 없었다.
  */
 describe("W22 스페이스 설정", () => {
-  it("사이드바에서 설정으로 들어가 이름을 바꾼다", async () => {
+  /** 설정 진입점은 스페이스 이름 옆 "…" 하나다 — 둘이면 어디가 정본인지 알 수 없다. */
+  it("스페이스 이름 옆 메뉴에서 설정으로 들어가 이름을 바꾼다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1");
     await screen.findByRole("navigation", { name: "페이지 트리" });
 
-    await user.click(screen.getByRole("link", { name: "스페이스 설정" }));
+    await user.click(screen.getByRole("button", { name: /스페이스 메뉴/ }));
+    await user.click(await screen.findByRole("menuitem", { name: "스페이스 설정" }));
     const nameField = await screen.findByLabelText("이름");
     await user.clear(nameField);
     await user.type(nameField, "개발 위키 2팀");
@@ -37,9 +39,9 @@ describe("W22 스페이스 설정", () => {
   it("권한 탭에서 사용자를 추가하고 회수한다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/settings");
-    await screen.findByRole("heading", { level: 1, name: "스페이스 설정" });
+    await screen.findByRole("heading", { level: 1, name: "일반" });
 
-    await user.click(screen.getByRole("tab", { name: "권한" }));
+    await user.click(screen.getByRole("link", { name: "권한" }));
     expect(await screen.findByRole("heading", { name: "지정된 권한이 없습니다" })).toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText("대상"), "u2");
@@ -59,8 +61,8 @@ describe("W22 스페이스 설정", () => {
   it("같은 대상을 두 번 추가하면 거부한다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/settings");
-    await screen.findByRole("heading", { level: 1, name: "스페이스 설정" });
-    await user.click(screen.getByRole("tab", { name: "권한" }));
+    await screen.findByRole("heading", { level: 1, name: "일반" });
+    await user.click(screen.getByRole("link", { name: "권한" }));
 
     await user.selectOptions(await screen.findByLabelText("대상"), "u2");
     await user.click(screen.getByRole("button", { name: "추가" }));
@@ -73,13 +75,36 @@ describe("W22 스페이스 설정", () => {
     expect(await listSpaceGrants("sp1")).toHaveLength(1);
   });
 
+  it("섹션이 URL에 남아 공유·뒤로가기에서 유지된다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/settings");
+    await screen.findByRole("heading", { level: 1, name: "일반" });
+
+    await user.click(screen.getByRole("link", { name: "템플릿" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/settings/templates");
+    });
+    expect(await screen.findByRole("heading", { level: 1, name: "템플릿" })).toBeInTheDocument();
+  });
+
+  it("설정 화면에는 페이지 트리 대신 설정 사이드바가 뜬다", async () => {
+    renderApp("/spaces/sp1/settings");
+    await screen.findByRole("heading", { level: 1, name: "일반" });
+
+    expect(screen.getByRole("navigation", { name: "스페이스 설정" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "페이지 트리" })).not.toBeInTheDocument();
+    // 설정 사이드바에는 트리가 없다 — 돌아가는 길이 없으면 브라우저 뒤로가기밖에 남지 않는다
+    expect(screen.getByRole("link", { name: /돌아가기/ })).toBeInTheDocument();
+  });
+
   /** 되돌릴 수 없는 동작이라 확인을 한 번 받는다. */
   it("삭제는 확인 후에만 실행되고 스페이스 목록으로 나간다", async () => {
     const user = userEvent.setup();
     renderApp("/spaces/sp1/settings");
-    await screen.findByRole("heading", { level: 1, name: "스페이스 설정" });
+    await screen.findByRole("heading", { level: 1, name: "일반" });
 
-    await user.click(screen.getByRole("tab", { name: "삭제" }));
+    await user.click(screen.getByRole("link", { name: "스페이스 삭제" }));
     await user.click(await screen.findByRole("button", { name: /스페이스 삭제/ }));
 
     const dialog = await screen.findByRole("dialog", { name: "스페이스를 삭제할까요?" });

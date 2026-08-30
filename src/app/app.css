@@ -5334,3 +5334,65 @@ body.is-column-reordering {
   display: flex;
   gap: var(--chanho-space-100);
 }
+
+/* ── 스페이스 메뉴·설정 화면(W23) ────────────────────────── */
+/*
+ * "…"은 이름에 마우스를 올렸을 때만 보인다 — 항상 떠 있으면 스페이스 이름 옆이 늘 시끄럽다.
+ * 다만 키보드 포커스에는 반드시 나타나야 한다(보이지 않는 버튼에는 도달할 수 없다).
+ */
+.space-switcher-more {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--chanho-radius-small, 4px);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.space-switcher:hover .space-switcher-more,
+.space-switcher-more:focus-visible,
+.space-switcher-more[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.space-switcher-more:hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+
+.space-settings-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+  padding: var(--chanho-space-200) 0;
+}
+
+.space-settings-back {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  margin: 0 var(--chanho-space-200);
+  padding: var(--chanho-space-100);
+  border-radius: var(--chanho-radius-small, 4px);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.space-settings-back:hover {
+  background: var(--chanho-color-background-neutral-subtle-hovered, #f1f2f4);
+}
+
+.space-settings-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}

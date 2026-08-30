@@ -110,8 +110,12 @@ export function App() {
           {/* 라벨 탐색 — 트리로는 못 찾는 가로 분류(컨플루언스 "라벨로 찾아보기") */}
           <Route path="labels" element={<LabelsPage />} />
           <Route path="labels/:name" element={<LabelsPage />} />
-          {/* 스페이스 설정 — 이름·설명, 권한(org grant), 삭제 */}
+          {/*
+            스페이스 설정 — 전용 사이드바를 가진 별도 화면(W23). 어느 설정을 보고 있는지가
+            URL에 남아야 공유·북마크·뒤로가기가 성립한다.
+          */}
           <Route path="settings" element={<SpaceSettingsPage />} />
+          <Route path="settings/:section" element={<SpaceSettingsPage />} />
         </Route>
         {/* "/" 포함 그 외 전부 → 첫 스페이스 (index는 스페이스 개요를 보여준다) */}
         <Route path="*" element={<Navigate to={`/spaces/${spaces[0].id}`} replace />} />

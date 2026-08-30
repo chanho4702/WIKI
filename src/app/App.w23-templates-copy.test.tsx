@@ -89,10 +89,9 @@ describe("W23 페이지 템플릿 — 스토어 계약", () => {
 describe("W23 화면", () => {
   it("스페이스 설정에서 템플릿을 만들면 목록에 나타난다", async () => {
     const user = userEvent.setup();
-    renderApp("/spaces/sp1/settings");
-    await screen.findByRole("heading", { level: 1, name: "스페이스 설정" });
+    renderApp("/spaces/sp1/settings/templates");
+    await screen.findByRole("heading", { level: 1, name: "템플릿" });
 
-    await user.click(screen.getByRole("tab", { name: "템플릿" }));
     await user.click(await screen.findByRole("button", { name: /템플릿 만들기/ }));
     await user.type(screen.getByLabelText("이름"), "회의록");
     await user.type(screen.getByLabelText("본문 (마크다운)"), "## 참석자");

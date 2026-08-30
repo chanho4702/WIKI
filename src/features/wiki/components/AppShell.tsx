@@ -4,6 +4,7 @@ import { Button } from "@chanho/react";
 import { FolderPlus, MapPin, Plus } from "lucide-react";
 import type { Space } from "../store/types";
 import { GlobalSidebar } from "./GlobalSidebar";
+import { SpaceSettingsSidebar } from "./SpaceSettingsSidebar";
 import { SpaceCreateModal } from "./SpaceCreateModal";
 import { WikiTopBar } from "./WikiTopBar";
 import type { WikiOutletContext } from "./wikiContext";
@@ -39,6 +40,8 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
 
   // spaceId가 있는 라우트(/spaces/:spaceId/*)에서만 현재 스페이스를 특정한다. 홈·디렉토리는 null.
   const space = spaceId ? spaces.find((s) => s.id === spaceId) ?? null : null;
+  const inSettings =
+    spaceId !== undefined && pathname.startsWith(`/spaces/${spaceId}/settings`);
   const currentId = space?.id ?? null;
 
   /**
@@ -160,7 +163,10 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
         create={createControl}
       />
       <div className="wiki-body">
-        {collapsed ? null : (
+        {collapsed ? null : inSettings && space ? (
+          /* 설정은 페이지 트리와 함께 볼 이유가 없는 별도 화면이다 — 사이드바째 바꾼다 */
+          <SpaceSettingsSidebar space={space} />
+        ) : (
           <GlobalSidebar
             spaces={spaces}
             space={space}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
-import { Avatar, EmptyState, TextField } from "@chanho/react";
-import { ChevronRight, Clock, Compass, FileText, Folder, Grid3x3, House, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
+import { Avatar, Dropdown, EmptyState, TextField } from "@chanho/react";
+import { ChevronRight, Clock, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
 import type { PageNode, Space } from "../store/types";
 import type { SpaceTree } from "../lib/useSpaceTree";
 import { listPagesByIds, searchPageTitles } from "../store/wikiStore";
@@ -356,6 +356,39 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
               >
                 {space.name} ({space.key})
               </button>
+              {/*
+                이름에 마우스를 올리면 나타나는 "…" — 스페이스 단위 동작이 사는 자리다.
+                이름 버튼 자체는 스페이스 전환이라, 설정을 같은 버튼에 얹을 수 없다.
+              */}
+              <Dropdown
+                trigger={
+                  <button
+                    type="button"
+                    className="space-switcher-more"
+                    aria-label={`${space.name} 스페이스 메뉴`}
+                    title="스페이스 메뉴"
+                  >
+                    <MoreHorizontal size={16} aria-hidden="true" />
+                  </button>
+                }
+                items={[
+                  {
+                    label: "스페이스 설정",
+                    icon: <Settings size={16} aria-hidden="true" />,
+                    onSelect: () => navigate(`/spaces/${space.id}/settings`),
+                  },
+                  {
+                    label: "라벨",
+                    icon: <Tag size={16} aria-hidden="true" />,
+                    onSelect: () => navigate(`/spaces/${space.id}/labels`),
+                  },
+                  {
+                    label: "휴지통",
+                    icon: <Trash2 size={16} aria-hidden="true" />,
+                    onSelect: () => navigate(`/spaces/${space.id}/trash`),
+                  },
+                ]}
+              />
               {spaceFlyoutOpen && (
                 <SpaceFlyout
                   spaces={spaces}
@@ -446,8 +479,8 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
                 />
               )}
             </section>
-            {/* 컨플루언스 스페이스 사이드바 하단의 설정 자리 — 지금은 휴지통만 산다.
-              * 스페이스 설정 화면이 생기면 이 자리에 함께 묶는다. */}
+            {/* 라벨·휴지통은 자주 쓰는 탐색이라 사이드바에 남긴다 — 설정은 이름 옆 "…" 메뉴로
+              * 옮겼다(진입점이 둘이면 어디가 정본인지 알 수 없다). */}
             <NavLink to={`/spaces/${space.id}/labels`} className={navClass}>
               <Tag className="global-nav-icon" size={16} aria-hidden="true" />
               <span>라벨</span>
@@ -455,10 +488,6 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace 
             <NavLink to={`/spaces/${space.id}/trash`} className={navClass}>
               <Trash2 className="global-nav-icon" size={16} aria-hidden="true" />
               <span>휴지통</span>
-            </NavLink>
-            <NavLink to={`/spaces/${space.id}/settings`} className={navClass}>
-              <Settings className="global-nav-icon" size={16} aria-hidden="true" />
-              <span>스페이스 설정</span>
             </NavLink>
           </div>
         </>
