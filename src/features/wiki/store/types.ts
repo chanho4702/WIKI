@@ -429,6 +429,27 @@ export interface Notification {
   note?: string | null;
 }
 
+/**
+ * 알림 설정(W23) — 이메일 채널. 알림함은 항상 켜져 있고, 여기서는 "어떤 알림을 메일로도 받을지"만
+ * 정한다. emailConfigured가 false면(서버에 발송 구성이 없음) 스위치는 저장되지만 아무것도 가지
+ * 않는다 — 화면이 그 사실을 먼저 말해야 한다.
+ */
+export interface NotificationPrefs {
+  emailConfigured: boolean;
+  /** 서버가 토큰에서 스냅샷한 수신 주소. 아직 모르면 null. */
+  email: string | null;
+  emailEnabled: boolean;
+  mentioned: boolean;
+  pageUpdated: boolean;
+  comment: boolean;
+  shared: boolean;
+}
+
+export type NotificationPrefsPatch = Pick<
+  NotificationPrefs,
+  "emailEnabled" | "mentioned" | "pageUpdated" | "comment" | "shared"
+>;
+
 export interface NotificationList {
   unreadCount: number;
   items: Notification[];
@@ -505,6 +526,8 @@ export interface WikiData {
   comments: Comment[];
   /** 알림 — 목업 전용 저장(백엔드 모드는 V11 notification 테이블). 없던 저장분 호환 optional. */
   notifications?: Notification[];
+  /** 알림 설정(W23) — 목업 저장. 키 = userId. */
+  notificationPrefs?: Record<string, NotificationPrefsPatch>;
   /** 페이지 제한(W18) — 목업 저장. 키 = pageId. 없던 저장분 호환 optional. */
   restrictions?: Record<string, { view: RestrictionPrincipal[]; edit: RestrictionPrincipal[] }>;
   /**

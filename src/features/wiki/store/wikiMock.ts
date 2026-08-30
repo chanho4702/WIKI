@@ -8,6 +8,8 @@ import type {
   Comment,
   DeletePageOptions,
   NotificationList,
+  NotificationPrefs,
+  NotificationPrefsPatch,
   NotificationType,
   PageRestrictions,
   RestrictionPrincipal,
@@ -594,6 +596,28 @@ export async function listNotifications(): Promise<NotificationList> {
     unreadCount: rows.filter((n) => !n.read).length,
     items: rows.map((n) => ({ ...n })),
   };
+}
+
+/* ── 알림 설정(W23) — 목업은 발송 구성이 없다(emailConfigured=false). 스위치만 저장한다. */
+
+const DEFAULT_PREFS: NotificationPrefsPatch = {
+  emailEnabled: true, mentioned: true, pageUpdated: true, comment: true, shared: true,
+};
+
+function prefsView(data: WikiData): NotificationPrefs {
+  const saved = data.notificationPrefs?.[CURRENT_USER_ID] ?? DEFAULT_PREFS;
+  return { ...saved, emailConfigured: false, email: null };
+}
+
+export async function getNotificationPrefs(): Promise<NotificationPrefs> {
+  return prefsView(load());
+}
+
+export async function updateNotificationPrefs(patch: NotificationPrefsPatch): Promise<NotificationPrefs> {
+  const data = load();
+  (data.notificationPrefs ??= {})[CURRENT_USER_ID] = { ...patch };
+  persist();
+  return prefsView(data);
 }
 
 /** ids가 비면 전체 읽음. */

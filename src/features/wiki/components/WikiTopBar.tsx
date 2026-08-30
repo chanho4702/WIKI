@@ -133,6 +133,7 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
               }
               items={[
                 { label: authUser?.name ?? authUser?.email ?? me.name, onSelect: () => {} },
+                { label: "알림 설정", onSelect: () => navigate("/settings/notifications") },
                 ...(authUser ? [{ label: "로그아웃", onSelect: () => void logout() }] : []),
               ]}
             />

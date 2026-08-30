@@ -12,6 +12,7 @@ import { PageViewPage } from "../features/wiki/pages/PageViewPage";
 import { FolderPage } from "../features/wiki/pages/FolderPage";
 import { SearchPage } from "../features/wiki/pages/SearchPage";
 import { TasksPage } from "../features/wiki/pages/TasksPage";
+import { NotificationSettingsPage } from "../features/wiki/pages/NotificationSettingsPage";
 import { SearchAdminPage } from "../features/wiki/pages/SearchAdminPage";
 import { TeamsAdminPage } from "../features/wiki/pages/TeamsAdminPage";
 import { TrashPage } from "../features/wiki/pages/TrashPage";
@@ -88,6 +89,8 @@ export function App() {
         <Route path="/search" element={<SearchPage />} />
         {/* 내 작업(W23) — 담당자가 나인 체크박스 항목을 문서를 가로질러 모은다 */}
         <Route path="/tasks" element={<TasksPage />} />
+        {/* 알림 설정(W23) — 이메일 채널 스위치. 사용자 메뉴·알림함 하단에서 온다 */}
+        <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
         {/* 검색 색인 관리 — 전역 관리자 전용. 아니면 화면이 스스로 "권한 없음"을 보여준다 */}
         <Route path="/admin/search" element={<SearchAdminPage />} />
         {/* 팀 관리 — 전역 관리자 전용(서버가 판정). 스페이스 권한 부여에 쓰는 팀을 여기서 만든다 */}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Button } from "@chanho/react";
 import { AtSign, Bell, FileText, MessageSquare, Share2 } from "lucide-react";
 import type { NotificationList, NotificationType, User } from "../store/types";
@@ -119,6 +119,12 @@ export function NotificationBell() {
               })}
             </ul>
           )}
+          {/* 설정으로 가는 길은 알림함 안에 있어야 한다 — "이거 어떻게 끄지"가 생기는 자리가 여기다 */}
+          <div className="notification-popover-foot">
+            <Link to="/settings/notifications" onClick={() => setOpen(false)}>
+              알림 설정
+            </Link>
+          </div>
         </div>
       ) : null}
     </div>

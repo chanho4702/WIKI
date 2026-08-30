@@ -15,6 +15,8 @@ import {
   type CollaborationTicket,
   type DeletePageOptions,
   type NotificationList,
+  type NotificationPrefs,
+  type NotificationPrefsPatch,
   type NotificationType,
   type PageRestrictions,
   type RestrictionPrincipal,
@@ -313,6 +315,21 @@ export async function addSpaceGrant(
 
 export async function removeSpaceGrant(grantId: string): Promise<void> {
   await json(await sharedApiFetch(`/api/org/grants/${grantId}`, { method: "DELETE" }));
+}
+
+/** 알림 설정(W23) — 이메일 채널 스위치. 주소는 서버가 토큰에서 스냅샷한다(V29). */
+export async function getNotificationPrefs(): Promise<NotificationPrefs> {
+  return json<NotificationPrefs>(await sharedApiFetch("/api/wiki/notifications/prefs"));
+}
+
+export async function updateNotificationPrefs(patch: NotificationPrefsPatch): Promise<NotificationPrefs> {
+  return json<NotificationPrefs>(
+    await sharedApiFetch("/api/wiki/notifications/prefs", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }),
+  );
 }
 
 /** 알림 — 백엔드 V11 계약. 타입은 서버 enum(MENTIONED…)을 프론트 소문자로 매핑한다. */
