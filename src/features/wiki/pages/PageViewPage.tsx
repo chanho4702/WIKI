@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useLocation } from "react-router";
 import { Avatar, Banner, Button, Dropdown, Lozenge, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import { applyOverflowTitle } from "../components/TruncatedText";
 import { Archive, BadgeCheck, Download, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock, UserCog } from "lucide-react";
 import type { DeletePageOptions, Page, PageNode, PageRestrictions, User } from "../store/types";
 import {
@@ -304,6 +306,19 @@ export function PageViewPage() {
     return <Navigate to={`/spaces/${page.spaceId}/pages/${page.id}`} replace />;
   }
 
+  /**
+   * 브레드크럼 크럼에 넘칠 때만 title을 붙인다 — DS PageHeader는 label을 문자열로만 받아
+   * 우리가 요소로 감쌀 수 없다. 그래서 헤더에 한 번 위임해 두고 렌더된 크럼을 직접 손댄다.
+   */
+  const handleCrumbHover = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const crumb = (event.target as HTMLElement).closest<HTMLElement>(
+      'nav > ol > li > a, nav > ol > li > [aria-current="page"]',
+    );
+    if (crumb && event.currentTarget.contains(crumb)) {
+      applyOverflowTitle(crumb, crumb.textContent ?? "");
+    }
+  };
+
   // 경로: 스페이스 → 조상들 → 현재 페이지(href 없음 = 현재 위치)
   const breadcrumbs: BreadcrumbItem[] = [
     { label: space.name, href: `/spaces/${space.id}` },
@@ -340,6 +355,7 @@ export function PageViewPage() {
     <article className={`page-view${width === "full" ? " page-view--full" : ""}`}>
       <PageHeader
         className="page-view-header"
+        onMouseOver={handleCrumbHover}
         breadcrumbs={breadcrumbs}
         title={page.icon ? `${page.icon} ${page.title}` : page.title}
         actions={

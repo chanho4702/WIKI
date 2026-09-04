@@ -19,6 +19,7 @@ import { DRAFT_TITLE } from "../lib/useCreateContent";
 import { EditConflictPanel } from "../components/EditConflictPanel";
 import { PageConflictError, type Page, type User } from "../store/types";
 import { SkeletonLines } from "../components/WikiSkeleton";
+import { TruncatedText } from "../components/TruncatedText";
 import { CollaborationStatus } from "../editor/components/CollaborationStatus";
 import {
   COLLABORATION_ENABLED,
@@ -366,7 +367,7 @@ export function PageEditPage() {
     <div className={`page-edit${width === "full" ? " page-edit--full" : ""}`}>
       {/* W6: 컨플식 편집 크롬 — 최상단 고정 바. 좌측은 title state를 비편집으로 미리보기만 한다. */}
       <div className="edit-chrome">
-        <span className="edit-chrome-title">{title.trim() ? title : "제목 없음"}</span>
+        <TruncatedText className="edit-chrome-title" text={title.trim() ? title : "제목 없음"} />
         {/* 캡처(07-26-편집구조_레이아웃.png)의 "저장됨" 자리 — 저장 여부를 항상 보이게 한다.
           * 이 앱은 자동 저장이 아니라 명시적 저장이므로 "저장 중"이 아니라 "저장되지 않은 변경"이
           * 기본 경고 문구다(사용자가 직접 눌러야 저장된다는 사실을 숨기지 않는다). */}

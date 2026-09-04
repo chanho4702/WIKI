@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@chanho/react";
 import { Star } from "lucide-react";
 import type { Space } from "../store/types";
+import { overflowTitleProps } from "./TruncatedText";
 import { useStarredSpaces } from "../lib/starredSpaces";
 import { useReadOnly } from "../lib/readOnly";
 
@@ -62,6 +63,7 @@ export function SpaceFlyout({ spaces, currentSpaceId, onNavigate, onCreateClick 
           tabIndex={-1}
           className="space-flyout-item-name"
           onClick={() => onNavigate(space.id)}
+          {...overflowTitleProps(`${space.name} (${space.key})`)}
         >
           {space.name} ({space.key})
         </button>

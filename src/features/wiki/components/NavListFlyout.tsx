@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { TruncatedText } from "./TruncatedText";
 
 export interface NavListFlyoutItem {
   key: string;
@@ -65,7 +66,7 @@ export function NavListFlyout({
                 onClick={() => onNavigate(item.path)}
               >
                 {item.icon}
-                <span>{item.label}</span>
+                <TruncatedText text={item.label} />
                 {item.meta ? <span className="nav-list-flyout-meta">{item.meta}</span> : null}
               </button>
             </li>

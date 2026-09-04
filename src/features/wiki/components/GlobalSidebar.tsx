@@ -11,6 +11,7 @@ import { TreeSkeleton } from "./WikiSkeleton";
 import { useCreateContent } from "../lib/useCreateContent";
 import { CreateContentMenu } from "./CreateContentMenu";
 import { SidebarResizer } from "./SidebarResizer";
+import { TruncatedText, overflowTitleProps } from "./TruncatedText";
 import { SpaceFlyout } from "./SpaceFlyout";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
 import { useStarredSpaces } from "../lib/starredSpaces";
@@ -432,6 +433,7 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
                 aria-expanded={spaceFlyoutOpen}
                 aria-label={`스페이스 전환: ${space.name}`}
                 onClick={() => setSpaceFlyoutOpen((prev) => !prev)}
+                {...overflowTitleProps(`${space.name} (${space.key})`)}
               >
                 {space.name} ({space.key})
               </button>
@@ -633,9 +635,10 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
                     >
                       {/* 스페이스 색 아이콘 선행 — 장식이라 접근 이름은 텍스트만(aria-hidden) */}
                       <Avatar name={s.name} color="auto" size="small" aria-hidden="true" />
-                      <span className="wiki-sidebar-starred-name">
-                        {s.name} ({s.key})
-                      </span>
+                      <TruncatedText
+                        className="wiki-sidebar-starred-name"
+                        text={`${s.name} (${s.key})`}
+                      />
                     </button>
                   </li>
                 ))}

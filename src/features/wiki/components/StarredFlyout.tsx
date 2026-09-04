@@ -3,6 +3,7 @@ import { Compass, FileText, Folder } from "lucide-react";
 import type { Space } from "../store/types";
 import type { StarredPageEntry } from "../lib/starredPages";
 import { contentPathIn } from "../lib/contentPath";
+import { TruncatedText } from "./TruncatedText";
 
 export interface StarredFlyoutProps {
   /** 전체 스페이스 — 별표된 것만 이 컴포넌트가 걸러낸다. */
@@ -72,9 +73,7 @@ export function StarredFlyout({ spaces, starredSpaceIds, starredPages, onNavigat
                       onClick={() => onNavigate(`/spaces/${s.id}`)}
                     >
                       <Compass size={14} aria-hidden="true" />
-                      <span>
-                        {s.name} ({s.key})
-                      </span>
+                      <TruncatedText text={`${s.name} (${s.key})`} />
                     </button>
                   </li>
                 ))}
@@ -105,7 +104,7 @@ export function StarredFlyout({ spaces, starredSpaceIds, starredPages, onNavigat
                       ) : (
                         <FileText size={14} aria-hidden="true" />
                       )}
-                      <span>{p.title}</span>
+                      <TruncatedText text={p.title} />
                     </button>
                   </li>
                 ))}

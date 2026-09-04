@@ -27,6 +27,7 @@ import {
 } from "./pageTreeDnd";
 import { CreateContentMenu } from "./CreateContentMenu";
 import { useStarredPages } from "../lib/starredPages";
+import { TruncatedText } from "./TruncatedText";
 import { useReadOnly } from "../lib/readOnly";
 
 export interface PageTreeProps {
@@ -469,7 +470,7 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
                 ) : (
                   <FileText className="page-tree-icon" size={16} aria-hidden="true" />
                 )}
-                <span className="page-tree-label">{page.title}</span>
+                <TruncatedText className="page-tree-label" text={page.title} />
                 {page.type === "folder" ? (
                   <span className="wiki-visually-hidden"> (폴더)</span>
                 ) : null}

@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import type { Space } from "../store/types";
 import { SECTION_DESC, SECTION_ICON, SECTION_LABEL, SECTION_SHORT, SETTINGS_SECTIONS } from "../pages/SpaceSettingsPage";
 import { SidebarResizer } from "./SidebarResizer";
+import { TruncatedText } from "./TruncatedText";
 import { useSidebarPrefs } from "../lib/sidebarPrefs";
 
 /**
@@ -42,7 +43,7 @@ export function SpaceSettingsSidebar({ space }: { space: Space }) {
         >
           {/* 아이콘은 아래 항목들과 같은 열에 온다 — 한 칸이라도 어긋나면 붙여 놓은 티가 난다 */}
           <ChevronLeft className="global-nav-icon" size={16} aria-hidden="true" />
-          <span className="space-settings-back-name">{space.name}</span>
+          <TruncatedText className="space-settings-back-name" text={space.name} />
         </NavLink>
       </div>
 

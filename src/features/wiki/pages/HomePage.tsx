@@ -10,6 +10,7 @@ import { useStarredSpaces } from "../lib/starredSpaces";
 import { contentPathIn } from "../lib/contentPath";
 import { usePersonName } from "../lib/userName";
 import { useReadOnly } from "../lib/readOnly";
+import { TruncatedText, overflowTitleProps } from "../components/TruncatedText";
 
 /** 홈 "최근 업데이트" 피드 길이 — 스페이스 개요(8)와 같은 기준, 전체 스페이스를 합친 뒤 자른다. */
 const RECENT_LIMIT = 8;
@@ -154,7 +155,7 @@ export function HomePage() {
                   onClick={() => navigate(`/spaces/${page.spaceId}/pages/${page.id}`)}
                 >
                   <FileText className="home-resume-icon" size={18} aria-hidden="true" />
-                  <span className="home-resume-title">{page.title}</span>
+                  <TruncatedText className="home-resume-title" text={page.title} />
                   <span className="home-resume-meta">
                     {space ? `${space.name} · ` : ""}방문 {relativeTime(visit.at)}
                   </span>
@@ -184,9 +185,15 @@ export function HomePage() {
                   aria-label={`${space.name} (${space.key})`}
                   onClick={() => navigate(`/spaces/${space.id}`)}
                 >
-                  <Avatar name={space.name} color="auto" size="medium" aria-hidden="true" />
+                  <Avatar
+                    className="home-space-card-avatar"
+                    name={space.name}
+                    color="auto"
+                    size="medium"
+                    aria-hidden="true"
+                  />
                   <span className="home-space-card-text">
-                    <span className="home-space-card-name">{space.name}</span>
+                    <TruncatedText className="home-space-card-name" text={space.name} />
                     <span className="home-space-card-key">{space.key}</span>
                   </span>
                   {starred.includes(space.id) ? (
@@ -221,7 +228,11 @@ export function HomePage() {
                     <FileText className="home-recent-icon" size={16} aria-hidden="true" />
                   )}
                   <span className="home-recent-text">
-                    <Link to={contentPathIn(space.id, page)} className="home-recent-link">
+                    <Link
+                      to={contentPathIn(space.id, page)}
+                      className="home-recent-link"
+                      {...overflowTitleProps(page.title)}
+                    >
                       {page.title}
                     </Link>
                     <span className="home-recent-meta">

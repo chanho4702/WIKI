@@ -8,6 +8,7 @@ import { listUsers } from "../store/wikiStore";
 import { useStarredSpaces } from "../lib/starredSpaces";
 import { usePersonName } from "../lib/userName";
 import { useReadOnly } from "../lib/readOnly";
+import { TruncatedText } from "../components/TruncatedText";
 
 export interface SpaceDirectoryPageProps {
   spaces: Space[];
@@ -63,7 +64,7 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
           onClick={() => navigate(`/spaces/${space.id}`)}
         >
           <Avatar name={space.name} color="auto" size="small" />
-          <span>{space.name}</span>
+          <TruncatedText text={space.name} />
         </button>
       ),
     },

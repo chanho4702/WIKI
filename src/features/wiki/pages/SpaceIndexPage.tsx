@@ -10,6 +10,7 @@ import { contentPathIn } from "../lib/contentPath";
 import { useCreateContent } from "../lib/useCreateContent";
 import { CreateContentMenu } from "../components/CreateContentMenu";
 import { SpaceWatchButton } from "../components/WatchButton";
+import { TruncatedText } from "../components/TruncatedText";
 import { useReadOnly } from "../lib/readOnly";
 
 /** 최근 업데이트 목록에 보여줄 최대 개수 — 캡처(특정 스페이스 페이지.png)의 5건 + "더 보기" 없이 고정. */
@@ -42,7 +43,7 @@ function ContentList({ nodes, spaceId }: ContentListProps) {
               ) : (
                 <FileText className="space-overview-tree-icon" size={16} aria-hidden="true" />
               )}
-              <span className="space-overview-tree-label">{node.title}</span>
+              <TruncatedText className="space-overview-tree-label" text={node.title} />
               {isFolder ? <span className="wiki-visually-hidden"> (폴더)</span> : null}
               {node.childCount > 0 ? (
                 // 색·아이콘만이 아니라 텍스트로도 하위가 있음을 전달한다(WCAG 1.4.1)
@@ -228,7 +229,7 @@ export function SpaceIndexPage() {
                   ) : (
                     <FileText size={16} aria-hidden="true" />
                   )}
-                  <span>{page.title}</span>
+                  <TruncatedText text={page.title} />
                   {page.type === "folder" ? (
                     <span className="wiki-visually-hidden"> (폴더)</span>
                   ) : null}
