@@ -100,3 +100,33 @@ dry-run/import는 잡 `mode`로 구분(기존). **start는 discover 뒤에만** 
 
 ## 3. 순서·경계
 백엔드와 프론트는 §1.3 계약으로 병렬. 프론트는 목업으로 먼저 완성하고 REST 어댑터는 계약대로. 실기 DC 실측(G5 ⚠️)은 M1 병합 뒤 별도 — 그때 P1 버전 범위를 확정한다.
+
+## 4. M2 — 첨부 본체·링크 재작성·페이지 제한·원본 정렬 (2026-09-05, M1 병합 뒤)
+
+M1에서 경고로만 남긴 것을 실제로 옮긴다. 기획 Should 항목(S2·S3·M-06).
+
+### 4.1 첨부 본체 (MEDIA_COPY)
+- 원본 목록은 스냅샷 `children.attachment.results[]`(id·title(파일명)·metadata.mediaType·extensions.fileSize·version.number). 내려받기 URL은 원본 `_links.download`를 **따라가지 않고** 고정 패턴 `{baseUrl}/download/attachments/{pageId}/{filename}?version={n}&api=v2`로 조합(SSRF 규칙 유지). 크기 상한 `platform.wiki.migration.dc.max-attachment-bytes`(기본 100MB) — 초과는 WARNING `ATTACHMENT_TOO_LARGE`로 건너뛴다.
+- MEDIA_COPY는 대상 페이지가 아직 없을 수 있다(RESOLVE 전). 그래서 **스테이징**: 바이트를 기존 `AttachmentStorage`(로컬/S3 라우터)에 `migration/{jobId}/{itemId}/{sha256}` 키로 저장하고, `migration_payload`에 kind `MEDIA_MANIFEST`(JSON: filename·contentType·size·checksum·storageKey·sourceVersion 배열)를 남긴다. V35: `migration_payload.kind` CHECK에 `MEDIA_MANIFEST` 추가. 같은 checksum이 이미 스테이징돼 있으면 재다운로드하지 않는다(재실행 멱등).
+- RESOLVE(import): 페이지 생성 뒤 manifest의 항목마다 **첨부 레코드**를 만든다 — `AttachmentService`가 MultipartFile만 받으면 내부용 `registerStored(userId, pageId, filename, contentType, size, checksum, storageKey)` 경로를 추가해 스테이징 객체를 **이동/참조**(재업로드 금지). 같은 파일명 재이관은 "같은 이름 재업로드 = 새 버전" 규칙(W23)을 그대로 타되 checksum이 같으면 건너뛴다.
+- 본문 참조 재작성: writer가 M1에 남긴 `attachment:{filename}`(이미지 `![alt](attachment:f)`·링크 `[f](attachment:f)`)를 첨부 레코드가 생긴 뒤 우리 위키가 쓰는 첨부 URL로 바꾼다 — **형식은 프론트 업로드 흐름이 본문에 쓰는 것과 동일해야 한다**(`attachment/AttachmentReferences.java`·wiki-front `lib/useResolvedWikiImage.ts`·`editor/components/UploadRail.tsx` 실측). 못 찾은 파일명은 그대로 두고 WARNING `ATTACHMENT_REF_UNRESOLVED`.
+- dry-run: 다운로드하지 않고 목록·크기 합계만 보고서에(`ATTACHMENT_PLANNED` INFO — 심각도 enum에 INFO가 없으면 WARNING 대신 보고서의 별도 카운트 `plannedAttachmentBytes`로).
+
+### 4.2 링크 재작성 (RESOLVE + 잡 마무리 pass)
+- 정규화기가 남기는 링크 종류: `pageLink`(제목 기반 → `[[제목]]`, M1 그대로), `link` 마크의 href가 원본 사이트 URL인 것(`/pages/viewpage.action?pageId=N`, `/display/{KEY}/{Title}`, `/spaces/{KEY}/pages/N/...`).
+- RESOLVE에서 href를 파싱해 pageId를 얻으면 object map으로 대상 페이지를 찾아 `/wiki/spaces/{sid}/pages/{pid}`(프론트 basename 포함 상대 경로)로 바꾼다. 아직 없으면 임시 스킴 `dc-page:{contentId}`로 쓴다(에디터 `Link.protocols`에 `dc-page` 추가 — wiki-front 한 줄).
+- **마무리 pass**: `MigrationWorkerService.finalizeJobIfDrained`가 DONE으로 넘길 때 `MigrationLinkFixupService.run(jobId)` — 이 잡의 object map 대상 페이지 본문에서 `dc-page:{id}`를 다시 해석해 치환(새 리비전, 변경 요약 "이관 링크 정리"), 끝내 못 찾은 것은 원본 절대 URL로 되돌리고 WARNING `LINK_UNRESOLVED`(sourcePath=`link:{contentId}`). 제목 기반 `[[제목]]`이 대상 스페이스에서 여러 문서에 걸리면 WARNING `LINK_AMBIGUOUS`.
+- 앵커(`#section`)는 우리 헤딩 slug 규칙(`rehype-slug`)과 같으면 유지, 아니면 앵커만 떼고 WARNING `ANCHOR_DROPPED`.
+
+### 4.3 페이지 제한 → V12
+- EXTRACT expand에 `restrictions.read.restrictions.user,restrictions.read.restrictions.group,restrictions.update.restrictions.user,restrictions.update.restrictions.group` 추가(DC 7.x/8.x 공통).
+- 매핑: user → 이메일/username으로 org-service 조회(있는 조회 API만 사용 — `GrpcPrincipalDirectory`·`TeamDirectory` 실측; 없으면 `PermissionClient`의 사용자 검색을 확인), group → 팀(team) 이름 일치. **미매핑은 fail-closed**(ADR-W14-07): 그 제한은 잡 요청자 단독 제한으로 넣고 ERROR `RESTRICTION_PRINCIPAL_UNMAPPED`(sourcePath=`user:{name}`/`group:{name}`) — 공개로 완화하지 않는다. 제한 자체가 없는 페이지는 아무것도 하지 않는다.
+- 적용은 `PageRestrictionService.replace`의 내부 경로(권한 검사·이벤트 없이)로, RESOLVE에서 페이지 생성 직후.
+
+### 4.4 원본 정렬 보존
+- discover가 부모마다 `GET /rest/api/content/{id}/child/page?limit=200&expand=version`(위치 순 반환)을 호출해 형제 순서를 `migration_item`에 기록(V35: `sibling_order INT NULL`). 루트는 `GET /rest/api/space/{key}/content/page?depth=root`. 호출 수는 부모 수만큼 — 상한 안에서 허용.
+- ImportedPageWriter의 `sortOrder`는 `sibling_order` 순(없으면 M1 규칙). 재이관 시 순서가 바뀌면 `movePage`가 아니라 sortOrder만 갱신.
+
+### 4.5 테스트·게이트
+FakeConfluenceDcServer에 첨부 다운로드·child/page·restrictions 엔드포인트 추가. 파이프라인 테스트: 첨부 2건(이미지+PDF, 하나는 크기 초과) → 첨부 레코드·본문 URL 재작성·재실행 멱등 / 링크 3종(먼저 이관된 문서·나중 문서·없는 문서) → fixup 결과 / 제한(매핑됨·미매핑 fail-closed) / 형제 순서. `./gradlew test` 전체 그린(JAVA_HOME=jdk-24). wiki-front는 `Link.protocols` 한 줄과 `migrationLabels.ts`의 새 코드 문구, 골든 갱신 시 사본 동기화.
+
