@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-docs/
 
 # 로컬 참고용 스크린샷(리포 루트) — 추적 제외
 /*.png

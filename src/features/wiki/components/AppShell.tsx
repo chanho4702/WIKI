@@ -15,6 +15,7 @@ import { useCreateContent } from "../lib/useCreateContent";
 import { useSpaceTree } from "../lib/useSpaceTree";
 import { CreateContentMenu } from "./CreateContentMenu";
 import { CreateContentDialog } from "./CreateContentDialog";
+import { useReadOnly } from "../lib/readOnly";
 
 export interface AppShellProps {
   spaces: Space[];
@@ -33,6 +34,7 @@ export interface AppShellProps {
  * 데이터를 공유해야 트리·본문이 어긋나지 않는다.
  */
 export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
+  const readOnly = useReadOnly();
   const { spaceId } = useParams();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -53,9 +55,11 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
   const [spaceModalOpen, setSpaceModalOpen] = useState(false);
 
   // 별표는 서버가 원장이다 — 앱이 뜰 때 한 번 맞춘다(W23). 실패해도 브라우저 사본으로 계속 돈다.
+  // 읽기 전용 인스턴스는 사용자 개념이 없어 별표 원장도 없다 — 요청 자체를 보내지 않는다.
   useEffect(() => {
+    if (readOnly) return;
     void syncStarsFromServer();
-  }, []);
+  }, [readOnly]);
 
   // 스페이스 목록이 로드/갱신될 때마다 별표 저장 배열에서 죽은 id를 정리한다(스페이스 삭제 등).
   useEffect(() => {
@@ -109,7 +113,8 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
   }
 
   // 헤더 "만들기" — 스페이스 안이면 페이지/폴더/새 스페이스 드롭다운, 밖(홈·디렉토리)이면 새 스페이스 버튼.
-  const createControl = space ? (
+  // 읽기 전용에서는 만들기 진입점 자체가 없다(undefined면 TopBar가 슬롯을 비운다).
+  const createControl = readOnly ? undefined : space ? (
     <CreateContentMenu
       trigger={
         <Button size="small" iconBefore={<Plus size={16} aria-hidden="true" />}>
@@ -188,26 +193,30 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
           <Outlet context={outletContext} />
         </main>
       </div>
-      <CreateContentDialog
-        open={createDialogType !== null}
-        onOpenChange={(open) => {
-          if (!open) setCreateDialogType(null);
-        }}
-        spaces={spaces}
-        defaultSpaceId={space?.id ?? null}
-        defaultType={createDialogType ?? "page"}
-        reloadPages={reloadPages}
-      />
-      {/* 스페이스 생성 모달 — 헤더 "만들기"와 스페이스 플라이아웃이 공유하는 단일 인스턴스 */}
-      <SpaceCreateModal
-        showTrigger={false}
-        open={spaceModalOpen}
-        onOpenChange={setSpaceModalOpen}
-        onCreated={async (created) => {
-          await onSpacesChanged();
-          navigate(`/spaces/${created.id}`);
-        }}
-      />
+      {readOnly ? null : (
+        <>
+          <CreateContentDialog
+            open={createDialogType !== null}
+            onOpenChange={(open) => {
+              if (!open) setCreateDialogType(null);
+            }}
+            spaces={spaces}
+            defaultSpaceId={space?.id ?? null}
+            defaultType={createDialogType ?? "page"}
+            reloadPages={reloadPages}
+          />
+          {/* 스페이스 생성 모달 — 헤더 "만들기"와 스페이스 플라이아웃이 공유하는 단일 인스턴스 */}
+          <SpaceCreateModal
+            showTrigger={false}
+            open={spaceModalOpen}
+            onOpenChange={setSpaceModalOpen}
+            onCreated={async (created) => {
+              await onSpacesChanged();
+              navigate(`/spaces/${created.id}`);
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }

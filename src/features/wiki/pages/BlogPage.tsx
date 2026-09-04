@@ -7,6 +7,7 @@ import { listBlogPosts, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { useCreateContent } from "../lib/useCreateContent";
 import { displayUserName } from "../lib/userName";
+import { useReadOnly } from "../lib/readOnly";
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -29,6 +30,7 @@ export function BlogPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { createContent, creating } = useCreateContent(space.id, reloadPages);
+  const readOnly = useReadOnly();
 
   useEffect(() => {
     let cancelled = false;
@@ -50,13 +52,15 @@ export function BlogPage() {
           <h1 className="space-settings-title">블로그</h1>
           <p className="space-settings-desc">{space.name}의 소식과 글 — 최근 글이 위에 옵니다.</p>
         </div>
-        <Button
-          iconBefore={<PenLine size={16} aria-hidden="true" />}
-          loading={creating}
-          onClick={() => void createContent("blog")}
-        >
-          글 쓰기
-        </Button>
+        {readOnly ? null : (
+          <Button
+            iconBefore={<PenLine size={16} aria-hidden="true" />}
+            loading={creating}
+            onClick={() => void createContent("blog")}
+          >
+            글 쓰기
+          </Button>
+        )}
       </header>
 
       {error ? <Banner variant="danger">{error}</Banner> : null}

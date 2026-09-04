@@ -9,7 +9,8 @@ export default defineConfig({
     css: true,
     // 로컬 .env(백엔드 모드)와 무관하게 테스트는 항상 목업 모드로 고정한다.
     // (Vite가 .env를 로드해 import.meta.env에 주입하므로, 여기서 명시적으로 비워 USE_BACKEND=false 보장.)
-    env: { VITE_API_BASE: "", VITE_API_PROXY: "" },
+    // 읽기 전용 플래그도 비운다 — 로컬 .env가 켜 두면 기존 통합 테스트가 통째로 흔들린다.
+    env: { VITE_API_BASE: "", VITE_API_PROXY: "", VITE_WIKI_READONLY: "" },
     // TipTap 에디터를 마운트하는 통합 테스트는 jsdom에서 단독 실행만으로도 3~4초가 걸린다.
     // 기본값 5초는 병렬 실행 부하가 겹치면 넘겨서, 로직과 무관하게 산발적으로 실패했다
     // (레이어 분할 노드가 스키마에 추가되며 경계를 넘음). 여유를 준다.

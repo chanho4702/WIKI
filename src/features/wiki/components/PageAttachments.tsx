@@ -13,6 +13,7 @@ import {
   restoreAttachmentVersion,
   uploadAttachment,
 } from "../store/wikiStore";
+import { useReadOnly } from "../lib/readOnly";
 
 /** 1.2 MB처럼 사람이 읽는 크기. */
 function formatSize(bytes: number): string {
@@ -36,6 +37,7 @@ function formatSize(bytes: number): string {
  * 본문이 참조 중인 파일을 지우면 이미지가 깨지므로, 지우기 전에 그 사실을 알린다.
  */
 export function PageAttachments({ pageId, body }: { pageId: string; body: string }) {
+  const readOnly = useReadOnly();
   const toast = useToast();
   const [items, setItems] = useState<Attachment[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -125,22 +127,27 @@ export function PageAttachments({ pageId, body }: { pageId: string; body: string
           <Paperclip size={16} aria-hidden="true" />
           첨부파일 {items.length > 0 ? `(${items.length})` : ""}
         </h2>
-        <Button
-          size="small"
-          variant="subtle"
-          disabled={busy}
-          onClick={() => fileInput.current?.click()}
-        >
-          파일 첨부
-        </Button>
-        <input
-          ref={fileInput}
-          type="file"
-          multiple
-          className="wiki-visually-hidden"
-          aria-label="첨부할 파일 선택"
-          onChange={(e) => void upload(e.target.files)}
-        />
+        {/* 읽기 전용에서는 내려받기만 남는다 — 업로드·삭제·되돌리기는 전부 쓰기다 */}
+        {readOnly ? null : (
+          <>
+            <Button
+              size="small"
+              variant="subtle"
+              disabled={busy}
+              onClick={() => fileInput.current?.click()}
+            >
+              파일 첨부
+            </Button>
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              className="wiki-visually-hidden"
+              aria-label="첨부할 파일 선택"
+              onChange={(e) => void upload(e.target.files)}
+            />
+          </>
+        )}
       </div>
       {items.length === 0 ? (
         <p className="page-attachments-empty">첨부된 파일이 없습니다.</p>
@@ -172,15 +179,17 @@ export function PageAttachments({ pageId, body }: { pageId: string; body: string
                   <History size={14} aria-hidden="true" />
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="page-attachments-remove"
-                aria-label={`${attachment.filename} 삭제`}
-                disabled={busy}
-                onClick={() => void remove(attachment)}
-              >
-                <Trash2 size={14} aria-hidden="true" />
-              </button>
+              {readOnly ? null : (
+                <button
+                  type="button"
+                  className="page-attachments-remove"
+                  aria-label={`${attachment.filename} 삭제`}
+                  disabled={busy}
+                  onClick={() => void remove(attachment)}
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                </button>
+              )}
 
               {openHistory === attachment.id ? (
                 versions === null ? (
@@ -206,15 +215,17 @@ export function PageAttachments({ pageId, body }: { pageId: string; body: string
                         {version.createdAt ? (
                           <span>{new Date(version.createdAt).toLocaleDateString("ko-KR")}</span>
                         ) : null}
-                        <Button
-                          size="small"
-                          variant="subtle"
-                          disabled={busy}
-                          iconBefore={<RotateCcw size={12} aria-hidden="true" />}
-                          onClick={() => void restore(attachment, version.version)}
-                        >
-                          되돌리기
-                        </Button>
+                        {readOnly ? null : (
+                          <Button
+                            size="small"
+                            variant="subtle"
+                            disabled={busy}
+                            iconBefore={<RotateCcw size={12} aria-hidden="true" />}
+                            onClick={() => void restore(attachment, version.version)}
+                          >
+                            되돌리기
+                          </Button>
+                        )}
                       </li>
                     ))}
                   </ul>

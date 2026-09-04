@@ -8,8 +8,10 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = env.VITE_API_PROXY;
 
   return {
-    // nginx 경로 기반 통합 배포: http://localhost/wiki/ 아래에서 서빙된다
-    base: "/wiki/",
+    // nginx 경로 기반 통합 배포: http://localhost/wiki/ 아래에서 서빙된다.
+    // 공개 문서 인스턴스는 `--mode docs`(.env.docs)로 /docs/ 아래에 같은 앱을 올린다 — BrowserRouter
+    // basename은 이 값에서 파생하므로(main.tsx) 둘이 어긋날 수 없다.
+    base: env.VITE_BASE || "/wiki/",
     plugins: [react()],
     server: proxyTarget
       ? {

@@ -27,6 +27,7 @@ import {
 } from "./pageTreeDnd";
 import { CreateContentMenu } from "./CreateContentMenu";
 import { useStarredPages } from "../lib/starredPages";
+import { useReadOnly } from "../lib/readOnly";
 
 export interface PageTreeProps {
   spaceId: string;
@@ -122,6 +123,7 @@ function SortableRow({
 }
 
 export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, onCreateChild }: PageTreeProps) {
+  const readOnly = useReadOnly();
   const [activeId, setActiveId] = useState<string | null>(null);
   // 드래그 중 드롭 대상과 의도(앞/뒤/하위) — 시각 표시와 최종 이동이 같은 값을 쓴다
   const [dropIntent, setDropIntent] = useState<{ overId: string; mode: DropMode } | null>(null);
@@ -478,7 +480,9 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
               )}
               {/* NavLink의 형제 — 링크 안에 버튼 중첩 금지.
                 * 하위로 폴더도 만들 수 있어야 해서 드롭다운으로 연다 — 전에는 페이지만 됐다. */}
-              {onCreateChild ? (
+              {/* 읽기 전용에서는 생성 경로가 없다 — 폴백(생성 화면으로 이동)도 띄우지 않는다.
+                * 여기서 폴백이 남으면 트리에 유일하게 살아남은 "+"가 되어 더 눈에 띈다. */}
+              {readOnly ? null : onCreateChild ? (
                 <CreateContentMenu
                   trigger={
                     <button

@@ -45,6 +45,7 @@ import { PagesByLabel, RecentlyUpdated } from "./ContentMacros";
 import { showsLineNumbers, useCodeBlockPrefs } from "../lib/codeBlockPrefs";
 import { CodeLineNumbers } from "./CodeLineNumbers";
 import { TableOfContents } from "./TableOfContents";
+import { useReadOnly } from "../lib/readOnly";
 
 export interface MarkdownViewProps {
   /** 마크다운 원문 (Page.body 또는 편집 중인 입력값) */
@@ -118,6 +119,7 @@ function WikiAnchor({
   node: _node,
   ...rest
 }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) {
+  const readOnly = useReadOnly();
   const mentionId = mentionUserIdFromHref(href);
   if (mentionId) return <MentionChip userId={mentionId}>{children}</MentionChip>;
   const dateIso = dateFromHref(href);
@@ -125,6 +127,11 @@ function WikiAnchor({
   if (href.startsWith("/")) {
     // pathname이 생성 화면일 때만 부재 링크로 표시 — 본문 중간의 우연한 substring 매치 방지
     const missing = href.split("?")[0].endsWith("/pages/new");
+    // 읽기 전용에서는 부재 링크가 갈 곳이 없다(생성 라우트 없음) — 눌러도 스페이스 홈으로
+    // 튕기느니 링크가 아닌 글자로 남긴다.
+    if (missing && readOnly) {
+      return <span className="wiki-link-missing">{children}</span>;
+    }
     return (
       <Link to={href} className={missing ? "wiki-link-missing" : "wiki-link"}>
         {children}

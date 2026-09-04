@@ -9,6 +9,7 @@ import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { contentPathIn } from "../lib/contentPath";
 import { useCreateContent } from "../lib/useCreateContent";
 import { displayUserName } from "../lib/userName";
+import { useReadOnly } from "../lib/readOnly";
 
 /** "2026년 7월 10일" — PageViewPage/SpaceIndexPage와 같은 규칙(빈 값·무효 날짜는 빈 문자열). */
 function formatDate(iso: string): string {
@@ -28,6 +29,7 @@ function formatDate(iso: string): string {
  * 배너 이미지는 파일 스토리지 선행이라 이번 범위 밖 — 단색 배경으로 대체한다(기획 §1 제외).
  */
 export function FolderPage() {
+  const readOnly = useReadOnly();
   const { spaceId, folderId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -131,17 +133,23 @@ export function FolderPage() {
         <div className="folder-banner-body">
           <Folder className="folder-banner-icon" size={28} aria-hidden="true" />
           <div className="folder-banner-heading">
-            {/* 캡처처럼 제목을 그 자리에서 고친다 — 폴더는 편집 화면이 없으므로 이게 유일한 이름 변경 경로다 */}
-            <InlineEdit
-              label="폴더 이름"
-              value={folder.title}
-              viewClassName="folder-banner-title"
-              onSave={(next) => void rename(next)}
-            />
+            {/* 캡처처럼 제목을 그 자리에서 고친다 — 폴더는 편집 화면이 없으므로 이게 유일한 이름 변경 경로다.
+              * 읽기 전용에서는 편집 가능한 필드가 아니라 제목 텍스트로 렌더한다. */}
+            {readOnly ? (
+              <h1 className="folder-banner-title">{folder.title}</h1>
+            ) : (
+              <InlineEdit
+                label="폴더 이름"
+                value={folder.title}
+                viewClassName="folder-banner-title"
+                onSave={(next) => void rename(next)}
+              />
+            )}
             {ownerName ? <p className="folder-banner-meta">작성자 {ownerName}</p> : null}
           </div>
           {/* 삭제는 PageViewPage와 같은 패턴("…" 드롭다운 + 확인 다이얼로그)으로 둔다 —
             * 화면마다 파괴적 액션의 위치가 다르면 실수로 누르기 쉽다. */}
+          {readOnly ? null : (
           <Dropdown
             trigger={
               <Button size="small" variant="subtle" iconOnly aria-label="더 보기" title="더 보기">
@@ -158,9 +166,11 @@ export function FolderPage() {
               },
             ]}
           />
+          )}
         </div>
       </header>
 
+      {readOnly ? null : (
       <DeleteContentDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -189,30 +199,35 @@ export function FolderPage() {
           }
         }}
       />
+      )}
 
       <section className="folder-contents" aria-label="폴더 내용">
-        <div className="folder-contents-actions">
-          <Button
-            size="small"
-            iconBefore={<Plus size={16} aria-hidden="true" />}
-            onClick={() => void createChild("page")}
-          >
-            페이지 만들기
-          </Button>
-          <Button
-            size="small"
-            variant="subtle"
-            iconBefore={<FolderPlus size={16} aria-hidden="true" />}
-            onClick={() => void createChild("folder")}
-          >
-            하위 폴더
-          </Button>
-        </div>
+        {readOnly ? null : (
+          <div className="folder-contents-actions">
+            <Button
+              size="small"
+              iconBefore={<Plus size={16} aria-hidden="true" />}
+              onClick={() => void createChild("page")}
+            >
+              페이지 만들기
+            </Button>
+            <Button
+              size="small"
+              variant="subtle"
+              iconBefore={<FolderPlus size={16} aria-hidden="true" />}
+              onClick={() => void createChild("folder")}
+            >
+              하위 폴더
+            </Button>
+          </div>
+        )}
 
         {children.length === 0 ? (
           <EmptyState
             title="이 폴더는 비어 있습니다"
-            description="페이지나 하위 폴더를 만들어 정리를 시작하세요."
+            description={
+              readOnly ? "표시할 항목이 없습니다." : "페이지나 하위 폴더를 만들어 정리를 시작하세요."
+            }
           />
         ) : (
           // DS Table 대신 직접 표를 쓴다 — 캡처의 열 구성(이름·마지막 편집·작업)에 맞춰
@@ -223,12 +238,19 @@ export function FolderPage() {
               <tr>
                 <th scope="col">이름</th>
                 <th scope="col">마지막 편집</th>
-                <th scope="col">작업</th>
+                {/* "작업" 열은 편집 링크만 담는다 — 읽기 전용에서는 열째 뺀다 */}
+                {readOnly ? null : <th scope="col">작업</th>}
               </tr>
             </thead>
             <tbody>
               {children.map((child) => (
-                <FolderRow key={child.id} item={child} spaceId={space.id} users={users} />
+                <FolderRow
+                  key={child.id}
+                  item={child}
+                  spaceId={space.id}
+                  users={users}
+                  readOnly={readOnly}
+                />
               ))}
             </tbody>
           </table>
@@ -238,7 +260,17 @@ export function FolderPage() {
   );
 }
 
-function FolderRow({ item, spaceId, users }: { item: PageNode; spaceId: string; users: User[] }) {
+function FolderRow({
+  item,
+  spaceId,
+  users,
+  readOnly,
+}: {
+  item: PageNode;
+  spaceId: string;
+  users: User[];
+  readOnly: boolean;
+}) {
   const editor = users.find((u) => u.id === item.updatedBy);
   const editorName = editor?.name ?? (item.updatedBy ? displayUserName(item.updatedBy) : null);
   const updated = formatDate(item.updatedAt ?? "");
@@ -267,16 +299,18 @@ function FolderRow({ item, spaceId, users }: { item: PageNode; spaceId: string; 
           <span className="folder-table-muted">—</span>
         )}
       </td>
-      <td>
-        {/* 폴더는 편집 화면이 없다 — 페이지에만 편집 링크를 준다 */}
-        {isFolder ? (
-          <span className="folder-table-muted">—</span>
-        ) : (
-          <Link to={`/spaces/${spaceId}/pages/${item.id}/edit`} className="folder-table-action">
-            편집
-          </Link>
-        )}
-      </td>
+      {readOnly ? null : (
+        <td>
+          {/* 폴더는 편집 화면이 없다 — 페이지에만 편집 링크를 준다 */}
+          {isFolder ? (
+            <span className="folder-table-muted">—</span>
+          ) : (
+            <Link to={`/spaces/${spaceId}/pages/${item.id}/edit`} className="folder-table-action">
+              편집
+            </Link>
+          )}
+        </td>
+      )}
     </tr>
   );
 }

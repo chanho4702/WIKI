@@ -1,8 +1,41 @@
 // src/features/wiki/store/apiClient.ts
 // AuthGate와 스토어가 같은 auth 클라이언트(메모리 AT·refresh dedup)를 공유하도록 싱글톤으로 노출한다.
 import { createAuthClient } from "../../../auth/client";
+import { READ_ONLY } from "../lib/readOnly";
 
 const API_BASE = ((import.meta.env.VITE_API_BASE as string | undefined) ?? "").replace(/\/+$/, "");
+
+function prefixOf(raw: string | undefined, fallback: string): string {
+  const trimmed = (raw ?? "").replace(/\/+$/, "");
+  return trimmed || fallback;
+}
+
+/**
+ * API 경로 접두사 — 인스턴스마다 게이트웨이 앞단의 라우팅이 다르다(설계 §2.2).
+ *
+ * 팀 위키는 기본값(`/api/wiki`·`/api/search`)이라 무변경이고, 공개 문서 인스턴스는 nginx가
+ * `/api/docs/`를 자기 백엔드로 직접 프록시하므로 여기서 한 번만 바꿔 끼운다. wikiApi의 76곳이
+ * 넘는 경로 리터럴을 건드리지 않는 이유이기도 하다 — 치환점이 여러 곳이면 반드시 하나가 샌다.
+ */
+export const WIKI_API_PREFIX = prefixOf(import.meta.env.VITE_WIKI_API_PREFIX as string | undefined, "/api/wiki");
+export const SEARCH_API_PREFIX = prefixOf(
+  import.meta.env.VITE_SEARCH_API_PREFIX as string | undefined,
+  "/api/search",
+);
+
+/**
+ * 호출부가 쓰는 정규 경로(`/api/wiki/...`·`/api/search/...`)를 이 인스턴스의 실제 경로로 바꾼다.
+ * `/api/me`·`/api/org/...`·`/api/auth/...`처럼 플랫폼 공통 경계는 그대로 둔다.
+ */
+export function resolveApiPath(path: string): string {
+  if (path === "/api/wiki" || path.startsWith("/api/wiki/")) {
+    return WIKI_API_PREFIX + path.slice("/api/wiki".length);
+  }
+  if (path === "/api/search" || path.startsWith("/api/search/")) {
+    return SEARCH_API_PREFIX + path.slice("/api/search".length);
+  }
+  return path;
+}
 
 // baseUrl은 상대경로("")가 기본 — 프로덕션(nginx same-origin)과 dev 프록시(VITE_API_PROXY) 모두
 // same-origin으로 동작해 CORS를 피한다. 직접 크로스-오리진으로 붙을 때만 VITE_API_BASE에 절대 URL을
@@ -18,7 +51,15 @@ export const sharedAuthClient = createAuthClient({
 export const USE_BACKEND =
   import.meta.env.PROD || Boolean(import.meta.env.VITE_API_PROXY) || Boolean(import.meta.env.VITE_API_BASE);
 
-export const sharedApiFetch = sharedAuthClient.apiFetch;
+/**
+ * 로그인 게이트를 켤지 — AuthGate의 기본값이자 앱에서 로그인 리다이렉트가 일어나는 유일한 조건.
+ * 공개 문서 인스턴스는 로그인 자체가 없으므로(익명 GET만 허용) 프로덕션 빌드여도 끈다.
+ */
+export const AUTH_GATE_ENABLED = (import.meta.env.PROD || USE_BACKEND) && !READ_ONLY;
+
+/** 모든 스토어 요청의 단일 통로 — 여기서만 인스턴스별 경로 접두사를 적용한다. */
+export const sharedApiFetch = (path: string, init?: RequestInit): Promise<Response> =>
+  sharedAuthClient.apiFetch(resolveApiPath(path), init);
 
 /**
  * collaboration-service 전용 1회 ticket 경계. 일반 apiFetch를 쓰면 메모리 Access Token이
@@ -31,7 +72,7 @@ export function sharedCollaborationFetch(
 ): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Collaboration ${ticket}`);
-  return fetch(`${API_BASE}${path}`, {
+  return fetch(`${API_BASE}${resolveApiPath(path)}`, {
     ...init,
     headers,
     // 이 경계의 유일한 자격 증명은 1회용 ticket이다. 같은 origin의 로그인 쿠키도 싣지 않는다.
@@ -66,7 +107,7 @@ function xhrUpload(path: string, body: FormData, options: ApiUploadOptions): Pro
     const xhr = new XMLHttpRequest();
     const abort = () => xhr.abort();
     const cleanup = () => options.signal?.removeEventListener("abort", abort);
-    xhr.open("POST", `${API_BASE}${path}`);
+    xhr.open("POST", `${API_BASE}${resolveApiPath(path)}`);
     xhr.withCredentials = true;
     const accessToken = sharedAuthClient.getAccessToken();
     if (accessToken) xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);

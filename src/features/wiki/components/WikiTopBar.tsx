@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { Avatar, Button, Dropdown, TopBar } from "@chanho/react";
+import { Avatar, Badge, Button, Dropdown, TopBar } from "@chanho/react";
 import { Bell, Database, Keyboard, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, Users } from "lucide-react";
 import type { User } from "../store/types";
 import { getCurrentUser, getSearchIndexStatus } from "../store/wikiStore";
@@ -10,6 +10,7 @@ import { useAuth } from "../../../auth/AuthGate";
 import { GlobalSearchField } from "./GlobalSearchField";
 import { ShortcutHelpModal } from "./ShortcutHelpModal";
 import { NotificationBell } from "./NotificationBell";
+import { useReadOnly } from "../lib/readOnly";
 
 export interface WikiTopBarProps {
   /** 지정하면 브랜드 슬롯 좌측에 사이드바 토글 버튼을 렌더한다(WikiLayout 전용 — 사이드바가 있는
@@ -29,6 +30,7 @@ export interface WikiTopBarProps {
  * 동작은 이 추출 전후로 무변경이다.
  */
 export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTopBarProps) {
+  const readOnly = useReadOnly();
   const { theme, toggle } = useTheme();
   const { user: authUser, logout } = useAuth();
   const [me, setMe] = useState<User | null>(null);
@@ -43,6 +45,8 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
    */
   const [canManageSearch, setCanManageSearch] = useState(false);
   useEffect(() => {
+    // 읽기 전용 인스턴스에는 관리자 메뉴 자체가 없다 — 프로브를 보내면 403 잡음만 남는다.
+    if (readOnly) return;
     let cancelled = false;
     void getSearchIndexStatus()
       .then((status) => {
@@ -54,11 +58,16 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [readOnly]);
 
+  // 익명 인스턴스는 `/api/me`를 호출하지 않는다 — me가 null이면 아바타 자체가 뜨지 않는다.
+  // 실패도 삼킨다: 사용자 이름을 못 읽는 것이 상단바 전체를 죽일 이유는 아니다.
   useEffect(() => {
-    void getCurrentUser().then(setMe);
-  }, []);
+    if (readOnly) return;
+    void getCurrentUser()
+      .then(setMe)
+      .catch(() => setMe(null));
+  }, [readOnly]);
 
   return (
     <TopBar
@@ -89,9 +98,15 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
       }
       actions={
         <>
+          {/* 공개 문서 인스턴스임을 상단바에서 한 번에 알린다 — 편집 버튼이 없는 이유의 설명이다 */}
+          {readOnly ? (
+            <Badge appearance="neutral">읽기 전용 문서</Badge>
+          ) : null}
           {/* 알림 — 미읽음 배지 + 알림함 팝오버(멘션/관심 페이지 업데이트/댓글) */}
-          <NotificationBell />
-          {/* 설정 — 드롭다운 골격. 하위 항목은 결정 대기 상태라 자리만 잡아 둔다 */}
+          {readOnly ? null : <NotificationBell />}
+          {/* 설정 — 드롭다운 골격. 하위 항목은 결정 대기 상태라 자리만 잡아 둔다.
+            * 읽기 전용에서는 서버에 무언가를 쓰는 항목(알림 설정·관리자)만 빼고, 이 브라우저에만
+            * 저장되는 테마·단축키는 남긴다 — 공개 문서도 다크 모드로 읽을 수 있어야 한다. */}
           <Dropdown
             trigger={
               <Button size="small" variant="ghost" iconOnly aria-label="설정" title="설정">
@@ -106,12 +121,16 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
                 icon: theme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />,
                 onSelect: toggle,
               },
-              {
-                label: "알림 설정",
-                description: "어떤 알림을 이메일로도 받을지 고릅니다",
-                icon: <Bell size={16} aria-hidden="true" />,
-                onSelect: () => navigate("/settings/notifications"),
-              },
+              ...(readOnly
+                ? []
+                : [
+                    {
+                      label: "알림 설정",
+                      description: "어떤 알림을 이메일로도 받을지 고릅니다",
+                      icon: <Bell size={16} aria-hidden="true" />,
+                      onSelect: () => navigate("/settings/notifications"),
+                    },
+                  ]),
               {
                 label: "단축키 도움말",
                 description: "키보드로 빠르게 다니는 법",

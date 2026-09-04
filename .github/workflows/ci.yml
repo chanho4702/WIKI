@@ -33,10 +33,22 @@ jobs:
           pnpm test
           pnpm build
 
+      # 같은 코드에서 두 번째 산출물 — 공개 문서 인스턴스(/docs/, 읽기 전용, /api/docs 접두사).
+      # 변수는 .env.docs가 준다(비밀값 없음). 팀 위키 dist는 위 빌드 그대로다.
+      - name: Build docs instance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm build --mode docs --outDir dist-docs
+
       - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-docs
+          path: dist-docs
 
       - name: Dispatch deploy
         if: github.ref == 'refs/heads/main'
@@ -46,3 +58,13 @@ jobs:
           repository: chanho4702/infra-settings
           event-type: deploy
           client-payload: '{"service":"wiki","sha":"${{ github.sha }}","run_id":"${{ github.run_id }}","repo":"${{ github.repository }}"}'
+
+      # 두 산출물이 서로 다른 nginx 경로에 올라가므로 배포도 서비스 단위로 따로 건다.
+      - name: Dispatch deploy (docs)
+        if: github.ref == 'refs/heads/main'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DISPATCH_PAT }}
+          repository: chanho4702/infra-settings
+          event-type: deploy
+          client-payload: '{"service":"docs","sha":"${{ github.sha }}","run_id":"${{ github.run_id }}","repo":"${{ github.repository }}"}'

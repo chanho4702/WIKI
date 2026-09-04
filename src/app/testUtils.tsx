@@ -9,6 +9,7 @@ import { App } from "./App";
  */
 import "../features/wiki/pages/PageEditPage";
 import type { PageNode } from "../features/wiki/store/types";
+import { ReadOnlyProvider } from "../features/wiki/lib/readOnly";
 
 /** 현재 pathname을 노출하는 테스트 프로브 */
 function LocationProbe() {
@@ -35,14 +36,21 @@ export async function allPagesForTest(spaceId: string): Promise<PageNode[]> {
   return out;
 }
 
+export interface RenderAppOptions {
+  /** 공개 문서(읽기 전용) 인스턴스로 렌더한다. 생략하면 빌드 기본값(팀 위키 = false). */
+  readOnly?: boolean;
+}
+
 /** App 전체를 라우터+토스트로 감싸 렌더 — W1 App.test.tsx의 하네스 공용화 */
-export function renderApp(initialPath = "/") {
+export function renderApp(initialPath = "/", options: RenderAppOptions = {}) {
   return render(
     <ToastProvider>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <App />
-        <LocationProbe />
-      </MemoryRouter>
+      <ReadOnlyProvider value={options.readOnly}>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <App />
+          <LocationProbe />
+        </MemoryRouter>
+      </ReadOnlyProvider>
     </ToastProvider>,
   );
 }

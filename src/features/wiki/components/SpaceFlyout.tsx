@@ -10,7 +10,8 @@ export interface SpaceFlyoutProps {
   /** 항목 클릭 — 해당 스페이스로 이동. 패널을 닫는 것은 호출 측(WikiLayout) 책임이다. */
   onNavigate: (spaceId: string) => void;
   /** 하단 "스페이스 만들기" 클릭 — 기존 SpaceCreateModal을 여는 것은 호출 측 책임이다. */
-  onCreateClick: () => void;
+  /** 생략하면 "스페이스 만들기" 버튼이 없다 — 읽기 전용 인스턴스용. */
+  onCreateClick?: () => void;
 }
 
 function matchesQuery(space: Space, query: string): boolean {
@@ -108,9 +109,11 @@ export function SpaceFlyout({ spaces, currentSpaceId, onNavigate, onCreateClick 
         </>
       )}
       {/* InsertMenu.tsx 관례(W6-T2) — 이 버튼도 tabIndex={-1}로 탭 순서에서 뺀다(T3 잔여 픽스) */}
-      <Button variant="subtle" tabIndex={-1} className="space-flyout-create" onClick={onCreateClick}>
-        스페이스 만들기
-      </Button>
+      {onCreateClick ? (
+        <Button variant="subtle" tabIndex={-1} className="space-flyout-create" onClick={onCreateClick}>
+          스페이스 만들기
+        </Button>
+      ) : null}
     </div>
   );
 }

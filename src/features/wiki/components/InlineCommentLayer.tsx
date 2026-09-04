@@ -6,6 +6,7 @@ import type { Comment, CommentAnchor, User } from "../store/types";
 import { addComment, listComments, setCommentResolved } from "../store/wikiStore";
 import { anchorFromSelection, applyHighlights, clearHighlights } from "../lib/inlineAnchors";
 import { formatCommentTime } from "./CommentSection";
+import { useReadOnly } from "../lib/readOnly";
 
 /**
  * 인라인 댓글(W23) — 컨플루언스식 본문 하이라이트 대화.
@@ -42,6 +43,7 @@ export function InlineCommentLayer({
   users: User[];
   bodyRef: RefObject<HTMLElement | null>;
 }) {
+  const readOnly = useReadOnly();
   const toast = useToast();
   const [comments, setComments] = useState<Comment[]>([]);
   const [locatedIds, setLocatedIds] = useState<Set<string>>(new Set());
@@ -258,7 +260,8 @@ export function InlineCommentLayer({
 
   return (
     <>
-      {menu ? (
+      {/* 선택 구간의 "댓글 달기" 메뉴 — 읽기 전용에서는 애초에 뜨지 않는다 */}
+      {menu && !readOnly ? (
         <div
           className="inline-comment-menu"
           role="menu"
@@ -299,6 +302,7 @@ export function InlineCommentLayer({
             </ul>
           ) : null}
 
+          {readOnly ? null : (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -330,6 +334,7 @@ export function InlineCommentLayer({
               ) : null}
             </div>
           </form>
+          )}
         </aside>
       ) : null}
 
@@ -348,15 +353,17 @@ export function InlineCommentLayer({
                   </span>
                   <blockquote className="inline-comment-quote">{thread.anchorQuote}</blockquote>
                   <p className="inline-comment-body">{thread.body}</p>
-                  <Button
-                    size="small"
-                    variant="subtle"
-                    disabled={busy}
-                    iconBefore={<Check size={14} aria-hidden="true" />}
-                    onClick={() => void toggleResolved(thread)}
-                  >
-                    해결
-                  </Button>
+                  {readOnly ? null : (
+                    <Button
+                      size="small"
+                      variant="subtle"
+                      disabled={busy}
+                      iconBefore={<Check size={14} aria-hidden="true" />}
+                      onClick={() => void toggleResolved(thread)}
+                    >
+                      해결
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -373,15 +380,17 @@ export function InlineCommentLayer({
                     <li key={thread.id} className="inline-comment-resolved">
                       <blockquote className="inline-comment-quote">{thread.anchorQuote}</blockquote>
                       <p className="inline-comment-body">{thread.body}</p>
-                      <Button
-                        size="small"
-                        variant="subtle"
-                        disabled={busy}
-                        iconBefore={<RotateCcw size={14} aria-hidden="true" />}
-                        onClick={() => void toggleResolved(thread)}
-                      >
-                        다시 열기
-                      </Button>
+                      {readOnly ? null : (
+                        <Button
+                          size="small"
+                          variant="subtle"
+                          disabled={busy}
+                          iconBefore={<RotateCcw size={14} aria-hidden="true" />}
+                          onClick={() => void toggleResolved(thread)}
+                        >
+                          다시 열기
+                        </Button>
+                      )}
                     </li>
                   ))}
                 </ul>

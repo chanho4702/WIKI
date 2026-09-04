@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { Button, TextField, useToast } from "@chanho/react";
 import { Tag, X } from "lucide-react";
 import { listLabels, setLabels } from "../store/wikiStore";
+import { useReadOnly } from "../lib/readOnly";
 
 /**
  * 페이지 라벨(W21-2) — 컨플루언스처럼 본문 아래에 칩으로 붙는다.
@@ -13,6 +14,7 @@ import { listLabels, setLabels } from "../store/wikiStore";
  * 편집 권한은 프론트가 알 수 없으므로 입력을 감추지 않고, 서버 403 메시지를 그대로 보여준다.
  */
 export function PageLabels({ pageId, spaceId }: { pageId: string; spaceId: string }) {
+  const readOnly = useReadOnly();
   const toast = useToast();
   const [labels, setLabelState] = useState<string[] | null>(null);
   const [adding, setAdding] = useState(false);
@@ -59,19 +61,22 @@ export function PageLabels({ pageId, spaceId }: { pageId: string; spaceId: strin
         {labels.map((name) => (
           <li key={name} className="page-label-chip">
             <Link to={`/spaces/${spaceId}/labels/${encodeURIComponent(name)}`}>{name}</Link>
-            <button
-              type="button"
-              className="page-label-remove"
-              aria-label={`라벨 ${name} 제거`}
-              disabled={busy}
-              onClick={() => void commit(labels.filter((l) => l !== name))}
-            >
-              <X size={12} aria-hidden="true" />
-            </button>
+            {/* 라벨은 읽기 전용에서도 탐색축으로 쓴다 — 칩은 남기고 편집만 뺀다 */}
+            {readOnly ? null : (
+              <button
+                type="button"
+                className="page-label-remove"
+                aria-label={`라벨 ${name} 제거`}
+                disabled={busy}
+                onClick={() => void commit(labels.filter((l) => l !== name))}
+              >
+                <X size={12} aria-hidden="true" />
+              </button>
+            )}
           </li>
         ))}
       </ul>
-      {adding ? (
+      {readOnly ? null : adding ? (
         <form
           className="page-labels-add"
           onSubmit={(e) => {

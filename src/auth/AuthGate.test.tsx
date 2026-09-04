@@ -76,6 +76,30 @@ describe("AuthGate", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
+  it("읽기 전용(공개 문서) 빌드는 enabled=false로 내려와 로그인 왕복이 없다", async () => {
+    // AUTH_GATE_ENABLED는 모듈 상수라 stubEnv 후 다시 읽는다 — 게이트의 기본값이 이 값이다.
+    vi.stubEnv("VITE_API_PROXY", "http://localhost:18000");
+    vi.stubEnv("VITE_WIKI_READONLY", "true");
+    vi.resetModules();
+    const { AUTH_GATE_ENABLED } = await import("../features/wiki/store/apiClient");
+    expect(AUTH_GATE_ENABLED).toBe(false);
+
+    const redirect = vi.fn();
+    const tryRefresh = vi.fn(async () => false);
+    render(
+      <AuthGate enabled={AUTH_GATE_ENABLED} client={stubClient({ tryRefresh })} redirect={redirect}>
+        <div>공개 문서</div>
+      </AuthGate>,
+    );
+
+    expect(screen.getByText("공개 문서")).toBeInTheDocument();
+    expect(redirect).not.toHaveBeenCalled();
+    expect(tryRefresh).not.toHaveBeenCalled();
+
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
   it("Provider 밖에서 useAuth는 throw 대신 user=null을 반환한다", () => {
     render(<UserProbe />);
     expect(screen.getByTestId("auth-user")).toHaveTextContent("(none)");

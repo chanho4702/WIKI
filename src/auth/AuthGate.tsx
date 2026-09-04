@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { Spinner } from "@chanho/react";
 import type { AppUser, AuthClient } from "./types";
 import { rememberReturnTo } from "./returnTo";
-import { sharedAuthClient, USE_BACKEND } from "../features/wiki/store/apiClient";
+import { AUTH_GATE_ENABLED, sharedAuthClient } from "../features/wiki/store/apiClient";
 
 interface AuthContextValue {
   user: AppUser | null;
@@ -22,7 +22,8 @@ export interface AuthGateProps {
   client?: AuthClient;
   /** 전체 페이지 이동. 테스트에서 스파이로 주입한다. */
   redirect?: (url: string) => void;
-  /** dev/vitest 에서는 게이트 비활성 — 인증 검증은 nginx 프로덕션 경로로만. */
+  /** dev/vitest 에서는 게이트 비활성 — 인증 검증은 nginx 프로덕션 경로로만.
+   * 읽기 전용(공개 문서) 빌드도 비활성 — 로그인 개념이 없는 인스턴스다. */
   enabled?: boolean;
 }
 
@@ -39,7 +40,7 @@ export function AuthGate({
   children,
   client = sharedAuthClient,
   redirect = defaultRedirect,
-  enabled = import.meta.env.PROD || USE_BACKEND,
+  enabled = AUTH_GATE_ENABLED,
 }: AuthGateProps) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<"checking" | "authed">(enabled ? "checking" : "authed");

@@ -14,6 +14,7 @@ import { CommentSkeleton } from "./WikiSkeleton";
 import type { Comment, User } from "../store/types";
 import { addComment, deleteComment, getCurrentUser, listComments, setCommentReaction, updateComment } from "../store/wikiStore";
 import { ReactionBar } from "./ReactionBar";
+import { useReadOnly } from "../lib/readOnly";
 
 export interface CommentSectionProps {
   pageId: string;
@@ -47,6 +48,7 @@ interface PendingDelete {
 
 /** 페이지 하단 코멘트 — 최상위 목록 + 답글 1단 + 본인 수정/삭제. */
 export function CommentSection({ pageId, users }: CommentSectionProps) {
+  const readOnly = useReadOnly();
   // null = 로딩 중
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [me, setMe] = useState<User | null>(null);
@@ -163,6 +165,8 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
    */
   const actionsFor = (comment: Comment, replies: Comment[] | null): CommentAction[] => {
     const actions: CommentAction[] = [];
+    // 읽기 전용에서는 답글·수정·삭제가 전부 없다 — 액션 줄 자체가 사라진다
+    if (readOnly) return actions;
     if (replies !== null) {
       actions.push({
         label: "답글",
@@ -227,11 +231,13 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
           ) : (
             <>
               <span data-testid="comment-body">{comment.body}</span>
-              <ReactionBar
-                label="댓글 리액션"
-                reactions={comment.reactions ?? []}
-                onToggle={(emoji, on) => setCommentReaction(comment.id, emoji, on)}
-              />
+              {readOnly ? null : (
+                <ReactionBar
+                  label="댓글 리액션"
+                  reactions={comment.reactions ?? []}
+                  onToggle={(emoji, on) => setCommentReaction(comment.id, emoji, on)}
+                />
+              )}
             </>
           )}
         </CommentBlock>
@@ -281,9 +287,10 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
       {comments.length === 0 ? (
         <p className="comment-empty">
           <MessageSquare size={16} aria-hidden />
-          아직 코멘트가 없습니다 — 가장 먼저 의견을 남겨보세요
+          {readOnly ? "코멘트가 없습니다" : "아직 코멘트가 없습니다 — 가장 먼저 의견을 남겨보세요"}
         </p>
       ) : null}
+      {readOnly ? null : (
       <form
         className={`comment-composer${composerExpanded ? " comment-composer--active" : ""}`}
         onSubmit={handleSubmit}
@@ -321,6 +328,8 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
           ) : null}
         </div>
       </form>
+      )}
+      {readOnly ? null : (
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => {
@@ -338,6 +347,7 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
         loading={deleting}
         onConfirm={() => void handleDeleteConfirm()}
       />
+      )}
     </section>
   );
 }
