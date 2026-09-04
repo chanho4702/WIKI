@@ -126,7 +126,10 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
        * 서버 기록이 먼저다(W23) — 기기를 옮겨도 이어지고, 권한이 회수된 문서는 서버가 걸러 준다.
        * null이면 서버 원장이 없는 모드(목업)라 브라우저 기록으로 되돌아간다.
        */
-      const fromServer = await listRecentPages(NAV_FLYOUT_LIMIT).catch(() => null);
+      // 읽기 전용은 서버 원장이 없다(docs 백엔드가 403) — 브라우저 방문 기록으로 바로 간다.
+      const fromServer = readOnly
+        ? null
+        : await listRecentPages(NAV_FLYOUT_LIMIT).catch(() => null);
       if (cancelled) return;
       if (fromServer !== null) {
         setRecentItems(fromServer.map((row) => ({
@@ -316,6 +319,9 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
               />
             ) : null}
           </li>
+          {/* 별표는 쓰기다 — 읽기 전용에는 별표를 다는 곳이 없으니 모아 보는 곳도 없다.
+            * /docs와 /wiki가 같은 오리진이면 브라우저 사본을 공유해 팀 위키의 별표가 새어 든다. */}
+          {readOnly ? null : (
           <li ref={starContainerRef} className="global-nav-star-anchor">
             <button
               ref={starTriggerRef}
@@ -341,6 +347,7 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
               />
             ) : null}
           </li>
+          )}
           <li ref={spacesContainerRef} className="global-nav-star-anchor">
             <button
               ref={spacesTriggerRef}
@@ -613,7 +620,7 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
       ) : (
         // 홈·디렉토리 컨텍스트 — 별표 표시된 스페이스 목록 + 모든 스페이스 보기 (설계 §1.2)
         <div className="wiki-sidebar-body">
-          {starredSpaceList.length > 0 && (
+          {!readOnly && starredSpaceList.length > 0 && (
             <section className="wiki-sidebar-starred" aria-label="별표 표시된 스페이스">
               <h3 className="wiki-sidebar-section-title">별표 표시된 스페이스</h3>
               <ul className="wiki-sidebar-starred-list">

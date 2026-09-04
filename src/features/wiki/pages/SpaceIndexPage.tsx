@@ -5,7 +5,7 @@ import { ChevronRight, FileText, Folder, FolderOpen, Plus } from "lucide-react";
 import type { PageNode, User } from "../store/types";
 import { listChildren, listRecentlyUpdated, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
-import { displayUserName } from "../lib/userName";
+import { usePersonName } from "../lib/userName";
 import { contentPathIn } from "../lib/contentPath";
 import { useCreateContent } from "../lib/useCreateContent";
 import { CreateContentMenu } from "../components/CreateContentMenu";
@@ -107,10 +107,12 @@ export function SpaceIndexPage() {
   const [users, setUsers] = useState<User[]>([]);
   const { createContent, createFromTemplate } = useCreateContent(spaceId ?? null, reloadPages);
   const readOnly = useReadOnly();
+  const personName = usePersonName();
 
   useEffect(() => {
-    void listUsers().then(setUsers);
-  }, []);
+    if (readOnly) return; // 공개 문서에는 사람 이름을 싣지 않는다
+    void listUsers().then(setUsers).catch(() => setUsers([]));
+  }, [readOnly]);
 
   if (roots === null) {
     return (
@@ -199,8 +201,7 @@ export function SpaceIndexPage() {
         <ul className="space-overview-recent">
           {recent.map((page) => {
             // 작성자 이름을 못 찾으면 `사용자 #{id}` 폴백(백엔드 모드에서 users가 비는 경우) — 설계 §9
-            const editor = users.find((u) => u.id === page.updatedBy);
-            const editorName = editor?.name ?? (page.updatedBy ? displayUserName(page.updatedBy) : null);
+            const editorName = personName(page.updatedBy, users);
             const updated = formatDate(page.updatedAt ?? "");
             return (
               <li key={page.id} className="space-overview-recent-item">

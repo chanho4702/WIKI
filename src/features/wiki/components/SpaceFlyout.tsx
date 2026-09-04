@@ -3,6 +3,7 @@ import { Button } from "@chanho/react";
 import { Star } from "lucide-react";
 import type { Space } from "../store/types";
 import { useStarredSpaces } from "../lib/starredSpaces";
+import { useReadOnly } from "../lib/readOnly";
 
 export interface SpaceFlyoutProps {
   spaces: Space[];
@@ -32,6 +33,7 @@ function matchesQuery(space: Space, query: string): boolean {
  * 바인딩돼 있어, 별표 버튼 등에 포커스가 가 있으면 Escape가 먹지 않는 갭이 있었다).
  */
 export function SpaceFlyout({ spaces, currentSpaceId, onNavigate, onCreateClick }: SpaceFlyoutProps) {
+  const readOnly = useReadOnly();
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const { starred, toggle } = useStarredSpaces();
@@ -43,7 +45,10 @@ export function SpaceFlyout({ spaces, currentSpaceId, onNavigate, onCreateClick 
   const filtered = spaces.filter((s) => matchesQuery(s, query));
   const current = filtered.find((s) => s.id === currentSpaceId);
   // "별표 표시됨" 섹션은 현재 스페이스를 제외한다 — 현재 스페이스는 "현재" 섹션에서 이미 보인다.
-  const starredList = filtered.filter((s) => s.id !== currentSpaceId && starred.includes(s.id));
+  // 읽기 전용에는 별표 자체가 없으므로 섹션도 비운다.
+  const starredList = readOnly
+    ? []
+    : filtered.filter((s) => s.id !== currentSpaceId && starred.includes(s.id));
 
   const renderItem = (space: Space) => {
     const isStarred = starred.includes(space.id);
@@ -60,17 +65,19 @@ export function SpaceFlyout({ spaces, currentSpaceId, onNavigate, onCreateClick 
         >
           {space.name} ({space.key})
         </button>
-        <button
-          type="button"
-          tabIndex={-1}
-          className="space-flyout-star"
-          aria-pressed={isStarred}
-          aria-label="별표"
-          onClick={() => toggle(space.id)}
-        >
-          {/* 채움=별표됨 / 외곽=미별표 — 색만이 아니라 형태로도 상태를 드러낸다(WCAG 1.4.1) */}
-          <Star size={16} aria-hidden="true" fill={isStarred ? "currentColor" : "none"} />
-        </button>
+        {readOnly ? null : (
+          <button
+            type="button"
+            tabIndex={-1}
+            className="space-flyout-star"
+            aria-pressed={isStarred}
+            aria-label="별표"
+            onClick={() => toggle(space.id)}
+          >
+            {/* 채움=별표됨 / 외곽=미별표 — 색만이 아니라 형태로도 상태를 드러낸다(WCAG 1.4.1) */}
+            <Star size={16} aria-hidden="true" fill={isStarred ? "currentColor" : "none"} />
+          </button>
+        )}
       </li>
     );
   };

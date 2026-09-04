@@ -6,7 +6,8 @@ import type { TableColumn } from "@chanho/react";
 import type { Space, User } from "../store/types";
 import { listUsers } from "../store/wikiStore";
 import { useStarredSpaces } from "../lib/starredSpaces";
-import { displayUserName } from "../lib/userName";
+import { usePersonName } from "../lib/userName";
+import { useReadOnly } from "../lib/readOnly";
 
 export interface SpaceDirectoryPageProps {
   spaces: Space[];
@@ -25,12 +26,15 @@ function matchesQuery(space: Space, query: string): boolean {
  * Labels는 백엔드가 주지 않아 빈칸, Owner는 개인 스페이스(ownerId)만 이름을 보인다(설계 §1.3).
  */
 export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
+  const readOnly = useReadOnly();
+  const personName = usePersonName();
   const navigate = useNavigate();
   const { starred, toggle } = useStarredSpaces();
   const [query, setQuery] = useState("");
   // 소유자 열 — 개인 스페이스의 ownerId를 이름으로. 실패해도 표는 뜨고 `사용자 #id` 폴백으로 간다.
   const [users, setUsers] = useState<User[]>([]);
   useEffect(() => {
+    if (readOnly) return; // 공개 문서에는 사람 이름을 싣지 않는다
     let active = true;
     void listUsers()
       .then((found) => {
@@ -40,11 +44,13 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [readOnly]);
 
   const starredSpaces = spaces.filter((s) => starred.includes(s.id));
   const filtered = spaces.filter((s) => matchesQuery(s, query));
 
+  // 별표는 쓰기다(서버 원장 + 브라우저 사본). 읽기 전용에서는 토글도 목록도 두지 않는다 —
+  // /docs와 /wiki가 같은 오리진이면 localStorage를 공유해 남의 별표가 공개 화면에 새어 든다.
   const columns: TableColumn<Space>[] = [
     {
       key: "name",
@@ -71,29 +77,33 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
       // 값이 아니라 결함처럼 읽힌다.
       render: (space) => {
         if (!space.ownerId) return <span className="space-directory-muted">—</span>;
-        const owner = users.find((u) => u.id === space.ownerId);
-        return <span>{owner?.name ?? displayUserName(space.ownerId)}</span>;
+        const name = personName(space.ownerId, users);
+        return name ? <span>{name}</span> : null;
       },
     },
-    {
-      key: "actions",
-      header: "작업",
-      render: (space) => {
-        const isStarred = starred.includes(space.id);
-        return (
-          <button
-            type="button"
-            className="space-directory-star"
-            aria-pressed={isStarred}
-            aria-label={`${space.name} 별표`}
-            onClick={() => toggle(space.id)}
-          >
-            {/* 채움=별표됨 / 외곽=미별표 — 색만이 아니라 형태로 상태 구분(WCAG 1.4.1) */}
-            <Star size={16} aria-hidden="true" fill={isStarred ? "currentColor" : "none"} />
-          </button>
-        );
-      },
-    },
+    ...(readOnly
+      ? []
+      : [
+          {
+            key: "actions",
+            header: "작업",
+            render: (space: Space) => {
+              const isStarred = starred.includes(space.id);
+              return (
+                <button
+                  type="button"
+                  className="space-directory-star"
+                  aria-pressed={isStarred}
+                  aria-label={`${space.name} 별표`}
+                  onClick={() => toggle(space.id)}
+                >
+                  {/* 채움=별표됨 / 외곽=미별표 — 색만이 아니라 형태로 상태 구분(WCAG 1.4.1) */}
+                  <Star size={16} aria-hidden="true" fill={isStarred ? "currentColor" : "none"} />
+                </button>
+              );
+            },
+          },
+        ]),
   ];
 
   return (
@@ -102,7 +112,7 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
     <div className="space-directory-content">
       <h1>스페이스</h1>
 
-      {starredSpaces.length > 0 && (
+      {!readOnly && starredSpaces.length > 0 && (
         <section className="space-directory-starred" aria-label="자주 찾는 스페이스">
           <h2>자주 찾는 스페이스</h2>
           <ul className="space-directory-cards">

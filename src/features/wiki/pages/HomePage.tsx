@@ -8,7 +8,8 @@ import { getRecentVisits, type RecentVisit } from "../lib/recentVisits";
 import { relativeTime } from "../lib/relativeTime";
 import { useStarredSpaces } from "../lib/starredSpaces";
 import { contentPathIn } from "../lib/contentPath";
-import { displayUserName } from "../lib/userName";
+import { usePersonName } from "../lib/userName";
+import { useReadOnly } from "../lib/readOnly";
 
 /** 홈 "최근 업데이트" 피드 길이 — 스페이스 개요(8)와 같은 기준, 전체 스페이스를 합친 뒤 자른다. */
 const RECENT_LIMIT = 8;
@@ -55,6 +56,8 @@ function ResumeSkeleton() {
  * MVP: "마지막 작업하던 곳에서 다시 시작"(최근 방문 카드). "최신 업데이트" 피드는 후속 슬라이스.
  */
 export function HomePage() {
+  const readOnly = useReadOnly();
+  const personName = usePersonName();
   const navigate = useNavigate();
   const [resume, setResume] = useState<ResumeItem[] | null>(null);
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -109,6 +112,7 @@ export function HomePage() {
   }, [spaces]);
 
   useEffect(() => {
+    if (readOnly) return; // 공개 문서에는 사람 이름을 싣지 않는다
     let active = true;
     void listUsers()
       .then((found) => {
@@ -118,7 +122,7 @@ export function HomePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [readOnly]);
 
   // 별표한 스페이스가 먼저 — 디렉토리의 "자주 찾는 스페이스"와 같은 우선순위
   const orderedSpaces = [
@@ -207,9 +211,7 @@ export function HomePage() {
         ) : (
           <ul className="home-recent">
             {recent.map(({ page, space }) => {
-              const editor = users.find((u) => u.id === page.updatedBy);
-              const editorName =
-                editor?.name ?? (page.updatedBy ? displayUserName(page.updatedBy) : null);
+              const editorName = personName(page.updatedBy, users);
               const when = page.updatedAt ? relativeTime(page.updatedAt) : "";
               return (
                 <li key={page.id} className="home-recent-item">

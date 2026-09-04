@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { Banner, Button, EmptyState, Lozenge, PageHeader, Spinner } from "@chanho/react";
 import { FileText, Folder, Newspaper, Paperclip, SearchX } from "lucide-react";
 import { listPagePaths, listUsers, searchContent, suggestLabels } from "../store/wikiStore";
+import { useReadOnly } from "../lib/readOnly";
 import {
   ContentSearchError,
   type LabelCount,
@@ -48,6 +49,7 @@ function normalizedPage(value: string | null): number {
 }
 
 export function SearchPage() {
+  const readOnly = useReadOnly();
   const [params, setParams] = useSearchParams();
   const query = (params.get("q") ?? "").trim();
   const page = normalizedPage(params.get("page"));
@@ -76,7 +78,8 @@ export function SearchPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    void listUsers().then(setUsers);
+    if (readOnly) return; // 작성자 필터가 없으므로 디렉터리도 부르지 않는다
+    void listUsers().then(setUsers).catch(() => setUsers([]));
   }, []);
 
   // 뒤로 가기·필터 지우기로 URL이 바뀌면 입력칸도 따라와야 한다.
@@ -198,17 +201,20 @@ export function SearchPage() {
 
       {query ? (
         <div className="search-filters">
-          <label className="search-filter">
-            <span>작성자</span>
-            <select value={authorId} onChange={(e) => setFilter("author", e.target.value)}>
-              <option value="">전체</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {/* 작성자 필터 — 읽기 전용에는 사람 개념이 없어 "전체"만 남은 빈 셀렉트가 된다 */}
+          {readOnly ? null : (
+            <label className="search-filter">
+              <span>작성자</span>
+              <select value={authorId} onChange={(e) => setFilter("author", e.target.value)}>
+                <option value="">전체</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="search-filter">
             <span>수정일 시작</span>
             <input

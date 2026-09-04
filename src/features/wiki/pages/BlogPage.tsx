@@ -6,7 +6,7 @@ import type { BlogPost, User } from "../store/types";
 import { listBlogPosts, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { useCreateContent } from "../lib/useCreateContent";
-import { displayUserName } from "../lib/userName";
+import { usePersonName } from "../lib/userName";
 import { useReadOnly } from "../lib/readOnly";
 
 function formatDate(iso: string): string {
@@ -31,6 +31,7 @@ export function BlogPage() {
   const [error, setError] = useState<string | null>(null);
   const { createContent, creating } = useCreateContent(space.id, reloadPages);
   const readOnly = useReadOnly();
+  const personName = usePersonName();
 
   useEffect(() => {
     let cancelled = false;
@@ -39,11 +40,16 @@ export function BlogPage() {
     void listBlogPosts(space.id)
       .then((rows) => { if (!cancelled) setPosts(rows); })
       .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : "블로그를 불러오지 못했습니다"); });
-    void listUsers().then((rows) => { if (!cancelled) setUsers(rows); });
+    // 공개 문서에는 사람 이름을 싣지 않는다 — 디렉터리 조회 자체를 보내지 않는다.
+    if (!readOnly) {
+      void listUsers()
+        .then((rows) => { if (!cancelled) setUsers(rows); })
+        .catch(() => { if (!cancelled) setUsers([]); });
+    }
     return () => { cancelled = true; };
-  }, [space.id]);
+  }, [space.id, readOnly]);
 
-  const author = (id: string) => users.find((u) => u.id === id)?.name ?? displayUserName(id);
+  const author = (id: string) => personName(id, users);
 
   return (
     <div className="space-settings blog-page">
@@ -77,8 +83,12 @@ export function BlogPage() {
             <li key={post.id} className="blog-item">
               <div className="blog-item-meta">
                 <time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time>
-                <span aria-hidden="true">·</span>
-                <span>{author(post.createdBy)}</span>
+                {author(post.createdBy) ? (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span>{author(post.createdBy)}</span>
+                  </>
+                ) : null}
                 {post.status === "draft" ? <Lozenge appearance="neutral">초안</Lozenge> : null}
               </div>
               <h2 className="blog-item-title">

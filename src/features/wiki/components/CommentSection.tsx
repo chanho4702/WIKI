@@ -64,7 +64,12 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
   const toast = useToast();
 
   useEffect(() => {
-    void getCurrentUser().then(setMe);
+    // 익명 인스턴스는 로그인 사용자가 없다 — /api/me를 부르면 401 + refresh 401이 나가고
+    // 처리되지 않은 rejection으로 남는다(WikiTopBar와 같은 규칙). 실패도 삼킨다.
+    if (readOnly) return;
+    void getCurrentUser()
+      .then(setMe)
+      .catch(() => setMe(null));
   }, []);
 
   useEffect(() => {

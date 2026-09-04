@@ -8,7 +8,7 @@ import type { WikiOutletContext } from "../components/wikiContext";
 import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { contentPathIn } from "../lib/contentPath";
 import { useCreateContent } from "../lib/useCreateContent";
-import { displayUserName } from "../lib/userName";
+import { usePersonName } from "../lib/userName";
 import { useReadOnly } from "../lib/readOnly";
 
 /** "2026년 7월 10일" — PageViewPage/SpaceIndexPage와 같은 규칙(빈 값·무효 날짜는 빈 문자열). */
@@ -30,6 +30,7 @@ function formatDate(iso: string): string {
  */
 export function FolderPage() {
   const readOnly = useReadOnly();
+  const personName = usePersonName();
   const { spaceId, folderId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -47,7 +48,8 @@ export function FolderPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    void listUsers().then(setUsers);
+    if (readOnly) return; // 공개 문서에는 사람 이름을 싣지 않는다
+    void listUsers().then(setUsers).catch(() => setUsers([]));
   }, []);
 
   useEffect(() => {
@@ -103,8 +105,7 @@ export function FolderPage() {
     );
   }
 
-  const owner = users.find((u) => u.id === folder.createdBy);
-  const ownerName = owner?.name ?? (folder.createdBy ? displayUserName(folder.createdBy) : null);
+  const ownerName = personName(folder.createdBy, users);
 
   const rename = async (next: string) => {
     const title = next.trim();
@@ -271,8 +272,8 @@ function FolderRow({
   users: User[];
   readOnly: boolean;
 }) {
-  const editor = users.find((u) => u.id === item.updatedBy);
-  const editorName = editor?.name ?? (item.updatedBy ? displayUserName(item.updatedBy) : null);
+  const personName = usePersonName();
+  const editorName = personName(item.updatedBy, users);
   const updated = formatDate(item.updatedAt ?? "");
   const isFolder = item.type === "folder";
   return (

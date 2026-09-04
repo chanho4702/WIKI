@@ -1,11 +1,28 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
 import { __resetForTest, createPage } from "../features/wiki/store/wikiStore";
+
+/*
+ * 사람 디렉터리(/api/org/members)와 로그인 사용자(/api/me)는 공개 인스턴스에서 403·401이다.
+ * "화면에 이름이 안 보인다"만으로는 요청을 보냈는지 알 수 없어 스토어 경계에 스파이를 건다
+ * (실제 구현으로 위임하므로 다른 케이스의 동작은 그대로다).
+ */
+const storeSpies = vi.hoisted(() => ({ listUsers: vi.fn(), getCurrentUser: vi.fn() }));
+
+vi.mock("../features/wiki/store/wikiStore", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../features/wiki/store/wikiStore")>();
+  storeSpies.listUsers.mockImplementation(actual.listUsers);
+  storeSpies.getCurrentUser.mockImplementation(actual.getCurrentUser);
+  return { ...actual, listUsers: storeSpies.listUsers, getCurrentUser: storeSpies.getCurrentUser };
+});
 
 beforeEach(() => {
   localStorage.clear();
   __resetForTest();
+  storeSpies.listUsers.mockClear();
+  storeSpies.getCurrentUser.mockClear();
 });
 
 /**
@@ -118,6 +135,65 @@ describe("W28 읽기 전용 문서 인스턴스", () => {
     // 대상이 없으므로 생성 화면 링크가 되던 자리 — 읽기 전용에서는 그냥 글자다
     expect(await screen.findByText("없는 문서")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "없는 문서" })).not.toBeInTheDocument();
+  });
+
+  it("스페이스 디렉토리에 별표 토글도 별표 목록도 없다", async () => {
+    // /docs와 /wiki가 같은 오리진이면 별표 사본이 공유된다 — 남의 별표가 새어 들면 안 된다
+    localStorage.setItem("wiki.ui.starredSpaces", JSON.stringify(["sp1"]));
+
+    renderApp("/spaces", { readOnly: true });
+
+    expect(await screen.findByRole("heading", { name: "스페이스", level: 1 })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /별표/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "자주 찾는 스페이스" })).not.toBeInTheDocument();
+    expect(screen.queryByText("자주 찾는 스페이스")).not.toBeInTheDocument();
+  });
+
+  it("스페이스 플라이아웃에도 별표 버튼이 없다", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("wiki.ui.starredSpaces", JSON.stringify(["sp1"]));
+
+    renderApp("/spaces/sp1", { readOnly: true });
+
+    await user.click(await screen.findByRole("button", { name: /스페이스 전환/ }));
+    const flyout = await screen.findByRole("dialog", { name: "스페이스 전환" });
+    expect(within(flyout).queryByRole("button", { name: /별표/ })).not.toBeInTheDocument();
+    expect(within(flyout).queryByText("별표 표시됨")).not.toBeInTheDocument();
+    // 이동은 되어야 한다 — 플라이아웃의 본래 목적이다
+    expect(within(flyout).getAllByRole("button", { name: /개발 위키/ }).length).toBeGreaterThan(0);
+  });
+
+  it("사람 디렉터리·로그인 사용자를 조회하지 않고 '사용자 #' 폴백도 노출하지 않는다", async () => {
+    renderApp("/spaces/sp1/pages/pg1", { readOnly: true });
+
+    expect(await screen.findByRole("heading", { name: "시작하기" })).toBeInTheDocument();
+    await screen.findByRole("region", { name: "코멘트" });
+
+    expect(storeSpies.listUsers).not.toHaveBeenCalled();
+    expect(storeSpies.getCurrentUser).not.toHaveBeenCalled();
+    // 임포터 계정이 "사용자 #1"로 새어 나오면 안 된다
+    expect(screen.queryByText(/사용자 #/)).not.toBeInTheDocument();
+    // "언제"는 남는다 — 사람만 빠진다
+    expect(screen.getByText("2026년 7월 10일 수정")).toBeInTheDocument();
+  });
+
+  it("스페이스 개요·폴더·디렉토리에서도 사람 디렉터리를 부르지 않는다", async () => {
+    for (const path of ["/spaces/sp1", "/spaces", "/home"]) {
+      const view = renderApp(path, { readOnly: true });
+      await waitFor(() => expect(screen.queryByText("불러오는 중")).not.toBeInTheDocument());
+      expect(screen.queryByText(/사용자 #/)).not.toBeInTheDocument();
+      view.unmount();
+    }
+    expect(storeSpies.listUsers).not.toHaveBeenCalled();
+    expect(storeSpies.getCurrentUser).not.toHaveBeenCalled();
+  });
+
+  it("기본(팀 위키) 모드는 사람 디렉터리를 그대로 조회한다", async () => {
+    renderApp("/spaces/sp1/pages/pg1");
+
+    expect(await screen.findByRole("button", { name: "편집" })).toBeInTheDocument();
+    await waitFor(() => expect(storeSpies.listUsers).toHaveBeenCalled());
+    expect(storeSpies.getCurrentUser).toHaveBeenCalled();
   });
 
   it("기본(팀 위키) 모드는 그대로다 — 배지 없이 편집·만들기가 보인다", async () => {

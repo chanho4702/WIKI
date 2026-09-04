@@ -36,7 +36,7 @@ import { PageReactions } from "../components/PageReactions";
 import { usePageWidth } from "../lib/pageWidth";
 import { removeStarredPage, useStarredPages } from "../lib/starredPages";
 import { RestrictionsDialog } from "../components/RestrictionsDialog";
-import { displayUserName } from "../lib/userName";
+import { usePersonName } from "../lib/userName";
 import { recordVisit } from "../lib/recentVisits";
 import { PageOwnerDialog } from "../components/PageOwnerDialog";
 import { PageVerifyDialog } from "../components/PageVerifyDialog";
@@ -85,6 +85,7 @@ function PageViewSkeleton() {
 
 export function PageViewPage() {
   const readOnly = useReadOnly();
+  const personName = usePersonName();
   const { spaceId, pageId } = useParams();
   const { space, reloadPages } = useOutletContext<WikiOutletContext>();
   /**
@@ -193,7 +194,9 @@ export function PageViewPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    void listUsers().then(setUsers);
+    // 익명 인스턴스는 org 사용자 디렉터리를 부르지 않는다 — 이름을 쓰는 자리가 전부 빠진다.
+    if (readOnly) return;
+    void listUsers().then(setUsers).catch(() => setUsers([]));
   }, []);
 
   // 경로·하위 개수 — 부가 정보라 실패해도 본문을 막지 않는다(빈 값으로 둔다).
@@ -238,9 +241,12 @@ export function PageViewPage() {
 
     // 본문 VIEW와 제한 관리 권한은 다르다. 두 요청을 독립적으로 시작해야 본문에서 막힌
     // space ADMIN도 제한 API 성공 결과로 복구 버튼을 볼 수 있고, 정상 화면도 waterfall이 없다.
-    void getPageRestrictions(pageId)
-      .then(setRestrictions)
-      .catch(() => setRestrictions(null));
+    // 읽기 전용에는 제한 관리 UI가 없다 — docs 백엔드가 403으로 막는 요청을 보내지 않는다.
+    if (!readOnly) {
+      void getPageRestrictions(pageId)
+        .then(setRestrictions)
+        .catch(() => setRestrictions(null));
+    }
     void getPage(pageId)
       .then((p) => {
         setPage(p);
@@ -297,8 +303,6 @@ export function PageViewPage() {
     // 잘못된 스페이스 URL — 페이지가 속한 스페이스로 redirect (W1 최종리뷰 인계 ①)
     return <Navigate to={`/spaces/${page.spaceId}/pages/${page.id}`} replace />;
   }
-
-  const editor = users.find((u) => u.id === page.updatedBy);
 
   // 경로: 스페이스 → 조상들 → 현재 페이지(href 없음 = 현재 위치)
   const breadcrumbs: BreadcrumbItem[] = [
@@ -531,12 +535,10 @@ export function PageViewPage() {
       )}
       {(() => {
         // 작성자: 이름을 못 찾고 id만 있으면(백엔드 모드) `사용자 #{id}` 폴백. id도 없으면 표기 없음.
-        const editorName = editor?.name ?? (page.updatedBy ? displayUserName(page.updatedBy) : null);
+        const editorName = personName(page.updatedBy, users);
         const updatedLabel = formatDate(page.updatedAt);
         // 소유자(W27-5) — 정하지 않은 문서에는 아무것도 표시하지 않는다(createdBy로 대신하지 않는다)
-        const ownerName = page.ownerId
-          ? (users.find((u) => u.id === page.ownerId)?.name ?? displayUserName(page.ownerId))
-          : null;
+        const ownerName = personName(page.ownerId, users);
         const verified = verificationState(page);
         const untilLabel = formatVerifiedUntil(page.verifiedUntil);
         if (!editorName && !updatedLabel && views === null && !ownerName && verified === "none") {
