@@ -70,12 +70,47 @@
 | setPageOwner(pageId, userId\|null) | PUT /api/wiki/pages/{id}/owner | **V33(W27-5)** `{ownerId}` — null이면 해제. EDIT 권한. 메타데이터라 version·리비전 불변. 감사 로그 PAGE_OWNER_CHANGED |
 | verifyPage(pageId, until?) | PUT /api/wiki/pages/{id}/verification | **V33** `{verifiedUntil: "YYYY-MM-DD"}` 또는 `{}`(기본 90일). verified_at=now, verified_by=호출자. 지난 날짜도 그대로 저장 — **만료 판정은 프론트**가 한다. 감사 로그 PAGE_VERIFIED |
 | unverifyPage(pageId) | DELETE /api/wiki/pages/{id}/verification | **V33** 세 필드를 비운다. 감사 로그 PAGE_UNVERIFIED |
+| probeConfluenceDc({baseUrl, spaceKey, token}) | POST /api/wiki/migrations/confluence-dc/probe | **V34(W29)** 원본 DC 연결 확인 → `{spaceName, homepageId, pageCount\|null}`. **전역 관리자만**(GLOBAL grant — 감사 로그 space-deletions와 같은 판정). `pageCount`는 사이트가 총계를 안 주면 null. token은 요청 본문에만 — 어떤 응답에도 실리지 않는다. 실패: 401/403→403 "원본 컨플루언스 인증에 실패했습니다 — 토큰과 권한을 확인하세요", 404→404, 연결 불가/429/5xx→503, 3xx→400(리다이렉트 비허용), baseUrl이 http(s)가 아니면 400 |
+| listMigrationJobs() | GET /api/wiki/migrations | **V34** 최신순 50건 `[{id, provider, targetSpaceId, mode, status, createdAt, discoveredCount\|null, sourceSpaceKey\|null}]`. **전역 관리자만**. 원본이 없는 잡(예전 NOTION)은 뒤 두 필드가 null |
+| createMigrationJob({provider, targetSpaceId, mode, source?}) | POST /api/wiki/migrations | **V34 확장** 기존 필드 + `source: {baseUrl, spaceKey, token}`. provider=CONFLUENCE_DC면 source 필수(없으면 400 "원본 컨플루언스 접속 정보가 필요합니다"). `sourceInstanceId`는 이제 선택 — 비우면 서버가 baseUrl의 호스트로 채운다. 대상 스페이스 ADMIN |
+| discoverMigrationJob(id) | POST /api/wiki/migrations/{jobId}/discover | **V34** 원본 트리를 훑어 대기열을 채운다 → `{discovered, enqueued, skipped}`. 조상 깊이 오름차순·같은 깊이는 id 순으로 담는다(부모가 먼저 처리돼야 트리가 선다). **멱등** — 다시 눌러도 새 항목만 늘고 기존은 skipped로 센다. PENDING 잡만(아니면 409), CONFLUENCE_DC만(아니면 409). 상한 `platform.wiki.migration.dc.max-pages`(기본 5000) |
+| getMigrationJob(id) | GET /api/wiki/migrations/{jobId} | **V34 확장** 기존 `MigrationJobResponse` 필드 전부 + `source: {baseUrl, spaceKey, spaceName, discoveredCount}\|null` + `counts: {byStatus: {...}, byStage: {...}}`. **source에 token 필드는 없다.** 진행률 = `counts.byStatus.COMPLETED / itemCount` |
+| listMigrationItems(id, {status?, stage?, page?}) | GET /api/wiki/migrations/{jobId}/items?status=&stage=&page= | **V34** `{items: MigrationItemResponse[], page, size, total}`. page는 0부터, size는 50 고정. status: PENDING\|RUNNING\|RETRY_WAIT\|COMPLETED\|DEAD_LETTER, stage: EXTRACT\|NORMALIZE\|MEDIA_COPY\|RESOLVE\|VERIFY\|DONE. 대상 스페이스 ADMIN |
+| startMigrationJob(id) | POST /api/wiki/migrations/{jobId}/start | **V34 확장** 항목이 0건이면 400 `{"error": "옮길 항목이 없습니다 — 먼저 원본 발견을 실행하세요"}`. 항목 0으로 시작하면 잡이 즉시 COMPLETED가 되어 "성공적으로 아무것도 안 옮겼다"가 되기 때문 |
 | listVersions(pageId) | GET /api/wiki/pages/{pageId}/versions | version 내림차순 |
 | restoreVersion(pageId, versionId) | POST /api/wiki/pages/{pageId}/restore | updatePage 경로 재사용(새 버전으로 쌓임) |
 | listComments(pageId) | GET /api/wiki/pages/{pageId}/comments | createdAt 오름차순 |
 | addComment(pageId, body, parentId?) | POST /api/wiki/pages/{pageId}/comments | |
 | updateComment(id, body) | PATCH /api/wiki/comments/{id} | **본인만** |
 | deleteComment(id) | DELETE /api/wiki/comments/{id} | **본인만**, 답글 연쇄 삭제 |
+
+### 4.1 이관 모듈(W29) — 프론트가 알아야 할 계약 밖 사실
+
+- **토큰은 되돌아오지 않는다.** 연결 확인·잡 생성에서 보낸 PAT는 서버에 저장되고 어떤 응답 DTO에도
+  실리지 않는다(기획 P8). 화면은 입력값을 다시 채워 줄 수 없으므로 수정 흐름은 "다시 입력"이다.
+- **이관된 문서의 본문은 우리 마크다운 방언 그대로다.** 백엔드가 IR을 편집기 왕복의 고정점 형태로
+  직렬화한다(대괄호 이스케이프·태스크 목록 빈 줄·표 병합 마커). 골든 파일 3종이
+  `wiki-backend/src/test/resources/fixtures/migration/confluence/golden/*.md`에 있고,
+  `editor/markdown.test.ts`가 같은 파일로 왕복을 고정한다.
+- **첨부 본체는 M1에서 넘어오지 않는다.** 본문에는 `[파일명](attachment:파일명)` 참조만 남고
+  MEDIA_COPY가 `ATTACHMENT_NOT_COPIED` 경고를 보고서에 남긴다. `attachment:` 스킴은
+  `editor/extensions/base.ts`의 Link protocols에 등록돼 있어야 편집기 왕복에서 링크가 살아남는다.
+- **`counts`는 0인 키를 담지 않는다.** group-by 결과라 아직 그 상태·단계에 도달한 항목이 없으면
+  키 자체가 없다. 진행률은 `(counts.byStatus.COMPLETED ?? 0) / itemCount`로 계산한다.
+- **손실 보고서 집계 shape**: `issues[]`는 `{severity, code, distinctPaths, occurrences, sampleSourcePath}`다.
+  `sampleSourcePath`는 그 code가 난 위치 중 사전순 첫 번째 하나다(전체 목록이 아니다) —
+  `MACRO_OPAQUE` 3건이 `macro:jira`인지 `macro:excerpt`인지 구분하는 용도이고, 위치 전량은
+  `GET /{jobId}/items`로 본다.
+- **손실 보고서 코드**(`GET /{jobId}/report`의 `issues[].code`) — 화면이 한국어로 매핑할 대상:
+  `MACRO_OPAQUE` · `MARK_DROPPED` · `TABLE_SPAN_DROPPED` · `LINK_EXTERNAL_SPACE` ·
+  `LINK_ANCHOR_DROPPED` · `MEDIA_UNRESOLVED` · `ATTACHMENT_NOT_COPIED` · `TITLE_TRUNCATED` ·
+  `PARENT_NOT_FOUND` · `AUTHOR_UNMAPPED` · `SOURCE_VERSION_DRIFT` · `VERIFY_*` ·
+  `CONFLUENCE_*`(정규화기 코드). 데드레터의 `lastErrorCode`: `DC_UNAVAILABLE` · `DC_AUTH` ·
+  `DC_NOT_FOUND` · `DC_INVALID_RESPONSE` · `DC_REDIRECT_REFUSED` · `IR_INVALID` ·
+  `SNAPSHOT_INVALID` · `MIGRATION_PAYLOAD_MISSING` · `STAGE_HANDLER_UNAVAILABLE` · `WORKER_LEASE_EXPIRED`.
+- **dry-run은 쓰기 0건이다.** 문서도 object map도 만들지 않고 마크다운 산출물까지만 남긴다.
+- **재실행은 멱등이다.** 원본이 그대로면 문서도 리비전도 늘지 않고, 바뀌었으면 새 리비전으로
+  갱신되며 변경 요약은 "컨플루언스 재이관 v{원본 버전}"이다.
 
 ## 5. 도메인 규칙 — 서버가 강제해야 하는 불변식
 

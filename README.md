@@ -164,6 +164,19 @@ src/
 | `/spaces/:spaceId/folder/:folderId` | `FolderPage` | 폴더 자식 목록 |
 | `*` | 첫 스페이스로 `Navigate` | 스페이스가 하나도 없으면 `EmptySpaces` |
 
+### 관리 화면 (`/admin/*`, 전역 관리자 전용 — 서버가 판정)
+
+| 경로 | 화면 | 비고 |
+|---|---|---|
+| `/admin/search` | `SearchAdminPage` | 검색 색인 현황·재색인 |
+| `/admin/teams` | `TeamsAdminPage` | 스페이스 권한에 쓰는 팀·팀원 |
+| `/admin/audit` | `SpaceAuditAdminPage` | 스페이스 삭제 기록 |
+| `/admin/migrations` | `MigrationsAdminPage` | 컨플루언스 DC 이관 — 연결 확인·새 잡·잡 목록 |
+| `/admin/migrations/:jobId` | `MigrationJobPage` | 잡 상세 — 발견/시작/취소·진행률(5초 폴링)·손실 보고서·데드레터 |
+
+관리 화면은 메뉴(⚙ 드롭다운)에서 전역 관리자에게만 보이고, 주소를 직접 쳐도 화면이 스스로
+"관리할 수 없습니다"를 보여준다.
+
 ---
 
 ## 관련 문서

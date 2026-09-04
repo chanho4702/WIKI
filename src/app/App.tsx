@@ -17,6 +17,8 @@ import { NotificationSettingsPage } from "../features/wiki/pages/NotificationSet
 import { SearchAdminPage } from "../features/wiki/pages/SearchAdminPage";
 import { TeamsAdminPage } from "../features/wiki/pages/TeamsAdminPage";
 import { SpaceAuditAdminPage } from "../features/wiki/pages/SpaceAuditAdminPage";
+import { MigrationsAdminPage } from "../features/wiki/pages/MigrationsAdminPage";
+import { MigrationJobPage } from "../features/wiki/pages/MigrationJobPage";
 import { TrashPage } from "../features/wiki/pages/TrashPage";
 import { ArchivePage } from "../features/wiki/pages/ArchivePage";
 import { LabelsPage } from "../features/wiki/pages/LabelsPage";
@@ -126,6 +128,9 @@ export function App() {
             <Route path="/admin/teams" element={<TeamsAdminPage />} />
             {/* 스페이스 삭제 기록 — 전역 관리자 전용(서버가 판정). 스페이스 안에서는 읽을 곳이 없는 기록 */}
             <Route path="/admin/audit" element={<SpaceAuditAdminPage />} />
+            {/* 컨플루언스 DC 이관(M1) — 전역 관리자 전용(서버가 판정). 목록+새 잡, 그리고 잡 상세 */}
+            <Route path="/admin/migrations" element={<MigrationsAdminPage />} />
+            <Route path="/admin/migrations/:jobId" element={<MigrationJobPage />} />
           </>
         )}
         {/* 스페이스 컨텍스트 — element 없이 경로만 묶는다. 하위 페이지 화면은 AppShell의 Outlet

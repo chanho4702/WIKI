@@ -6626,3 +6626,152 @@ body.is-column-reordering {
 .page-view .page-view-header nav > ol > li > [aria-hidden="true"] {
   flex: none;
 }
+
+/* ── 마이그레이션 관리(M1) ─────────────────────────────────── */
+/* 목록으로 돌아가는 길 — 상세는 셸 사이드바에 없는 화면이라 화면 안에 되돌아갈 곳이 있어야 한다 */
+.migration-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50);
+  margin-bottom: var(--chanho-space-100);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+  text-decoration: none;
+}
+
+.migration-back:hover {
+  color: var(--chanho-color-text-default);
+  text-decoration: underline;
+}
+
+/* 한 화면에 절(원본·진행률·보고서·데드레터)이 여럿이라 소제목이 구분선 역할을 한다 */
+.migration-section-title {
+  margin: var(--chanho-space-300) 0 var(--chanho-space-100);
+  font-size: var(--chanho-font-size-100);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.migration-section-title:first-child {
+  margin-top: 0;
+}
+
+/* 입력이 세로로 쌓이는 폼 — 필드 사이 간격은 DS가 주지 않으므로 여기서 준다 */
+.migration-new {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--chanho-space-150);
+  max-width: 560px;
+}
+
+.migration-new > * {
+  width: 100%;
+}
+
+/* 버튼은 내용만큼만 — 폼 폭에 맞춰 늘어나면 "확인" 하나가 화면을 가로지른다 */
+.migration-new > button {
+  width: auto;
+}
+
+/* 입력 아래 한 줄 안내(권장 사항·설명) — 값이 아니라 판단을 돕는 글이라 한 단계 낮춘다 */
+.migration-hint {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.migration-mode {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+}
+
+/* 발견·시작·취소는 순서가 곧 절차다 — 한 줄에 그 순서대로 둔다 */
+.migration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--chanho-space-100);
+  margin: var(--chanho-space-200) 0;
+}
+
+/* 사실 나열이라 라벨과 값을 두 열로 — 검색 색인 관리의 facts와 같은 규칙 */
+.migration-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+  margin: 0;
+}
+
+.migration-facts > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--chanho-space-200);
+}
+
+.migration-facts dt {
+  flex: none;
+  width: 104px;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.migration-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.migration-progress {
+  padding: var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-subtle);
+}
+
+/* 진행률 숫자는 폴링마다 바뀐다 — 자리를 크게 잡아 값이 흔들려도 아래 내용이 밀리지 않는다 */
+.migration-progress-text {
+  margin: 0 0 var(--chanho-space-100);
+  font-size: var(--chanho-font-size-200);
+}
+
+/*
+ * 네이티브 <progress> — 브라우저마다 다른 기본 껍데기를 벗기고 토큰 색만 입힌다.
+ * 값은 바로 위 문장이 이미 말하므로 이 막대는 aria-hidden이다(같은 수를 두 번 읽히지 않는다).
+ */
+.migration-progress-bar {
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-border-default);
+}
+
+.migration-progress-bar::-webkit-progress-bar {
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-border-default);
+}
+
+.migration-progress-bar::-webkit-progress-value {
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-brand);
+}
+
+.migration-progress-bar::-moz-progress-bar {
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-brand);
+}
+
+/* 상태별·단계별은 나란히 읽어야 "어느 단계에서 멈췄나"가 한눈에 보인다 */
+.migration-count-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--chanho-space-400);
+  margin-top: var(--chanho-space-200);
+}
+
+.migration-count-title {
+  margin: 0 0 var(--chanho-space-100);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+  font-weight: var(--chanho-font-weight-semibold);
+}

@@ -50,6 +50,28 @@ const ImageWithView = Image.extend({
   addNodeView() {
     return ReactNodeViewRenderer(ImageView);
   },
+
+  /**
+   * 이미지는 블록 노드인데 tiptap-markdown에 직렬화기가 없어 HTML 폴백으로 나갔고, 그 폴백이
+   * 블록을 닫지 않아 **바로 뒤 문단이 이미지 줄에 들러붙었다** — `![a](x)\n\n문단`을 편집기에
+   * 한 번 통과시키면 `![a](x)문단`이 되어 문단이 사라진 것처럼 보인다(2026-09-05 실측).
+   * 여기서 블록을 명시적으로 닫아 이미지 뒤의 빈 줄을 지킨다.
+   */
+  addStorage() {
+    return {
+      markdown: {
+        serialize(
+          state: { write: (s: string) => void; closeBlock: (node: unknown) => void },
+          node: { attrs: { src?: string; alt?: string; title?: string } },
+        ) {
+          const alt = node.attrs.alt ?? "";
+          const title = node.attrs.title ? ` "${node.attrs.title.replace(/"/g, '\\"')}"` : "";
+          state.write(`![${alt}](${node.attrs.src ?? ""}${title})`);
+          state.closeBlock(node);
+        },
+      },
+    };
+  },
 });
 
 export interface BaseExtensionOptions {
@@ -77,7 +99,9 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     CodeBlockWithView,
     // protocols: 멘션 저장 문법 `[@이름](user:id)`의 `user:` 스킴 — Link 확장의 보안 검증
     // (isAllowedUri)이 미등록 스킴 href를 버리면 멘션이 텍스트로 열화된다(userMention.ts 참조).
-    Link.configure({ openOnClick: false, protocols: ["user", "date"] }),
+    // `attachment:`는 이관(W29)이 쓴다: 첨부 본체가 아직 안 넘어온 문서의 참조를 `[파일명](attachment:파일명)`로
+    // 남기는데, 스킴이 등록돼 있지 않으면 편집기를 한 번 지나는 순간 링크가 맨 텍스트로 뭉개진다.
+    Link.configure({ openOnClick: false, protocols: ["user", "date", "attachment"] }),
     // resizable: 편집 중 열 너비 드래그(컨플식). 폭은 GFM에 저장 문법이 없어 세션 한정 —
     // 영속하려면 저장 포맷 확장이 필요하다(분석서 "열린 정책 결정"에 기록).
     Table.configure({ resizable: true }),

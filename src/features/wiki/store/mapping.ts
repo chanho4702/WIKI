@@ -1,5 +1,25 @@
 // 백엔드(wiki-backend) DTO ↔ 프론트 도메인 타입 순수 변환. 부수효과 없음.
-import type { Comment, Page, PageNode, PageStatus, PageType, PageVersion, Space } from "./types";
+import type {
+  Comment,
+  MigrationDeadLetter,
+  MigrationIssueSummary,
+  MigrationItem,
+  MigrationItemStatus,
+  MigrationJob,
+  MigrationJobStatus,
+  MigrationJobSummary,
+  MigrationMode,
+  MigrationProvider,
+  MigrationReport,
+  MigrationSourceSummary,
+  MigrationStage,
+  Page,
+  PageNode,
+  PageStatus,
+  PageType,
+  PageVersion,
+  Space,
+} from "./types";
 
 export function toClientId(n: number): string {
   return String(n);
@@ -194,5 +214,152 @@ export function mapComment(dto: CommentDto): Comment {
     anchorOccurrence: dto.anchorOccurrence ?? null,
     resolvedAt: dto.resolvedAt ?? null,
     reactions: dto.reactions ?? [],
+  };
+}
+
+// ── 마이그레이션(M1) ─────────────────────────────────────────
+// 백엔드는 id를 Long으로 준다 — 문자열 변환은 **이 경계에서만** 한다(설계 §2).
+// 집계 맵의 키(PENDING·EXTRACT…)는 enum 이름 그대로 통과시킨다.
+
+export interface MigrationSourceDto {
+  baseUrl: string;
+  spaceKey: string;
+  spaceName?: string | null;
+  discoveredCount?: number | null;
+}
+
+export interface MigrationJobDto {
+  id: number;
+  provider: MigrationProvider;
+  sourceInstanceId?: string | null;
+  targetSpaceId: number;
+  mode: MigrationMode;
+  status: MigrationJobStatus;
+  itemCount?: number | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAt?: string | null;
+  /** §1.3 확장. 구버전 응답에는 없다 — 토큰은 어떤 경우에도 오지 않는다. */
+  source?: MigrationSourceDto | null;
+  counts?: { byStatus?: Record<string, number>; byStage?: Record<string, number> } | null;
+}
+
+export interface MigrationJobSummaryDto {
+  id: number;
+  provider: MigrationProvider;
+  targetSpaceId: number;
+  mode: MigrationMode;
+  status: MigrationJobStatus;
+  createdAt?: string | null;
+  discoveredCount?: number | null;
+  sourceSpaceKey?: string | null;
+}
+
+export interface MigrationItemDto {
+  id: number;
+  jobId: number;
+  externalObjectId: string;
+  sourceVersion?: string | null;
+  stage: MigrationStage;
+  status: MigrationItemStatus;
+  retryCount?: number | null;
+  nextAttemptAt?: string | null;
+  targetPageId?: number | null;
+  lastErrorCode?: string | null;
+}
+
+export interface MigrationDeadLetterDto {
+  itemId: number;
+  externalObjectId: string;
+  stage: MigrationStage;
+  lastErrorCode?: string | null;
+  retryCount?: number | null;
+  deadLetteredAt?: string | null;
+}
+
+export interface MigrationReportDto {
+  job: MigrationJobDto;
+  itemsByStatus?: Record<string, number> | null;
+  itemsByStage?: Record<string, number> | null;
+  issues?: MigrationIssueSummary[] | null;
+  deadLetters?: MigrationDeadLetterDto[] | null;
+}
+
+export function mapMigrationSource(dto: MigrationSourceDto | null | undefined): MigrationSourceSummary | null {
+  if (!dto) return null;
+  return {
+    baseUrl: dto.baseUrl,
+    spaceKey: dto.spaceKey,
+    spaceName: dto.spaceName ?? null,
+    discoveredCount: dto.discoveredCount ?? 0,
+  };
+}
+
+export function mapMigrationJob(dto: MigrationJobDto): MigrationJob {
+  return {
+    id: toClientId(dto.id),
+    provider: dto.provider,
+    sourceInstanceId: dto.sourceInstanceId ?? null,
+    targetSpaceId: toClientId(dto.targetSpaceId),
+    mode: dto.mode,
+    status: dto.status,
+    itemCount: dto.itemCount ?? 0,
+    startedAt: dto.startedAt ?? null,
+    completedAt: dto.completedAt ?? null,
+    createdAt: dto.createdAt ?? null,
+    source: mapMigrationSource(dto.source),
+    counts: {
+      byStatus: dto.counts?.byStatus ?? {},
+      byStage: dto.counts?.byStage ?? {},
+    },
+  };
+}
+
+export function mapMigrationJobSummary(dto: MigrationJobSummaryDto): MigrationJobSummary {
+  return {
+    id: toClientId(dto.id),
+    provider: dto.provider,
+    targetSpaceId: toClientId(dto.targetSpaceId),
+    mode: dto.mode,
+    status: dto.status,
+    createdAt: dto.createdAt ?? null,
+    discoveredCount: dto.discoveredCount ?? 0,
+    sourceSpaceKey: dto.sourceSpaceKey ?? null,
+  };
+}
+
+export function mapMigrationItem(dto: MigrationItemDto): MigrationItem {
+  return {
+    id: toClientId(dto.id),
+    jobId: toClientId(dto.jobId),
+    externalObjectId: dto.externalObjectId,
+    sourceVersion: dto.sourceVersion ?? null,
+    stage: dto.stage,
+    status: dto.status,
+    retryCount: dto.retryCount ?? 0,
+    nextAttemptAt: dto.nextAttemptAt ?? null,
+    targetPageId: dto.targetPageId === null || dto.targetPageId === undefined ? null : toClientId(dto.targetPageId),
+    lastErrorCode: dto.lastErrorCode ?? null,
+  };
+}
+
+export function mapMigrationDeadLetter(dto: MigrationDeadLetterDto): MigrationDeadLetter {
+  return {
+    itemId: toClientId(dto.itemId),
+    externalObjectId: dto.externalObjectId,
+    stage: dto.stage,
+    lastErrorCode: dto.lastErrorCode ?? null,
+    retryCount: dto.retryCount ?? 0,
+    deadLetteredAt: dto.deadLetteredAt ?? null,
+  };
+}
+
+export function mapMigrationReport(dto: MigrationReportDto): MigrationReport {
+  return {
+    job: mapMigrationJob(dto.job),
+    itemsByStatus: dto.itemsByStatus ?? {},
+    itemsByStage: dto.itemsByStage ?? {},
+    issues: (dto.issues ?? []).map((i) => ({ ...i, sampleSourcePath: i.sampleSourcePath ?? null })),
+    deadLetters: (dto.deadLetters ?? []).map(mapMigrationDeadLetter),
   };
 }

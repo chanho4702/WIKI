@@ -48,6 +48,20 @@ wiki-service가 붙으면 함수 내부만 `apiFetch`로 교체한다 — **함�
   **날짜만**(`YYYY-MM-DD`)이다 — API 어댑터가 서버 TIMESTAMPTZ를 잘라 넣는다. 시각을 그대로 두면
   만료 비교가 브라우저 타임존에 따라 하루씩 흔들려 두 모드가 갈린다. 만료 판정은 화면 몫이며
   (`lib/verification.ts`), 지난 날짜도 서버·목업 모두 그대로 저장한다.
+- **마이그레이션(M1, 컨플루언스 DC)**: `probeConfluenceDc`·`listMigrationJobs`·`createMigrationJob`·
+  `discoverMigrationJob`·`startMigrationJob`·`cancelMigrationJob`·`getMigrationJob`·`getMigrationReport`·
+  `listMigrationItems`. 원본 토큰(PAT)은 **요청 본문에만** 실린다 — 응답 DTO에도, 목업 저장
+  (`WikiData.migrations`)에도 자리가 없고 화면은 잡을 만든 뒤 입력칸을 비운다(설계 §1.1 P8).
+  `listMigrationJobs`는 **403일 때만 null**을 준다(전역 관리자 아님) — 잡이 없는 것은 빈 배열이고,
+  둘을 같게 다루면 권한 없는 화면과 빈 화면이 섞인다. 열거값은 백엔드 enum 이름 그대로
+  들고 다니고(`DEAD_LETTER`·`MEDIA_COPY`), 한국어 번역은 `lib/migrationLabels.ts`가 표시 직전에만
+  한다. `counts.byStatus`/`byStage`의 키도 그 이름인데, 서버 집계가 group-by라 **0인 키는 아예
+  오지 않는다**(백엔드 계약 §4.1) — 진행률은 반드시 `(byStatus.COMPLETED ?? 0) / itemCount`로 읽고,
+  집계를 순회하는 화면은 없는 키를 0으로 다룬다. 목업도 같은 규칙으로 0인 키를 만들지 않는다. 목업은 고정 시나리오다: 발견 12건, `getMigrationJob` 호출마다 3건씩
+  진행, 2건 WARNING(`MACRO_OPAQUE`·`ATTACHMENT_NOT_COPIED`), 1건 데드레터(`DC_NOT_FOUND`),
+  dry-run이면 `targetPageId`가 비어 페이지를 만들지 않았음을 드러낸다. **진행은 시간이 아니라
+  폴링 횟수로 움직이고, `getMigrationReport`는 진행을 당기지 않는다** — 한 폴링에서 잡과 보고서를
+  같이 읽는 화면이 서로 다른 시점을 보면 안 된다. 취소·완료 뒤에는 조회해도 더 나아가지 않는다.
 - **에러는 한국어 사용자 문구로 throw** — 화면이 메시지를 그대로 노출한다.
 - **편집 세션 낙관적 락**: 화면은 로드 때 받은 `Page.version`을 `updatePage(...,
   { expectedVersion })`에 넘긴다. API 어댑터가 저장 직전 조회한 최신 버전으로 바꾸면 stale 편집이

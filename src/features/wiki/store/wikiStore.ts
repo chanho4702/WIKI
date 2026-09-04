@@ -109,6 +109,16 @@ export const listGrantAudit = impl.listGrantAudit;
 export const getSearchIndexStatus = impl.getSearchIndexStatus;
 export const startReindex = impl.startReindex;
 export const getReindexJob = impl.getReindexJob;
+// 마이그레이션(M1) — 전역 관리자 화면(`/admin/migrations`). listMigrationJobs가 null이면 권한 없음.
+export const probeConfluenceDc = impl.probeConfluenceDc;
+export const listMigrationJobs = impl.listMigrationJobs;
+export const createMigrationJob = impl.createMigrationJob;
+export const discoverMigrationJob = impl.discoverMigrationJob;
+export const startMigrationJob = impl.startMigrationJob;
+export const cancelMigrationJob = impl.cancelMigrationJob;
+export const getMigrationJob = impl.getMigrationJob;
+export const getMigrationReport = impl.getMigrationReport;
+export const listMigrationItems = impl.listMigrationItems;
 export const fetchInlineAttachment = impl.fetchInlineAttachment;
 export const deleteAttachment = impl.deleteAttachment;
 export const searchContent = impl.searchContent;

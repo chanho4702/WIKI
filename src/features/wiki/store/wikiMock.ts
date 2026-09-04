@@ -42,6 +42,20 @@ import type {
   CommentAnchor,
   PageNode,
   SpaceGrant,
+  MigrationDeadLetter,
+  MigrationDiscoverResult,
+  MigrationIssueSummary,
+  MigrationItem,
+  MigrationItemFilter,
+  MigrationItemPage,
+  MigrationJob,
+  MigrationJobRecord,
+  MigrationJobSummary,
+  MigrationMode,
+  MigrationProvider,
+  MigrationReport,
+  MigrationSourceInput,
+  MigrationSourceProbe,
 } from "./types";
 import { CURRENT_USER_ID } from "../../../mock/users";
 import { createSeedData } from "../../../mock/seed";
@@ -1951,4 +1965,318 @@ export async function deleteComment(id: string): Promise<void> {
   // 최상위 코멘트면 그 답글도 연쇄 삭제
   data.comments = data.comments.filter((c) => c.id !== id && c.parentId !== id);
   persist();
+}
+
+// ── 마이그레이션(M1, 컨플루언스 DC) ────────────────────────────
+/*
+ * 목업은 **고정 시나리오**다(설계 §2). 실제로 DC에 붙지 않고, 화면이 파이프라인 한 바퀴를
+ * — 연결 확인 → 잡 생성 → 발견 → 시작 → 진행 → 보고서 → 데드레터 — 끝까지 그릴 수 있는
+ * 만큼만 흉내낸다.
+ *
+ * 진행은 시간이 아니라 **폴링 횟수**로 움직인다. 목업에 타이머를 두면 테스트가 실제 시계를
+ * 기다려야 하고, 느린 CI에서 몇 틱이 지났는지가 달라져 결과가 흔들린다. getMigrationJob을
+ * 부를 때마다 3건씩 나아가고, 보고서 조회는 상태를 **읽기만** 한다 — 한 번의 폴링에서 잡과
+ * 보고서를 같이 읽는 화면이 서로 다른 시점을 보면 안 되기 때문이다.
+ */
+
+/** 발견되는 원본 페이지 수 — 12건. */
+const MOCK_DISCOVERED = 12;
+/** 폴링 한 번에 처리되는 항목 수. */
+const MOCK_ITEMS_PER_TICK = 3;
+
+/** 몇 번째 항목이 어떤 경고를 남기는가(1부터). 항목이 처리돼야 보고서에 나타난다. */
+const MOCK_ISSUE_BY_ORDINAL: Record<number, { code: string; sourcePath: string }> = {
+  3: { code: "MACRO_OPAQUE", sourcePath: "macro:jira" },
+  7: { code: "ATTACHMENT_NOT_COPIED", sourcePath: "attachment:설계도.png" },
+};
+/** 원본에서 사라진 페이지 — 재시도해도 안 되는 데드레터 한 건. */
+const MOCK_DEAD_LETTER_ORDINAL = MOCK_DISCOVERED;
+
+function migrationsOf(data: WikiData): MigrationJobRecord[] {
+  return (data.migrations ??= []);
+}
+
+function findMigration(data: WikiData, id: string): MigrationJobRecord {
+  const found = migrationsOf(data).find((j) => j.id === id);
+  if (!found) throw new Error("마이그레이션 잡을 찾을 수 없습니다");
+  return found;
+}
+
+/** 항목 순번 — externalObjectId가 아니라 배열 위치로 센다. */
+function ordinalOf(record: MigrationJobRecord, item: MigrationItem): number {
+  return record.items.indexOf(item) + 1;
+}
+
+function countBy(values: string[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const value of values) out[value] = (out[value] ?? 0) + 1;
+  return out;
+}
+
+function migrationJobView(record: MigrationJobRecord): MigrationJob {
+  return clone({
+    id: record.id,
+    provider: record.provider,
+    sourceInstanceId: record.sourceInstanceId,
+    targetSpaceId: record.targetSpaceId,
+    mode: record.mode,
+    status: record.status,
+    itemCount: record.items.length,
+    startedAt: record.startedAt,
+    completedAt: record.completedAt,
+    createdAt: record.createdAt,
+    source: record.source,
+    counts: {
+      byStatus: countBy(record.items.map((i) => i.status)),
+      byStage: countBy(record.items.map((i) => i.stage)),
+    },
+  });
+}
+
+/** 처리된 항목에서 손실을 집계한다 — 심각도(ERROR→WARNING→INFO) 다음 code 순. */
+function migrationIssues(record: MigrationJobRecord): MigrationIssueSummary[] {
+  const byCode = new Map<string, MigrationIssueSummary>();
+  for (const item of record.items) {
+    if (item.status !== "COMPLETED") continue;
+    const issue = MOCK_ISSUE_BY_ORDINAL[ordinalOf(record, item)];
+    if (!issue) continue;
+    const found = byCode.get(issue.code);
+    if (found) {
+      found.distinctPaths += 1;
+      found.occurrences += 1;
+    } else {
+      byCode.set(issue.code, {
+        severity: "WARNING",
+        code: issue.code,
+        distinctPaths: 1,
+        occurrences: 1,
+        sampleSourcePath: issue.sourcePath,
+      });
+    }
+  }
+  const rank: Record<MigrationIssueSummary["severity"], number> = { ERROR: 0, WARNING: 1, INFO: 2 };
+  return [...byCode.values()].sort(
+    (a, b) => rank[a.severity] - rank[b.severity] || a.code.localeCompare(b.code),
+  );
+}
+
+function migrationDeadLetters(record: MigrationJobRecord): MigrationDeadLetter[] {
+  return record.items
+    .filter((item) => item.status === "DEAD_LETTER")
+    .map((item) => ({
+      itemId: item.id,
+      externalObjectId: item.externalObjectId,
+      stage: item.stage,
+      lastErrorCode: item.lastErrorCode,
+      retryCount: item.retryCount,
+      deadLetteredAt: item.nextAttemptAt,
+    }));
+}
+
+/**
+ * 폴링 한 번 분량을 진행시킨다. RUNNING이 아니면(아직 시작 전·취소·완료) 아무것도 하지 않는다 —
+ * 취소한 잡이 조회만으로 다시 굴러가면 취소가 취소가 아니다.
+ */
+function advanceMigration(record: MigrationJobRecord): boolean {
+  if (record.status !== "RUNNING") return false;
+  let moved = 0;
+  for (const item of record.items) {
+    if (moved >= MOCK_ITEMS_PER_TICK) break;
+    if (item.status !== "PENDING") continue;
+    const ordinal = ordinalOf(record, item);
+    if (ordinal === MOCK_DEAD_LETTER_ORDINAL) {
+      item.status = "DEAD_LETTER";
+      item.stage = "EXTRACT";
+      item.retryCount = 3;
+      item.lastErrorCode = "DC_NOT_FOUND";
+      item.nextAttemptAt = new Date().toISOString();
+    } else {
+      item.status = "COMPLETED";
+      item.stage = "DONE";
+      // dry-run은 페이지를 만들지 않는다 — 보고서만 남는다(설계 §1.4 RESOLVE).
+      item.targetPageId = record.mode === "IMPORT" ? `mig-${record.id}-${ordinal}` : null;
+    }
+    moved += 1;
+  }
+  if (record.items.every((item) => item.status === "COMPLETED" || item.status === "DEAD_LETTER")) {
+    record.status = "COMPLETED";
+    record.completedAt = new Date().toISOString();
+  }
+  return moved > 0;
+}
+
+function hostOf(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).host;
+  } catch {
+    return baseUrl;
+  }
+}
+
+/** 연결 확인(M-01). 토큰은 **여기서 소비하고 버린다** — 어디에도 저장하지 않는다. */
+export async function probeConfluenceDc(input: MigrationSourceInput): Promise<MigrationSourceProbe> {
+  if (!/^https?:\/\//.test(input.baseUrl.trim())) {
+    throw new Error("원본 주소는 http:// 또는 https://로 시작해야 합니다");
+  }
+  if (!input.spaceKey.trim()) throw new Error("스페이스 키를 입력하세요");
+  if (!input.token.trim()) throw new Error("접근 토큰을 입력하세요");
+  return { spaceName: "제품 문서", homepageId: "16777217", pageCount: MOCK_DISCOVERED };
+}
+
+/**
+ * 잡 목록. 백엔드 모드는 전역 관리자가 아니면 null(403)을 주지만, 목업에는 판정할 서버가
+ * 없으므로 항상 목록을 준다 — 화면은 null만 "권한 없음"으로 다룬다.
+ */
+export async function listMigrationJobs(): Promise<MigrationJobSummary[] | null> {
+  const data = load();
+  // 같은 밀리초에 만든 잡은 createdAt이 같다 — 뒤에 넣은 것이 새 것이므로 뒤집고 나서 안정 정렬한다.
+  return [...migrationsOf(data)]
+    .reverse()
+    .map((record) => ({
+      id: record.id,
+      provider: record.provider,
+      targetSpaceId: record.targetSpaceId,
+      mode: record.mode,
+      status: record.status,
+      createdAt: record.createdAt,
+      discoveredCount: record.source?.discoveredCount ?? record.items.length,
+      sourceSpaceKey: record.source?.spaceKey ?? null,
+    }))
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+    .slice(0, 50);
+}
+
+export async function createMigrationJob(input: {
+  provider: MigrationProvider;
+  targetSpaceId: string;
+  mode: MigrationMode;
+  source?: MigrationSourceInput;
+}): Promise<MigrationJob> {
+  const data = load();
+  if (!data.spaces.some((s) => s.id === input.targetSpaceId)) {
+    throw new Error("대상 스페이스를 찾을 수 없습니다");
+  }
+  if (input.provider === "CONFLUENCE_DC" && !input.source) {
+    throw new Error("원본 접속 정보가 필요합니다");
+  }
+  const record: MigrationJobRecord = {
+    id: nextId(),
+    provider: input.provider,
+    // 서버는 baseUrl 호스트로 채운다 — 목업도 같은 규칙을 흉내낸다.
+    sourceInstanceId: input.source ? hostOf(input.source.baseUrl) : null,
+    targetSpaceId: input.targetSpaceId,
+    mode: input.mode,
+    status: "PENDING",
+    createdAt: new Date().toISOString(),
+    startedAt: null,
+    completedAt: null,
+    // token은 담지 않는다 — 저장 형태에 자리조차 없다.
+    source: input.source
+      ? { baseUrl: input.source.baseUrl, spaceKey: input.source.spaceKey, spaceName: null, discoveredCount: 0 }
+      : null,
+    items: [],
+  };
+  migrationsOf(data).push(record);
+  persist();
+  return migrationJobView(record);
+}
+
+/** 재발견은 멱등이다 — 이미 있는 항목은 skipped로 세고 새 항목만 더한다. */
+export async function discoverMigrationJob(id: string): Promise<MigrationDiscoverResult> {
+  const data = load();
+  const record = findMigration(data, id);
+  if (record.status !== "PENDING") throw new Error("이미 시작한 잡은 다시 발견할 수 없습니다");
+  let enqueued = 0;
+  let skipped = 0;
+  for (let ordinal = 1; ordinal <= MOCK_DISCOVERED; ordinal += 1) {
+    const externalObjectId = String(100000 + ordinal);
+    if (record.items.some((item) => item.externalObjectId === externalObjectId)) {
+      skipped += 1;
+      continue;
+    }
+    record.items.push({
+      id: `${record.id}-${ordinal}`,
+      jobId: record.id,
+      externalObjectId,
+      sourceVersion: "1",
+      stage: "EXTRACT",
+      status: "PENDING",
+      retryCount: 0,
+      nextAttemptAt: null,
+      targetPageId: null,
+      lastErrorCode: null,
+    });
+    enqueued += 1;
+  }
+  if (record.source) {
+    record.source.spaceName = "제품 문서";
+    record.source.discoveredCount = record.items.length;
+  }
+  persist();
+  return { discovered: MOCK_DISCOVERED, enqueued, skipped };
+}
+
+export async function startMigrationJob(id: string): Promise<MigrationJob> {
+  const data = load();
+  const record = findMigration(data, id);
+  // 발견 없이 시작하면 서버는 400 MIGRATION_NOTHING_DISCOVERED를 준다(설계 §1.3).
+  if (record.items.length === 0) throw new Error("발견된 항목이 없습니다. 먼저 원본을 발견하세요");
+  if (record.status !== "PENDING") throw new Error("이미 시작한 잡입니다");
+  record.status = "RUNNING";
+  record.startedAt = new Date().toISOString();
+  persist();
+  return migrationJobView(record);
+}
+
+export async function cancelMigrationJob(id: string): Promise<MigrationJob> {
+  const data = load();
+  const record = findMigration(data, id);
+  if (record.status === "COMPLETED") throw new Error("이미 끝난 잡은 취소할 수 없습니다");
+  record.status = "CANCELLED";
+  record.completedAt = new Date().toISOString();
+  persist();
+  return migrationJobView(record);
+}
+
+/** 폴링 진입점 — 이 호출만 시나리오를 진행시킨다. */
+export async function getMigrationJob(id: string): Promise<MigrationJob> {
+  const data = load();
+  const record = findMigration(data, id);
+  if (advanceMigration(record)) persist();
+  return migrationJobView(record);
+}
+
+/** 보고서는 상태를 읽기만 한다 — 같은 폴링 안에서 잡과 다른 시점을 보면 안 된다. */
+export async function getMigrationReport(id: string): Promise<MigrationReport> {
+  const data = load();
+  const record = findMigration(data, id);
+  const job = migrationJobView(record);
+  return {
+    job,
+    itemsByStatus: job.counts.byStatus,
+    itemsByStage: job.counts.byStage,
+    issues: migrationIssues(record),
+    deadLetters: migrationDeadLetters(record),
+  };
+}
+
+export async function listMigrationItems(
+  id: string,
+  filter: MigrationItemFilter = {},
+): Promise<MigrationItemPage> {
+  const data = load();
+  const record = findMigration(data, id);
+  const matched = record.items.filter(
+    (item) =>
+      (filter.status === undefined || item.status === filter.status) &&
+      (filter.stage === undefined || item.stage === filter.stage),
+  );
+  const page = Math.max(filter.page ?? 0, 0);
+  const size = 50;
+  return {
+    items: clone(matched.slice(page * size, (page + 1) * size)),
+    page,
+    size,
+    total: matched.length,
+  };
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { Avatar, Badge, Button, Dropdown, TopBar } from "@chanho/react";
-import { Bell, Database, Keyboard, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, Users } from "lucide-react";
+import { Bell, Database, DatabaseBackup, Keyboard, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, Users } from "lucide-react";
 import type { User } from "../store/types";
 import { getCurrentUser, getSearchIndexStatus } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
@@ -158,6 +158,12 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
                       description: "지워진 스페이스와 누가 지웠는지",
                       icon: <ScrollText size={16} aria-hidden="true" />,
                       onSelect: () => navigate("/admin/audit"),
+                    },
+                    {
+                      label: "마이그레이션",
+                      description: "컨플루언스 Data Center 스페이스를 옮깁니다",
+                      icon: <DatabaseBackup size={16} aria-hidden="true" />,
+                      onSelect: () => navigate("/admin/migrations"),
                     },
                   ]
                 : []),
