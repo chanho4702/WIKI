@@ -52,4 +52,31 @@ describe("W9 홈 대시보드(/home)", () => {
     const section = await screen.findByRole("region", { name: "이어서 작업" });
     expect(await within(section).findByRole("button", { name: /시작하기/ })).toBeInTheDocument();
   });
+  it("스페이스 섹션에 스페이스 카드가 있고, 누르면 그 스페이스로 간다 — 방문 기록 없는 첫 사용자의 진입점", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem("wiki.v1", JSON.stringify(createSeedData()));
+    renderApp("/home");
+
+    const section = await screen.findByRole("region", { name: "스페이스" });
+    expect(within(section).getByRole("link", { name: "모든 스페이스 보기" })).toHaveAttribute(
+      "href",
+      "/spaces",
+    );
+    await user.click(within(section).getByRole("button", { name: "개발 위키 (DEV)" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1");
+    });
+  });
+
+  it("최근 업데이트 섹션이 전체 스페이스의 문서를 최신순으로 보여주고 스페이스 이름을 함께 단다", async () => {
+    localStorage.setItem("wiki.v1", JSON.stringify(createSeedData()));
+    renderApp("/home");
+
+    const section = await screen.findByRole("region", { name: "최근 업데이트" });
+    const links = await within(section).findAllByRole("link");
+    // 시드에서 updatedAt이 가장 늦은 문서(시작하기)가 맨 앞
+    expect(links[0]).toHaveTextContent("시작하기");
+    expect(links[0]).toHaveAttribute("href", "/spaces/sp1/pages/pg1");
+    expect(within(section).getAllByText("개발 위키", { exact: false }).length).toBeGreaterThan(0);
+  });
 });

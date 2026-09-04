@@ -100,15 +100,20 @@ describe("Task 20 편집↔보기 폭 일치 (CSS 회귀)", () => {
     return match[1];
   }
 
-  it("편집 본문(.page-edit-body) 기본 폭이 .page-view와 동일한 760px 중앙 정렬이다", () => {
+  it("편집 본문(.page-edit-body) 기본 폭이 .page-view와 동일한 760px 본문 폭으로 중앙 정렬된다", () => {
     // 컨플식 상단 고정 크롬 도입(2026-08-23) 이후 폭 제약은 .page-edit이 아니라
     // 본문 래퍼(.page-edit-body)가 담당한다 — 크롬은 전폭으로 상단에 붙는다.
+    // .page-view는 패딩 없이 760px, .page-edit-body는 좌우 패딩(space-400)을 안에 품으므로
+    // max-width에 그 패딩을 더해야 실제 본문 폭이 같다(2026-09-04 실측 — 전엔 편집이 64px 좁았다).
     const pageView = findRule(".page-view");
     const editBody = findRule(".page-edit-body");
+    const editorContent = findRule(".wiki-editor-content");
     expect(pageView).toContain("max-width: 760px");
     expect(pageView).toContain("margin: 0 auto");
-    expect(editBody).toContain("max-width: 760px");
+    expect(editBody).toContain("max-width: calc(760px + 2 * var(--chanho-space-400))");
+    expect(editBody).toContain("padding: var(--chanho-space-200) var(--chanho-space-400)");
     expect(editBody).toContain("margin: 0 auto");
+    expect(editorContent).toContain("max-width: calc(760px + 2 * var(--chanho-space-400))");
     expect(editBody).not.toContain("880px");
   });
 

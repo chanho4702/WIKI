@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { EmptyState, PageHeader } from "@chanho/react";
+import { ListChecks } from "lucide-react";
 import type { MyTask } from "../store/types";
 import { listMyTasks, setTaskDone } from "../store/wikiStore";
 import { useToast } from "@chanho/react";
@@ -90,6 +91,7 @@ export function TasksPage() {
         <span role="status">작업 불러오는 중</span>
       ) : open.length === 0 ? (
         <EmptyState
+          media={<ListChecks size={32} aria-hidden="true" />}
           title="남은 작업이 없습니다"
           description="체크박스 항목에 @이름을 넣으면 그 사람의 작업이 됩니다. 날짜를 붙이면 기한이 됩니다."
         />

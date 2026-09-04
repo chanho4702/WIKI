@@ -562,6 +562,7 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
             {/* 라벨·휴지통은 자주 쓰는 탐색이라 사이드바에 남긴다 — 설정은 이름 옆 "…" 메뉴로
               * 옮겼다(진입점이 둘이면 어디가 정본인지 알 수 없다). */}
             {/* 블로그(W24)는 트리에 없어서 이 링크가 유일한 입구다 */}
+            <nav className="space-nav" aria-label="스페이스 메뉴">
             <NavLink to={`/spaces/${space.id}/blog`} className={navClass}>
               <Newspaper className="global-nav-icon" size={16} aria-hidden="true" />
               <span>블로그</span>
@@ -578,6 +579,7 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
               <Trash2 className="global-nav-icon" size={16} aria-hidden="true" />
               <span>휴지통</span>
             </NavLink>
+            </nav>
           </div>
         </>
       ) : (

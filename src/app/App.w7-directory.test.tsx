@@ -116,4 +116,11 @@ describe("W7-T7 스페이스 디렉토리 페이지(/spaces)", () => {
     });
     expect(await screen.findByRole("heading", { name: "스페이스", level: 1 })).toBeInTheDocument();
   });
+  it("표 머리글은 나머지 UI와 같은 한국어다(스페이스 이름·라벨·소유자·작업)", async () => {
+    localStorage.setItem("wiki.v1", JSON.stringify(createSeedData()));
+    renderApp("/spaces");
+    await screen.findByRole("heading", { name: "스페이스", level: 1 });
+    const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toEqual(["스페이스 이름", "라벨", "소유자", "작업"]);
+  });
 });

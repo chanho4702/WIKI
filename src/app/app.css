@@ -355,6 +355,15 @@ body {
   padding: 0 var(--chanho-space-200);
 }
 
+/* 스페이스 하단 링크(블로그·라벨·보관함·휴지통) — 예전엔 .wiki-sidebar-body의 직계 자식이라
+ * 항목마다 섹션 간격(16px)이 끼어 글로벌 내비(2px)보다 두 배 성글게 보였다. 한 묶음으로 감싸
+ * 같은 밀도로 맞춘다(휴리스틱 #4 일관성). */
+.space-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-25, 2px);
+}
+
 /* 사이드바 우측 경계 드래그 핸들 — 히트 영역은 8px, 시각 표시는 hover/focus 시 가운데 4px만 */
 .sidebar-resizer {
   position: absolute;
@@ -405,6 +414,12 @@ body {
   font-weight: var(--chanho-font-weight-bold);
   color: var(--chanho-color-text-brand);
   letter-spacing: 0.02em;
+  /* 로고는 링크지만 밑줄 달린 본문 링크처럼 보이면 안 된다 — 워드마크로 읽히게 */
+  text-decoration: none;
+}
+.wiki-brand:hover {
+  text-decoration: none;
+  opacity: 0.85;
 }
 
 /* W7 T6: 사이드바 별표 스페이스 섹션 — .space-flyout-*(W6 T3)과 동일한 시각 패턴을 재사용한다. */
@@ -1271,7 +1286,9 @@ body {
   flex-direction: column;
   gap: var(--chanho-space-200);
   width: 100%;
-  max-width: 760px;
+  /* 보기 화면(.page-view 760px, 패딩 없음)과 같은 본문 폭 — 좌우 패딩을 바깥에 더해야
+   * 편집 진입 시 본문이 64px 좁아지며 줄바꿈이 튀지 않는다 */
+  max-width: calc(760px + 2 * var(--chanho-space-400));
   margin: 0 auto;
   padding: var(--chanho-space-200) var(--chanho-space-400) var(--chanho-space-300);
   box-sizing: border-box;
@@ -4044,6 +4061,139 @@ body.is-column-reordering {
   color: var(--chanho-color-text-subtle);
 }
 
+/* 홈 섹션 제목 줄 — 제목 왼쪽, 보조 링크("모든 스페이스 보기") 오른쪽 */
+.home-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--chanho-space-200);
+}
+.home-section-link {
+  font-size: var(--chanho-font-size-100);
+  color: var(--chanho-color-text-brand);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.home-section-link:hover {
+  text-decoration: underline;
+}
+.home-section-link:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+  border-radius: var(--chanho-radius-small);
+}
+
+/* 스페이스 카드 — 이어서 작업 카드와 같은 틀(테두리·radius·hover)로 통일하되 가로 배치 */
+.home-space-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--chanho-space-200);
+}
+.home-space-card {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-150);
+  text-align: left;
+  padding: var(--chanho-space-150) var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-surface);
+  color: var(--chanho-color-text-default);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--chanho-transition-base), box-shadow var(--chanho-transition-base);
+}
+.home-space-card:hover {
+  border-color: var(--chanho-color-border-input);
+  box-shadow: var(--chanho-shadow-100);
+}
+.home-space-card:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+.home-space-card-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.home-space-card-name {
+  font-weight: var(--chanho-font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-space-card-key {
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+.home-space-card-star {
+  margin-left: auto;
+  color: var(--chanho-color-text-subtle);
+  flex: none;
+}
+
+/* 최근 업데이트 피드 — 스페이스 개요의 .space-overview-recent와 같은 결, 스페이스 이름이 앞에 붙는다 */
+.home-recent {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--chanho-color-border-default);
+}
+.home-recent-item {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-150);
+  padding: var(--chanho-space-150) var(--chanho-space-100);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
+.home-recent-icon {
+  color: var(--chanho-color-text-subtle);
+  flex: none;
+}
+.home-recent-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.home-recent-link {
+  color: var(--chanho-color-text-default);
+  font-weight: var(--chanho-font-weight-medium);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-recent-link:hover {
+  color: var(--chanho-color-text-brand);
+  text-decoration: underline;
+}
+.home-recent-link:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+  border-radius: var(--chanho-radius-small);
+}
+.home-recent-meta {
+  margin: 0;
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+.home-recent-time {
+  margin-left: auto;
+  flex: none;
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── 숫자 정렬 ─────────────────────────────────────────────
  * 날짜·버전·시각처럼 세로로 쌓여 비교되는 숫자는 tabular(고정폭) 자형을 쓴다. 기본 비례
  * 자형에서는 "1"이 좁아 목록 항목마다 글자폭이 달라져 열이 흔들려 보인다. */
@@ -4288,7 +4438,7 @@ body.is-column-reordering {
 /* 에디터 콘텐츠 칼럼 — 툴바(전체 너비) 아래의 제목+본문 가운데 칼럼(.page-edit-body와 같은 규격) */
 .wiki-editor-content {
   width: 100%;
-  max-width: 760px;
+  max-width: calc(760px + 2 * var(--chanho-space-400)); /* .page-edit-body와 같은 이유 */
   margin: 0 auto;
   padding: var(--chanho-space-200) var(--chanho-space-400) var(--chanho-space-300);
   box-sizing: border-box;

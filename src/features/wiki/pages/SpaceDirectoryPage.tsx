@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Avatar, EmptyState, Table, TextField } from "@chanho/react";
 import { Star } from "lucide-react";
 import type { TableColumn } from "@chanho/react";
-import type { Space } from "../store/types";
+import type { Space, User } from "../store/types";
+import { listUsers } from "../store/wikiStore";
 import { useStarredSpaces } from "../lib/starredSpaces";
+import { displayUserName } from "../lib/userName";
 
 export interface SpaceDirectoryPageProps {
   spaces: Space[];
@@ -20,12 +22,25 @@ function matchesQuery(space: Space, query: string): boolean {
 /**
  * 스페이스 디렉토리 페이지 (`/spaces`) — 컨플루언스 "스페이스 디렉토리" 복제(`space 페이지.png`).
  * "자주 찾는 스페이스"(별표된 것, 카드) + "모든 스페이스"(테이블: Space name·Labels·Owner·Actions).
- * Labels/Owner는 백엔드가 주지 않아 각각 빈칸/"Not available"로 둔다(설계 §1.3).
+ * Labels는 백엔드가 주지 않아 빈칸, Owner는 개인 스페이스(ownerId)만 이름을 보인다(설계 §1.3).
  */
 export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
   const navigate = useNavigate();
   const { starred, toggle } = useStarredSpaces();
   const [query, setQuery] = useState("");
+  // 소유자 열 — 개인 스페이스의 ownerId를 이름으로. 실패해도 표는 뜨고 `사용자 #id` 폴백으로 간다.
+  const [users, setUsers] = useState<User[]>([]);
+  useEffect(() => {
+    let active = true;
+    void listUsers()
+      .then((found) => {
+        if (active) setUsers(found);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const starredSpaces = spaces.filter((s) => starred.includes(s.id));
   const filtered = spaces.filter((s) => matchesQuery(s, query));
@@ -33,7 +48,7 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
   const columns: TableColumn<Space>[] = [
     {
       key: "name",
-      header: "Space name",
+      header: "스페이스 이름",
       render: (space) => (
         <button
           type="button"
@@ -46,16 +61,23 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
         </button>
       ),
     },
-    // 백엔드 Space에 labels/owner가 없다 → 빈칸/"Not available"(설계 §1.3, 후속 백엔드 필드)
-    { key: "labels", header: "Labels", render: () => <span className="space-directory-muted">—</span> },
+    // 백엔드 Space에 labels가 없다 → 빈칸(설계 §1.3, 후속 백엔드 필드). 나머지 UI가 전부 한국어라
+    // 머리글도 한국어로 — 이 표만 영문이면 다른 제품이 끼어든 것처럼 보인다(휴리스틱 #4).
+    { key: "labels", header: "라벨", render: () => <span className="space-directory-muted">—</span> },
     {
       key: "owner",
-      header: "Owner",
-      render: () => <span className="space-directory-muted">Not available</span>,
+      header: "소유자",
+      // 개인 스페이스(W23)만 주인이 있다 — 팀 스페이스는 빈칸. "Not available" 같은 상태 문구는
+      // 값이 아니라 결함처럼 읽힌다.
+      render: (space) => {
+        if (!space.ownerId) return <span className="space-directory-muted">—</span>;
+        const owner = users.find((u) => u.id === space.ownerId);
+        return <span>{owner?.name ?? displayUserName(space.ownerId)}</span>;
+      },
     },
     {
       key: "actions",
-      header: "Actions",
+      header: "작업",
       render: (space) => {
         const isStarred = starred.includes(space.id);
         return (
