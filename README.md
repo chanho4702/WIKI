@@ -1,10 +1,23 @@
 # wiki-front — 위키 서비스 프론트엔드
 
+**직접 호스팅하는 컨플루언스 대체 위키 프론트엔드 — 스페이스·계층 페이지·버전 히스토리·실시간 공동 편집을 React 19와 TipTap으로.**
+
+*A self-hosted Confluence alternative: spaces, page trees, version history, and realtime co-editing in React 19 + TipTap.*
+
 [![CI](https://github.com/chanho4702/WIKI/actions/workflows/ci.yml/badge.svg)](https://github.com/chanho4702/WIKI/actions/workflows/ci.yml)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
 ![TipTap](https://img.shields.io/badge/TipTap-2.27-0D0D0D?logo=tiptap&logoColor=white)
+![Self-hosted](https://img.shields.io/badge/deployment-self--hosted-0b7285)
+
+## 특징
+
+- **스페이스와 계층 페이지 트리** — `parentId` 트리를 `@dnd-kit` 드래그로 이동·정렬하고, 자기 자손 밑으로 옮기는 순환은 거부한다.
+- **TipTap WYSIWYG 블록 에디터** — 표·체크리스트·이미지·링크 확장과 마크다운 왕복 직렬화, `[[제목]]` 위키 링크를 원자 칩으로 승격한다.
+- **버전 히스토리** — 저장마다 자동 스냅샷을 쌓고 목록·미리보기·diff·복원을 제공하며, 복원도 새 버전으로 남아 이력이 끊기지 않는다.
+- **권한 필터링 통합 검색** — search-service GraphQL로 제목·본문·폴더·첨부파일명을 검색하고 429·503 재시도를 처리한다.
+- **실시간 공동 편집(기능 플래그)** — Yjs 기반 제목·본문 동시 편집, 인증된 presence와 공동 커서, 단절 중 로컬 편집 보존.
 
 MSA_TEMPLATE의 **위키(컨플루언스 클론) 프론트엔드**. 3개 프론트(`myFront` · `wiki-front` · `alm-front`) 중 하나로,
 디자인 시스템(`@chanho/react`·`@chanho/tokens`)을 공유하고 게이트웨이 뒤에서 Keycloak OIDC SSO 체제에 속한다.
