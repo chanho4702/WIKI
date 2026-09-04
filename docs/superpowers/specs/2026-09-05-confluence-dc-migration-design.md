@@ -130,3 +130,27 @@ M1에서 경고로만 남긴 것을 실제로 옮긴다. 기획 Should 항목(S2
 ### 4.5 테스트·게이트
 FakeConfluenceDcServer에 첨부 다운로드·child/page·restrictions 엔드포인트 추가. 파이프라인 테스트: 첨부 2건(이미지+PDF, 하나는 크기 초과) → 첨부 레코드·본문 URL 재작성·재실행 멱등 / 링크 3종(먼저 이관된 문서·나중 문서·없는 문서) → fixup 결과 / 제한(매핑됨·미매핑 fail-closed) / 형제 순서. `./gradlew test` 전체 그린(JAVA_HOME=jdk-24). wiki-front는 `Link.protocols` 한 줄과 `migrationLabels.ts`의 새 코드 문구, 골든 갱신 시 사본 동기화.
 
+## 5. M3 — 블로그·댓글·버전 이력 N개·원본 작성자 표시 (2026-09-05, M2 병합 뒤)
+
+### 5.1 블로그 글
+- discover가 `type=blogpost`도 발견한다(`GET /rest/api/content?spaceKey=&type=blogpost&status=current`). 항목 `payloadRef=dc:content/{id}`는 같고, 스냅샷 `content.type=blogpost`.
+- RESOLVE: `Page.type=BLOG`(W24)로 작성, 부모 없음, `createdAt=history.createdDate`(블로그 목록은 날짜순이라 이 값이 곧 순서). 트리 정렬(sibling_order) 무관.
+- VERIFY: 블로그 목록에 보이는지(type 대조).
+
+### 5.2 페이지 댓글
+- EXTRACT expand에 `children.comment`(+ `history,body.storage,extensions.location,ancestors`)를 더한다. DC 댓글은 페이지 댓글(`extensions.location=footer`)과 인라인(`inlineProperties`)이 섞여 오며, 답글은 `ancestors`로 부모 댓글을 가리킨다. 페이지네이션(`limit=100`) 처리.
+- 새 payload kind `COMMENTS`(V36 CHECK 확장): 정규화된 댓글 목록 JSON `[{id, parentId, authorName, authorEmail?, createdAt, markdown}]`. 본문은 같은 정규화기+writer를 거친다(댓글 storage XHTML도 같은 포맷).
+- RESOLVE(import): 페이지 생성 뒤 `CommentService`의 **내부 경로**로 작성 — 기존 `create(userId, userName, pageId, req)`가 작성자 이름 스냅샷을 받으므로 `userName=원본 displayName`, `userId=잡 요청자`(P2: 미매핑은 요청자 id + 원본 이름). `createdAt`은 원본 시각으로(엔티티가 `@CreationTimestamp`면 이관용 세터/팩토리 추가). 인라인 댓글은 **페이지 댓글로 강등**하고 원문 인용을 본문 앞에 `> 원문: "..."` 한 줄로 붙인다 + WARNING `INLINE_COMMENT_DEMOTED`(P5). 답글은 부모 댓글의 매핑(같은 잡 안에서 id→id 메모리 맵, object map에는 `comment:{id}`로 upsert)으로 연결. 재실행 멱등: `comment:{id}` 매핑이 있으면 건너뜀. 알림·이벤트 미발행.
+
+### 5.3 버전 이력 N개 (P3 기본 10)
+- 프로퍼티 `platform.wiki.migration.dc.history-versions`(기본 10, 0이면 현재본만). EXTRACT가 `GET /rest/api/content/{id}/history`·`GET /rest/api/content/{id}?status=historical&version={n}&expand=body.storage,version,history` 로 최신 N개 이전 버전 본문을 받아 payload kind `HISTORY`(JSON 배열)로 저장(크기 상한: 버전당 본문 2MB, 초과는 WARNING `HISTORY_VERSION_SKIPPED`).
+- RESOLVE(import, 최초 이관에만): 오래된 것부터 순서대로 `PageRevision`을 만든다(각각 정규화+writer, editorName=그 버전 `version.by.displayName`, savedAt=`version.when`, 변경 요약=`version.message`), 마지막이 현재본. 페이지 `version` 번호는 리비전 수와 일치시킨다. 재이관(checksum 변경)에서는 이력을 다시 만들지 않고 새 리비전 한 건만.
+
+### 5.4 원본 작성자 표시 (P2)
+- V36: `page.imported_author_name VARCHAR(255) NULL`, `page.imported_source_url VARCHAR(1024) NULL`. writer가 미매핑일 때 채운다(매핑되면 NULL). `PageResponse`에 `importedAuthorName`·`importedSourceUrl` 추가.
+- wiki-front: 메타 줄의 작성자 자리에 매핑된 사용자가 없으면 "이관됨 · {원본 이름}"으로 표시(툴팁: 원본 URL), `Page` 타입·mapping·목업 반영, PageViewPage 테스트 1건.
+- `MigrationPrincipalResolver`는 그대로 두되, org-service에 사용자 조회(email/username)가 생기면 그 구현만 갈아끼운다 — common-proto 변경은 이 트랙 밖(별도 결정: 확정 결정 "공유 아티팩트 버전은 하나"에 따라 main 태그 발행 필요).
+
+### 5.5 테스트
+FakeConfluenceDcServer에 blogpost·comment·history 응답 추가. 파이프라인: 블로그 1건(목록 순서), 댓글 3건(페이지·답글·인라인 강등), 이력 3버전(리비전 순서·편집자 이름·요약), 미매핑 작성자 표시, 재실행 멱등(댓글·이력 중복 없음). `./gradlew test`(JAVA_HOME=jdk-24)·wiki-front `pnpm typecheck && pnpm test` 그린.
+
