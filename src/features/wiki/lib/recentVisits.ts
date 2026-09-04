@@ -3,7 +3,10 @@
  * 도메인 데이터가 아니라 사용자별 UI 상태라 wikiStore가 아닌 lib에서 관리한다(별표·pageWidth와 동일 계열).
  * 백엔드에 방문 추적 엔드포인트가 없어(설계 §10) 두 모드 공통으로 클라이언트에 쌓는다.
  */
-const KEY = "wiki.ui.recentVisits";
+import { scopedStorageKey } from "./storageKey";
+
+// 방문한 페이지 id 목록 — 공유되면 docs에 없는 id로 링크돼 깨진다
+const KEY = scopedStorageKey("wiki.ui.recentVisits");
 const MAX = 20;
 
 export interface RecentVisit {

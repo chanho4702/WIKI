@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { scopedStorageKey } from "./storageKey";
 
 /**
  * 페이지 너비 설정 (Task 18) — 노션 "전체 너비" / 컨플루언스 고정 폭 대응.
@@ -7,7 +8,8 @@ import { useCallback, useEffect, useState } from "react";
  */
 export type PageWidth = "default" | "full";
 
-const STORAGE_PREFIX = "wiki.ui.width.";
+// 페이지 id로 키를 만든다 — 같은 id가 두 인스턴스에서 서로 다른 문서라 스코프를 갈라야 한다
+const STORAGE_PREFIX = scopedStorageKey("wiki.ui.width.");
 
 function storageKey(pageId: string): string {
   return `${STORAGE_PREFIX}${pageId}`;

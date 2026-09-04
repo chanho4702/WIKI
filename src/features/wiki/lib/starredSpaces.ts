@@ -1,5 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { pushSpaceStar } from "./starSync";
+import { scopedStorageKey } from "./storageKey";
 
 /**
  * 스페이스 별표(즐겨찾기) 설정 (W6 T3, W7 T6 리뷰 수정) — 컨플루언스식 스페이스 플라이아웃의
@@ -14,7 +15,8 @@ import { pushSpaceStar } from "./starSync";
  * useSyncExternalStore로 바꿔, 어느 인스턴스에서 toggle하든 구독 중인 모든 컴포넌트가 같은 렌더
  * 사이클에서 즉시 갱신되도록 한다.
  */
-const STORAGE_KEY = "wiki.ui.starredSpaces";
+// 스페이스 id 목록 = 어떤 스페이스를 보는지 — 인스턴스마다 따로 둔다(storageKey.ts)
+const STORAGE_KEY = scopedStorageKey("wiki.ui.starredSpaces");
 
 /** localStorage에서 별표 스페이스 id 배열을 즉시 읽어온다(캐시 없이 항상 실제 값). 값 부재/오류/
  * 손상(비배열, 비문자열 원소) 시 빈 배열. */

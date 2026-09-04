@@ -1,5 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { pushPageStar } from "./starSync";
+import { scopedStorageKey } from "./storageKey";
 
 /**
  * 페이지 별표(즐겨찾기) — starredSpaces.ts와 동일한 패턴(별도 키의 병렬 모듈,
@@ -13,7 +14,8 @@ import { pushPageStar } from "./starSync";
  * 구버전(문자열 배열) 저장분은 읽기 시점에 {id}만 있는 엔트리로 승격되고, 그 스페이스에
  * 다시 들어가면 hydrate가 제목을 채운다.
  */
-const STORAGE_KEY = "wiki.ui.starredPages";
+// 페이지 id + 제목 스냅샷을 담는다 — 공유되면 팀 문서 제목이 공개 화면에 그대로 뜬다
+const STORAGE_KEY = scopedStorageKey("wiki.ui.starredPages");
 
 export interface StarredPageEntry {
   id: string;

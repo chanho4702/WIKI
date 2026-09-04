@@ -1,6 +1,7 @@
 import { listStars, setPageStar, setSpaceStar } from "../store/wikiStore";
 import { getStarredPageEntries, setStarredPageEntries } from "./starredPages";
 import { getStarredSpaces, setStarredSpaces } from "./starredSpaces";
+import { scopedStorageKey } from "./storageKey";
 
 /**
  * 별표의 서버 동기화(W23).
@@ -16,7 +17,8 @@ import { getStarredSpaces, setStarredSpaces } from "./starredSpaces";
  * 아무것도 하지 않는다.
  */
 
-const MIGRATED_KEY = "wiki.ui.starsMigrated";
+// 별표 원장과 한 몸인 플래그 — 원장을 갈랐으면 이 표시도 함께 갈라야 한다
+const MIGRATED_KEY = scopedStorageKey("wiki.ui.starsMigrated");
 
 function alreadyMigrated(): boolean {
   try {
