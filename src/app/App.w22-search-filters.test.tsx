@@ -155,7 +155,45 @@ describe("W22 검색 필터 — 화면", () => {
     renderApp("/search?q=설정");
     await screen.findByRole("heading", { name: "검색" });
 
-    await user.selectOptions(screen.getByLabelText("정렬"), "UPDATED_DESC");
+    // DS Select는 네이티브 select가 아니라 트리거를 열어 옵션을 고른다
+    await user.click(screen.getByLabelText("정렬"));
+    await user.click(await screen.findByRole("option", { name: "최근 수정순" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("sort=UPDATED_DESC");
+    });
+  });
+
+  it("작성자를 고르면 URL에 남고 '전체'로 되돌리면 지워진다", async () => {
+    const user = userEvent.setup();
+    renderApp("/search?q=설정");
+    await screen.findByRole("heading", { name: "검색" });
+
+    await user.click(screen.getByLabelText("작성자"));
+    await user.click(await screen.findByRole("option", { name: "이서연" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("author=u2");
+    });
+
+    // "전체"는 화면 전용 센티널이라 URL에는 파라미터 자체가 남으면 안 된다
+    await user.click(screen.getByLabelText("작성자"));
+    await user.click(await screen.findByRole("option", { name: "전체" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).not.toHaveTextContent("author=");
+    });
+  });
+
+  it("정렬 셀렉트는 키보드로 열고 고를 수 있다", async () => {
+    const user = userEvent.setup();
+    renderApp("/search?q=설정");
+    await screen.findByRole("heading", { name: "검색" });
+
+    screen.getByLabelText("정렬").focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("option", { name: "관련도" });
+    await user.keyboard("{ArrowDown}{Enter}");
 
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("sort=UPDATED_DESC");

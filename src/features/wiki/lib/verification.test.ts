@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { defaultVerifiedUntil, todayIso, verificationState } from "./verification";
+import {
+  defaultVerifiedUntil,
+  editedSinceVerification,
+  todayIso,
+  verificationState,
+} from "./verification";
 
 describe("verificationState", () => {
   it("유효기간이 없으면 배지를 달지 않는다", () => {
@@ -15,6 +20,50 @@ describe("verificationState", () => {
   it("유효기간 다음 날부터 만료다", () => {
     expect(verificationState({ verifiedUntil: "2026-09-03" }, "2026-09-04")).toBe("expired");
     expect(verificationState({ verifiedUntil: "2020-01-01" }, "2026-09-04")).toBe("expired");
+  });
+});
+
+describe("editedSinceVerification", () => {
+  it("검증 이후 수정된 문서를 가려낸다", () => {
+    expect(
+      editedSinceVerification({
+        verifiedAt: "2026-09-04T10:00:00.000Z",
+        updatedAt: "2026-09-04T11:00:00.000Z",
+      }),
+    ).toBe(true);
+  });
+
+  it("검증이 마지막 수정보다 나중이면 수정된 것이 아니다", () => {
+    expect(
+      editedSinceVerification({
+        verifiedAt: "2026-09-04T11:00:00.000Z",
+        updatedAt: "2026-09-04T10:00:00.000Z",
+      }),
+    ).toBe(false);
+  });
+
+  // 검증은 updatedAt을 건드리지 않는다 — 두 시각이 같아도 "검증 후 수정"은 아니다
+  it("두 시각이 같으면 수정된 것이 아니다", () => {
+    const at = "2026-09-04T10:00:00.000Z";
+    expect(editedSinceVerification({ verifiedAt: at, updatedAt: at })).toBe(false);
+  });
+
+  it("검증 시각이 없으면 false다", () => {
+    expect(
+      editedSinceVerification({ verifiedAt: null, updatedAt: "2026-09-04T10:00:00.000Z" }),
+    ).toBe(false);
+    expect(
+      editedSinceVerification({ verifiedAt: undefined, updatedAt: "2026-09-04T10:00:00.000Z" }),
+    ).toBe(false);
+  });
+
+  it("무효한 날짜는 판정하지 않는다", () => {
+    expect(editedSinceVerification({ verifiedAt: "그날", updatedAt: "2026-09-04T10:00:00.000Z" })).toBe(
+      false,
+    );
+    expect(editedSinceVerification({ verifiedAt: "2026-09-04T10:00:00.000Z", updatedAt: "" })).toBe(
+      false,
+    );
   });
 });
 

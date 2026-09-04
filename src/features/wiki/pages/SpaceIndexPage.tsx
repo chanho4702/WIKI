@@ -71,7 +71,7 @@ function formatDate(iso: string): string {
  * 아예 없었다. 이제 "콘텐츠"(전체 계층 트리)와 "최근 업데이트"를 보여준다 — 사이드바 트리가
  * 탐색용이라면 이 화면은 조망용이다.
  *
- * 페이지가 하나도 없으면 기존과 동일하게 "첫 페이지 만들기" EmptyState를 유지한다.
+ * 페이지가 하나도 없으면 헤더 아래에 "첫 페이지 만들기" EmptyState를 둔다 — 이름·구독 토글은 남는다.
  */
 export function SpaceIndexPage() {
   const { spaceId } = useParams();
@@ -132,56 +132,72 @@ export function SpaceIndexPage() {
     );
   }
 
+  /**
+   * 헤더는 빈 스페이스에서도 그대로 나온다(W27-4 후속).
+   *
+   * 전에는 페이지가 0개면 EmptyState만 이른 반환해서, 스페이스 이름도 구독 토글도 없었다 —
+   * "새 문서가 올라오면 알려줘"가 가장 필요한 곳이 바로 아직 비어 있는 스페이스인데도.
+   * 한 벌로 두어 두 분기가 갈라지지 않게 한다.
+   */
+  const header = (
+    <header className="space-overview-header">
+      <Avatar name={space.name} color="auto" size="large" aria-hidden="true" />
+      <div className="space-overview-heading">
+        <h1>{space.name}</h1>
+        <p className="space-overview-key">{space.key}</p>
+      </div>
+      {/* 스페이스 개요에서도 폴더를 만들 수 있어야 한다 — 전에는 페이지 전용 버튼이었다.
+        * 이름이 "만들기"가 아닌 이유: 셸 헤더에 같은 이름의 버튼이 이미 있어 한 화면에 동명
+        * 버튼이 둘이 되면 스크린리더에서 구분되지 않는다. */}
+      {readOnly ? null : (
+        <>
+          <CreateContentMenu
+            trigger={
+              <Button size="small" iconBefore={<Plus size={16} aria-hidden="true" />}>
+                새 콘텐츠
+              </Button>
+            }
+            onSelect={(type) => void createContent(type)}
+            spaceId={spaceId ?? null}
+            onSelectTemplate={(template) => void createFromTemplate(template)}
+          />
+          {/* 스페이스 구독(W27-4) — 새 문서가 올라오면 알림을 받는다. 문서 화면의 구독 버튼과 같은 모양 */}
+          <SpaceWatchButton spaceId={space.id} />
+        </>
+      )}
+    </header>
+  );
+
   if (roots.length === 0) {
     return (
-      <div className="empty-pages">
-        {/* 읽기 전용 인스턴스에서 "만들기"를 권하면 눌러도 되는 일이 없다 — 안내만 남긴다 */}
-        <EmptyState
-          title="아직 페이지가 없습니다"
-          description={
-            readOnly ? "이 문서 공간은 아직 비어 있습니다." : "첫 페이지를 만들어 위키를 시작하세요."
-          }
-          primaryAction={
-            readOnly
-              ? undefined
-              : {
-                  label: "첫 페이지 만들기",
-                  onClick: () => void createContent("page"),
-                }
-          }
-        />
+      <div className="space-overview">
+        {header}
+        <div className="empty-pages">
+          {/* 읽기 전용 인스턴스에서 "만들기"를 권하면 눌러도 되는 일이 없다 — 안내만 남긴다 */}
+          <EmptyState
+            title="아직 페이지가 없습니다"
+            description={
+              readOnly
+                ? "이 문서 공간은 아직 비어 있습니다."
+                : "첫 페이지를 만들어 위키를 시작하세요."
+            }
+            primaryAction={
+              readOnly
+                ? undefined
+                : {
+                    label: "첫 페이지 만들기",
+                    onClick: () => void createContent("page"),
+                  }
+            }
+          />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-overview">
-      <header className="space-overview-header">
-        <Avatar name={space.name} color="auto" size="large" aria-hidden="true" />
-        <div className="space-overview-heading">
-          <h1>{space.name}</h1>
-          <p className="space-overview-key">{space.key}</p>
-        </div>
-        {/* 스페이스 개요에서도 폴더를 만들 수 있어야 한다 — 전에는 페이지 전용 버튼이었다.
-          * 이름이 "만들기"가 아닌 이유: 셸 헤더에 같은 이름의 버튼이 이미 있어 한 화면에 동명
-          * 버튼이 둘이 되면 스크린리더에서 구분되지 않는다. */}
-        {readOnly ? null : (
-          <>
-            <CreateContentMenu
-              trigger={
-                <Button size="small" iconBefore={<Plus size={16} aria-hidden="true" />}>
-                  새 콘텐츠
-                </Button>
-              }
-              onSelect={(type) => void createContent(type)}
-              spaceId={spaceId ?? null}
-              onSelectTemplate={(template) => void createFromTemplate(template)}
-            />
-            {/* 스페이스 구독(W27-4) — 새 문서가 올라오면 알림을 받는다. 문서 화면의 구독 버튼과 같은 모양 */}
-            <SpaceWatchButton spaceId={space.id} />
-          </>
-        )}
-      </header>
+      {header}
 
       {/* 사이드바에도 aria-label="콘텐츠" 섹션이 있다 — 같은 이름의 랜드마크가 둘이면 스크린리더
         * 목록에서 구분이 안 되므로 본문 쪽은 "스페이스 콘텐츠"로 이름을 달리한다. */}

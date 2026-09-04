@@ -40,7 +40,7 @@ import { usePersonName } from "../lib/userName";
 import { recordVisit } from "../lib/recentVisits";
 import { PageOwnerDialog } from "../components/PageOwnerDialog";
 import { PageVerifyDialog } from "../components/PageVerifyDialog";
-import { verificationState } from "../lib/verification";
+import { editedSinceVerification, verificationState } from "../lib/verification";
 import { useReadOnly } from "../lib/readOnly";
 
 /** "2026-12-03" → "2026-12-03"(그대로). 무효 값은 빈 문자열 — 배지에 "Invalid Date"가 뜨지 않게. */
@@ -541,6 +541,8 @@ export function PageViewPage() {
         const ownerName = personName(page.ownerId, users);
         const verified = verificationState(page);
         const untilLabel = formatVerifiedUntil(page.verifiedUntil);
+        // 검증은 편집으로 자동 해제되지 않는다 — 대신 "그 검증 이후 본문이 바뀌었다"를 덧붙인다
+        const editedSince = verified !== "none" && editedSinceVerification(page);
         if (!editorName && !updatedLabel && views === null && !ownerName && verified === "none") {
           return null; // 표시할 게 하나도 없으면 메타 숨김
         }
@@ -569,6 +571,12 @@ export function PageViewPage() {
             {verified === "expired" ? (
               <Lozenge appearance="warning" className="page-view-badge">
                 검증 만료
+              </Lozenge>
+            ) : null}
+            {/* 색이 아니라 글자로 알린다(WCAG 1.4.1) — 만료 배지 옆에도 함께 붙을 수 있다 */}
+            {editedSince ? (
+              <Lozenge appearance="neutral" className="page-view-badge">
+                검증 후 수정됨
               </Lozenge>
             ) : null}
           </div>

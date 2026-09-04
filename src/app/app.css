@@ -5428,24 +5428,6 @@ body.is-column-reordering {
   padding: var(--chanho-space-150) 0;
 }
 
-.search-filter {
-  display: flex;
-  flex-direction: column;
-  gap: var(--chanho-space-50, 4px);
-  font-size: var(--chanho-font-size-75);
-  color: var(--chanho-color-text-subtle);
-}
-
-.search-filter select,
-.search-filter input {
-  padding: 4px var(--chanho-space-100);
-  border: 1px solid var(--chanho-color-border-default);
-  border-radius: var(--chanho-radius-small);
-  background: var(--chanho-color-background-surface);
-  color: var(--chanho-color-text-default);
-  font-size: var(--chanho-font-size-100);
-}
-
 /* ── 페이지 템플릿(W23) ──────────────────────────────────── */
 /* 고르는 목록이라 이름과 설명이 한눈에 들어와야 한다 — 본문 미리보기는 넣지 않는다(길다) */
 .template-picker-list,
@@ -6555,4 +6537,12 @@ body.is-column-reordering {
   border-radius: var(--chanho-radius-medium);
   color: var(--chanho-color-text-subtle);
   font-size: var(--chanho-font-size-075);
+}
+
+/* ── 검색 필터 배치(W22) ─────────────────────────────────── */
+/* 라벨·입력의 세로 배치와 입력 모양은 DS 필드가 담당한다 — 여기서는 한 줄에 나란히
+   놓기 위한 폭만 정한다. 폭이 없으면 date 입력이 내용 폭으로 줄어 라벨이 두 줄로 접힌다. */
+.search-filter {
+  flex: 0 1 11rem;
+  min-width: 9rem;
 }

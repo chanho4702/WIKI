@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Banner, Button, EmptyState, Lozenge, PageHeader, Spinner } from "@chanho/react";
+import {
+  Banner,
+  Button,
+  EmptyState,
+  Lozenge,
+  PageHeader,
+  Select,
+  Spinner,
+  TextField,
+} from "@chanho/react";
 import { FileText, Folder, Newspaper, Paperclip, SearchX } from "lucide-react";
 import { listPagePaths, listUsers, searchContent, suggestLabels } from "../store/wikiStore";
 import { useReadOnly } from "../lib/readOnly";
@@ -15,6 +24,18 @@ import {
 import { SearchHighlights } from "../components/SearchHighlights";
 
 const PAGE_SIZE = 20;
+
+/**
+ * "전체"(작성자 무관)를 나타내는 센티널. DS Select는 빈 문자열 value를 허용하지 않아
+ * 화면에서만 이 값을 쓰고, URL(`author=`)로 나갈 때는 빈 값으로 되돌린다.
+ */
+const AUTHOR_ANY = "ALL";
+
+const SORT_OPTIONS = [
+  { value: "RELEVANCE", label: "관련도" },
+  { value: "UPDATED_DESC", label: "최근 수정순" },
+  { value: "UPDATED_ASC", label: "오래된 수정순" },
+];
 
 function resultPath(hit: SearchHit): string {
   if (hit.docType === "ATTACHMENT") {
@@ -203,34 +224,33 @@ export function SearchPage() {
         <div className="search-filters">
           {/* 작성자 필터 — 읽기 전용에는 사람 개념이 없어 "전체"만 남은 빈 셀렉트가 된다 */}
           {readOnly ? null : (
-            <label className="search-filter">
-              <span>작성자</span>
-              <select value={authorId} onChange={(e) => setFilter("author", e.target.value)}>
-                <option value="">전체</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Select
+              className="search-filter"
+              label="작성자"
+              value={authorId === "" ? AUTHOR_ANY : authorId}
+              options={[
+                { value: AUTHOR_ANY, label: "전체" },
+                ...users.map((user) => ({ value: user.id, label: user.name })),
+              ]}
+              onValueChange={(next: string) =>
+                setFilter("author", next === AUTHOR_ANY ? "" : next)
+              }
+            />
           )}
-          <label className="search-filter">
-            <span>수정일 시작</span>
-            <input
-              type="date"
-              value={updatedAfter}
-              onChange={(e) => setFilter("after", e.target.value)}
-            />
-          </label>
-          <label className="search-filter">
-            <span>수정일 끝</span>
-            <input
-              type="date"
-              value={updatedBefore}
-              onChange={(e) => setFilter("before", e.target.value)}
-            />
-          </label>
+          <TextField
+            className="search-filter"
+            label="수정일 시작"
+            type="date"
+            value={updatedAfter}
+            onChange={(e) => setFilter("after", e.target.value)}
+          />
+          <TextField
+            className="search-filter"
+            label="수정일 끝"
+            type="date"
+            value={updatedBefore}
+            onChange={(e) => setFilter("before", e.target.value)}
+          />
           <form
             className="search-filter"
             onSubmit={(e) => {
@@ -238,9 +258,9 @@ export function SearchPage() {
               setFilter("labels", labelDraft.trim());
             }}
           >
-            <label htmlFor="search-filter-labels">라벨</label>
-            <input
+            <TextField
               id="search-filter-labels"
+              label="라벨"
               type="text"
               list="search-filter-label-options"
               value={labelDraft}
@@ -256,14 +276,13 @@ export function SearchPage() {
               ))}
             </datalist>
           </form>
-          <label className="search-filter">
-            <span>정렬</span>
-            <select value={sort} onChange={(e) => setFilter("sort", e.target.value)}>
-              <option value="RELEVANCE">관련도</option>
-              <option value="UPDATED_DESC">최근 수정순</option>
-              <option value="UPDATED_ASC">오래된 수정순</option>
-            </select>
-          </label>
+          <Select
+            className="search-filter"
+            label="정렬"
+            value={sort}
+            options={SORT_OPTIONS}
+            onValueChange={(next: string) => setFilter("sort", next)}
+          />
           {filtered ? (
             <Button
               size="small"
