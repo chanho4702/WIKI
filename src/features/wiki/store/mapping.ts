@@ -60,6 +60,9 @@ export interface PageDto {
   verifiedAt?: string | null;
   verifiedBy?: number | string | null;
   verifiedUntil?: string | null;
+  /** V36 원본 작성자 표시(W29 M3). 대조된 문서·구버전 응답에는 없다. */
+  importedAuthorName?: string | null;
+  importedSourceUrl?: string | null;
 }
 
 /**
@@ -99,6 +102,8 @@ export function mapPage(dto: PageDto): Page {
     verifiedBy:
       dto.verifiedBy === null || dto.verifiedBy === undefined ? null : String(dto.verifiedBy),
     verifiedUntil: toDateOnly(dto.verifiedUntil),
+    importedAuthorName: dto.importedAuthorName ?? null,
+    importedSourceUrl: dto.importedSourceUrl ?? null,
   };
 }
 

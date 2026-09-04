@@ -71,6 +71,14 @@ export interface Page {
    * 서버는 저장만 한다 — 만료돼도 문서가 숨거나 잠기지 않고 배지 문구만 바뀐다.
    */
   verifiedUntil?: string | null;
+  /**
+   * 이관된 문서의 **원본 작성자 이름**(W29 M3). 값이 있으면 서버가 원본 작성자를 우리 계정으로
+   * 대조하지 못했다는 뜻이다 — 그때 메타 줄은 `updatedBy`(이관 담당자) 대신 이 이름을 보여준다.
+   * 대조된 문서는 null이고 화면은 평소대로 우리 사용자를 쓴다.
+   */
+  importedAuthorName?: string | null;
+  /** 원본 문서 주소 — 이름만으로는 누구인지 확인할 길이 없어 툴팁으로 원본까지 연결한다. */
+  importedSourceUrl?: string | null;
 }
 
 /** 검증 배지의 세 상태 — 없음/유효/만료. `verifiedUntil`만으로 결정된다. */

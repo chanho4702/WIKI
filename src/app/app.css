@@ -4228,6 +4228,14 @@ body.is-column-reordering {
   border-left: 1px solid var(--chanho-color-border-default);
 }
 
+/* 이관 문서의 원본 작성자(W29 M3) — 아바타와 "이관됨 · 이름"이 한 덩어리로 읽혀야 한다.
+ * 소유자와 달리 메타 줄의 첫 항목(작성자 자리)이라 구분선은 붙이지 않는다. */
+.page-view-imported {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-050);
+}
+
 /* DS Lozenge의 클래스는 CSS 모듈 해시라 버전마다 바뀐다 — 우리 쪽 이름을 붙여 잡는다 */
 .page-view-badge {
   margin-left: var(--chanho-space-050);

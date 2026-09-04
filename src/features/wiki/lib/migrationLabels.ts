@@ -123,7 +123,13 @@ const ISSUE_CODE: Record<string, string> = {
 
   // 제한·작성자
   RESTRICTION_PRINCIPAL_UNMAPPED: "원본 제한의 사용자·그룹을 대조하지 못해 요청자만 볼 수 있게 닫았습니다",
-  AUTHOR_UNMAPPED: "원본 작성자를 우리 계정과 대조하지 못했습니다",
+  AUTHOR_UNMAPPED: "원본 작성자를 우리 계정과 대조하지 못해 원본 이름으로 표시합니다",
+
+  // 댓글·이력(M3)
+  INLINE_COMMENT_DEMOTED: "본문 구간에 붙은 댓글이라 페이지 댓글로 내리고 원문을 인용했습니다",
+  COMMENT_NOT_MIGRATED: "댓글 본문을 옮기지 못해 그 댓글만 건너뛰었습니다",
+  COMMENT_REPLY_FLATTENED: "답글의 답글이라 최상위 답글로 폈습니다(중첩은 1단까지입니다)",
+  HISTORY_VERSION_SKIPPED: "지난 버전 하나를 옮기지 못해 이력에서 빠졌습니다",
 
   // 원본 상태
   SOURCE_VERSION_DRIFT: "발견한 뒤 원본이 수정돼 최신본을 옮겼습니다",
@@ -134,6 +140,7 @@ const ISSUE_CODE: Record<string, string> = {
   VERIFY_TITLE_MISMATCH: "옮긴 문서의 제목이 원본과 다릅니다",
   VERIFY_BODY_EMPTY: "옮긴 문서의 본문이 비어 있습니다",
   VERIFY_LABEL_MISMATCH: "옮긴 문서의 라벨 수가 원본과 다릅니다",
+  VERIFY_TYPE_MISMATCH: "블로그 글과 일반 문서가 뒤바뀌어 목록에서 보이지 않습니다",
   VERIFY_MARKDOWN_MISSING: "변환 결과가 남아 있지 않습니다",
 };
 

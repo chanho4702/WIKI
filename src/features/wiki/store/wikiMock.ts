@@ -760,6 +760,10 @@ export async function copyPage(id: string, options?: CopyPageOptions): Promise<P
       verifiedAt: null,
       verifiedBy: null,
       verifiedUntil: null,
+      // 사본은 우리 쪽에서 새로 만든 문서다 — 원본 위키 표시(W29 M3)를 물려받으면 만든 적 없는
+      // 컨플루언스 문서를 가리키는 링크가 생긴다. 백엔드 copy도 새 Page를 만들어 같은 결과다.
+      importedAuthorName: null,
+      importedSourceUrl: null,
     };
     newIdOf.set(original.id, copy.id);
     data.pages.push(copy);

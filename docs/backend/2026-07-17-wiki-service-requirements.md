@@ -32,6 +32,7 @@
 | Space | id, key, name, createdAt | key: 대문자 접두어, **유니크** |
 | Page | id, spaceId, parentId(null=루트), **type**, **status**, title, body(마크다운 원문), position, createdBy, updatedBy, createdAt, updatedAt | parentId 인접 리스트, 깊이 제한 없음. type=`page`\|`folder`(기획 P1), status=`draft`\|`published`(P3) — **구현됨**(V2, JSON은 소문자). 폴더는 항상 published |
 | Page(추가) | ownerId, verifiedAt, verifiedBy, verifiedUntil | **V33(W27-5)** 전부 nullable. ownerId는 기본값 없음 — createdBy를 복사하지 않는다("정하지 않음"이 유효한 상태). 소유자는 표시일 뿐 권한과 무관 |
+| Page(추가) | importedAuthorName, importedSourceUrl | **V36(W29 M3)** 둘 다 nullable. 이관 문서에서 원본 작성자를 **우리 계정과 대조하지 못했을 때만** 값이 있다(대조되면 NULL). createdBy/updatedBy는 여전히 이관 담당자다 — 화면은 이 값이 있으면 작성자 자리에 "이관됨 · {원본 이름}"을 쓰고 원본 주소를 툴팁으로 붙인다 |
 | SpaceWatch | spaceId, userId, createdAt | **V32(W27-4)** PK(spaceId,userId), 스페이스 삭제 cascade. 자동 구독 없음 |
 | PageVersion | id, pageId, version(1부터), title, body, savedBy, savedAt | 페이지당 version 연속 증가 |
 | Comment | id, pageId, authorId, body, parentId(null=최상위), createdAt, updatedAt(null=미수정) | **답글 중첩 1단** |
@@ -73,7 +74,7 @@
 | probeConfluenceDc({baseUrl, spaceKey, token}) | POST /api/wiki/migrations/confluence-dc/probe | **V34(W29)** 원본 DC 연결 확인 → `{spaceName, homepageId, pageCount\|null}`. **전역 관리자만**(GLOBAL grant — 감사 로그 space-deletions와 같은 판정). `pageCount`는 사이트가 총계를 안 주면 null. token은 요청 본문에만 — 어떤 응답에도 실리지 않는다. 실패: 401/403→403 "원본 컨플루언스 인증에 실패했습니다 — 토큰과 권한을 확인하세요", 404→404, 연결 불가/429/5xx→503, 3xx→400(리다이렉트 비허용), baseUrl이 http(s)가 아니면 400 |
 | listMigrationJobs() | GET /api/wiki/migrations | **V34** 최신순 50건 `[{id, provider, targetSpaceId, mode, status, createdAt, discoveredCount\|null, sourceSpaceKey\|null}]`. **전역 관리자만**. 원본이 없는 잡(예전 NOTION)은 뒤 두 필드가 null |
 | createMigrationJob({provider, targetSpaceId, mode, source?}) | POST /api/wiki/migrations | **V34 확장** 기존 필드 + `source: {baseUrl, spaceKey, token}`. provider=CONFLUENCE_DC면 source 필수(없으면 400 "원본 컨플루언스 접속 정보가 필요합니다"). `sourceInstanceId`는 이제 선택 — 비우면 서버가 baseUrl의 호스트로 채운다. 대상 스페이스 ADMIN |
-| discoverMigrationJob(id) | POST /api/wiki/migrations/{jobId}/discover | **V34** 원본 트리를 훑어 대기열을 채운다 → `{discovered, enqueued, skipped}`. 조상 깊이 오름차순·같은 깊이는 id 순으로 담는다(부모가 먼저 처리돼야 트리가 선다). **멱등** — 다시 눌러도 새 항목만 늘고 기존은 skipped로 센다. PENDING 잡만(아니면 409), CONFLUENCE_DC만(아니면 409). 상한 `platform.wiki.migration.dc.max-pages`(기본 5000) |
+| discoverMigrationJob(id) | POST /api/wiki/migrations/{jobId}/discover | **V34** 원본 트리를 훑어 대기열을 채운다 → `{discovered, enqueued, skipped}`. 조상 깊이 오름차순·같은 깊이는 id 순으로 담는다(부모가 먼저 처리돼야 트리가 선다). **멱등** — 다시 눌러도 새 항목만 늘고 기존은 skipped로 센다. PENDING 잡만(아니면 409), CONFLUENCE_DC만(아니면 409). 상한 `platform.wiki.migration.dc.max-pages`(기본 5000). **M3부터 블로그 글(`type=blogpost`)도 발견 대상**이라 `discovered`에 함께 센다 |
 | getMigrationJob(id) | GET /api/wiki/migrations/{jobId} | **V34 확장** 기존 `MigrationJobResponse` 필드 전부 + `source: {baseUrl, spaceKey, spaceName, discoveredCount}\|null` + `counts: {byStatus: {...}, byStage: {...}}`. **source에 token 필드는 없다.** 진행률 = `counts.byStatus.COMPLETED / itemCount` |
 | listMigrationItems(id, {status?, stage?, page?}) | GET /api/wiki/migrations/{jobId}/items?status=&stage=&page= | **V34** `{items: MigrationItemResponse[], page, size, total}`. page는 0부터, size는 50 고정. status: PENDING\|RUNNING\|RETRY_WAIT\|COMPLETED\|DEAD_LETTER, stage: EXTRACT\|NORMALIZE\|MEDIA_COPY\|RESOLVE\|VERIFY\|DONE. 대상 스페이스 ADMIN |
 | startMigrationJob(id) | POST /api/wiki/migrations/{jobId}/start | **V34 확장** 항목이 0건이면 400 `{"error": "옮길 항목이 없습니다 — 먼저 원본 발견을 실행하세요"}`. 항목 0으로 시작하면 잡이 즉시 COMPLETED가 되어 "성공적으로 아무것도 안 옮겼다"가 되기 때문 |
@@ -108,6 +109,22 @@
   **새 리비전**을 남기고 변경 요약은 `이관 링크 정리`다. 끝내 못 찾은 링크는 원본 절대 URL로 되돌리고
   `LINK_UNRESOLVED`, 같은 제목이 여럿이면 `LINK_AMBIGUOUS`, 앵커가 대상 헤딩과 안 맞으면
   `ANCHOR_DROPPED`로 보고한다.
+- **블로그·댓글·이력·원본 작성자는 M3부터 넘어온다.**
+  - 원본의 블로그 글은 `Page.type=blog`(W24)로 들어온다 — 부모가 없고 블로그 목록에서만 읽힌다.
+    트리에는 뜨지 않는다. 타입이 어긋나면 `VERIFY_TYPE_MISMATCH`로 보고한다.
+  - 원본 댓글은 전부 **페이지 댓글**로 들어온다. 작성자 id는 이관 담당자이고 이름은 원본 표시
+    이름이다(`Comment.authorName` 스냅샷). 원본의 인라인 댓글은 앵커를 다시 찾을 수 없어 페이지
+    댓글로 내리고 본문 앞에 `> 원문: "..."` 한 줄을 붙인다 — `INLINE_COMMENT_DEMOTED`.
+    답글의 답글은 최상위 답글로 편다(`COMMENT_REPLY_FLATTENED`, 우리 중첩은 1단). 옮기지 못한
+    댓글은 `COMMENT_NOT_MIGRATED`. **알림·구독은 발생하지 않는다.**
+  - 원본의 지난 버전은 최신 N개까지 리비전으로 깔린다(`platform.wiki.migration.dc.history-versions`,
+    기본 10, 0이면 현재본만). 오래된 것부터 1..k이고 현재본이 k+1 — 페이지 `version`도 그 값이다.
+    리비전의 편집자 이름은 그 버전의 원본 편집자, 변경 요약은 원본의 버전 메시지다. 버전 하나가
+    상한(`max-history-version-bytes`, 기본 2MB)을 넘거나 원본에서 사라졌으면
+    `HISTORY_VERSION_SKIPPED`. **재이관은 이력을 다시 깔지 않는다**(새 리비전 한 건만).
+  - 원본 작성자를 우리 계정과 대조하지 못하면 `PageResponse.importedAuthorName`·`importedSourceUrl`이
+    채워진다(§3 엔티티 표). 계정은 새로 만들지 않는 것이 이 모듈의 전제라, 대조 창구가 org-service에
+    생기기 전까지는 이관 문서 전부가 이 상태다(`AUTHOR_UNMAPPED`).
 - **원본 페이지 제한은 fail-closed로 옮긴다(M2).** 원본의 보기·편집 제한을 그대로 옮기되, 사용자·그룹을
   우리 계정·팀으로 대조하지 못하면 **공개로 풀지 않고 잡 요청자 단독 제한**으로 닫고
   `RESTRICTION_PRINCIPAL_UNMAPPED`(ERROR)를 남긴다. 지금 org-service에는 이름·이메일로 사용자를 찾는

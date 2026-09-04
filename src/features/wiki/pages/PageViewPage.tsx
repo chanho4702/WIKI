@@ -552,6 +552,10 @@ export function PageViewPage() {
       {(() => {
         // 작성자: 이름을 못 찾고 id만 있으면(백엔드 모드) `사용자 #{id}` 폴백. id도 없으면 표기 없음.
         const editorName = personName(page.updatedBy, users);
+        // 이관 문서의 원본 작성자(W29 M3) — 서버가 우리 계정과 **대조하지 못했을 때만** 이름이 온다.
+        // 그때 `updatedBy`는 이관 담당자라, 그대로 보여주면 남의 글을 그 사람이 쓴 것처럼 보인다.
+        // 읽기 전용(공개 문서)에서는 다른 "누가"와 같은 규칙으로 숨긴다(lib/userName.ts).
+        const importedAuthor = personName(null, users, page.importedAuthorName);
         const updatedLabel = formatDate(page.updatedAt);
         // 소유자(W27-5) — 정하지 않은 문서에는 아무것도 표시하지 않는다(createdBy로 대신하지 않는다)
         const ownerName = personName(page.ownerId, users);
@@ -559,12 +563,28 @@ export function PageViewPage() {
         const untilLabel = formatVerifiedUntil(page.verifiedUntil);
         // 검증은 편집으로 자동 해제되지 않는다 — 대신 "그 검증 이후 본문이 바뀌었다"를 덧붙인다
         const editedSince = verified !== "none" && editedSinceVerification(page);
-        if (!editorName && !updatedLabel && views === null && !ownerName && verified === "none") {
+        if (
+          !editorName &&
+          !importedAuthor &&
+          !updatedLabel &&
+          views === null &&
+          !ownerName &&
+          verified === "none"
+        ) {
           return null; // 표시할 게 하나도 없으면 메타 숨김
         }
         return (
           <div className="page-view-meta">
-            {editorName ? (
+            {/*
+              원본 주소는 DS Tooltip이 아니라 네이티브 title로 붙인다 — Tooltip은 포커스 가능한
+              트리거 전용이고(components/TruncatedText 머리말), 이 자리는 텍스트 한 조각이다.
+            */}
+            {importedAuthor ? (
+              <span className="page-view-imported" title={page.importedSourceUrl ?? undefined}>
+                <Avatar name={importedAuthor} color="auto" size="small" />
+                이관됨 · {importedAuthor}
+              </span>
+            ) : editorName ? (
               <>
                 <Avatar name={editorName} color="auto" size="small" />
                 <span>{editorName}</span>
