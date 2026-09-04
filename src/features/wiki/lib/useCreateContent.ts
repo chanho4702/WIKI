@@ -2,8 +2,9 @@ import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 import { useToast } from "@chanho/react";
 import type { PageTemplate, PageType } from "../store/types";
-import { createPage } from "../store/wikiStore";
+import { createPage, getCurrentUser, listSpaces } from "../store/wikiStore";
 import { contentPathIn } from "./contentPath";
+import { applyTemplateVariables, todayIso, type TemplateVariables } from "./templateVariables";
 
 /** 새 초안의 임시 제목 — 편집 화면에서 바로 덮어쓰게 되어 있다. */
 export const DRAFT_TITLE = "제목 없음";
@@ -11,6 +12,23 @@ export const DRAFT_TITLE = "제목 없음";
 export const FOLDER_TITLE = "제목 없는 폴더";
 /** 새 블로그 글의 임시 제목(W24). */
 export const BLOG_TITLE = "제목 없는 글";
+
+/**
+ * 템플릿 변수 값을 모은다(W27-1). 사용자·스페이스 조회가 실패해도 만들기를 막지 않는다 —
+ * 이름 한 줄 때문에 문서를 못 만드는 것이 더 나쁘다. 그 변수만 빈칸으로 남는다.
+ * 스페이스 이름은 `listSpaces()`에서 찾는다(스토어에 단건 조회가 없다).
+ */
+async function resolveTemplateVariables(spaceId: string): Promise<TemplateVariables> {
+  const [user, spaces] = await Promise.all([
+    getCurrentUser().catch(() => null),
+    listSpaces().catch(() => []),
+  ]);
+  return {
+    date: todayIso(),
+    author: user?.name ?? "",
+    space: spaces.find((s) => s.id === spaceId)?.name ?? "",
+  };
+}
 
 /**
  * 새 콘텐츠(페이지 또는 폴더)를 **먼저 만들고** 해당 화면으로 보낸다.
@@ -36,7 +54,10 @@ export function useCreateContent(
   reloadPages: () => Promise<void>,
 ): {
   createContent: (type: PageType, parentId?: string | null) => Promise<void>;
-  /** 템플릿 본문으로 초안을 만든다 — 제목은 여전히 비워 둔다(그 템플릿의 모든 문서가 같은 제목이면 곤란하다). */
+  /**
+   * 템플릿 본문으로 초안을 만든다 — 제목은 여전히 비워 둔다(그 템플릿의 모든 문서가 같은
+   * 제목이면 곤란하다). 본문의 `{{date}}`·`{{author}}`·`{{space}}`는 여기서 치환된다.
+   */
   createFromTemplate: (template: PageTemplate, parentId?: string | null) => Promise<void>;
   creating: boolean;
 } {
@@ -49,13 +70,17 @@ export function useCreateContent(
       if (!spaceId || creating) return;
       setCreating(true);
       try {
+        // 변수 치환은 만들 때 한 번뿐이다 — 기본 템플릿과 스페이스 템플릿에 같은 규칙을 적용한다
+        const body = template
+          ? applyTemplateVariables(template.content, await resolveTemplateVariables(spaceId))
+          : undefined;
         const created = await createPage({
           spaceId,
           // 블로그 글은 트리 밖이다 — 트리 행의 +에서 눌렀어도 부모를 주지 않는다(백엔드는 400)
           parentId: type === "blog" ? null : parentId,
           title: type === "folder" ? FOLDER_TITLE : type === "blog" ? BLOG_TITLE : DRAFT_TITLE,
           type,
-          ...(template ? { body: template.content, icon: template.icon ?? undefined } : {}),
+          ...(template ? { body, icon: template.icon ?? undefined } : {}),
           // 폴더는 게시 개념이 없다 — 초안 상태를 주지 않는다(백엔드도 폴더는 published로 고정한다)
           ...(type === "folder" ? {} : { status: "draft" as const }),
         });

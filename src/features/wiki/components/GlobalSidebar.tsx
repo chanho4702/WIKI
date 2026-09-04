@@ -21,6 +21,7 @@ import { getRecentVisits } from "../lib/recentVisits";
 import { relativeTime } from "../lib/relativeTime";
 import { getPage } from "../store/wikiStore";
 import { useDismissablePopover } from "../lib/useDismissablePopover";
+import { useReadOnly } from "../lib/readOnly";
 
 export interface GlobalSidebarProps {
   spaces: Space[];
@@ -67,6 +68,7 @@ function iconFor(icon: string | null | undefined, type: "page" | "folder" | "blo
 }
 
 export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace, onSpacesChanged }: GlobalSidebarProps) {
+  const readOnly = useReadOnly();
   /**
    * 내 스페이스(W23) — 없으면 그 자리에서 만든다. 별도 "만들기" 단계를 두지 않는 이유: 개인
    * 스페이스는 한 사람에 하나이고 이름·키가 정해져 있어 물어볼 것이 없다.
@@ -373,23 +375,28 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
               />
             ) : null}
           </li>
-          <li>
-            <button
-              type="button"
-              className="global-nav-item"
-              disabled={openingPersonal}
-              onClick={() => void openPersonal()}
-            >
-              <UserRound className="global-nav-icon" size={16} aria-hidden="true" />
-              <span>내 스페이스</span>
-            </button>
-          </li>
-          <li>
-            <NavLink to="/tasks" end className={navClass}>
-              <ListChecks className="global-nav-icon" size={16} aria-hidden="true" />
-              <span>내 작업</span>
-            </NavLink>
-          </li>
+          {/* 개인 스코프(내 스페이스·내 작업)는 로그인 사용자 개념이 있어야 성립한다 */}
+          {readOnly ? null : (
+            <>
+              <li>
+                <button
+                  type="button"
+                  className="global-nav-item"
+                  disabled={openingPersonal}
+                  onClick={() => void openPersonal()}
+                >
+                  <UserRound className="global-nav-icon" size={16} aria-hidden="true" />
+                  <span>내 스페이스</span>
+                </button>
+              </li>
+              <li>
+                <NavLink to="/tasks" end className={navClass}>
+                  <ListChecks className="global-nav-icon" size={16} aria-hidden="true" />
+                  <span>내 작업</span>
+                </NavLink>
+              </li>
+            </>
+          )}
           <li>
             <button type="button" className="global-nav-item" disabled>
               <Grid3x3 className="global-nav-icon" size={16} aria-hidden="true" />
@@ -437,12 +444,18 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
                   </button>
                 }
                 items={[
-                  {
-                    label: "스페이스 설정",
-                    description: "이름·권한·템플릿·감사 로그·삭제",
-                    icon: <Settings size={16} aria-hidden="true" />,
-                    onSelect: () => navigate(`/spaces/${space.id}/settings`),
-                  },
+                  // 설정·보관함·휴지통은 읽기 전용 인스턴스에 라우트 자체가 없다(App.tsx) —
+                  // 메뉴에 남기면 눌러도 스페이스 홈으로 튕겨 고장으로 보인다.
+                  ...(readOnly
+                    ? []
+                    : [
+                        {
+                          label: "스페이스 설정",
+                          description: "이름·권한·템플릿·감사 로그·삭제",
+                          icon: <Settings size={16} aria-hidden="true" />,
+                          onSelect: () => navigate(`/spaces/${space.id}/settings`),
+                        },
+                      ]),
                   {
                     label: "블로그",
                     description: "트리 밖에서 날짜순으로 읽는 글",
@@ -455,18 +468,22 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
                     icon: <Tag size={16} aria-hidden="true" />,
                     onSelect: () => navigate(`/spaces/${space.id}/labels`),
                   },
-                  {
-                    label: "보관함",
-                    description: "보관한 문서 — 트리와 검색에서 빠지지만 링크로는 열립니다",
-                    icon: <Archive size={16} aria-hidden="true" />,
-                    onSelect: () => navigate(`/spaces/${space.id}/archive`),
-                  },
-                  {
-                    label: "휴지통",
-                    description: "지운 문서를 되살리거나 영구 삭제합니다",
-                    icon: <Trash2 size={16} aria-hidden="true" />,
-                    onSelect: () => navigate(`/spaces/${space.id}/trash`),
-                  },
+                  ...(readOnly
+                    ? []
+                    : [
+                        {
+                          label: "보관함",
+                          description: "보관한 문서 — 트리와 검색에서 빠지지만 링크로는 열립니다",
+                          icon: <Archive size={16} aria-hidden="true" />,
+                          onSelect: () => navigate(`/spaces/${space.id}/archive`),
+                        },
+                        {
+                          label: "휴지통",
+                          description: "지운 문서를 되살리거나 영구 삭제합니다",
+                          icon: <Trash2 size={16} aria-hidden="true" />,
+                          onSelect: () => navigate(`/spaces/${space.id}/trash`),
+                        },
+                      ]),
                 ]}
               />
               {spaceFlyoutOpen && (
@@ -477,10 +494,14 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
                     setSpaceFlyoutOpen(false);
                     navigate(`/spaces/${id}`);
                   }}
-                  onCreateClick={() => {
-                    setSpaceFlyoutOpen(false);
-                    onCreateSpace();
-                  }}
+                  onCreateClick={
+                    readOnly
+                      ? undefined
+                      : () => {
+                          setSpaceFlyoutOpen(false);
+                          onCreateSpace();
+                        }
+                  }
                 />
               )}
             </div>
@@ -494,22 +515,24 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
                 {/* 캡처(07-26-폴더.png)의 콘텐츠 헤더 "+" — 편집 화면을 먼저 띄우는 대신
                   * 초안 문서를 즉시 만들어 트리에 "초안" 배지와 함께 세운다(기획 P3).
                   * 폴더도 여기서 만들 수 있어야 한다 — 전에는 헤더 "만들기"로 나가야만 했다. */}
-                <CreateContentMenu
-                  trigger={
-                    <button
-                      type="button"
-                      className="wiki-sidebar-content-add"
-                      aria-label="콘텐츠 만들기"
-                      title="콘텐츠 만들기"
-                      disabled={creating}
-                    >
-                      <Plus size={16} aria-hidden="true" />
-                    </button>
-                  }
-                  onSelect={(type) => void createContent(type)}
-                  spaceId={space.id}
-                  onSelectTemplate={(template) => void createFromTemplate(template)}
-                />
+                {readOnly ? null : (
+                  <CreateContentMenu
+                    trigger={
+                      <button
+                        type="button"
+                        className="wiki-sidebar-content-add"
+                        aria-label="콘텐츠 만들기"
+                        title="콘텐츠 만들기"
+                        disabled={creating}
+                      >
+                        <Plus size={16} aria-hidden="true" />
+                      </button>
+                    }
+                    onSelect={(type) => void createContent(type)}
+                    spaceId={space.id}
+                    onSelectTemplate={(template) => void createFromTemplate(template)}
+                  />
+                )}
               </div>
               <TextField
                 label="페이지 검색"
@@ -554,8 +577,9 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
                   expanded={tree.expanded}
                   onToggle={tree.toggle}
                   spaces={spaces}
-                  onMoved={reloadPages}
-                  onCreateChild={createContent}
+                  // 읽기 전용이면 드래그 이동·행 생성 진입점을 아예 넘기지 않는다(PageTree 계약).
+                  onMoved={readOnly ? undefined : reloadPages}
+                  onCreateChild={readOnly ? undefined : createContent}
                 />
               )}
             </section>
@@ -571,14 +595,18 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
               <Tag className="global-nav-icon" size={16} aria-hidden="true" />
               <span>라벨</span>
             </NavLink>
-            <NavLink to={`/spaces/${space.id}/archive`} className={navClass}>
-              <Archive className="global-nav-icon" size={16} aria-hidden="true" />
-              <span>보관함</span>
-            </NavLink>
-            <NavLink to={`/spaces/${space.id}/trash`} className={navClass}>
-              <Trash2 className="global-nav-icon" size={16} aria-hidden="true" />
-              <span>휴지통</span>
-            </NavLink>
+            {readOnly ? null : (
+              <>
+                <NavLink to={`/spaces/${space.id}/archive`} className={navClass}>
+                  <Archive className="global-nav-icon" size={16} aria-hidden="true" />
+                  <span>보관함</span>
+                </NavLink>
+                <NavLink to={`/spaces/${space.id}/trash`} className={navClass}>
+                  <Trash2 className="global-nav-icon" size={16} aria-hidden="true" />
+                  <span>휴지통</span>
+                </NavLink>
+              </>
+            )}
             </nav>
           </div>
         </>

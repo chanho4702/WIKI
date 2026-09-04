@@ -34,6 +34,19 @@ const CASES: Array<{ name: string; md: string }> = [
   // 이모지 피커(W6 T4) — EmojiPicker.select()는 유니코드 문자를 insertContent로 그대로 넣으므로
   // 마크다운 문법 문자가 아닌 일반 텍스트로 직렬화되고, 유니코드 자체가 손실 없이 보존돼야 한다.
   { name: "이모지 포함 문단", md: "오늘 기분 😀 최고! 🎉" },
+  // 수식(W27-2) — 편집기는 `$`를 모르는 일반 텍스트로 보존한다(스키마 확장 없음).
+  { name: "인라인 수식($…$)", md: "인라인 $a^2 + b^2 = c^2$ 수식" },
+  // 블록 수식의 fixed point는 **한 줄**이다: markdown-it이 `$$` / 본문 / `$$` 세 줄을 한 문단으로
+  // 읽고 줄바꿈이 softbreak이라 직렬화하면 공백이 된다(alert의 이스케이프 fixed point와 같은 사정).
+  // 세 줄로 입력해도 내용은 그대로 남고, 보기 쪽 lib/remarkDisplayMath.ts가 이 한 줄을 다시
+  // 블록(display) 수식으로 렌더한다 — MarkdownView.math.test.tsx에서 실증한다.
+  { name: "블록 수식($$…$$)", md: "$$ E = mc^2 $$" },
+  // Mermaid(W27-2) — 언어가 붙은 코드 블록일 뿐이라 왕복에 손실이 없다
+  { name: "Mermaid 코드 블록", md: "```mermaid\ngraph TD;\n  A-->B;\n```" },
+  // 콘텐츠 매크로(W27-3) — `::toc`처럼 텍스트 문단으로 남는다. 대괄호는 직렬화기가 이스케이프하므로
+  // 그 형태가 fixed point이고, 보기 쪽 remarkContentMacros가 이스케이프 형태도 함께 인식한다.
+  { name: "콘텐츠 매크로(라벨별 문서 목록)", md: "::pages-by-label\\[라벨\\]" },
+  { name: "콘텐츠 매크로(최근 업데이트)", md: "::recently-updated{limit=5}" },
 ];
 
 describe("markdown 왕복", () => {

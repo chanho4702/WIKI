@@ -58,7 +58,23 @@ export interface Page {
   /** 목업 전용 — 백엔드 archived_by/archived_root에 해당(묶음 경계 계산용). */
   archivedBy?: string | null;
   archivedRoot?: boolean;
+  /**
+   * 문서 소유자(W27-5) — 기본 책임자 표시일 뿐 권한과 무관하다(권한은 제한 W18이 담당).
+   * 기본값이 없다: 정하지 않은 문서는 undefined/null이고 createdBy로 대신하지 않는다.
+   */
+  ownerId?: string | null;
+  /** 검증(W27-5) — 사람이 "읽어봤고 맞다"를 누른 시각·주체. */
+  verifiedAt?: string | null;
+  verifiedBy?: string | null;
+  /**
+   * 검증 유효기간 — `YYYY-MM-DD`(날짜만). 만료 판정은 **화면이** 오늘과 비교해서 한다.
+   * 서버는 저장만 한다 — 만료돼도 문서가 숨거나 잠기지 않고 배지 문구만 바뀐다.
+   */
+  verifiedUntil?: string | null;
 }
+
+/** 검증 배지의 세 상태 — 없음/유효/만료. `verifiedUntil`만으로 결정된다. */
+export type VerificationState = "none" | "verified" | "expired";
 
 export interface PageVersion {
   id: string;
@@ -415,7 +431,13 @@ export class MoveImpactError extends Error {
   }
 }
 
-export type NotificationType = "mentioned" | "page_updated" | "comment" | "shared";
+/** "page_published"(W27-4)는 새 문서 게시 — 스페이스 구독이 생기며 의미가 붙은 사건이다. */
+export type NotificationType =
+  | "mentioned"
+  | "page_updated"
+  | "comment"
+  | "shared"
+  | "page_published";
 
 export interface Notification {
   id: string;
@@ -568,6 +590,11 @@ export interface WikiData {
   teamMembers?: Record<string, string[]>;
   /** 페이지 구독(W21-4) — 키 = pageId, 값 = 구독자 id 목록. */
   watches?: Record<string, string[]>;
+  /**
+   * 스페이스 구독(W27-4) — 키 = spaceId, 값 = 구독자 id 목록. 백엔드 V32 space_watch에 해당.
+   * 페이지 구독과 달리 자동 구독이 없다 — 스페이스에는 "관심의 사건"이 없다.
+   */
+  spaceWatches?: Record<string, string[]>;
   /** 스페이스 권한(W22) — 키 = spaceId. 백엔드 모드는 org-service가 원장이다. */
   grants?: Record<string, SpaceGrant[]>;
 }

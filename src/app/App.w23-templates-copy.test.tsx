@@ -110,7 +110,9 @@ describe("W23 화면", () => {
     await user.click(screen.getByRole("button", { name: "새 콘텐츠" }));
     await user.click(await screen.findByRole("menuitem", { name: /템플릿에서/ }));
     const dialog = await screen.findByRole("dialog", { name: "템플릿에서 만들기" });
-    await user.click(within(dialog).getByRole("button", { name: /회의록/ }));
+    // 기본 템플릿(W27-1)에도 "회의록"이 있어 스페이스 템플릿 묶음으로 좁힌다
+    const spaceList = await within(dialog).findByRole("list", { name: "스페이스 템플릿" });
+    await user.click(within(spaceList).getByRole("button", { name: /회의록/ }));
     await user.click(within(dialog).getByRole("button", { name: "만들기" }));
 
     // 편집 화면으로 이동한다 — 제목은 비어 있고 본문만 채워져 있다

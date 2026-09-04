@@ -15,6 +15,8 @@ describe("슬래시 메뉴", () => {
       "note", "tip", "important", "warning", "caution",
       "toggle", "code", "divider", "table", "toc",
       "status", "properties", "propertiesReport", "excerpt", "excerptInclude",
+      // 수식·Mermaid·콘텐츠 매크로(W27-2·W27-3)
+      "math", "mermaid", "pagesByLabel", "recentlyUpdated",
       "columns1", "columns2", "columns3", "columns4", "columns5",
       "imageUpload", "image", "emoji",
     ]);

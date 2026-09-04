@@ -3,7 +3,9 @@ import type { AnchorHTMLAttributes, HTMLAttributes, ImgHTMLAttributes, InputHTML
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkDirective from "remark-directive";
+import remarkMath from "remark-math";
 import rehypeSlug from "rehype-slug";
+import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
 import { Link } from "react-router";
 import { Lozenge } from "@chanho/react";
@@ -35,6 +37,11 @@ import { parseImageWidth } from "../lib/imageAttrs";
 import { mentionUserIdFromHref } from "../editor/extensions/userMention";
 import { dateFromHref, formatDateLabel } from "../editor/extensions/dateMention";
 import { remarkToc } from "../lib/remarkToc";
+import { remarkDisplayMath } from "../lib/remarkDisplayMath";
+import { remarkContentMacros, parseRecentlyUpdatedLimit } from "../lib/remarkContentMacros";
+import { rehypeMermaid } from "../lib/rehypeMermaid";
+import { MermaidDiagram } from "./MermaidDiagram";
+import { PagesByLabel, RecentlyUpdated } from "./ContentMacros";
 import { showsLineNumbers, useCodeBlockPrefs } from "../lib/codeBlockPrefs";
 import { CodeLineNumbers } from "./CodeLineNumbers";
 import { TableOfContents } from "./TableOfContents";
@@ -163,8 +170,24 @@ function MarkdownDiv({
   source?: string;
   spaceId?: string;
   depth?: number;
-  "data-title"?: string; "data-label"?: string;
+  "data-title"?: string; "data-label"?: string; "data-code"?: string; "data-limit"?: string;
 }) {
+  const classes = className?.split(/\s+/);
+  // Mermaid(언어가 mermaid인 코드 블록, W27-2) — rehypeMermaid가 표시한 자리에 다이어그램을 그린다.
+  if (classes?.includes("md-mermaid")) {
+    return <MermaidDiagram code={rest["data-code"] ?? ""} />;
+  }
+  // 콘텐츠 매크로(W27-3) — 스페이스를 알아야 조회할 수 있다. 발췌처럼 모르면 마커 텍스트로 남긴다.
+  if (classes?.includes("md-pages-by-label")) {
+    const label = (rest["data-label"] ?? "").trim();
+    if (!spaceId || !label) return <div className="md-pages-by-label is-inert">::pages-by-label[{label}]</div>;
+    return <PagesByLabel label={label} spaceId={spaceId} />;
+  }
+  if (classes?.includes("md-recently-updated")) {
+    const limit = parseRecentlyUpdatedLimit(rest["data-limit"]);
+    if (!spaceId) return <div className="md-recently-updated is-inert">::recently-updated{`{limit=${limit}}`}</div>;
+    return <RecentlyUpdated spaceId={spaceId} limit={limit} />;
+  }
   // 본문 목차(`::toc`) — remarkToc가 표시한 자리에 실제 목차를 그린다.
   // heading은 본문 전체에서 뽑으므로 사이드 목차와 같은 추출기를 쓴다(slug 계산도 동일).
   if (className?.split(/\s+/).includes("md-toc")) {
@@ -428,8 +451,10 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTask
       <ReactMarkdown
         // 기본 urlTransform은 http(s)·mailto 등만 허용해 `user:` 멘션 href를 지운다 — 이 스킴만 통과
         urlTransform={(url) => (mentionUserIdFromHref(url) || dateFromHref(url) ? url : defaultUrlTransform(url))}
-        remarkPlugins={[remarkGfm, remarkDirective, remarkTextColors, remarkBookmark, remarkDetails, remarkExcerpt, remarkStatus, remarkColumns, remarkAlerts, remarkToc]}
-        rehypePlugins={[rehypeSlug, rehypeTableSpans, [rehypeHighlight, { detect: false }]]}
+        remarkPlugins={[remarkGfm, remarkMath, remarkDisplayMath, remarkDirective, remarkTextColors, remarkBookmark, remarkDetails, remarkExcerpt, remarkStatus, remarkColumns, remarkAlerts, remarkToc, remarkContentMacros]}
+        // rehypeMermaid·rehypeKatex는 rehypeHighlight **앞**이다 — 하이라이터가 토큰 span으로
+        // 쪼개고 나면 원문을 되모을 수 없고, mermaid/math는 hljs에 등록된 언어도 아니다.
+        rehypePlugins={[rehypeSlug, rehypeTableSpans, rehypeMermaid, rehypeKatex, [rehypeHighlight, { detect: false }]]}
         components={components}
       >
         {source}

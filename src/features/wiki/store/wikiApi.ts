@@ -1,7 +1,7 @@
 // wiki-backend 어댑터. 각 태스크에서 REST 구현으로 교체한다. 미구현분은 목업 위임.
 export { __resetForTest } from "./wikiMock";
 
-import { sharedApiFetch, sharedApiUpload, sharedCollaborationFetch } from "./apiClient";
+import { resolveApiPath, sharedApiFetch, sharedApiUpload, sharedCollaborationFetch } from "./apiClient";
 import { mapComment, mapSpace, mapPage, mapPageTree, mapVersionMeta, mapVersionFull, toBackendId, toClientId, extractError, type CommentDto, type PageDto, type TreeItemDto, mapPageNode, type PageNodeDto } from "./mapping";
 import {
   ContentSearchError,
@@ -136,6 +136,50 @@ export async function setWatchState(pageId: string, watching: boolean): Promise<
       method: watching ? "POST" : "DELETE",
     }));
   return body.watching;
+}
+
+/* ── 스페이스 구독(W27-4) ─────────────────────────────────── */
+
+export async function getSpaceWatchState(spaceId: string): Promise<boolean> {
+  const body = await json<{ watching: boolean }>(
+    await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/watch`));
+  return body.watching;
+}
+
+export async function setSpaceWatchState(spaceId: string, watching: boolean): Promise<boolean> {
+  const body = await json<{ watching: boolean }>(
+    await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/watch`, {
+      method: watching ? "PUT" : "DELETE",
+    }));
+  return body.watching;
+}
+
+/* ── 소유자·검증(W27-5) ───────────────────────────────────── */
+
+export async function setPageOwner(pageId: string, ownerId: string | null): Promise<Page> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/owner`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ownerId: ownerId === null ? null : toBackendId(ownerId) }),
+  });
+  return mapPage(await json(res));
+}
+
+/** until은 `YYYY-MM-DD`. 없으면 서버가 기본 유효기간(90일)을 붙인다. */
+export async function verifyPage(pageId: string, until?: string): Promise<Page> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/verification`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ verifiedUntil: until ?? null }),
+  });
+  return mapPage(await json(res));
+}
+
+export async function unverifyPage(pageId: string): Promise<Page> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/verification`, {
+    method: "DELETE",
+  });
+  return mapPage(await json(res));
 }
 
 export async function updateComment(id: string, body: string): Promise<Comment> {
@@ -384,7 +428,8 @@ export async function listNotifications(): Promise<NotificationList> {
     t === "MENTIONED" ? "mentioned"
       : t === "COMMENT" ? "comment"
         : t === "SHARED" ? "shared"
-          : "page_updated";
+          : t === "PAGE_PUBLISHED" ? "page_published"
+            : "page_updated";
   return {
     unreadCount: body.unreadCount,
     items: body.items.map((n) => ({
@@ -902,7 +947,8 @@ export async function restoreAttachmentVersion(id: string, version: number): Pro
 
 /** 지난 버전 내려받기 — 인증이 필요한 경로라 화면이 fetch로 받아 저장한다. */
 export function attachmentVersionUrl(id: string, version: number): string {
-  return `${import.meta.env.VITE_API_BASE ?? ""}/api/wiki/attachments/${toBackendId(id)}/versions/${version}`;
+  // 브라우저가 직접 여는 주소다 — 인스턴스별 접두사(공개 문서=/api/docs)를 fetch 경로와 같게 맞춘다.
+  return `${import.meta.env.VITE_API_BASE ?? ""}${resolveApiPath(`/api/wiki/attachments/${toBackendId(id)}/versions/${version}`)}`;
 }
 
 /* ── 별표·최근 방문(W23) ─────────────────────────────────── */
@@ -1111,9 +1157,13 @@ export async function getReindexJob(jobId: string): Promise<ReindexJob> {
 }
 
 export function attachmentUrl(id: string): string {
-  return `${import.meta.env.VITE_API_BASE ?? ""}/api/wiki/attachments/${toBackendId(id)}`;
+  return `${import.meta.env.VITE_API_BASE ?? ""}${resolveApiPath(`/api/wiki/attachments/${toBackendId(id)}`)}`;
 }
-/** 본문에 저장하는 durable 내부 참조. 절대 host·presigned URL을 저장하지 않는다. */
+/**
+ * 본문에 저장하는 durable 내부 참조. 절대 host·presigned URL을 저장하지 않는다.
+ * 인스턴스별 접두사도 **적용하지 않는다** — 본문에 박히는 값이라 배포 경로가 바뀌면 과거 문서가
+ * 전부 깨진다. 실제 요청은 fetchInlineAttachment가 apiClient를 거치며 접두사를 붙인다.
+ */
 export function inlineAttachmentUrl(id: string): string {
   return `/api/wiki/attachments/${toBackendId(id)}/inline`;
 }

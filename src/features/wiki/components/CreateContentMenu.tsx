@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { ConfirmDialog, Dropdown, EmptyState } from "@chanho/react";
 import { FileText, Folder, LayoutTemplate, Newspaper } from "lucide-react";
 import type { PageTemplate, PageType } from "../store/types";
 import { listTemplates } from "../store/wikiStore";
+import { builtinTemplatesFor } from "../lib/builtinTemplates";
 
 export interface CreateContentMenuProps {
   /** 드롭다운을 여는 요소 — 진입점마다 다르다(헤더는 라벨 버튼, 트리·사이드바는 아이콘 버튼).
@@ -38,6 +39,8 @@ export function CreateContentMenu({
   const [templates, setTemplates] = useState<PageTemplate[] | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
   const templatesEnabled = spaceId !== null && onSelectTemplate !== undefined;
+  // 기본 템플릿(W27-1)은 코드에 있어 조회가 필요 없다 — 새 스페이스에서도 목록이 비지 않는다
+  const builtins = useMemo(() => (spaceId ? builtinTemplatesFor(spaceId) : []), [spaceId]);
 
   // 목록은 다이얼로그를 열 때 읽는다 — 메뉴를 그릴 때마다 조회하면 안 쓰는 사람도 비용을 낸다.
   useEffect(() => {
@@ -56,6 +59,26 @@ export function CreateContentMenu({
       cancelled = true;
     };
   }, [pickerOpen, spaceId]);
+
+  const renderTemplateItem = (template: PageTemplate) => (
+    <li key={template.id}>
+      {/* 라디오가 아니라 버튼이다 — 고르는 즉시 본문 미리보기가 바뀌어야 한다 */}
+      <button
+        type="button"
+        className={chosen === template.id ? "template-picker-item is-chosen" : "template-picker-item"}
+        aria-pressed={chosen === template.id}
+        onClick={() => setChosen(template.id)}
+      >
+        <span className="template-picker-name">
+          {template.icon ? <span aria-hidden="true">{template.icon}</span> : null}
+          {template.name}
+        </span>
+        {template.description ? (
+          <span className="template-picker-description">{template.description}</span>
+        ) : null}
+      </button>
+    </li>
+  );
 
   return (
     <>
@@ -97,44 +120,37 @@ export function CreateContentMenu({
       confirmLabel="만들기"
       cancelLabel="취소"
       onConfirm={() => {
-        const template = templates?.find((t) => t.id === chosen);
+        const template = [...builtins, ...(templates ?? [])].find((t) => t.id === chosen);
         if (!template) return;
         setPickerOpen(false);
         onSelectTemplate?.(template);
       }}
     >
-      {templates === null ? (
-        <p role="status">불러오는 중</p>
-      ) : templates.length === 0 ? (
-        <EmptyState
-          title="템플릿이 없습니다"
-          description="스페이스 설정에서 템플릿을 만들면 여기에 나타납니다."
-        />
-      ) : (
-        <ul className="template-picker-list" aria-label="템플릿">
-          {templates.map((template) => (
-            <li key={template.id}>
-              {/* 라디오가 아니라 버튼이다 — 고르는 즉시 본문 미리보기가 바뀌어야 한다 */}
-              <button
-                type="button"
-                className={
-                  chosen === template.id ? "template-picker-item is-chosen" : "template-picker-item"
-                }
-                aria-pressed={chosen === template.id}
-                onClick={() => setChosen(template.id)}
-              >
-                <span className="template-picker-name">
-                  {template.icon ? <span aria-hidden="true">{template.icon}</span> : null}
-                  {template.name}
-                </span>
-                {template.description ? (
-                  <span className="template-picker-description">{template.description}</span>
-                ) : null}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* 기본 템플릿이 먼저다 — 새 스페이스에는 스페이스 템플릿이 없어 빈 목록만 보였다(W27-1) */}
+      <div className="template-picker-groups">
+        <div className="template-picker-group">
+          <p className="template-picker-group-title">기본 템플릿</p>
+          <ul className="template-picker-list" aria-label="기본 템플릿">
+            {builtins.map(renderTemplateItem)}
+          </ul>
+        </div>
+
+        <div className="template-picker-group">
+          <p className="template-picker-group-title">스페이스 템플릿</p>
+          {templates === null ? (
+            <p role="status">불러오는 중</p>
+          ) : templates.length === 0 ? (
+            <EmptyState
+              title="템플릿이 없습니다"
+              description="스페이스 설정에서 템플릿을 만들면 여기에 나타납니다."
+            />
+          ) : (
+            <ul className="template-picker-list" aria-label="스페이스 템플릿">
+              {templates.map(renderTemplateItem)}
+            </ul>
+          )}
+        </div>
+      </div>
     </ConfirmDialog>
     </>
   );

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "@chanho/react";
-import { AtSign, Bell, FileText, MessageSquare, Share2 } from "lucide-react";
+import { AtSign, Bell, FilePlus, FileText, MessageSquare, Share2 } from "lucide-react";
 import type { NotificationList, NotificationType, User } from "../store/types";
 import { listNotifications, listUsers, markNotificationsRead } from "../store/wikiStore";
 import { relativeTime } from "../lib/relativeTime";
@@ -13,6 +13,8 @@ const TYPE_META: Record<NotificationType, { icon: typeof Bell; text: (actor: str
   page_updated: { icon: FileText, text: (actor) => `${actor}님이 페이지를 업데이트했습니다` },
   comment: { icon: MessageSquare, text: (actor) => `${actor}님이 댓글을 남겼습니다` },
   shared: { icon: Share2, text: (actor) => `${actor}님이 이 문서를 공유했습니다` },
+  // 스페이스 구독(W27-4) — "고쳤다"가 아니라 "새로 생겼다"를 구분해서 알린다
+  page_published: { icon: FilePlus, text: (actor) => `${actor}님이 새 문서를 게시했습니다` },
 };
 
 /**

@@ -31,6 +31,8 @@
 |---|---|---|
 | Space | id, key, name, createdAt | key: 대문자 접두어, **유니크** |
 | Page | id, spaceId, parentId(null=루트), **type**, **status**, title, body(마크다운 원문), position, createdBy, updatedBy, createdAt, updatedAt | parentId 인접 리스트, 깊이 제한 없음. type=`page`\|`folder`(기획 P1), status=`draft`\|`published`(P3) — **구현됨**(V2, JSON은 소문자). 폴더는 항상 published |
+| Page(추가) | ownerId, verifiedAt, verifiedBy, verifiedUntil | **V33(W27-5)** 전부 nullable. ownerId는 기본값 없음 — createdBy를 복사하지 않는다("정하지 않음"이 유효한 상태). 소유자는 표시일 뿐 권한과 무관 |
+| SpaceWatch | spaceId, userId, createdAt | **V32(W27-4)** PK(spaceId,userId), 스페이스 삭제 cascade. 자동 구독 없음 |
 | PageVersion | id, pageId, version(1부터), title, body, savedBy, savedAt | 페이지당 version 연속 증가 |
 | Comment | id, pageId, authorId, body, parentId(null=최상위), createdAt, updatedAt(null=미수정) | **답글 중첩 1단** |
 
@@ -53,7 +55,7 @@
 | movePage(id, {parentId, beforeId?}) | PUT /api/wiki/pages/{id}/position | 아래 이동 규칙 참조 |
 | setPageIcon(id, icon\|null) | PUT /api/wiki/pages/{id}/icon | **V10** 이모지 아이콘(varchar). 메타데이터 변경 — 버전 스냅샷 없음, PageResponse·트리 응답에 `icon` 포함 |
 | recordPageView(id) | POST /api/wiki/pages/{id}/views | **V10** 조회 1회 기록 → `{views}` 누적치. 실패해도 화면 진행(프론트가 조용히 무시) |
-| listNotifications() | GET /api/wiki/notifications | **V11** `{unreadCount, items[{id,type,pageId,spaceId,pageTitle,actorId,createdAt,read}]}` 최신 30건. type: MENTIONED\|PAGE_UPDATED\|COMMENT |
+| listNotifications() | GET /api/wiki/notifications | **V11** `{unreadCount, items[{id,type,pageId,spaceId,pageTitle,actorId,createdAt,read}]}` 최신 30건. type: MENTIONED\|PAGE_UPDATED\|COMMENT\|SHARED\|PAGE_PUBLISHED(V32, 이메일 스위치는 pageUpdated 공용) |
 | markNotificationsRead(ids?) | POST /api/wiki/notifications/read | **V11** ids 비우면 전체 읽음. 본인 행만 |
 | listBlogPosts(spaceId) | GET /api/wiki/spaces/{id}/blog | **W24** `[{id,title,status,icon,createdBy,updatedBy,createdAt,updatedAt,excerpt}]` 최신순, 권한 필터. 글 생성은 POST /pages `type:"blog"`(parentId 있으면 400, move 400) |
 | getNotificationPrefs() | GET /api/wiki/notifications/prefs | **V29** `{emailConfigured,email,emailEnabled,mentioned,pageUpdated,comment,shared}`. 없으면 기본값(모두 켜짐) 생성. email은 토큰 클레임 스냅샷 |
@@ -63,6 +65,11 @@
 | getPageRestrictions(pageId) | GET /api/wiki/pages/{id}/restrictions | **V12(W18)** `{view[], edit[], inherited[]}` — principal `{type: USER\|TEAM, id}`. 이름 해석은 프론트(org 디렉터리) |
 | setPageRestrictions(pageId, {view, edit}) | PUT /api/wiki/pages/{id}/restrictions | **V12** 전체 교체. effective EDIT 통과자 또는 space ADMIN. 비ADMIN 셀프 락아웃 400 |
 | listTeams() | GET /api/org/teams | org-service — 제한 다이얼로그 TEAM 주체 선택. 실패는 빈 목록 |
+| getSpaceWatchState(spaceId) | GET /api/wiki/spaces/{id}/watch | **V32(W27-4)** `{watching}`. VIEW 권한 필요 — 못 보는 스페이스는 403 |
+| setSpaceWatchState(spaceId, on) | PUT(또는 POST) / DELETE /api/wiki/spaces/{id}/watch | **V32** 같은 `{watching}` 응답. 자동 구독 없음. 알림 대상 = 페이지 구독자 ∪ 스페이스 구독자(중복 없음), 수신자별 effective VIEW로 한 번 더 거른다 |
+| setPageOwner(pageId, userId\|null) | PUT /api/wiki/pages/{id}/owner | **V33(W27-5)** `{ownerId}` — null이면 해제. EDIT 권한. 메타데이터라 version·리비전 불변. 감사 로그 PAGE_OWNER_CHANGED |
+| verifyPage(pageId, until?) | PUT /api/wiki/pages/{id}/verification | **V33** `{verifiedUntil: "YYYY-MM-DD"}` 또는 `{}`(기본 90일). verified_at=now, verified_by=호출자. 지난 날짜도 그대로 저장 — **만료 판정은 프론트**가 한다. 감사 로그 PAGE_VERIFIED |
+| unverifyPage(pageId) | DELETE /api/wiki/pages/{id}/verification | **V33** 세 필드를 비운다. 감사 로그 PAGE_UNVERIFIED |
 | listVersions(pageId) | GET /api/wiki/pages/{pageId}/versions | version 내림차순 |
 | restoreVersion(pageId, versionId) | POST /api/wiki/pages/{pageId}/restore | updatePage 경로 재사용(새 버전으로 쌓임) |
 | listComments(pageId) | GET /api/wiki/pages/{pageId}/comments | createdAt 오름차순 |
@@ -139,7 +146,7 @@
 - **전문 검색 — 구현됨(2026-08-15)**: 별도 search-service의 `POST /api/search/graphql`을 사용한다.
   제목·본문·첨부파일명을 검색하고 org-service 권한 범위와 교집합을 취한다. `SearchHit.pageType=PAGE|FOLDER`
   로 페이지·폴더 경로를 구분하며 첨부 hit은 소속 `pageId`를 내려준다. 사이드바 제목 필터는 별도 로컬 기능으로 유지한다.
-- **알림/감시**: 페이지 watch 토글 + 변경 이벤트. 활동 피드(최근 업데이트).
+- **알림/감시 — 구현됨**: 페이지 watch(V15) + 스페이스 watch(V32, W27-4). 활동 피드(최근 업데이트).
 - **즐겨찾기/최근 본 페이지**: 사용자별 상태 저장.
 
 ## 9. 비기능 요구

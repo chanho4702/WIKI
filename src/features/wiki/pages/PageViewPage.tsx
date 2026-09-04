@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useLocation } from "react-router";
-import { Avatar, Banner, Button, Dropdown, PageHeader, Tooltip, useToast } from "@chanho/react";
+import { Avatar, Banner, Button, Dropdown, Lozenge, PageHeader, Tooltip, useToast } from "@chanho/react";
 import type { BreadcrumbItem } from "@chanho/react";
-import { Archive, Download, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock } from "lucide-react";
+import { Archive, BadgeCheck, Download, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock, UserCog } from "lucide-react";
 import type { DeletePageOptions, Page, PageNode, PageRestrictions, User } from "../store/types";
 import {
   deletePage,
@@ -16,6 +16,7 @@ import {
   archivePage,
   unarchivePage,
   setTaskDone,
+  unverifyPage,
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
@@ -37,6 +38,16 @@ import { removeStarredPage, useStarredPages } from "../lib/starredPages";
 import { RestrictionsDialog } from "../components/RestrictionsDialog";
 import { displayUserName } from "../lib/userName";
 import { recordVisit } from "../lib/recentVisits";
+import { PageOwnerDialog } from "../components/PageOwnerDialog";
+import { PageVerifyDialog } from "../components/PageVerifyDialog";
+import { verificationState } from "../lib/verification";
+import { useReadOnly } from "../lib/readOnly";
+
+/** "2026-12-03" → "2026-12-03"(그대로). 무효 값은 빈 문자열 — 배지에 "Invalid Date"가 뜨지 않게. */
+function formatVerifiedUntil(date: string | null | undefined): string {
+  if (!date) return "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
+}
 
 /** 수정일 표기: 2026-07-10T10:00:00.000Z → "2026년 7월 10일". 빈 값/무효 날짜는 ""(백엔드 모드에서
  * 시각이 없을 때 "Invalid Date" 노출 방지 — 설계 §9). */
@@ -73,6 +84,7 @@ function PageViewSkeleton() {
 }
 
 export function PageViewPage() {
+  const readOnly = useReadOnly();
   const { spaceId, pageId } = useParams();
   const { space, reloadPages } = useOutletContext<WikiOutletContext>();
   /**
@@ -95,6 +107,23 @@ export function PageViewPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [ownerOpen, setOwnerOpen] = useState(false);
+  const [verifyOpen, setVerifyOpen] = useState(false);
+
+  /** 검증 해제(W27-5) — 되돌리기 쉬운 조작이라 확인 없이 바로 지운다. */
+  const handleUnverify = async () => {
+    if (!page) return;
+    try {
+      setPage(await unverifyPage(page.id));
+      toast({ title: "검증을 해제했습니다", appearance: "success" });
+    } catch (error) {
+      toast({
+        title: "검증을 해제하지 못했습니다",
+        description: error instanceof Error ? error.message : String(error),
+        appearance: "danger",
+      });
+    }
+  };
 
   /**
    * 본문만 템플릿으로 가져간다(서버가 그렇게 만든다) — 제목까지 가져오면 그 템플릿으로 만든
@@ -217,16 +246,19 @@ export function PageViewPage() {
         setPage(p);
         if (p) {
           recordVisit(p.id); // "이어서 작업"용 방문 로그(클라이언트)
-          void recordPageView(p.id)
-            .then(setViews)
-            .catch(() => {});
+          // 공개 문서 인스턴스는 조회수를 세지 않는다(설계 §2.1 — 서버도 이 POST를 403으로 막는다).
+          if (!readOnly) {
+            void recordPageView(p.id)
+              .then(setViews)
+              .catch(() => {});
+          }
         }
       })
       .catch((e: unknown) => {
         // 서버의 한국어 메시지(예: "이 페이지를 볼 권한이 없습니다" — W18 제한)를 그대로 보여준다
         setLoadError(e instanceof Error ? e.message : "페이지를 불러오지 못했습니다");
       });
-  }, [pageId, loadAttempt]);
+  }, [pageId, loadAttempt, readOnly]);
 
   if (loadError) {
     return (
@@ -309,6 +341,7 @@ export function PageViewPage() {
         actions={
           <>
             {/* 자물쇠(W18) — 제한이 있으면 채워진 자물쇠. 다이얼로그에서 보기/편집 제한 관리 */}
+            {readOnly ? null : (
             <Tooltip content="페이지 제한">
               <Button
                 size="small"
@@ -331,7 +364,9 @@ export function PageViewPage() {
                 />
               </Button>
             </Tooltip>
+            )}
             {/* 별표 — 사이드바 "별표 표시" 목록에 모인다. 눌림 상태는 채운 별 + aria-pressed */}
+            {readOnly ? null : (
             <Tooltip content={starredPages.includes(page.id) ? "별표 해제" : "별표"}>
               <Button
                 size="small"
@@ -348,6 +383,7 @@ export function PageViewPage() {
                 />
               </Button>
             </Tooltip>
+            )}
             {/* 전체 너비: 아이콘 버튼 + Tooltip. 접근 이름은 aria-label로 고정("전체 너비") */}
             <Tooltip content={width === "full" ? "기본 너비" : "전체 너비"}>
               <Button
@@ -365,34 +401,40 @@ export function PageViewPage() {
                 )}
               </Button>
             </Tooltip>
-            {/* 편집만 primary — 화면의 핵심 액션 */}
-            {page.archivedAt ? null : (
-            <Button
-              size="small"
-              onClick={() => navigate(`/spaces/${space.id}/pages/${page.id}/edit`)}
-            >
-              편집
-            </Button>
+            {/* 편집만 primary — 화면의 핵심 액션. 읽기 전용 인스턴스에는 편집 라우트가 없다.
+              * 히스토리·구독·공유도 뺀다: 복원은 쓰기, 구독은 사용자 개념, 공유는 사용자 선택이
+              * 필요하다(주소 공유는 브라우저 주소창으로 충분하다). */}
+            {readOnly ? null : (
+              <>
+                {page.archivedAt ? null : (
+                  <Button
+                    size="small"
+                    onClick={() => navigate(`/spaces/${space.id}/pages/${page.id}/edit`)}
+                  >
+                    편집
+                  </Button>
+                )}
+                {/* 히스토리: 아이콘 버튼(HistoryModal 내부). 모달 트리거라 native title 사용 */}
+                <HistoryModal
+                  page={page}
+                  users={users}
+                  onRestored={async (restored) => {
+                    setPage(restored); // 재조회 없이 반환 Page로 즉시 갱신
+                    await reloadPages(); // 제목이 복원된 경우 사이드바 트리 반영
+                  }}
+                />
+                <WatchButton pageId={page.id} />
+                {/* 공유(W23) — 보는 사람이면 누구나. 헤더 액션 중 가장 자주 눌리는 것이라 드롭다운에 숨기지 않는다 */}
+                <Button
+                  size="small"
+                  variant="subtle"
+                  iconBefore={<Share2 size={16} aria-hidden="true" />}
+                  onClick={() => setShareOpen(true)}
+                >
+                  공유
+                </Button>
+              </>
             )}
-            {/* 히스토리: 아이콘 버튼(HistoryModal 내부). 모달 트리거라 native title 사용 */}
-            <HistoryModal
-              page={page}
-              users={users}
-              onRestored={async (restored) => {
-                setPage(restored); // 재조회 없이 반환 Page로 즉시 갱신
-                await reloadPages(); // 제목이 복원된 경우 사이드바 트리 반영
-              }}
-            />
-            <WatchButton pageId={page.id} />
-            {/* 공유(W23) — 보는 사람이면 누구나. 헤더 액션 중 가장 자주 눌리는 것이라 드롭다운에 숨기지 않는다 */}
-            <Button
-              size="small"
-              variant="subtle"
-              iconBefore={<Share2 size={16} aria-hidden="true" />}
-              onClick={() => setShareOpen(true)}
-            >
-              공유
-            </Button>
             {/* 삭제는 "…" 드롭다운으로 이동 + confirm 다이얼로그 */}
             <Dropdown
               trigger={
@@ -412,52 +454,94 @@ export function PageViewPage() {
                   icon: <Download size={16} aria-hidden="true" />,
                   onSelect: () => setExportOpen(true),
                 },
-                {
-                  // 보관(W23) — 끝났지만 남겨 둘 문서. 트리·검색에서 빠지고 링크로는 열린다
-                  label: page.archivedAt ? "보관 해제" : "보관",
-                  icon: <Archive size={16} aria-hidden="true" />,
-                  onSelect: () => void handleArchiveToggle(),
-                },
-                {
-                  // 템플릿을 처음부터 쓰는 사람은 드물다 — 이미 잘 쓴 문서 하나가 곧 형식이다
-                  label: "템플릿으로 저장",
-                  icon: <LayoutTemplate size={16} aria-hidden="true" />,
-                  onSelect: () => void handleSaveAsTemplate(),
-                },
-                {
-                  label: "삭제",
-                  danger: true,
-                  icon: <Trash2 size={16} aria-hidden="true" />,
-                  onSelect: () => setConfirmOpen(true),
-                },
+                // 나머지는 전부 쓰기다 — 읽기 전용에서는 "…"에 내보내기 하나만 남는다
+                ...(readOnly
+                  ? []
+                  : [
+                      {
+                        // 보관(W23) — 끝났지만 남겨 둘 문서. 트리·검색에서 빠지고 링크로는 열린다
+                        label: page.archivedAt ? "보관 해제" : "보관",
+                        icon: <Archive size={16} aria-hidden="true" />,
+                        onSelect: () => void handleArchiveToggle(),
+                      },
+                      {
+                        // 소유자·검증(W27-5) — "이 문서 담당이 누구고, 아직 맞는 얘기인가"
+                        label: "소유자 지정",
+                        icon: <UserCog size={16} aria-hidden="true" />,
+                        onSelect: () => setOwnerOpen(true),
+                      },
+                      {
+                        label: page.verifiedUntil ? "검증 해제" : "검증하기",
+                        icon: <BadgeCheck size={16} aria-hidden="true" />,
+                        onSelect: () =>
+                          page.verifiedUntil ? void handleUnverify() : setVerifyOpen(true),
+                      },
+                      {
+                        // 템플릿을 처음부터 쓰는 사람은 드물다 — 이미 잘 쓴 문서 하나가 곧 형식이다
+                        label: "템플릿으로 저장",
+                        icon: <LayoutTemplate size={16} aria-hidden="true" />,
+                        onSelect: () => void handleSaveAsTemplate(),
+                      },
+                      {
+                        label: "삭제",
+                        danger: true,
+                        icon: <Trash2 size={16} aria-hidden="true" />,
+                        onSelect: () => setConfirmOpen(true),
+                      },
+                    ]),
               ]}
             />
           </>
         }
       />
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} page={page} />
-      <ShareDialog open={shareOpen} onOpenChange={setShareOpen} page={page} users={users} />
-      <DeleteContentDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={page.title}
-        type={page.type}
-        childCount={childCount}
-        loading={deleting}
-        onConfirm={handleDelete}
-      />
-      <RestrictionsDialog
-        open={restrictionsOpen}
-        onOpenChange={setRestrictionsOpen}
-        pageId={page.id}
-        users={users}
-        onSaved={setRestrictions}
-      />
+      {readOnly ? null : (
+        <>
+          <ShareDialog open={shareOpen} onOpenChange={setShareOpen} page={page} users={users} />
+          <PageOwnerDialog
+            open={ownerOpen}
+            onOpenChange={setOwnerOpen}
+            page={page}
+            users={users}
+            onSaved={setPage}
+          />
+          <PageVerifyDialog
+            open={verifyOpen}
+            onOpenChange={setVerifyOpen}
+            page={page}
+            onSaved={setPage}
+          />
+          <DeleteContentDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            title={page.title}
+            type={page.type}
+            childCount={childCount}
+            loading={deleting}
+            onConfirm={handleDelete}
+          />
+          <RestrictionsDialog
+            open={restrictionsOpen}
+            onOpenChange={setRestrictionsOpen}
+            pageId={page.id}
+            users={users}
+            onSaved={setRestrictions}
+          />
+        </>
+      )}
       {(() => {
         // 작성자: 이름을 못 찾고 id만 있으면(백엔드 모드) `사용자 #{id}` 폴백. id도 없으면 표기 없음.
         const editorName = editor?.name ?? (page.updatedBy ? displayUserName(page.updatedBy) : null);
         const updatedLabel = formatDate(page.updatedAt);
-        if (!editorName && !updatedLabel && views === null) return null; // 표시할 게 하나도 없으면 메타 숨김
+        // 소유자(W27-5) — 정하지 않은 문서에는 아무것도 표시하지 않는다(createdBy로 대신하지 않는다)
+        const ownerName = page.ownerId
+          ? (users.find((u) => u.id === page.ownerId)?.name ?? displayUserName(page.ownerId))
+          : null;
+        const verified = verificationState(page);
+        const untilLabel = formatVerifiedUntil(page.verifiedUntil);
+        if (!editorName && !updatedLabel && views === null && !ownerName && verified === "none") {
+          return null; // 표시할 게 하나도 없으면 메타 숨김
+        }
         return (
           <div className="page-view-meta">
             {editorName ? (
@@ -468,12 +552,34 @@ export function PageViewPage() {
             ) : null}
             {updatedLabel ? <span>{updatedLabel} 수정</span> : null}
             {views !== null ? <span>조회 {views}회</span> : null}
+            {ownerName ? (
+              <span className="page-view-owner">
+                <Avatar name={ownerName} color="auto" size="small" />
+                소유자 {ownerName}
+              </span>
+            ) : null}
+            {/* 검증 배지 — 본문 `:status` 지시자와 같은 결(DS Lozenge)이라 한 화면에서 이질감이 없다 */}
+            {verified === "verified" ? (
+              <Lozenge appearance="success" className="page-view-badge">
+                검증됨{untilLabel ? ` · ~${untilLabel}` : ""}
+              </Lozenge>
+            ) : null}
+            {verified === "expired" ? (
+              <Lozenge appearance="warning" className="page-view-badge">
+                검증 만료
+              </Lozenge>
+            ) : null}
           </div>
         );
       })()}
       {/* 보관된 문서(W23) — 읽히지만 고칠 수 없다는 것을 본문 위에서 알린다 */}
       {page.archivedAt ? (
-        <Banner variant="info" action={{ label: "보관 해제", onClick: () => void handleArchiveToggle() }}>
+        <Banner
+          variant="info"
+          action={
+            readOnly ? undefined : { label: "보관 해제", onClick: () => void handleArchiveToggle() }
+          }
+        >
           보관된 문서입니다. 트리와 검색에서 빠져 있고, 편집하려면 보관을 해제해야 합니다.
         </Banner>
       ) : null}
@@ -488,14 +594,14 @@ export function PageViewPage() {
           <MarkdownView
             markdown={page.body}
             spaceId={space.id}
-            // 보관 중엔 편집이 막힌다 — 체크박스도 읽기 전용으로 둔다
-            onTaskToggle={page.archivedAt ? undefined : handleTaskToggle}
+            // 보관 중엔 편집이 막힌다 — 체크박스도 읽기 전용으로 둔다(읽기 전용 인스턴스도 같다)
+            onTaskToggle={page.archivedAt || readOnly ? undefined : handleTaskToggle}
           />
         </div>
         <InlineCommentLayer pageId={page.id} body={page.body} users={users} bodyRef={bodyRef} />
       </div>
-      {/* 본문 바로 아래 — 다 읽고 나서 누르는 자리다(W23) */}
-      <PageReactions pageId={page.id} />
+      {/* 본문 바로 아래 — 다 읽고 나서 누르는 자리다(W23). 리액션은 곧 쓰기라 읽기 전용에선 없다 */}
+      {readOnly ? null : <PageReactions pageId={page.id} />}
       <PageLabels pageId={page.id} spaceId={space.id} />
       <ChildPages currentPageId={page.id} spaceId={space.id} />
       <PageAttachments pageId={page.id} body={page.body} />

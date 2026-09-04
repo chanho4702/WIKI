@@ -35,6 +35,22 @@ export interface PageDto {
   type?: PageType; status?: PageStatus;
   /** V10 — 이모지 아이콘·조회수. 구버전 응답 호환 optional. */
   icon?: string | null; views?: number;
+  /** V33 소유자·검증(W27-5). 서버는 verifiedUntil을 TIMESTAMPTZ로 준다 — 화면은 날짜만 쓴다. */
+  ownerId?: number | string | null;
+  verifiedAt?: string | null;
+  verifiedBy?: number | string | null;
+  verifiedUntil?: string | null;
+}
+
+/**
+ * 서버의 TIMESTAMPTZ("2026-12-03T00:00:00Z")를 화면이 쓰는 날짜("2026-12-03")로 자른다.
+ *
+ * 검증 유효기간은 사람이 고른 **날짜**다. 시각을 그대로 들고 다니면 만료 비교가 브라우저
+ * 타임존에 따라 하루씩 흔들린다 — 목업 모드는 애초에 날짜만 저장하므로 두 모드가 갈린다.
+ */
+function toDateOnly(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return iso.slice(0, 10);
 }
 export function mapPage(dto: PageDto): Page {
   // 백엔드 PageResponse엔 시각/작성자가 없다 → 빈 문자열. ⚠️ 백엔드 모드에서 PageView 메타의
@@ -58,6 +74,11 @@ export function mapPage(dto: PageDto): Page {
     position: dto.position ?? 0,
     createdBy: "", updatedBy: "", createdAt: now, updatedAt: now,
     archivedAt: dto.archivedAt ?? null,
+    ownerId: dto.ownerId === null || dto.ownerId === undefined ? null : String(dto.ownerId),
+    verifiedAt: dto.verifiedAt ?? null,
+    verifiedBy:
+      dto.verifiedBy === null || dto.verifiedBy === undefined ? null : String(dto.verifiedBy),
+    verifiedUntil: toDateOnly(dto.verifiedUntil),
   };
 }
 

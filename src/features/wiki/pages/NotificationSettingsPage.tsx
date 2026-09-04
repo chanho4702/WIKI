@@ -12,7 +12,9 @@ const TYPE_ROWS: Array<{
   hint: string;
 }> = [
   { key: "mentioned", icon: AtSign, label: "나를 멘션했을 때", hint: "본문이나 댓글에서 @이름으로 나를 불렀을 때 보냅니다." },
-  { key: "pageUpdated", icon: FileText, label: "구독한 문서가 업데이트됐을 때", hint: "내가 만들거나 고쳤거나 직접 구독한 문서가 바뀌면 보냅니다." },
+  // 스페이스 구독(W27-4)의 새 문서 알림도 이 스위치를 함께 쓴다 — 종류마다 스위치를 늘리면
+  // 설정 화면이 고르는 화면이 아니라 목록이 된다. 문구가 그 범위를 말해야 한다.
+  { key: "pageUpdated", icon: FileText, label: "구독한 문서·스페이스에 변화가 있을 때", hint: "내가 만들거나 고쳤거나 직접 구독한 문서가 바뀌면, 구독한 스페이스에 새 문서가 올라오면 보냅니다." },
   { key: "comment", icon: MessageSquare, label: "구독한 문서에 댓글이 달렸을 때", hint: "구독한 문서에 새 댓글이 달리면 보냅니다." },
   { key: "shared", icon: Share2, label: "누군가 문서를 공유했을 때", hint: "공유한 사람의 메모가 함께 옵니다." },
 ];

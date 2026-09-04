@@ -14,5 +14,8 @@ import { common } from "lowlight";
 export const CODE_LANGUAGES: string[] = [
   // 언어 미지정 — lowlight에 등록돼 있지만 contains 규칙이 없어 토큰이 생기지 않는다(무하이라이트)
   "plaintext",
+  // Mermaid(W27-2) — 하이라이터에 등록된 언어가 아니라 예외로 손으로 넣는다. 이 언어의 코드 블록은
+  // 보기에서 코드가 아니라 다이어그램으로 렌더된다(lib/rehypeMermaid.ts) — 고를 수 있어야 쓴다.
+  "mermaid",
   ...Object.keys(common).sort((a, b) => a.localeCompare(b)),
 ];

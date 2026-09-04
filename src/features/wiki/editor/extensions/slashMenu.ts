@@ -24,6 +24,10 @@ import {
   FileInput,
   BadgeCheck,
   Table2,
+  Sigma,
+  Workflow,
+  Tags,
+  History,
 } from "lucide-react";
 import { WIKI_LINK_OPEN_SOURCE } from "../../lib/wikiLinks";
 import { COLUMN_LAYOUT_ICONS } from "../components/ColumnLayoutIcon";
@@ -31,6 +35,9 @@ import type { SuggestionIcon } from "../components/SuggestionPopup";
 import { SUPPORTED_COLUMN_COUNTS } from "./columns";
 
 const slashMenuPluginKey = new PluginKey("slashMenu");
+
+/** Mermaid 항목이 넣는 예시 다이어그램 — 빈 코드 블록만 넣으면 문법을 모르는 사용자가 막힌다. */
+const MERMAID_SAMPLE = ["graph TD;", "  A[시작] --> B[끝];"].join("\n");
 
 /** 한글 수사 — 레퍼런스 설명문 "N개의 동일한 열 삽입"을 그대로 쓰기 위한 표기. */
 const COUNT_WORDS: Record<number, string> = { 1: "한", 2: "두", 3: "세", 4: "네", 5: "다섯" };
@@ -303,6 +310,63 @@ export const SLASH_ITEMS: SlashItem[] = [
         .chain()
         .focus()
         .insertContent({ type: "paragraph", content: [{ type: "text", text: "::excerpt-include[문서 제목]" }] })
+        .run(),
+  },
+  // 수식·Mermaid·콘텐츠 매크로(W27-2·W27-3) — 편집 화면에는 마커/코드 블록이 그대로 보이고
+  // 보기 화면에서 렌더된다. 목차·발췌와 같은 방식이다.
+  {
+    id: "math",
+    label: "수식",
+    description: "LaTeX 수식을 넣습니다",
+    icon: Sigma,
+    // 한 줄로 넣는다 — 편집기(markdown-it)가 문단 안의 줄바꿈을 접어서 `$$` 세 줄을 넣어도
+    // 저장 시 한 줄이 된다(editor/markdown.test.ts의 왕복 케이스). 보기 쪽 remarkDisplayMath가
+    // 이 한 줄을 블록 수식으로 되돌린다.
+    run: (e) =>
+      e
+        .chain()
+        .focus()
+        .insertContent({ type: "paragraph", content: [{ type: "text", text: "$$ E = mc^2 $$" }] })
+        .run(),
+  },
+  {
+    id: "mermaid",
+    label: "Mermaid 다이어그램",
+    description: "코드로 순서도·시퀀스 다이어그램을 그립니다",
+    icon: Workflow,
+    run: (e) =>
+      e
+        .chain()
+        .focus()
+        .insertContent({
+          type: "codeBlock",
+          attrs: { language: "mermaid" },
+          content: [{ type: "text", text: MERMAID_SAMPLE }],
+        })
+        .run(),
+  },
+  {
+    id: "pagesByLabel",
+    label: "라벨별 문서 목록",
+    description: "이 스페이스에서 라벨이 붙은 문서를 모읍니다",
+    icon: Tags,
+    run: (e) =>
+      e
+        .chain()
+        .focus()
+        .insertContent({ type: "paragraph", content: [{ type: "text", text: "::pages-by-label[라벨]" }] })
+        .run(),
+  },
+  {
+    id: "recentlyUpdated",
+    label: "최근 업데이트",
+    description: "이 스페이스에서 최근 수정된 문서를 보여줍니다",
+    icon: History,
+    run: (e) =>
+      e
+        .chain()
+        .focus()
+        .insertContent({ type: "paragraph", content: [{ type: "text", text: "::recently-updated{limit=5}" }] })
         .run(),
   },
   // 열 레이아웃 — 저장 포맷은 `:::` 확장 문법(extensions/columns.ts).

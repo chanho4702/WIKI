@@ -38,6 +38,16 @@ wiki-service가 붙으면 함수 내부만 `apiFetch`로 교체한다 — **함�
 - **구독(W21-4)**: 알림 대상은 `watches`가 단일 원장이다. 만들거나 고치거나 댓글을 달면 자동
   구독되고 `setWatchState(pageId, false)`로 끌 수 있다. 구독 개념 이전 데이터는 `normalize`가
   작성자·편집자를 구독자로 백필한다(백엔드 V15 백필과 같은 규칙).
+- **스페이스 구독(W27-4)**: `getSpaceWatchState`/`setSpaceWatchState`. 페이지 구독과 달리 **자동 구독이
+  없다** — 스페이스에는 "관심의 사건"(만들기·편집·댓글)이 없다. 알림 대상은 페이지 구독자 ∪
+  스페이스 구독자이고, 두 원장에 다 있어도 한 번만 간다. 새 문서 게시는 `page_published`로
+  따로 알린다(게시 상태로 만든 문서와 초안→게시 전이, 폴더 제외). 그 대상은 **구독자만**이다 —
+  본문 멘션은 넣지 않는다(문서 생성은 예전부터 멘션 알림의 트리거가 아니다).
+- **소유자·검증(W27-5)**: `setPageOwner`/`verifyPage`/`unverifyPage`. 셋 다 메타데이터라 version·버전
+  스냅샷·updatedAt을 건드리지 않는다(`setPageIcon`·`movePage`와 같은 취급). `Page.verifiedUntil`은
+  **날짜만**(`YYYY-MM-DD`)이다 — API 어댑터가 서버 TIMESTAMPTZ를 잘라 넣는다. 시각을 그대로 두면
+  만료 비교가 브라우저 타임존에 따라 하루씩 흔들려 두 모드가 갈린다. 만료 판정은 화면 몫이며
+  (`lib/verification.ts`), 지난 날짜도 서버·목업 모두 그대로 저장한다.
 - **에러는 한국어 사용자 문구로 throw** — 화면이 메시지를 그대로 노출한다.
 - **편집 세션 낙관적 락**: 화면은 로드 때 받은 `Page.version`을 `updatePage(...,
   { expectedVersion })`에 넘긴다. API 어댑터가 저장 직전 조회한 최신 버전으로 바꾸면 stale 편집이

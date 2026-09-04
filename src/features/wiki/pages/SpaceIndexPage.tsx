@@ -9,6 +9,8 @@ import { displayUserName } from "../lib/userName";
 import { contentPathIn } from "../lib/contentPath";
 import { useCreateContent } from "../lib/useCreateContent";
 import { CreateContentMenu } from "../components/CreateContentMenu";
+import { SpaceWatchButton } from "../components/WatchButton";
+import { useReadOnly } from "../lib/readOnly";
 
 /** 최근 업데이트 목록에 보여줄 최대 개수 — 캡처(특정 스페이스 페이지.png)의 5건 + "더 보기" 없이 고정. */
 const RECENT_LIMIT = 8;
@@ -104,6 +106,7 @@ export function SpaceIndexPage() {
   }, [space]);
   const [users, setUsers] = useState<User[]>([]);
   const { createContent, createFromTemplate } = useCreateContent(spaceId ?? null, reloadPages);
+  const readOnly = useReadOnly();
 
   useEffect(() => {
     void listUsers().then(setUsers);
@@ -130,13 +133,20 @@ export function SpaceIndexPage() {
   if (roots.length === 0) {
     return (
       <div className="empty-pages">
+        {/* 읽기 전용 인스턴스에서 "만들기"를 권하면 눌러도 되는 일이 없다 — 안내만 남긴다 */}
         <EmptyState
           title="아직 페이지가 없습니다"
-          description="첫 페이지를 만들어 위키를 시작하세요."
-          primaryAction={{
-            label: "첫 페이지 만들기",
-            onClick: () => void createContent("page"),
-          }}
+          description={
+            readOnly ? "이 문서 공간은 아직 비어 있습니다." : "첫 페이지를 만들어 위키를 시작하세요."
+          }
+          primaryAction={
+            readOnly
+              ? undefined
+              : {
+                  label: "첫 페이지 만들기",
+                  onClick: () => void createContent("page"),
+                }
+          }
         />
       </div>
     );
@@ -153,16 +163,22 @@ export function SpaceIndexPage() {
         {/* 스페이스 개요에서도 폴더를 만들 수 있어야 한다 — 전에는 페이지 전용 버튼이었다.
           * 이름이 "만들기"가 아닌 이유: 셸 헤더에 같은 이름의 버튼이 이미 있어 한 화면에 동명
           * 버튼이 둘이 되면 스크린리더에서 구분되지 않는다. */}
-        <CreateContentMenu
-          trigger={
-            <Button size="small" iconBefore={<Plus size={16} aria-hidden="true" />}>
-              새 콘텐츠
-            </Button>
-          }
-          onSelect={(type) => void createContent(type)}
-          spaceId={spaceId ?? null}
-          onSelectTemplate={(template) => void createFromTemplate(template)}
-        />
+        {readOnly ? null : (
+          <>
+            <CreateContentMenu
+              trigger={
+                <Button size="small" iconBefore={<Plus size={16} aria-hidden="true" />}>
+                  새 콘텐츠
+                </Button>
+              }
+              onSelect={(type) => void createContent(type)}
+              spaceId={spaceId ?? null}
+              onSelectTemplate={(template) => void createFromTemplate(template)}
+            />
+            {/* 스페이스 구독(W27-4) — 새 문서가 올라오면 알림을 받는다. 문서 화면의 구독 버튼과 같은 모양 */}
+            <SpaceWatchButton spaceId={space.id} />
+          </>
+        )}
       </header>
 
       {/* 사이드바에도 aria-label="콘텐츠" 섹션이 있다 — 같은 이름의 랜드마크가 둘이면 스크린리더

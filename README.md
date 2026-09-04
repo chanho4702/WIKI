@@ -27,7 +27,7 @@ MSA_TEMPLATE의 **위키(컨플루언스 클론) 프론트엔드**. 3개 프론�
 | 디자인 시스템 | `@chanho/react` 0.5.0 + `@chanho/tokens` 0.3.0 (tarball `file:(레지스트리: GitHub Packages, `.npmrc` 참고)/*.tgz`) |
 | 에디터 | **TipTap 2.27** — `@tiptap/react` · `starter-kit` · 확장(link, image, table/row/header/cell, task-list/item, placeholder) + `tiptap-markdown`(마크다운 왕복) |
 | 공동 편집 | Yjs 13.6 · Hocuspocus Provider 4.6 — 본문·제목 CRDT, 인증 presence, 공동 커서, page+generation 원자 저장 (기능 플래그) |
-| 보기 렌더 | react-markdown 10 + remark-gfm 4 (표) |
+| 보기 렌더 | react-markdown 10 + remark-gfm 4 (표) · remark-math 6 + KaTeX 0.18 (수식) · mermaid 11 (다이어그램, 지연 로드) |
 | 트리 DnD | `@dnd-kit/core` · `sortable` · `utilities` |
 | 테스트 | Vitest 3 + Testing Library + jsdom |
 
@@ -49,12 +49,22 @@ UI는 100% `@chanho` 디자인 시스템으로 구성한다 — 타 UI 라이브
 - **버전 히스토리** — 저장마다 자동 스냅샷(스토어 부수효과). HistoryModal에서 버전 목록·미리보기·diff(`DiffView`)·복원,
   복원도 새 버전으로 쌓여 히스토리가 끊기지 않는다.
 - **코멘트** — 최상위 + 1단 답글, 본인만 수정/삭제, 최상위 삭제 시 답글 연쇄 삭제.
+- **템플릿** — 코드에 정의된 기본 템플릿 10종(회의록·결정 기록·PRD·회고·프로젝트 계획·주간 보고·
+  How-to·트러블슈팅·온보딩·1:1, `lib/builtinTemplates.ts`)과 스페이스 템플릿 CRUD. 기본 템플릿은
+  읽기 전용이라 설정에서 스페이스 템플릿으로 복사해 고친다. 본문의 `{{date}}`·`{{author}}`·
+  `{{space}}`는 문서를 만들 때 한 번 치환된다(`lib/templateVariables.ts`).
 - **제목 검색** — 부분일치(대소문자 무시), 매치의 조상 체인을 유지해 트리 구조 보존.
 - **통합 검색** — 상단 검색폼 → `/search?q=`. search-service GraphQL로 제목·본문·폴더·첨부파일명을
   권한 필터링해 검색하고 PAGE/FOLDER/ATTACHMENT 경로, 안전한 하이라이트, 429·503 재시도를 제공한다.
 - **실시간 공동 편집(기능 플래그)** — 제목·본문 Yjs 동시 편집, 인증된 presence·공동 caret, 터치 가능한
   참여자 명단과 연결 상태를 제공한다. 단절 중에는 로컬 편집을 유지하되 서버 재동기화 전 게시를 막고,
   수동 재연결에도 현재 탭의 Yjs snapshot을 이어 붙인다.
+- **수식(LaTeX)** — 인라인 `$…$`, 블록 `$$…$$`를 보기에서 KaTeX로 조판한다(remark-math + rehype-katex).
+  편집 화면에는 `$` 문법이 그대로 텍스트로 남는다.
+- **Mermaid 다이어그램** — 언어가 `mermaid`인 코드 블록을 보기에서 SVG 다이어그램으로 그린다. 라이브러리는
+  다이어그램이 있는 문서에서만 지연 로드하고, 문법 오류면 오류 문구와 원문 코드 블록으로 폴백한다.
+- **콘텐츠 매크로** — `::pages-by-label[라벨]`(라벨이 붙은 문서 목록)과 `::recently-updated{limit=N}`
+  (스페이스 최근 업데이트, 기본 5·최대 20). 둘 다 보기에서 스토어로 조회해 제목 링크와 수정일을 그린다.
 - **다크 모드 토글**, **미저장 이탈 가드**(`beforeunload` + 취소 confirm).
 
 목업 데이터는 localStorage `wiki.v1`(손상 시 시드 재생성), 프로덕션 데이터는 각 백엔드 서비스가 정본이다.

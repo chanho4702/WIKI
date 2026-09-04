@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button, ConfirmDialog, EmptyState, TextArea, TextField, useToast } from "@chanho/react";
-import { LayoutTemplate, Pencil, Trash2 } from "lucide-react";
+import { Copy, LayoutTemplate, Pencil, Trash2 } from "lucide-react";
 import type { PageTemplate } from "../store/types";
 import { createTemplate, deleteTemplate, listTemplates, updateTemplate } from "../store/wikiStore";
+import { BUILTIN_TEMPLATES } from "../lib/builtinTemplates";
 
 /**
  * 스페이스 설정의 템플릿 탭(W23).
@@ -23,6 +24,7 @@ export function TemplateSettings({ spaceId }: { spaceId: string }) {
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PageTemplate | null>(null);
+  const [copying, setCopying] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -73,6 +75,33 @@ export function TemplateSettings({ spaceId }: { spaceId: string }) {
     }
   };
 
+  /**
+   * 기본 템플릿을 이 스페이스의 템플릿으로 복사한다(W27-1). 기본은 읽기 전용이라 고치려면
+   * 복사부터 해야 한다 — 복사한 뒤로는 원본과 무관한 이 스페이스의 자산이다.
+   */
+  const copyBuiltin = async (builtin: (typeof BUILTIN_TEMPLATES)[number]) => {
+    setCopying(builtin.id);
+    try {
+      await createTemplate(spaceId, {
+        name: builtin.name,
+        description: builtin.description,
+        icon: builtin.icon,
+        content: builtin.content,
+      });
+      await reload();
+      toast({ title: `"${builtin.name}"을(를) 스페이스 템플릿으로 복사했습니다`, appearance: "success" });
+    } catch (reason) {
+      // 같은 이름이 이미 있거나 권한이 없을 때 — 스토어의 한국어 문장을 그대로 보여준다
+      toast({
+        title: "템플릿 복사 실패",
+        description: reason instanceof Error ? reason.message : String(reason),
+        appearance: "danger",
+      });
+    } finally {
+      setCopying(null);
+    }
+  };
+
   const remove = async () => {
     if (!pendingDelete) return;
     try {
@@ -94,6 +123,40 @@ export function TemplateSettings({ spaceId }: { spaceId: string }) {
 
   return (
     <div className="space-settings-form">
+      <section className="template-section">
+        <p className="template-section-title">기본 템플릿</p>
+        <p className="template-section-hint">
+          모든 스페이스에서 바로 고를 수 있는 템플릿입니다. 여기서는 고칠 수 없고, 복사하면 이
+          스페이스에 맞게 고칠 수 있습니다. 본문의 <code>{"{{date}}"}</code>·
+          <code>{"{{author}}"}</code>·<code>{"{{space}}"}</code>는 문서를 만들 때 채워집니다.
+        </p>
+        <ul className="template-list" aria-label="기본 템플릿 목록">
+          {BUILTIN_TEMPLATES.map((builtin) => (
+            <li key={builtin.id} className="template-list-item">
+              <div className="template-list-copy">
+                <strong>
+                  <span aria-hidden="true">{builtin.icon}</span> {builtin.name}
+                </strong>
+                <span>{builtin.description}</span>
+              </div>
+              <div className="template-list-actions">
+                <Button
+                  size="small"
+                  variant="subtle"
+                  iconBefore={<Copy size={14} aria-hidden="true" />}
+                  disabled={copying !== null}
+                  aria-label={`${builtin.name}을(를) 스페이스 템플릿으로 복사`}
+                  onClick={() => void copyBuiltin(builtin)}
+                >
+                  복사
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <p className="template-section-title">스페이스 템플릿</p>
       {editing !== null ? (
         <form
           className="template-form"

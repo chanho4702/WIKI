@@ -1,6 +1,7 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
 import { MoveImpactError, PageConflictError, REACTION_EMOJIS } from "./types";
 import { parseTasks, toggleTaskLine, type ParsedTask } from "../lib/tasks";
+import { defaultVerifiedUntil } from "../lib/verification";
 import type {
   Attachment,
   CollaborationDraftCommit,
@@ -329,6 +330,9 @@ export async function createPage(input: {
   data.pages.push(page);
   snapshotVersion(data, page, now); // v1 자동 스냅샷
   autoWatch(data, page.id, CURRENT_USER_ID); // 만든 문서는 자동 구독(W21-4)
+  // 곧바로 게시된 문서는 그 순간이 곧 "새 문서 게시"다 — publish 경로만 알리면 대부분의 문서가
+  // 스페이스 구독자에게 조용히 지나간다(W27-4). 폴더는 읽을 내용이 없으므로 제외한다.
+  if (page.status === "published" && page.type !== "folder") notifyPagePublished(data, page);
   persist();
   return clone(page);
 }
@@ -509,12 +513,20 @@ function mentionIdsOf(body: string | undefined): Set<string> {
 }
 
 /**
- * 알림 대상 = 구독자(W21-4) + 멘션된 사용자. 백엔드와 같은 규칙이다.
+ * 알림 대상 = 페이지 구독자(W21-4) ∪ 스페이스 구독자(W27-4) ∪ 멘션된 사용자.
+ * 백엔드 NotificationService.interestedIn과 같은 규칙이다 — Set이라 겹쳐도 한 번만 간다.
  * 전에는 "작성자 + 버전을 남긴 사람"을 계산했는데 그러면 끌 수가 없었다.
  */
 function interestedIn(data: WikiData, page: Page, mentions: Set<string>): Set<string> {
-  const users = new Set(mentions);
-  for (const watcher of data.watches?.[page.id] ?? []) users.add(watcher);
+  const users = subscribersOf(data, page);
+  for (const id of mentions) users.add(id);
+  return users;
+}
+
+/** 구독자만 — 페이지 구독자 ∪ 스페이스 구독자. 멘션은 포함하지 않는다. */
+function subscribersOf(data: WikiData, page: Page): Set<string> {
+  const users = new Set(data.watches?.[page.id] ?? []);
+  for (const watcher of data.spaceWatches?.[page.spaceId] ?? []) users.add(watcher);
   return users;
 }
 
@@ -561,6 +573,19 @@ function notifyPageUpdated(data: WikiData, page: Page, oldBody: string, newBody:
   interested.delete(CURRENT_USER_ID);
   for (const id of newlyMentioned) interested.delete(id);
   for (const id of interested) deliver(data, id, "page_updated", page);
+}
+
+/**
+ * 새 문서 게시(W27-4) — 스페이스 구독자가 기다리던 사건이다.
+ * 곧바로 게시된 문서와 초안이 게시로 넘어가는 순간, 두 경로에서 한 번씩 부른다.
+ *
+ * 대상은 구독자만이다 — 본문에 멘션된 사람은 넣지 않는다. 문서 생성은 예전부터 멘션 알림의
+ * 트리거가 아니었고, 여기서 게시로 대신 보내면 그 결정을 뒷문으로 뒤집는 셈이 된다.
+ */
+function notifyPagePublished(data: WikiData, page: Page): void {
+  const interested = subscribersOf(data, page);
+  interested.delete(CURRENT_USER_ID); // 자기가 게시한 문서를 자기 알림함에서 다시 볼 이유가 없다
+  for (const id of interested) deliver(data, id, "page_published", page);
 }
 
 function notifyCommentAdded(data: WikiData, page: Page, commentBody: string): void {
@@ -673,6 +698,7 @@ export async function publishPage(id: string): Promise<Page> {
   if (page.status === "published") return clone(page);
   if (!page.title.trim()) throw new Error("제목을 입력해야 게시할 수 있습니다");
   page.status = "published";
+  notifyPagePublished(data, page); // 스페이스 구독자가 기다리던 사건(W27-4)
   persist();
   return clone(page);
 }
@@ -714,6 +740,12 @@ export async function copyPage(id: string, options?: CopyPageOptions): Promise<P
       updatedBy: CURRENT_USER_ID,
       createdAt: now,
       updatedAt: now,
+      // 사본은 원본의 소유자·검증을 물려받지 않는다(W27-5) — 아무도 읽지 않은 문서가 "검증됨"으로
+      // 태어나면 배지가 거짓말이 된다. 백엔드 copy도 새 Page를 만들어 같은 결과다.
+      ownerId: null,
+      verifiedAt: null,
+      verifiedBy: null,
+      verifiedUntil: null,
     };
     newIdOf.set(original.id, copy.id);
     data.pages.push(copy);
@@ -1636,6 +1668,63 @@ export async function setWatchState(pageId: string, watching: boolean): Promise<
   data.watches[pageId] = [...current];
   persist();
   return watching;
+}
+
+/* ── 스페이스 구독(W27-4) ─────────────────────────────────── */
+
+export async function getSpaceWatchState(spaceId: string): Promise<boolean> {
+  const data = load();
+  return (data.spaceWatches?.[spaceId] ?? []).includes(CURRENT_USER_ID);
+}
+
+export async function setSpaceWatchState(spaceId: string, watching: boolean): Promise<boolean> {
+  const data = load();
+  if (!data.spaces.some((s) => s.id === spaceId)) throw new Error("스페이스를 찾을 수 없습니다");
+  data.spaceWatches ??= {};
+  const current = new Set(data.spaceWatches[spaceId] ?? []);
+  if (watching) current.add(CURRENT_USER_ID);
+  else current.delete(CURRENT_USER_ID);
+  data.spaceWatches[spaceId] = [...current];
+  persist();
+  return watching;
+}
+
+/* ── 소유자·검증(W27-5) ───────────────────────────────────── */
+
+/**
+ * 소유자 지정·해제. 메타데이터라 version·updatedAt·버전 스냅샷을 건드리지 않는다
+ * (setPageIcon·movePage와 같은 취급) — 담당자가 바뀌었다고 문서가 고쳐진 것은 아니다.
+ */
+export async function setPageOwner(pageId: string, ownerId: string | null): Promise<Page> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === pageId);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  page.ownerId = ownerId;
+  persist();
+  return clone(page);
+}
+
+/** 검증. until이 없으면 기본 90일(백엔드 PageService.VERIFICATION_DAYS와 같은 값). */
+export async function verifyPage(pageId: string, until?: string): Promise<Page> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === pageId);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  page.verifiedAt = new Date().toISOString();
+  page.verifiedBy = CURRENT_USER_ID;
+  page.verifiedUntil = until ?? defaultVerifiedUntil();
+  persist();
+  return clone(page);
+}
+
+export async function unverifyPage(pageId: string): Promise<Page> {
+  const data = load();
+  const page = data.pages.find((p) => p.id === pageId);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  page.verifiedAt = null;
+  page.verifiedBy = null;
+  page.verifiedUntil = null;
+  persist();
+  return clone(page);
 }
 
 export async function updateComment(id: string, body: string): Promise<Comment> {
