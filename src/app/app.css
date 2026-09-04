@@ -768,15 +768,35 @@ body {
 
 /* ── 목차 (.page-toc — TableOfContents 전용 스코프) ── */
 
-/* 넓은 화면(우측 여백이 실제로 남는 폭)에서는 자동 목차를 우측 고정 레일로 띄운다 —
- * 본문 위 박스는 스크롤하면 사라져 "목차 기능이 없다"로 읽혔다. 본문(760px)이 중앙 정렬이라
- * 레일 왼쪽 끝 = 50% + 380px + 32px. 좁은 화면은 기존 상단 박스 그대로다. */
+/* 넓은 화면(우측 여백이 실제로 남는 폭)에서는 자동 목차를 본문 오른쪽 레일로 띄운다 —
+ * 본문 위 박스는 스크롤하면 사라져 "목차 기능이 없다"로 읽혔다.
+ *
+ * 왜 fixed + `left: 50% + 380px`가 아닌가: 그 좌표는 뷰포트 중앙 기준인데 본문은 사이드바(기본
+ * 260px)를 뺀 영역의 중앙에 있다. 사이드바 폭의 절반만큼 목차가 왼쪽으로 밀려 본문 첫 문단을
+ * 가렸다(실측: 1440px에서 약 100px 겹침). 본문과 목차를 한 그리드에 놓고 그 묶음을 중앙 정렬하면
+ * 사이드바를 접든 넓히든 겹치지 않는다. 목차는 sticky라 스크롤을 따라온다.
+ * 좁은 화면은 기존 상단 박스 그대로다. */
 @media (min-width: 1440px) {
-  .page-view:not(.page-view--full) .page-toc:not(.page-toc--inline) {
-    position: fixed;
+  .page-view:not(.page-view--full):has(> .page-toc:not(.page-toc--inline)) {
+    display: grid;
+    grid-template-columns: minmax(0, 760px) 240px;
+    column-gap: var(--chanho-space-400);
+    justify-content: center;
+    max-width: none;
+  }
+
+  .page-view:not(.page-view--full):has(> .page-toc:not(.page-toc--inline)) > * {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  .page-view:not(.page-view--full) > .page-toc:not(.page-toc--inline) {
+    grid-column: 2;
+    /* 암시적 행까지 넉넉히 걸쳐 두면 본문 아래 댓글·첨부가 늘어나도 목차 열이 따라온다 */
+    grid-row: 1 / span 40;
+    align-self: start;
+    position: sticky;
     top: 140px;
-    left: calc(50% + 380px + 32px);
-    width: 240px;
     max-height: calc(100vh - 200px);
     overflow-y: auto;
     margin-bottom: 0;
