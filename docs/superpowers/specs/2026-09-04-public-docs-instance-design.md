@@ -5,7 +5,7 @@
 ## 1. 목표 / 비목표
 
 **목표**
-- 옵시디언 "MSA_TEMPLATE 정리" 노트(00~32, 34편)를 `http://<host>/docs/` 에서 **로그인 없이** 읽을 수 있게 한다.
+- 옵시디언 "MSA_TEMPLATE 정리" 노트(00~33, 중복된 30번 하나를 정리하면 34편)를 `http://<host>/docs/` 에서 **로그인 없이** 읽을 수 있게 한다.
 - 기존 `/wiki/`(팀 위키)와 **DB·프로세스가 분리**된 두 번째 wiki-backend 인스턴스가 서빙한다. 팀 위키 데이터·권한은 전혀 건드리지 않는다.
 - 웹 UI와 공개 API에서 **모든 쓰기를 차단**한다. 문서는 로컬에서 도는 임포터만 넣는다.
 - myFront의 `/tech/notes`는 `/docs/`로 **이동**한다(노트 사본을 myFront에 두지 않는다).
@@ -25,8 +25,8 @@
              ├─ /api/docs/        → docs-backend:9110/api/wiki/   (X-Docs-Import-Token 헤더 제거)
              ├─ /wiki/, /alm/, /api/ … (기존 그대로, 게이트웨이 경유)
 docs-backend(platform-docs-backend) ── postgres/docsdb   (SPRING_PROFILES_ACTIVE=docker,docs)
-             └─ 127.0.0.1:19110 (호스트 루프백에만 공개 — 임포터 전용)
-임포터(myFront/scripts/sync-docs.mjs, 로컬 실행) ── 옵시디언 볼트 → http://127.0.0.1:19110 (+ 임포트 토큰)
+             └─ 127.0.0.1:19910 (호스트 루프백에만 공개 — 임포터 전용)
+임포터(myFront/scripts/sync-docs.mjs, 로컬 실행) ── 옵시디언 볼트 → http://127.0.0.1:19910 (+ 임포트 토큰)
 ```
 
 ### 2.1 wiki-backend `docs` 프로필 (코드 변경은 프로필 전용 클래스 추가만)
@@ -68,7 +68,7 @@ CI(`wiki-front/.github/workflows/ci.yml`): `pnpm build`(dist) + `pnpm build --mo
 
 `infra/keycloak/docker-compose.yml`
 - `docs-db-init`(postgres 이미지, 1회 실행): `SELECT 'CREATE DATABASE docsdb' WHERE NOT EXISTS(...) \gexec` — 기존 볼륨에서도 멱등. `init-authdb.sql`에도 `docsdb` 추가(새 볼륨용).
-- `docs-backend`: 같은 `ghcr.io/chanho4702/wiki-backend` 이미지, `container_name: platform-docs-backend`, `SPRING_PROFILES_ACTIVE=docker,docs`, `WIKI_DB_URL=…/docsdb`, `WIKI_EUREKA_ENABLED=false`, `DOCS_IMPORT_TOKEN=${DOCS_IMPORT_TOKEN}`, `WIKI_PUBLIC_URL=http://localhost/docs`, ports `127.0.0.1:19110:9110`, depends_on postgres·redis·docs-db-init.
+- `docs-backend`: 같은 `ghcr.io/chanho4702/wiki-backend` 이미지, `container_name: platform-docs-backend`, `SPRING_PROFILES_ACTIVE=docker,docs`, `WIKI_DB_URL=…/docsdb`, `WIKI_EUREKA_ENABLED=false`, `DOCS_IMPORT_TOKEN=${DOCS_IMPORT_TOKEN}`, `WIKI_PUBLIC_URL=http://localhost/docs`, ports `127.0.0.1:19910:9110`, depends_on postgres·redis·docs-db-init.
 - nginx: `C:/deploy/dist/docs:/srv/apps/docs:ro` 마운트, `default.conf`에 `= /docs` 301, `location /docs/`, `location ^~ /api/docs/search/`, `location ^~ /api/docs/`(`proxy_set_header X-Docs-Import-Token ""`). `^~`라 기존 `/api/` 정규식보다 우선.
 - `.env.example`에 `DOCS_IMPORT_TOKEN` 추가.
 
@@ -77,7 +77,7 @@ CI(`wiki-front/.github/workflows/ci.yml`): `pnpm build`(dist) + `pnpm build --mo
 ### 2.4 임포터 `myFront/scripts/sync-docs.mjs` (기존 `sync-notes.mjs`를 대체)
 
 - 입력: 볼트 `msa/MSA_TEMPLATE 정리`의 `NN 제목.md`(기존 `transform.mjs` 재사용 — 프론트매터·H1 승격·콜아웃; 위키링크 변환의 목적지만 위키 페이지 URL로).
-- 대상: `http://127.0.0.1:19110` (env `DOCS_API`), 헤더 `X-Docs-Import-Token`(env `DOCS_IMPORT_TOKEN`, 컴포즈 `.env`와 같은 값).
+- 대상: `http://127.0.0.1:19910` (env `DOCS_API`), 헤더 `X-Docs-Import-Token`(env `DOCS_IMPORT_TOKEN`, 컴포즈 `.env`와 같은 값).
 - 절차(멱등):
   1. `GET /api/wiki/spaces`에서 key `docs`를 찾고 없으면 `POST /api/wiki/spaces {key:"docs", name:"MSA_TEMPLATE 정리"}`.
   2. 매핑 파일 `myFront/scripts/docs-pages.json`(`{ "00": pageId, … }`, 커밋)으로 노트→페이지를 고정. 매핑에 없으면 `POST /api/wiki/pages`(published, 루트) 후 기록.
@@ -95,7 +95,7 @@ CI(`wiki-front/.github/workflows/ci.yml`): `pnpm build`(dist) + `pnpm build --mo
 1. 백엔드(docs 프로필 + 테스트) — `gradlew test` 그린.
 2. 프론트(읽기 전용 모드 + 테스트 + CI 이중 빌드) — `pnpm typecheck && pnpm test && pnpm build --mode docs` 그린.
 3. 운영(컴포즈·nginx·deploy.yml) — 로컬에서 `docker compose up -d docs-db-init docs-backend`, nginx 재시작, `curl /api/docs/spaces` 200(익명)·`POST` 403 확인.
-4. 임포터 실행 → `/docs/`에서 34편 열람 확인(라이트/다크).
+4. 임포터 실행 → `/docs/`에서 전 노트 열람 확인(라이트/다크). 볼트의 30번 중복은 사용자가 먼저 정리한다.
 5. myFront 이동 커밋.
 6. 리뷰(code-review 스킬, 경계면 5개 체크). 페이블 세션이라 Codex 교차검증은 생략.
 
