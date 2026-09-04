@@ -24,6 +24,9 @@ import type { WikiLinkTarget } from "../../lib/wikiLinks";
 
 /** highlight.js common 언어 세트 — 뷰(rehype-highlight)와 동일한 hljs-* 토큰 클래스를 생성한다 */
 const lowlight = createLowlight(common);
+// mermaid 코드 블록(W27-2)은 보기에서 다이어그램이 되지만 편집기에선 텍스트다 — lowlight가 모르는
+// 언어라 자동 감지가 엉뚱한 토큰 색을 입히던 것을 plaintext 별칭으로 막는다(스키마 무관).
+lowlight.registerAlias("plaintext", ["mermaid"]);
 
 /**
  * 언어 선택 + 복사 버튼 NodeView가 붙은 코드 블록 — StarterKit 기본 codeBlock을 대체한다.

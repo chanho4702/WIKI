@@ -458,7 +458,9 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTask
       <ReactMarkdown
         // 기본 urlTransform은 http(s)·mailto 등만 허용해 `user:` 멘션 href를 지운다 — 이 스킴만 통과
         urlTransform={(url) => (mentionUserIdFromHref(url) || dateFromHref(url) ? url : defaultUrlTransform(url))}
-        remarkPlugins={[remarkGfm, remarkMath, remarkDisplayMath, remarkDirective, remarkTextColors, remarkBookmark, remarkDetails, remarkExcerpt, remarkStatus, remarkColumns, remarkAlerts, remarkToc, remarkContentMacros]}
+        // 수식은 `$$`만 — 홑 `$`를 수식 구분자로 두면 "가격은 $5 에서 $10"처럼 흔한 문장이 통째로
+        // 수식이 된다(W27-2 실측). 인라인은 한 줄 `$$…$$`, 블록은 세 줄.
+        remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }], remarkDisplayMath, remarkDirective, remarkTextColors, remarkBookmark, remarkDetails, remarkExcerpt, remarkStatus, remarkColumns, remarkAlerts, remarkToc, remarkContentMacros]}
         // rehypeMermaid·rehypeKatex는 rehypeHighlight **앞**이다 — 하이라이터가 토큰 span으로
         // 쪼개고 나면 원문을 되모을 수 없고, mermaid/math는 hljs에 등록된 언어도 아니다.
         rehypePlugins={[rehypeSlug, rehypeTableSpans, rehypeMermaid, rehypeKatex, [rehypeHighlight, { detect: false }]]}

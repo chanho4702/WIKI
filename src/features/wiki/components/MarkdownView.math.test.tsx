@@ -11,10 +11,16 @@ describe("MarkdownView 수식", () => {
     expect(container.querySelector(".katex-display")).not.toBeNull();
   });
 
-  it("인라인 수식($…$)을 KaTeX로 렌더한다 (display가 아니다)", () => {
-    const { container } = render(<MarkdownView markdown={"인라인 $a^2 + b^2 = c^2$ 수식"} />);
+  it("인라인 수식(한 줄 $$…$$)을 KaTeX로 렌더한다 (display가 아니다)", () => {
+    const { container } = render(<MarkdownView markdown={"인라인 $$a^2 + b^2 = c^2$$ 수식"} />);
     expect(container.querySelector(".katex")).not.toBeNull();
     expect(container.querySelector(".katex-display")).toBeNull();
+  });
+
+  it("홑 $는 수식이 아니다 — 가격 표기가 있는 문장이 그대로 남는다", () => {
+    const { container } = render(<MarkdownView markdown={"가격은 $5 에서 $10 입니다"} />);
+    expect(container.querySelector(".katex")).toBeNull();
+    expect(container.textContent).toContain("가격은 $5 에서 $10 입니다");
   });
 
   it("편집기 왕복으로 한 줄이 된 블록 수식도 display로 되돌린다 (remarkDisplayMath)", () => {
