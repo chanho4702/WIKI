@@ -92,3 +92,51 @@ export function jobStatusAppearance(value: string): "neutral" | "info" | "succes
       return "neutral";
   }
 }
+
+/**
+ * 손실 보고서 코드의 한국어 설명.
+ *
+ * 코드 자체(`ATTACHMENT_TOO_LARGE`)는 표에 그대로 남긴다 — 백엔드 로그·문서와 같은 말로 검색해야
+ * 원인을 찾을 수 있기 때문이다. 이 함수는 그 옆에 붙는 "무슨 뜻인가" 한 줄이다. 모르는 코드는
+ * 빈칸으로 둔다(원문이 이미 옆 칸에 있다).
+ */
+const ISSUE_CODE: Record<string, string> = {
+  // 변환 손실 — 우리 문법에 자리가 없어 떼어낸 것들
+  MACRO_OPAQUE: "원본 매크로를 옮기지 못해 안내 문구로 남겼습니다",
+  MARK_DROPPED: "우리 문법에 없는 서식(밑줄·팔레트 밖 색)을 뗐습니다",
+  TABLE_SPAN_DROPPED: "표의 병합 셀을 펴지 못해 평범한 셀로 눕혔습니다",
+  MEDIA_UNRESOLVED: "가리키는 파일을 찾지 못한 이미지·첨부입니다",
+  TITLE_TRUNCATED: "제목이 255자를 넘어 잘랐습니다",
+
+  // 첨부(M2)
+  ATTACHMENT_PLANNED: "시험 실행이라 받지 않았습니다 — 실제 이관에서 옮깁니다",
+  ATTACHMENT_TOO_LARGE: "파일이 크기 상한을 넘어 옮기지 않았습니다",
+  ATTACHMENT_NOT_COPIED: "첨부 본체를 옮기지 못했습니다",
+  ATTACHMENT_REF_UNRESOLVED: "본문이 가리키는 파일의 첨부를 찾지 못해 참조를 그대로 두었습니다",
+
+  // 링크(M2)
+  LINK_EXTERNAL_SPACE: "다른 스페이스로 가는 링크라 원본 주소로 남겼습니다",
+  LINK_ANCHOR_DROPPED: "위키링크에는 앵커를 실을 수 없어 문서 첫머리로 갑니다",
+  LINK_UNRESOLVED: "가리키는 문서를 찾지 못해 원본 주소로 되돌렸습니다",
+  LINK_AMBIGUOUS: "같은 제목의 문서가 여럿이라 어느 것인지 정하지 못했습니다",
+  ANCHOR_DROPPED: "대상 문서에 맞는 헤딩이 없어 앵커만 뗐습니다",
+
+  // 제한·작성자
+  RESTRICTION_PRINCIPAL_UNMAPPED: "원본 제한의 사용자·그룹을 대조하지 못해 요청자만 볼 수 있게 닫았습니다",
+  AUTHOR_UNMAPPED: "원본 작성자를 우리 계정과 대조하지 못했습니다",
+
+  // 원본 상태
+  SOURCE_VERSION_DRIFT: "발견한 뒤 원본이 수정돼 최신본을 옮겼습니다",
+  PARENT_NOT_FOUND: "상위 문서를 찾지 못해 최상단에 두었습니다",
+
+  // 검증
+  VERIFY_PAGE_MISSING: "옮긴 문서를 찾을 수 없습니다",
+  VERIFY_TITLE_MISMATCH: "옮긴 문서의 제목이 원본과 다릅니다",
+  VERIFY_BODY_EMPTY: "옮긴 문서의 본문이 비어 있습니다",
+  VERIFY_LABEL_MISMATCH: "옮긴 문서의 라벨 수가 원본과 다릅니다",
+  VERIFY_MARKDOWN_MISSING: "변환 결과가 남아 있지 않습니다",
+};
+
+export function issueCodeLabel(value: string): string {
+  return ISSUE_CODE[value] ?? "";
+}

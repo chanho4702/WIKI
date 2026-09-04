@@ -92,22 +92,49 @@
   직렬화한다(대괄호 이스케이프·태스크 목록 빈 줄·표 병합 마커). 골든 파일 3종이
   `wiki-backend/src/test/resources/fixtures/migration/confluence/golden/*.md`에 있고,
   `editor/markdown.test.ts`가 같은 파일로 왕복을 고정한다.
-- **첨부 본체는 M1에서 넘어오지 않는다.** 본문에는 `[파일명](attachment:파일명)` 참조만 남고
-  MEDIA_COPY가 `ATTACHMENT_NOT_COPIED` 경고를 보고서에 남긴다. `attachment:` 스킴은
-  `editor/extensions/base.ts`의 Link protocols에 등록돼 있어야 편집기 왕복에서 링크가 살아남는다.
+- **첨부 본체는 M2부터 실제로 넘어온다.** 실제 이관에서는 본문의 `attachment:파일명` 참조가
+  첨부 레코드의 주소로 바뀐다 — 이미지는 `/api/wiki/attachments/{id}/inline`, 그 밖의 파일은
+  `/api/wiki/attachments/{id}`(내려받기)다. inline 엔드포인트는 이미지·PDF만 열어 주므로 문서 파일을
+  inline으로 걸면 400이 난다. 크기 상한은 `platform.wiki.migration.dc.max-attachment-bytes`(기본 100MB)이고
+  넘는 파일은 `ATTACHMENT_TOO_LARGE`로 건너뛴다.
+  **시험 실행은 한 바이트도 받지 않는다** — 첨부는 `ATTACHMENT_PLANNED`(INFO)로만 보고되고, 그래서
+  시험 실행의 본문 미리보기에는 이미지가 안내 문구로 남는다(실제 이관 결과와 다른 유일한 지점).
+  `attachment:` 스킴은 `editor/extensions/base.ts`의 Link protocols에 등록돼 있어야 편집기 왕복에서
+  살아남는다(참조가 남은 경우 대비).
+- **원본 사이트 링크는 우리 주소로 바뀐다(M2).** `/pages/viewpage.action?pageId=N` ·
+  `/spaces/{KEY}/pages/N/...` · `/display/{KEY}/{제목}` 세 꼴을 읽어 `/wiki/spaces/{spaceId}/pages/{pageId}`로
+  바꾼다. 아직 안 옮긴 문서를 가리키면 임시 스킴 **`dc-page:{참조}`**로 남았다가, 잡이 끝날 때 도는
+  마무리 pass가 다시 해석한다 — 그래서 `dc-page`도 Link protocols에 등록돼 있어야 한다. 정리 pass는
+  **새 리비전**을 남기고 변경 요약은 `이관 링크 정리`다. 끝내 못 찾은 링크는 원본 절대 URL로 되돌리고
+  `LINK_UNRESOLVED`, 같은 제목이 여럿이면 `LINK_AMBIGUOUS`, 앵커가 대상 헤딩과 안 맞으면
+  `ANCHOR_DROPPED`로 보고한다.
+- **원본 페이지 제한은 fail-closed로 옮긴다(M2).** 원본의 보기·편집 제한을 그대로 옮기되, 사용자·그룹을
+  우리 계정·팀으로 대조하지 못하면 **공개로 풀지 않고 잡 요청자 단독 제한**으로 닫고
+  `RESTRICTION_PRINCIPAL_UNMAPPED`(ERROR)를 남긴다. 지금 org-service에는 이름·이메일로 사용자를 찾는
+  gRPC가 없어(common-proto 0.14.0) 실질적으로 모든 주체가 미매핑이다 — 화면은 "이관된 문서의 제한을
+  관리자가 다시 열어야 한다"를 전제로 안내한다.
+- **형제 순서는 원본을 따른다(M2).** 발견이 부모마다 `child/page`를 한 번 더 불러 원본 순서를 읽고
+  `sortOrder`에 반영한다. 재이관에서 순서만 바뀌면 문서를 다시 쓰지 않고 `sortOrder`만 갱신한다
+  (리비전이 쌓이지 않는다).
 - **`counts`는 0인 키를 담지 않는다.** group-by 결과라 아직 그 상태·단계에 도달한 항목이 없으면
   키 자체가 없다. 진행률은 `(counts.byStatus.COMPLETED ?? 0) / itemCount`로 계산한다.
 - **손실 보고서 집계 shape**: `issues[]`는 `{severity, code, distinctPaths, occurrences, sampleSourcePath}`다.
   `sampleSourcePath`는 그 code가 난 위치 중 사전순 첫 번째 하나다(전체 목록이 아니다) —
   `MACRO_OPAQUE` 3건이 `macro:jira`인지 `macro:excerpt`인지 구분하는 용도이고, 위치 전량은
   `GET /{jobId}/items`로 본다.
-- **손실 보고서 코드**(`GET /{jobId}/report`의 `issues[].code`) — 화면이 한국어로 매핑할 대상:
-  `MACRO_OPAQUE` · `MARK_DROPPED` · `TABLE_SPAN_DROPPED` · `LINK_EXTERNAL_SPACE` ·
-  `LINK_ANCHOR_DROPPED` · `MEDIA_UNRESOLVED` · `ATTACHMENT_NOT_COPIED` · `TITLE_TRUNCATED` ·
-  `PARENT_NOT_FOUND` · `AUTHOR_UNMAPPED` · `SOURCE_VERSION_DRIFT` · `VERIFY_*` ·
-  `CONFLUENCE_*`(정규화기 코드). 데드레터의 `lastErrorCode`: `DC_UNAVAILABLE` · `DC_AUTH` ·
-  `DC_NOT_FOUND` · `DC_INVALID_RESPONSE` · `DC_REDIRECT_REFUSED` · `IR_INVALID` ·
-  `SNAPSHOT_INVALID` · `MIGRATION_PAYLOAD_MISSING` · `STAGE_HANDLER_UNAVAILABLE` · `WORKER_LEASE_EXPIRED`.
+- **손실 보고서 코드**(`GET /{jobId}/report`의 `issues[].code`) — 화면이 한국어로 매핑할 대상
+  (`lib/migrationLabels.ts`의 `issueCodeLabel`): `MACRO_OPAQUE` · `MARK_DROPPED` ·
+  `TABLE_SPAN_DROPPED` · `LINK_EXTERNAL_SPACE` · `LINK_ANCHOR_DROPPED` · `MEDIA_UNRESOLVED` ·
+  `TITLE_TRUNCATED` · `PARENT_NOT_FOUND` · `AUTHOR_UNMAPPED` · `SOURCE_VERSION_DRIFT` · `VERIFY_*` ·
+  `CONFLUENCE_*`(정규화기 코드), **M2 추가분**: `ATTACHMENT_PLANNED`(INFO) · `ATTACHMENT_TOO_LARGE` ·
+  `ATTACHMENT_NOT_COPIED` · `ATTACHMENT_REF_UNRESOLVED` · `LINK_UNRESOLVED` · `LINK_AMBIGUOUS` ·
+  `ANCHOR_DROPPED` · `RESTRICTION_PRINCIPAL_UNMAPPED`(ERROR). 데드레터의 `lastErrorCode`:
+  `DC_UNAVAILABLE` · `DC_AUTH` · `DC_NOT_FOUND` · `DC_INVALID_RESPONSE` · `DC_REDIRECT_REFUSED` ·
+  `DC_ATTACHMENT_TOO_LARGE` · `IR_INVALID` · `SNAPSHOT_INVALID` · `MIGRATION_PAYLOAD_MISSING` ·
+  `STAGE_HANDLER_UNAVAILABLE` · `WORKER_LEASE_EXPIRED`.
+- **`severity`에 `INFO`가 실제로 온다(M2).** M1까지는 WARNING·ERROR뿐이었다. 보고서 정렬(`severityRank`)과
+  Lozenge 색 매핑이 INFO를 이미 알고 있으므로 화면 변경은 없지만, "손실 0건"을 `issues.length === 0`으로
+  판정하면 시험 실행에서 첨부 예정 안내가 손실로 세어진다.
 - **dry-run은 쓰기 0건이다.** 문서도 object map도 만들지 않고 마크다운 산출물까지만 남긴다.
 - **재실행은 멱등이다.** 원본이 그대로면 문서도 리비전도 늘지 않고, 바뀌었으면 새 리비전으로
   갱신되며 변경 요약은 "컨플루언스 재이관 v{원본 버전}"이다.

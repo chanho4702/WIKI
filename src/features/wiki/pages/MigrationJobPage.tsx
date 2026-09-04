@@ -13,6 +13,7 @@ import {
   startMigrationJob,
 } from "../store/wikiStore";
 import {
+  issueCodeLabel,
   itemStatusLabel,
   jobStatusAppearance,
   jobStatusLabel,
@@ -272,6 +273,9 @@ export function MigrationJobPage() {
                   ),
                 },
                 { key: "code", header: "코드" },
+                // 코드는 그대로 두고 설명을 옆에 붙인다 — 백엔드 로그·계약 문서와 같은 말로
+                // 검색할 수 있어야 하고, 그 말이 무슨 뜻인지도 화면에서 바로 보여야 한다.
+                { key: "meaning", header: "설명" },
                 {
                   key: "occurrences",
                   header: "발생",
@@ -289,6 +293,7 @@ export function MigrationJobPage() {
               rows={issues.map((issue) => ({
                 ...issue,
                 id: issue.code,
+                meaning: issueCodeLabel(issue.code) || "-",
                 sampleSourcePath: issue.sampleSourcePath ?? "-",
               }))}
             />

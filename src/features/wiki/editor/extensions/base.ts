@@ -101,7 +101,10 @@ export function buildBaseExtensions(options: BaseExtensionOptions = {}): Extensi
     // (isAllowedUri)이 미등록 스킴 href를 버리면 멘션이 텍스트로 열화된다(userMention.ts 참조).
     // `attachment:`는 이관(W29)이 쓴다: 첨부 본체가 아직 안 넘어온 문서의 참조를 `[파일명](attachment:파일명)`로
     // 남기는데, 스킴이 등록돼 있지 않으면 편집기를 한 번 지나는 순간 링크가 맨 텍스트로 뭉개진다.
-    Link.configure({ openOnClick: false, protocols: ["user", "date", "attachment"] }),
+    // `dc-page:`도 이관(W29 M2)이 쓴다: 아직 옮기지 않은 원본 문서를 가리키는 링크를 잡 마무리
+    // pass가 다시 해석할 때까지 이 스킴으로 표시해 둔다. 등록해 두지 않으면 그 사이 문서를 한 번
+    // 열어 저장하는 것만으로 링크가 사라져 정리 pass가 이을 대상을 잃는다.
+    Link.configure({ openOnClick: false, protocols: ["user", "date", "attachment", "dc-page"] }),
     // resizable: 편집 중 열 너비 드래그(컨플식). 폭은 GFM에 저장 문법이 없어 세션 한정 —
     // 영속하려면 저장 포맷 확장이 필요하다(분석서 "열린 정책 결정"에 기록).
     Table.configure({ resizable: true }),
