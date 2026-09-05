@@ -122,14 +122,25 @@
     리비전의 편집자 이름은 그 버전의 원본 편집자, 변경 요약은 원본의 버전 메시지다. 버전 하나가
     상한(`max-history-version-bytes`, 기본 2MB)을 넘거나 원본에서 사라졌으면
     `HISTORY_VERSION_SKIPPED`. **재이관은 이력을 다시 깔지 않는다**(새 리비전 한 건만).
-  - 원본 작성자를 우리 계정과 대조하지 못하면 `PageResponse.importedAuthorName`·`importedSourceUrl`이
-    채워진다(§3 엔티티 표). 계정은 새로 만들지 않는 것이 이 모듈의 전제라, 대조 창구가 org-service에
-    생기기 전까지는 이관 문서 전부가 이 상태다(`AUTHOR_UNMAPPED`).
+  - 원본 작성자는 org-service의 이름 조회(`LookupMembers`, common-proto 0.15.0)로 우리 계정과
+    대조한다. **찾으면 그 사용자가 문서의 작성자·수정자이고** `importedAuthorName`·`importedSourceUrl`은
+    비어 있다(옮긴 댓글의 작성자도 같다). 못 찾으면 계정을 새로 만들지 않는 것이 이 모듈의 전제라
+    잡 요청자를 작성자로 두고 두 필드가 채워진다(§3 엔티티 표, `AUTHOR_UNMAPPED`).
 - **원본 페이지 제한은 fail-closed로 옮긴다(M2).** 원본의 보기·편집 제한을 그대로 옮기되, 사용자·그룹을
   우리 계정·팀으로 대조하지 못하면 **공개로 풀지 않고 잡 요청자 단독 제한**으로 닫고
-  `RESTRICTION_PRINCIPAL_UNMAPPED`(ERROR)를 남긴다. 지금 org-service에는 이름·이메일로 사용자를 찾는
-  gRPC가 없어(common-proto 0.14.0) 실질적으로 모든 주체가 미매핑이다 — 화면은 "이관된 문서의 제한을
-  관리자가 다시 열어야 한다"를 전제로 안내한다.
+  `RESTRICTION_PRINCIPAL_UNMAPPED`(ERROR)를 남긴다. 대조는 org-service의 이름 조회를 탄다 —
+  화면은 "org에 계정·팀이 없는 사람이 걸린 문서는 관리자가 다시 열어야 한다"를 전제로 안내한다.
+- **이관이 기대는 org-service gRPC 계약(common-proto 0.15.0).** 둘 다 trim + 대소문자 무시로
+  대조하고 **매칭된 것만** 돌려준다(못 찾은 질의는 응답에서 빠진다). 활성 멤버만 보고, 한 질의에
+  후보가 둘 이상이면 매칭으로 세지 않는다. 한 요청 상한은 200이고 넘으면 `INVALID_ARGUMENT`다.
+  org 자체가 닿지 않으면(UNAVAILABLE·DEADLINE) 항목이 **재시도 가능한 실패**(`ORG_LOOKUP_UNAVAILABLE`)로
+  남는다 — 미매핑으로 삼켜 잡을 성공시키지 않는다.
+
+  | RPC | 요청 → 응답 | 쓰이는 곳 |
+  |---|---|---|
+  | `LookupMembers` | `emails[]` · `usernames[]`(= 이메일 local-part) → `MemberMatch{query, memberId, displayName, email}[]` | 원본 작성자·댓글 작성자·제한의 USER 주체 |
+  | `LookupTeams` | `names[]` → `TeamMatch{query, teamId, name}[]` | 원본 그룹 → 제한의 TEAM 주체 |
+
 - **형제 순서는 원본을 따른다(M2).** 발견이 부모마다 `child/page`를 한 번 더 불러 원본 순서를 읽고
   `sortOrder`에 반영한다. 재이관에서 순서만 바뀌면 문서를 다시 쓰지 않고 `sortOrder`만 갱신한다
   (리비전이 쌓이지 않는다).
