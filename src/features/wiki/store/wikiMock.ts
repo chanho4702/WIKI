@@ -51,7 +51,9 @@ import type {
   MigrationItemFilter,
   MigrationItemPage,
   MigrationJob,
+  MigrationJobIssue,
   MigrationJobRecord,
+  MigrationLinkFixupResult,
   MigrationJobSummary,
   MigrationMode,
   MigrationProvider,
@@ -2034,6 +2036,17 @@ const MOCK_ISSUE_BY_ORDINAL: Record<number, { code: string; sourcePath: string }
 /** 원본에서 사라진 페이지 — 재시도해도 안 되는 데드레터 한 건. */
 const MOCK_DEAD_LETTER_ORDINAL = MOCK_DISCOVERED;
 
+/**
+ * 잡이 끝난 뒤 도는 링크 정리가 문서 하나를 못 고친 상태 — 항목 표에도 손실 보고서에도 나오지
+ * 않는 손실이라 상세 화면의 "잡 이슈"에서만 보인다. 링크 정리를 다시 돌리면 사라진다.
+ */
+const MOCK_LINK_FIXUP_ISSUE = (): MigrationJobIssue => ({
+  severity: "ERROR",
+  code: "LINK_FIXUP_FAILED",
+  sourcePath: "page:1042",
+  occurrences: 1,
+});
+
 function migrationsOf(data: WikiData): MigrationJobRecord[] {
   return (data.migrations ??= []);
 }
@@ -2072,6 +2085,7 @@ function migrationJobView(record: MigrationJobRecord): MigrationJob {
       byStatus: countBy(record.items.map((i) => i.status)),
       byStage: countBy(record.items.map((i) => i.stage)),
     },
+    jobIssues: record.jobIssues ?? [],
   });
 }
 
@@ -2143,6 +2157,8 @@ function advanceMigration(record: MigrationJobRecord): boolean {
   if (record.items.every((item) => item.status === "COMPLETED" || item.status === "DEAD_LETTER")) {
     record.status = "COMPLETED";
     record.completedAt = new Date().toISOString();
+    // 링크 정리는 잡이 끝난 뒤에 돈다. 실제 이관에서만 문서가 있으므로 시험 실행에는 남길 실패가 없다.
+    if (record.mode === "IMPORT") record.jobIssues = [MOCK_LINK_FIXUP_ISSUE()];
   }
   return moved > 0;
 }
@@ -2286,6 +2302,23 @@ export async function getMigrationJob(id: string): Promise<MigrationJob> {
   const record = findMigration(data, id);
   if (advanceMigration(record)) persist();
   return migrationJobView(record);
+}
+
+/**
+ * 링크 정리 재실행. 이미 정리된 문서에는 임시 링크가 남아 있지 않아 손대지 않으므로 **다시 눌러도
+ * 안전하다** — 두 번째 실행의 touched가 0인 것이 곧 "고칠 것이 없다"는 뜻이다.
+ * 끝나지 않은 잡에는 정리할 결과가 없어 서버가 409를 준다(같은 문구로 거부한다).
+ */
+export async function rerunMigrationLinkFixup(id: string): Promise<MigrationLinkFixupResult> {
+  const data = load();
+  const record = findMigration(data, id);
+  if (record.status !== "COMPLETED" && record.status !== "FAILED") {
+    throw new Error(`끝난 작업에만 링크 정리를 다시 돌릴 수 있습니다: ${record.status}`);
+  }
+  const pending = record.jobIssues ?? [];
+  record.jobIssues = [];
+  persist();
+  return { touched: pending.length, failed: 0 };
 }
 
 /** 보고서는 상태를 읽기만 한다 — 같은 폴링 안에서 잡과 다른 시점을 보면 안 된다. */

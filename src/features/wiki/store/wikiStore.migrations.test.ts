@@ -9,6 +9,7 @@ import {
   listMigrationItems,
   listMigrationJobs,
   probeConfluenceDc,
+  rerunMigrationLinkFixup,
   startMigrationJob,
 } from "./wikiStore";
 import { createSeedData } from "../../../mock/seed";
@@ -167,6 +168,56 @@ describe("마이그레이션 목업 시나리오 (M1)", () => {
     const after = await getMigrationJob(job.id);
     expect(after.status).toBe("CANCELLED");
     expect(after.counts.byStatus.COMPLETED).toBe(3);
+  });
+
+  /** 링크 정리는 잡이 끝난 뒤에 돈다 — 그전에는 잡 이슈가 없다. */
+  it("실제 이관이 끝나면 링크 정리 실패가 잡 이슈로 남는다", async () => {
+    const job = await makeJob();
+    await discoverMigrationJob(job.id);
+    await startMigrationJob(job.id);
+
+    expect((await getMigrationJob(job.id)).jobIssues).toEqual([]);
+
+    for (let tick = 0; tick < 3; tick += 1) await getMigrationJob(job.id);
+    const done = await getMigrationJob(job.id);
+
+    expect(done.status).toBe("COMPLETED");
+    expect(done.jobIssues).toEqual([
+      { severity: "ERROR", code: "LINK_FIXUP_FAILED", sourcePath: "page:1042", occurrences: 1 },
+    ]);
+  });
+
+  /** 시험 실행은 문서를 만들지 않으니 고칠 링크도 없다. */
+  it("시험 실행에는 잡 이슈가 남지 않는다", async () => {
+    const dry = await makeJob("DRY_RUN");
+    await discoverMigrationJob(dry.id);
+    await startMigrationJob(dry.id);
+    for (let tick = 0; tick < 4; tick += 1) await getMigrationJob(dry.id);
+
+    expect((await getMigrationJob(dry.id)).jobIssues).toEqual([]);
+  });
+
+  it("링크 정리 재실행은 잡 이슈를 지우고, 다시 돌리면 고칠 것이 없다", async () => {
+    const job = await makeJob();
+    await discoverMigrationJob(job.id);
+    await startMigrationJob(job.id);
+    for (let tick = 0; tick < 4; tick += 1) await getMigrationJob(job.id);
+
+    expect(await rerunMigrationLinkFixup(job.id)).toEqual({ touched: 1, failed: 0 });
+    expect((await getMigrationJob(job.id)).jobIssues).toEqual([]);
+
+    // 다시 눌러도 안전하다 — 이미 정리된 문서는 손대지 않는다
+    expect(await rerunMigrationLinkFixup(job.id)).toEqual({ touched: 0, failed: 0 });
+  });
+
+  it("끝나지 않은 잡은 링크 정리를 다시 돌릴 수 없다", async () => {
+    const job = await makeJob();
+    await discoverMigrationJob(job.id);
+
+    await expect(rerunMigrationLinkFixup(job.id)).rejects.toThrow("끝난 작업에만");
+
+    await startMigrationJob(job.id);
+    await expect(rerunMigrationLinkFixup(job.id)).rejects.toThrow("RUNNING");
   });
 
   it("항목 목록은 상태·단계로 거른다", async () => {

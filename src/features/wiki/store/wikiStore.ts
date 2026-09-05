@@ -122,6 +122,7 @@ export const startMigrationJob = impl.startMigrationJob;
 export const cancelMigrationJob = impl.cancelMigrationJob;
 export const getMigrationJob = impl.getMigrationJob;
 export const getMigrationReport = impl.getMigrationReport;
+export const rerunMigrationLinkFixup = impl.rerunMigrationLinkFixup;
 export const listMigrationItems = impl.listMigrationItems;
 export const fetchInlineAttachment = impl.fetchInlineAttachment;
 export const deleteAttachment = impl.deleteAttachment;

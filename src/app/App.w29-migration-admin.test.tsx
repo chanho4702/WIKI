@@ -233,6 +233,54 @@ describe("W29 마이그레이션 관리 — 파이프라인", () => {
     expect(screen.getByText("완료 3 / 전체 12건 (25%)")).toBeInTheDocument();
   });
 
+  /**
+   * 링크 정리 실패는 항목 표에도 손실 보고서에도 없다 — 여기서 안 보여주면 화면 어디에도 없다.
+   * 대개 빈 목록이라 없을 때는 섹션째 그리지 않는다.
+   */
+  it("잡 이슈는 있을 때만 뜨고, 링크 정리를 다시 돌리면 사라진다", async () => {
+    const user = pipelineUser();
+    renderApp("/admin/migrations");
+    await screen.findByRole("heading", { level: 1, name: "마이그레이션" });
+
+    await createJob(user, "실제 이관");
+    // 끝나기 전에는 잡 이슈도, 링크 정리 버튼도 없다
+    expect(screen.queryByRole("table", { name: "잡 이슈" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /링크 정리 다시 실행/ })).not.toBeInTheDocument();
+
+    await discoverAndStart(user);
+    expect(screen.queryByRole("button", { name: /링크 정리 다시 실행/ })).not.toBeInTheDocument();
+    for (let tick = 0; tick < 3; tick += 1) await pollOnce();
+
+    const jobIssues = screen.getByRole("table", { name: "잡 이슈" });
+    expect(within(jobIssues).getByText("LINK_FIXUP_FAILED")).toBeInTheDocument();
+    expect(within(jobIssues).getByText("page:1042")).toBeInTheDocument();
+    expect(within(jobIssues).getByText("옮긴 뒤 문서 사이 링크를 고치지 못했습니다")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /링크 정리 다시 실행/ }));
+    await settle();
+
+    expect(await screen.findByText("링크 정리: 1건 갱신, 0건 실패")).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "잡 이슈" })).not.toBeInTheDocument();
+  });
+
+  /** 다시 눌러도 안전한 작업이다 — 고칠 것이 없으면 0건으로 돌아오고 그것이 정상이다. */
+  it("링크 정리를 다시 눌러도 안전하다 — 두 번째는 0건", async () => {
+    const user = pipelineUser();
+    renderApp("/admin/migrations");
+    await screen.findByRole("heading", { level: 1, name: "마이그레이션" });
+
+    await createJob(user, "실제 이관");
+    await discoverAndStart(user);
+    for (let tick = 0; tick < 3; tick += 1) await pollOnce();
+
+    await user.click(screen.getByRole("button", { name: /링크 정리 다시 실행/ }));
+    await settle();
+    await user.click(screen.getByRole("button", { name: /링크 정리 다시 실행/ }));
+    await settle();
+
+    expect(await screen.findByText("링크 정리: 0건 갱신, 0건 실패")).toBeInTheDocument();
+  });
+
   /** 시험 실행은 문서를 만들지 않는다 — 갈 곳이 없는데 링크를 띄우면 거짓말이다. */
   it("시험 실행은 완료해도 대상 스페이스 링크를 띄우지 않는다", async () => {
     const user = pipelineUser();

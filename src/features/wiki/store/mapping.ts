@@ -6,6 +6,7 @@ import type {
   MigrationItem,
   MigrationItemStatus,
   MigrationJob,
+  MigrationJobIssue,
   MigrationJobStatus,
   MigrationJobSummary,
   MigrationMode,
@@ -247,6 +248,8 @@ export interface MigrationJobDto {
   /** §1.3 확장. 구버전 응답에는 없다 — 토큰은 어떤 경우에도 오지 않는다. */
   source?: MigrationSourceDto | null;
   counts?: { byStatus?: Record<string, number>; byStage?: Record<string, number> } | null;
+  /** 잡 단위 손실. 서버는 항상 배열(대개 빈 배열)을 주지만 구버전 응답에는 필드가 없다. */
+  jobIssues?: MigrationJobIssue[] | null;
 }
 
 export interface MigrationJobSummaryDto {
@@ -317,6 +320,13 @@ export function mapMigrationJob(dto: MigrationJobDto): MigrationJob {
       byStatus: dto.counts?.byStatus ?? {},
       byStage: dto.counts?.byStage ?? {},
     },
+    // 필드가 없는 구버전 응답과 "손실이 없다"를 같게 다룬다 — 화면은 둘 다 섹션을 그리지 않는다.
+    jobIssues: (dto.jobIssues ?? []).map((issue) => ({
+      severity: issue.severity,
+      code: issue.code,
+      sourcePath: issue.sourcePath,
+      occurrences: issue.occurrences ?? 0,
+    })),
   };
 }
 

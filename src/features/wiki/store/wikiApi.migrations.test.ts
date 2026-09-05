@@ -242,6 +242,52 @@ describe("wikiApi 마이그레이션 — 잡", () => {
     expect((job.counts.byStatus.COMPLETED ?? 0) / job.itemCount).toBe(0);
   });
 
+  it("잡 단위 손실(jobIssues)을 읽는다 — 없으면 빈 배열", async () => {
+    mockSeq([
+      {
+        status: 200,
+        body: jobDto({
+          status: "COMPLETED",
+          jobIssues: [
+            { severity: "ERROR", code: "LINK_FIXUP_FAILED", sourcePath: "page:1042", occurrences: 2 },
+          ],
+        }),
+      },
+      { status: 200, body: jobDto() },
+    ]);
+    const { getMigrationJob } = await import("./wikiApi");
+
+    const job = await getMigrationJob("42");
+    expect(job.jobIssues).toEqual([
+      { severity: "ERROR", code: "LINK_FIXUP_FAILED", sourcePath: "page:1042", occurrences: 2 },
+    ]);
+
+    // 필드가 없는 구버전 응답과 "손실이 없다"를 같게 읽는다
+    expect((await getMigrationJob("42")).jobIssues).toEqual([]);
+  });
+
+  it("링크 정리 재실행은 POST /link-fixup, touched·failed를 읽는다", async () => {
+    const spy = mockSeq([
+      { status: 200, body: { jobId: 42, touched: 3, failed: 0 } },
+      // 두 번째 실행은 고칠 것이 없어 touched 0 — 그것이 정상 응답이다
+      { status: 200, body: { jobId: 42, touched: 0, failed: 0 } },
+    ]);
+    const { rerunMigrationLinkFixup } = await import("./wikiApi");
+
+    expect(await rerunMigrationLinkFixup("42")).toEqual({ touched: 3, failed: 0 });
+    expect(spy.mock.calls[0][0]).toBe("/api/migration/42/link-fixup");
+    expect(spy.mock.calls[0][1]).toMatchObject({ method: "POST" });
+
+    expect(await rerunMigrationLinkFixup("42")).toEqual({ touched: 0, failed: 0 });
+  });
+
+  it("끝나지 않은 잡의 링크 정리는 서버 409 문구가 그대로 올라온다", async () => {
+    mockSeq([{ status: 409, body: { error: "끝난 작업에만 링크 정리를 다시 돌릴 수 있습니다: RUNNING" } }]);
+    const { rerunMigrationLinkFixup } = await import("./wikiApi");
+
+    await expect(rerunMigrationLinkFixup("42")).rejects.toThrow("끝난 작업에만 링크 정리를");
+  });
+
   it("발견 없이 시작하면 서버 400 문구가 그대로 올라온다", async () => {
     mockSeq([{ status: 400, body: { error: "발견된 항목이 없습니다 (MIGRATION_NOTHING_DISCOVERED)" } }]);
     const { startMigrationJob } = await import("./wikiApi");

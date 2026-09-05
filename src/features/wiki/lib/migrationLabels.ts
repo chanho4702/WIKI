@@ -142,6 +142,9 @@ const ISSUE_CODE: Record<string, string> = {
   VERIFY_LABEL_MISMATCH: "옮긴 문서의 라벨 수가 원본과 다릅니다",
   VERIFY_TYPE_MISMATCH: "블로그 글과 일반 문서가 뒤바뀌어 목록에서 보이지 않습니다",
   VERIFY_MARKDOWN_MISSING: "변환 결과가 남아 있지 않습니다",
+
+  // 잡 단위 — 항목이 아니라 잡 전체에 매달리는 손실
+  LINK_FIXUP_FAILED: "옮긴 뒤 문서 사이 링크를 고치지 못했습니다",
 };
 
 export function issueCodeLabel(value: string): string {

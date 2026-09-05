@@ -63,6 +63,7 @@ import {
   type MigrationItemPage,
   type MigrationJob,
   type MigrationJobSummary,
+  type MigrationLinkFixupResult,
   type MigrationMode,
   type MigrationProvider,
   type MigrationReport,
@@ -1422,6 +1423,18 @@ export async function getMigrationJob(id: string): Promise<MigrationJob> {
   return mapMigrationJob(
     await json<MigrationJobDto>(await sharedApiFetch(`/api/migration/${toBackendId(id)}`)),
   );
+}
+
+/**
+ * 끝난 잡의 링크 정리만 다시 돌린다 — 문서를 다시 이관하지 않는다. 이미 정리된 문서에는 임시
+ * 링크가 남아 있지 않아 손대지 않으므로 **다시 눌러도 안전하고**, 두 번째 실행의 touched가 0인
+ * 것이 곧 "고칠 것이 없다"는 뜻이다. COMPLETED·FAILED가 아니면 서버가 409를 준다.
+ */
+export async function rerunMigrationLinkFixup(id: string): Promise<MigrationLinkFixupResult> {
+  const dto = await json<{ touched?: number; failed?: number }>(
+    await sharedApiFetch(`/api/migration/${toBackendId(id)}/link-fixup`, { method: "POST" }),
+  );
+  return { touched: dto.touched ?? 0, failed: dto.failed ?? 0 };
 }
 
 export async function getMigrationReport(id: string): Promise<MigrationReport> {

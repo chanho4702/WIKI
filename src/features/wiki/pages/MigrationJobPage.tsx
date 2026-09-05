@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { Banner, Button, EmptyState, Lozenge, Spinner, Table, useToast } from "@chanho/react";
-import { Ban, ArrowLeft, DatabaseBackup, Play, Search } from "lucide-react";
+import { Ban, ArrowLeft, DatabaseBackup, Link2, Play, Search } from "lucide-react";
 import { SettingsHeader } from "../components/SettingsItem";
 import type { MigrationJob, MigrationReport, Space } from "../store/types";
 import {
@@ -10,6 +10,7 @@ import {
   getMigrationJob,
   getMigrationReport,
   listSpaces,
+  rerunMigrationLinkFixup,
   startMigrationJob,
 } from "../store/wikiStore";
 import {
@@ -122,6 +123,8 @@ export function MigrationJobPage() {
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
   const targetSpace = spaces.find((s) => s.id === job.targetSpaceId);
 
+  const jobIssues = job.jobIssues ?? [];
+  const finished = job.status === "COMPLETED" || job.status === "FAILED";
   const issues = [...(report?.issues ?? [])].sort(
     (a, b) => severityRank(a.severity) - severityRank(b.severity) || a.code.localeCompare(b.code),
   );
@@ -204,6 +207,29 @@ export function MigrationJobPage() {
           >
             취소
           </Button>
+          {/*
+            끝난 잡에만 낸다. 도는 중에는 서버가 409를 주므로 비활성 버튼으로 두면 "왜 안 눌리지"가
+            되고, 끝나기 전에는 정리할 결과 자체가 없다. 다시 눌러도 안전한 작업이라 확인 대화상자는
+            두지 않는다 — 이미 정리된 문서는 손대지 않고 touched 0으로 돌아온다.
+          */}
+          {finished ? (
+            <Button
+              variant="subtle"
+              disabled={busy}
+              iconBefore={<Link2 size={16} aria-hidden="true" />}
+              onClick={() =>
+                void run("링크 정리를 다시 돌리지 못했습니다", async () => {
+                  const result = await rerunMigrationLinkFixup(job.id);
+                  toast({
+                    title: `링크 정리: ${result.touched.toLocaleString("ko-KR")}건 갱신, ${result.failed.toLocaleString("ko-KR")}건 실패`,
+                    appearance: result.failed > 0 ? "danger" : "success",
+                  });
+                })
+              }
+            >
+              링크 정리 다시 실행
+            </Button>
+          ) : null}
         </div>
 
         {/* 진행률은 폴링마다 바뀐다 — 보조기술이 갱신을 읽도록 status 영역에 둔다 */}
@@ -252,6 +278,48 @@ export function MigrationJobPage() {
             </Banner>
           ) : null}
         </section>
+
+        {/*
+          잡 단위 손실 — 항목 표에도 손실 보고서에도 나오지 않는다(어느 항목에도 매달려 있지 않다).
+          여기서 보여주지 않으면 링크 정리 실패가 화면 어디에도 남지 않는다. 대개 빈 목록이라
+          없을 때는 섹션째 그리지 않는다 — "없음" 줄이 늘 떠 있으면 있을 때 눈에 띄지 않는다.
+        */}
+        {jobIssues.length > 0 ? (
+          <section aria-labelledby="migration-job-issues-title">
+            <h2 className="migration-section-title" id="migration-job-issues-title">
+              잡 이슈
+            </h2>
+            <Table
+              aria-label="잡 이슈"
+              columns={[
+                {
+                  key: "severity",
+                  header: "심각도",
+                  render: (row) => (
+                    <Lozenge appearance={row.severity === "ERROR" ? "danger" : row.severity === "WARNING" ? "warning" : "neutral"}>
+                      {severityLabel(row.severity)}
+                    </Lozenge>
+                  ),
+                },
+                { key: "code", header: "코드" },
+                { key: "meaning", header: "설명" },
+                { key: "sourcePath", header: "위치" },
+                {
+                  key: "occurrences",
+                  header: "발생",
+                  align: "right",
+                  render: (row) => `${row.occurrences.toLocaleString("ko-KR")}건`,
+                },
+              ]}
+              rows={jobIssues.map((issue) => ({
+                ...issue,
+                // 같은 code가 여러 문서에서 날 수 있어 위치까지 합쳐야 행이 갈린다
+                id: `${issue.code}:${issue.sourcePath}`,
+                meaning: issueCodeLabel(issue.code) || "-",
+              }))}
+            />
+          </section>
+        ) : null}
 
         <section aria-labelledby="migration-issues-title">
           <h2 className="migration-section-title" id="migration-issues-title">

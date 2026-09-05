@@ -753,6 +753,32 @@ export interface MigrationJob {
   /** provider가 CONFLUENCE_DC일 때만 채워진다. 구버전 응답 호환으로 null 허용. */
   source: MigrationSourceSummary | null;
   counts: MigrationCounts;
+  /**
+   * 어느 항목에도 매달리지 않은 손실(링크 정리 실패 등). 항목 표(`/items`)에도 손실 보고서에도
+   * 나오지 않으므로 상세 화면이 직접 보여 준다. 대개 빈 목록이고, 구버전 응답에는 아예 없다.
+   */
+  jobIssues?: MigrationJobIssue[];
+}
+
+/**
+ * 잡 단위 손실 한 건. 항목 손실(`MigrationIssueSummary`)과 달리 code별로 묶지 않고 위치를
+ * 그대로 들고 온다 — 링크 정리 실패는 "어느 문서가 안 고쳐졌나"가 곧 조치할 대상이다.
+ */
+export interface MigrationJobIssue {
+  severity: MigrationIssueSeverity;
+  code: string;
+  /** `page:1042`·`job:12` 형태. */
+  sourcePath: string;
+  occurrences: number;
+}
+
+/**
+ * 링크 정리 재실행 결과. 이미 정리된 문서에는 임시 링크가 없어 손대지 않으므로 다시 눌러도
+ * 안전하고, 두 번째 실행의 touched가 0인 것이 곧 "고칠 것이 없다"는 뜻이다.
+ */
+export interface MigrationLinkFixupResult {
+  touched: number;
+  failed: number;
 }
 
 /** 발견 결과 — 재발견은 멱등이라 이미 있는 항목이 skipped로 센다. */
@@ -834,4 +860,6 @@ export interface MigrationJobRecord {
   completedAt: string | null;
   source: MigrationSourceSummary | null;
   items: MigrationItem[];
+  /** 잡 단위 손실. 이 필드가 없던 저장분 호환으로 optional — 읽을 때 빈 배열로 본다. */
+  jobIssues?: MigrationJobIssue[];
 }
