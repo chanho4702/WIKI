@@ -50,15 +50,11 @@ describe("U4 사용자·팀 관리 마운트", () => {
     // 셸 헤더에도 "만들기"가 있다(콘텐츠 생성) — 관리 화면 안으로 좁힌다
     const admin = within(screen.getByRole("main"));
 
-    // "팀 이름"은 만들기 카드(왼쪽)와 이름 변경(오른쪽) 둘 다 쓴다 — 앞의 것이 만들기다
-    await user.type(admin.getAllByLabelText("팀 이름")[0], "운영팀");
+    // 0.1.2부터 만들기 카드는 "새 팀 이름", 상세의 이름 변경은 "팀 이름"으로 접근 이름이 갈린다
+    await user.type(admin.getByLabelText("새 팀 이름"), "운영팀");
     await user.click(admin.getByRole("button", { name: "만들기" }));
 
-    /* 만든 팀은 목록에 붙지만 자동 선택되지는 않는다 — 패키지 0.1.0이 새 id를 세운 직후
-     * 아직 갱신되지 않은 목록으로 "없는 id"라 판단해 첫 팀으로 되돌린다(패키지 쪽 결함). */
-    const teamList = await screen.findByRole("list", { name: "팀 목록" });
-    await user.click(await within(teamList).findByRole("button", { name: /운영팀/ }));
-
+    // 0.1.2부터 만든 팀이 곧바로 선택된다(0.1.0의 "첫 팀으로 되돌림" 결함 수정)
     expect(await screen.findByRole("heading", { level: 2, name: "운영팀" })).toBeInTheDocument();
     const created = (await listTeams()).find((t) => t.name === "운영팀");
     expect(created).toBeDefined();
@@ -83,7 +79,7 @@ describe("U4 사용자·팀 관리 마운트", () => {
     await screen.findByRole("list", { name: "팀 목록" });
     const admin = within(screen.getByRole("main"));
 
-    await user.type(admin.getAllByLabelText("팀 이름")[0], "플랫폼팀");
+    await user.type(admin.getByLabelText("새 팀 이름"), "플랫폼팀");
     await user.click(admin.getByRole("button", { name: "만들기" }));
 
     expect(await screen.findByText(/이미 존재하는 팀 이름/)).toBeInTheDocument();

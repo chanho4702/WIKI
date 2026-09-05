@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@chanho/org-admin':
-        specifier: npm:@chanho4702/org-admin@0.1.1
-        version: '@chanho4702/org-admin@0.1.1(@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.4.0)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)'
+        specifier: npm:@chanho4702/org-admin@0.1.2
+        version: '@chanho4702/org-admin@0.1.2(@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.4.0)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)'
       '@chanho/react':
         specifier: npm:@chanho4702/react@0.8.0
         version: '@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)'
@@ -288,8 +288,8 @@ packages:
   '@braintree/sanitize-url@7.1.2':
     resolution: {integrity: sha512-jigsZK+sMF/cuiB7sERuo9V7N9jx+dhmHHnQyDSVdpZwVutaBu7WvNYqMDLSgFgfB30n452TP3vjDAvFC973mA==}
 
-  '@chanho4702/org-admin@0.1.1':
-    resolution: {integrity: sha512-b5gxo7A/5FEEFz0bYUCLoHQjEG+BQ92lq8/jdHX1FwacF2swweIplGqpjXLcbpgMVxQimmtiOPoLbKd4Cql4PQ==, tarball: https://npm.pkg.github.com/download/@chanho4702/org-admin/0.1.1/e1d8429cf4b0e66232aa35b0d659441e114c9ee9}
+  '@chanho4702/org-admin@0.1.2':
+    resolution: {integrity: sha512-coAzu+w8wwMXQZhIVAJ8n+GmOhkuhtONtF9FClpt+paRhSVaeZPm4QV7xzOQHaobImlXRz9Bya6jiow/w+akiw==, tarball: https://npm.pkg.github.com/download/@chanho4702/org-admin/0.1.2/49399515f178f2c2697c78c61d92d872b4648f2f}
     peerDependencies:
       '@chanho/react': '>=0.8.0'
       '@chanho/tokens': '>=0.4.0'
@@ -3353,7 +3353,7 @@ snapshots:
 
   '@braintree/sanitize-url@7.1.2': {}
 
-  '@chanho4702/org-admin@0.1.1(@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.4.0)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
+  '@chanho4702/org-admin@0.1.2(@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.4.0)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@chanho/react': '@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)'
       '@chanho/tokens': '@chanho4702/tokens@0.4.0'
