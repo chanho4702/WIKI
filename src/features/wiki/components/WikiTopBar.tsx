@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { Avatar, Badge, Button, Dropdown, TopBar } from "@chanho/react";
-import { Bell, Database, DatabaseBackup, Keyboard, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, Users } from "lucide-react";
+import { Bell, Database, DatabaseBackup, Keyboard, KeyRound, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, Users } from "lucide-react";
 import type { User } from "../store/types";
 import { getCurrentUser, getSearchIndexStatus } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
@@ -185,6 +185,15 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
                   description: "어떤 알림을 이메일로도 받을지 고릅니다",
                   icon: <Bell size={16} aria-hidden="true" />,
                   onSelect: () => navigate("/settings/notifications"),
+                },
+                /* 토큰 관리 화면은 계정 포털(myFront `/app`)에 있다 — 같은 오리진이지만 다른
+                 * SPA라 라우터가 아니라 전체 이동이다. 이 메뉴는 아바타(=로그인 사용자)가 있을
+                 * 때만 뜨므로 읽기 전용 인스턴스에는 애초에 나타나지 않는다. */
+                {
+                  label: "API 토큰",
+                  description: "스크립트·CI에서 쓰는 개인 토큰 관리",
+                  icon: <KeyRound size={16} aria-hidden="true" />,
+                  onSelect: () => window.location.assign("/app/tokens"),
                 },
                 ...(authUser
                   ? [{
