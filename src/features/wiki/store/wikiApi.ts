@@ -29,6 +29,8 @@ import {
   type NotificationPrefs,
   type NotificationPrefsPatch,
   type NotificationType,
+  type OrgMe,
+  type OrgMemberStatus,
   type PageRestrictions,
   type RestrictionPrincipal,
   type Team,
@@ -99,6 +101,45 @@ export async function listUsers(): Promise<User[]> {
     return [];
   }
 }
+/**
+ * 조직 서비스가 보는 나(U4, 설계 §3.3). **전역 관리자 판정의 단일 근거**다 —
+ * 전에는 관리자 전용 엔드포인트를 찔러 성공 여부로 판단했는데, 그러면 그 엔드포인트의
+ * 장애가 "관리자가 아님"으로 둔갑했다. 실패는 그대로 던진다(호출부가 비관리자로 접는다).
+ */
+export async function getOrgMe(): Promise<OrgMe> {
+  const me = await json<{
+    id: number | string;
+    displayName?: string;
+    email?: string | null;
+    status?: string;
+    globalRoles?: string[];
+  }>(await sharedApiFetch("/api/org/me"));
+  return {
+    id: String(me.id),
+    displayName: me.displayName ?? me.email ?? `사용자 #${me.id}`,
+    email: me.email ?? null,
+    status: (me.status as OrgMemberStatus | undefined) ?? "ACTIVE",
+    globalRoles: me.globalRoles ?? [],
+  };
+}
+
+/**
+ * 사용자 검색(U4) — 서버가 이름·이메일 부분일치로 거른다(기본 필터 `status=ACTIVE&kind=HUMAN`).
+ * `listUsers`와 달리 실패를 삼키지 않는다: 검색 결과가 비는 것과 검색이 안 되는 것은 다르다.
+ */
+export async function searchUsers(q: string): Promise<User[]> {
+  const rows = await json<{ id: number; displayName: string }[]>(
+    await sharedApiFetch(`/api/org/members?q=${encodeURIComponent(q.trim())}`),
+  );
+  return rows.map((m) => ({ id: String(m.id), name: m.displayName }));
+}
+
+/**
+ * `@chanho/org-admin`이 쓰는 인증 fetch(U4). 패키지는 `/api/org/...` 상대 경로만 넘기고
+ * 토큰·게이트웨이 경로는 이 어댑터가 붙인다 — 스토어의 다른 호출과 같은 통로다.
+ */
+export const orgApiFetch = sharedApiFetch;
+
 /** 화면이 updatedBy/authorId(숫자 id)를 이름으로 못 찾을 때 쓰는 폴백. (호출부 후속 배선.) */
 export function displayUserName(id: string): string {
   return `사용자 #${id}`;

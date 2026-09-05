@@ -1,6 +1,7 @@
 // 듀얼모드 목업 백엔드 — localStorage(wiki.v1) 기반. VITE_API_BASE 미설정 시 wikiStore가 이 모듈을 사용한다.
 import { MoveImpactError, PageConflictError, REACTION_EMOJIS } from "./types";
 import { parseTasks, toggleTaskLine, type ParsedTask } from "../lib/tasks";
+import { createOrgMockFetch } from "./orgMockApi";
 import { defaultVerifiedUntil } from "../lib/verification";
 import type {
   Attachment,
@@ -14,6 +15,7 @@ import type {
   NotificationPrefs,
   NotificationPrefsPatch,
   NotificationType,
+  OrgMe,
   PageRestrictions,
   RestrictionPrincipal,
   Team,
@@ -149,6 +151,31 @@ export async function getCurrentUser(): Promise<User> {
   const user = load().users.find((u) => u.id === CURRENT_USER_ID);
   if (!user) throw new Error("현재 사용자를 찾을 수 없습니다");
   return clone(user);
+}
+
+/**
+ * 조직 서비스가 보는 나(U4). 목업에는 org-service가 없으므로 저장소에 아무것도 없으면
+ * **활성 전역 관리자**로 다룬다 — 목업/dev에서도 관리 화면을 열어 볼 수 있어야 한다.
+ * 테스트는 `wiki.v1`의 `org.self`로 비관리자·승인 대기를 만든다.
+ */
+export async function getOrgMe(): Promise<OrgMe> {
+  const data = load();
+  const self = data.org?.self;
+  const user = data.users.find((u) => u.id === CURRENT_USER_ID);
+  return {
+    id: CURRENT_USER_ID,
+    displayName: user?.name ?? `사용자 #${CURRENT_USER_ID}`,
+    email: `${CURRENT_USER_ID}@example.com`,
+    status: self?.status ?? "ACTIVE",
+    globalRoles: self?.globalRoles ?? ["ADMIN"],
+  };
+}
+
+/** 사용자 검색(U4) — 백엔드는 `GET /api/org/members?q=`(이름·이메일 부분일치). 목업은 이름만 본다. */
+export async function searchUsers(q: string): Promise<User[]> {
+  const term = q.trim().toLowerCase();
+  const users = clone(load().users);
+  return term === "" ? users : users.filter((u) => u.name.toLowerCase().includes(term));
 }
 
 // ── spaces ───────────────────────────────────────────────────
@@ -426,6 +453,17 @@ const SEED_TEAMS: Team[] = [
   { id: "t1", name: "플랫폼팀" },
   { id: "t2", name: "디자인팀" },
 ];
+
+/**
+ * `@chanho/org-admin`이 쓰는 인증 fetch의 목업 짝(U4). 패키지는 함수가 아니라 **HTTP 경로**를
+ * 부르므로 목업 모드도 같은 경로 계약으로 응답해야 코드 경로가 하나로 유지된다.
+ */
+export const orgApiFetch = createOrgMockFetch({
+  load,
+  persist,
+  currentUserId: CURRENT_USER_ID,
+  seedTeams: SEED_TEAMS,
+});
 
 export async function listTeams(): Promise<Team[]> {
   const data = load();

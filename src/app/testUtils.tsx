@@ -8,7 +8,8 @@ import { App } from "./App";
  * 데워 둔다. 앱 동작에는 영향이 없고, 테스트가 재는 것도 번들 크기가 아니다.
  */
 import "../features/wiki/pages/PageEditPage";
-import type { PageNode } from "../features/wiki/store/types";
+import type { OrgMockState, PageNode, WikiData } from "../features/wiki/store/types";
+import { __resetForTest } from "../features/wiki/store/wikiStore";
 import { ReadOnlyProvider } from "../features/wiki/lib/readOnly";
 
 /** 현재 pathname을 노출하는 테스트 프로브 */
@@ -34,6 +35,19 @@ export async function allPagesForTest(spaceId: string): Promise<PageNode[]> {
   };
   await walk(null);
   return out;
+}
+
+/**
+ * 목업 org 상태를 심는다(U4) — 전역 관리자 여부·승인 대기는 `wiki.v1`의 `org`가 정한다.
+ * 아무것도 심지 않으면 "활성 전역 관리자"가 기본값이라, **비관리자·승인 대기 테스트만** 부른다.
+ * 시드를 쓴 뒤에 호출한다(메모리 캐시를 함께 비운다).
+ */
+export function seedOrgState(org: OrgMockState): void {
+  const raw = localStorage.getItem("wiki.v1");
+  if (!raw) throw new Error("시드를 먼저 저장한 뒤 호출하세요");
+  const data = JSON.parse(raw) as WikiData;
+  localStorage.setItem("wiki.v1", JSON.stringify({ ...data, org }));
+  __resetForTest();
 }
 
 export interface RenderAppOptions {

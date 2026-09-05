@@ -3,7 +3,17 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
+  // react-router는 앱과 패키지가 **한 인스턴스**를 봐야 한다 — 갈리면 컨텍스트가 둘이 된다.
+  resolve: { dedupe: ["react", "react-dom", "react-router"] },
   test: {
+    /*
+     * `@chanho/org-admin`은 Vite가 변환하는 모듈 그래프 안에 있어야 한다(U4).
+     * 외부화되면 Node ESM이 react-router를 따로 한 벌 더 로드해 라우터 컨텍스트가 둘로 갈리고,
+     * 패키지의 NavLink가 "useLocation() may be used only in the context of a <Router>"로 터진다.
+     * 이름은 **발행 스코프**로 적는다 — 모듈 id에는 pnpm alias(`@chanho/*`)가 아니라 실제
+     * 패키지명(`@chanho4702/*`)이 들어간다.
+     */
+    server: { deps: { inline: [/@chanho4702[\/+]org-admin/] } },
     environment: "jsdom",
     setupFiles: "./vitest.setup.ts",
     css: true,

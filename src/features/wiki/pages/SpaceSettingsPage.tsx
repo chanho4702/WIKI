@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useOutletContext, useParams } from "react-router";
+import { Link, useNavigate, useOutletContext, useParams } from "react-router";
 import { Button, ConfirmDialog, EmptyState, TextField, useToast } from "@chanho/react";
-import { LayoutTemplate, ScrollText, Settings, Trash2, Users } from "lucide-react";
+import { LayoutTemplate, ScrollText, Settings, Trash2, UserPlus, Users } from "lucide-react";
 import { SettingsHeader, SettingsItem } from "../components/SettingsItem";
 import type { SpaceGrant, Team, User } from "../store/types";
 import {
@@ -11,6 +11,7 @@ import {
   listTeams,
   listUsers,
   removeSpaceGrant,
+  searchUsers,
   updateSpace,
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
@@ -96,6 +97,11 @@ export function SpaceSettingsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [subjectType, setSubjectType] = useState<"user" | "team">("user");
   const [subjectId, setSubjectId] = useState("");
+  /* 대상 검색(U4) — 사람이 늘어나면 전체 목록 select로는 고를 수 없다. 사용자는 서버가
+   * 걸러 주고(`GET /api/org/members?q=`), 팀은 목록이 짧아 화면에서 거른다. */
+  const [term, setTerm] = useState("");
+  const [userMatches, setUserMatches] = useState<User[] | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [role, setRole] = useState<SpaceGrant["role"]>("viewer");
   const [granting, setGranting] = useState(false);
 
@@ -120,9 +126,28 @@ export function SpaceSettingsPage() {
 
   useEffect(() => {
     void reloadGrants();
+    // 목록은 권한 표의 이름 풀이에도 쓰인다 — 검색 결과와 별개로 유지한다
     void listUsers().then(setUsers);
     void listTeams().then(setTeams);
   }, [reloadGrants]);
+
+  useEffect(() => {
+    if (subjectType !== "user") return;
+    let cancelled = false;
+    setSearchError(null);
+    void searchUsers(term).then(
+      (found) => {
+        if (!cancelled) setUserMatches(found);
+      },
+      (e: unknown) => {
+        // 검색이 안 되는 것과 결과가 없는 것은 다르다 — 빈 목록으로 덮지 않는다
+        if (!cancelled) setSearchError(e instanceof Error ? e.message : String(e));
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [subjectType, term]);
 
   const handleSave = async () => {
     if (!spaceId || !name.trim()) return;
@@ -179,7 +204,10 @@ export function SpaceSettingsPage() {
       ? (teams.find((t) => t.id === grant.subjectId)?.name ?? `팀 #${grant.subjectId}`)
       : (users.find((u) => u.id === grant.subjectId)?.name ?? displayUserName(grant.subjectId));
 
-  const candidates = subjectType === "team" ? teams : users;
+  const candidates =
+    subjectType === "team"
+      ? teams.filter((t) => term.trim() === "" || t.name.toLowerCase().includes(term.trim().toLowerCase()))
+      : (userMatches ?? users);
 
   /** 어떤 섹션을 그릴지는 URL이 정한다 — 설정 화면을 그대로 공유·북마크할 수 있어야 한다. */
   const section = normalizedSection(params.section);
@@ -229,6 +257,15 @@ export function SpaceSettingsPage() {
                 ) : (
                   <>
                     <div className="space-settings-grant-add">
+                      <TextField
+                        label="대상 검색"
+                        placeholder="이름으로 좁히기"
+                        value={term}
+                        onChange={(e) => {
+                          setTerm(e.target.value);
+                          setSubjectId("");
+                        }}
+                      />
                       <select
                         aria-label="대상 종류"
                         value={subjectType}
@@ -271,6 +308,19 @@ export function SpaceSettingsPage() {
                         추가
                       </Button>
                     </div>
+                    {searchError ? (
+                      <p className="space-settings-grant-error" role="status">
+                        사용자를 검색할 수 없습니다: {searchError}
+                      </p>
+                    ) : null}
+                    {/* 아직 계정이 없는 사람은 여기서 고를 수 없다 — 초대 화면으로 보낸다(U4 §6).
+                      * 스페이스를 쿼리로 넘겨 어떤 리소스에서 왔는지는 남긴다. */}
+                    <p className="space-settings-grant-invite">
+                      찾는 사람이 없나요?{" "}
+                      <Link to={`/admin/org/invitations?scope=SPACE&resourceId=${encodeURIComponent(space.id)}`}>
+                        <UserPlus size={14} aria-hidden="true" /> 초대하기
+                      </Link>
+                    </p>
                     {grants === null ? (
                       <span role="status">권한 로딩 중</span>
                     ) : grants.length === 0 ? (

@@ -418,6 +418,61 @@ export interface Team {
   name: string;
 }
 
+/* ── 조직(org-service) ─────────────────────────────────────────
+ * 설계: platform-backend/docs/superpowers/specs/2026-09-05-user-invite-team-permission-design.md
+ * 관리 화면 자체는 `@chanho/org-admin` 패키지가 그린다 — 여기 타입은 위키가 직접 쓰는 것만 둔다. */
+
+export type OrgMemberStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
+
+/**
+ * `/api/org/me` — org-service가 보는 나(설계 §3.3).
+ *
+ * **전역 관리자 판정의 단일 근거다**: `globalRoles`에 `"ADMIN"`이 있으면 관리자. 이 값은
+ * org-service의 GLOBAL/ADMIN grant에서 나오며 Keycloak realm role과는 다른 개념이라
+ * 토큰의 roles로 대신할 수 없다. `status`가 `PENDING`이면 초대 없이 로그인해 격리된 계정이다.
+ */
+export interface OrgMe {
+  id: string;
+  displayName: string;
+  email: string | null;
+  status: OrgMemberStatus;
+  globalRoles: string[];
+}
+
+/**
+ * 목업 org 상태 — 백엔드 모드에는 대응물이 없다(org-service가 원장).
+ * 없으면 "활성 전역 관리자"로 다룬다: 목업/dev에서도 관리 화면을 열 수 있어야 한다.
+ */
+export interface OrgMockState {
+  self?: { status: OrgMemberStatus; globalRoles: string[] };
+  /** 사용자별 상태 override(기본 ACTIVE). 승인 대기 목록이 읽는다. */
+  memberStatus?: Record<string, OrgMemberStatus>;
+  invitations?: OrgMockInvitation[];
+  /** 전역 역할 grant — 스페이스 권한(`grants`)과 달리 리소스가 없다. */
+  globalGrants?: OrgMockGrant[];
+}
+
+export interface OrgMockGrant {
+  id: string;
+  subjectType: "USER" | "TEAM";
+  subjectId: string;
+  role: "VIEWER" | "EDITOR" | "ADMIN";
+}
+
+export interface OrgMockInvitation {
+  id: string;
+  email: string;
+  status: "PENDING" | "ACCEPTED" | "EXPIRED" | "REVOKED";
+  message: string | null;
+  createdAt: string;
+  expiresAt: string;
+  /** 서버는 생성·재발송 응답에서만 링크를 준다(토큰은 해시로만 저장) — 목업도 같게 둔다. */
+  inviteUrl: string | null;
+  mailSent: boolean;
+  teams: { teamId: string; role: "LEAD" | "MEMBER" }[];
+  grants: { scope: "GLOBAL" | "SPACE" | "PROJECT"; resourceId: string | null; role: "VIEWER" | "EDITOR" | "ADMIN" }[];
+}
+
 /** 팀원 한 줄(W23). 이름은 서버가 함께 준다 — 디렉터리를 다시 뒤지지 않는다. */
 export interface TeamMember {
   memberId: string;
@@ -610,6 +665,8 @@ export interface WikiData {
    * **원본 토큰은 여기에 들어가지 않는다** — 목업도 저장하지 않는 것이 계약이다(설계 §1.1 P8).
    */
   migrations?: MigrationJobRecord[];
+  /** 조직 관리 화면(U4)의 목업 상태. 백엔드 모드는 org-service가 원장이다. */
+  org?: OrgMockState;
 }
 
 /** 휴지통에 보관된 묶음 — 복원하려면 버전·댓글도 함께 보관해야 한다. */

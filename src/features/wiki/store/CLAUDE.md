@@ -62,6 +62,20 @@ wiki-service가 붙으면 함수 내부만 `apiFetch`로 교체한다 — **함�
   dry-run이면 `targetPageId`가 비어 페이지를 만들지 않았음을 드러낸다. **진행은 시간이 아니라
   폴링 횟수로 움직이고, `getMigrationReport`는 진행을 당기지 않는다** — 한 폴링에서 잡과 보고서를
   같이 읽는 화면이 서로 다른 시점을 보면 안 된다. 취소·완료 뒤에는 조회해도 더 나아가지 않는다.
+- **조직(U4, org-service)**: `getOrgMe`·`searchUsers`·`orgApiFetch`.
+  `getOrgMe()`는 `GET /api/org/me`이고 **전역 관리자 판정의 단일 근거**다 — `globalRoles`에
+  `"ADMIN"`이 있으면 관리자다. 관리자 전용 엔드포인트를 찔러 성공 여부로 판단하지 않는다:
+  그러면 그 서비스의 장애가 "관리자가 아님"으로 둔갑해 관리 메뉴가 통째로 사라진다.
+  목업은 저장소에 `org.self`가 없으면 **활성 전역 관리자**를 준다(목업/dev에서도 관리 화면이
+  열려야 한다). 테스트는 `app/testUtils`의 `seedOrgState`로 비관리자·승인 대기를 만든다.
+  `searchUsers(q)`는 `GET /api/org/members?q=`(서버가 이름·이메일 부분일치, 기본 필터
+  `status=ACTIVE&kind=HUMAN`)이고 **실패를 삼키지 않는다** — 검색이 안 되는 것과 결과가 없는
+  것은 다르다(`listUsers`는 반대로 빈 목록을 준다: 디렉터리 장애가 화면 전체를 죽이면 안 된다).
+  `orgApiFetch`는 함수가 아니라 **HTTP 경로**를 부르는 소비자(`@chanho/org-admin`)를 위한
+  인증 fetch다 — 백엔드 모드는 `sharedApiFetch`, 목업 모드는 `orgMockApi.ts`가 같은
+  `/api/org/*` 경로 계약으로 답한다. 목업이 백엔드보다 관대하면 화면이 목업에서만 동작하므로,
+  없는 것은 없는 대로 준다(팀원 역할 변경 400, 이력 빈 배열, 목록의 `inviteUrl`은 항상 null —
+  서버는 토큰 해시만 저장해 링크를 되살릴 수 없고 재발송만 새 링크를 준다).
 - **에러는 한국어 사용자 문구로 throw** — 화면이 메시지를 그대로 노출한다.
 - **편집 세션 낙관적 락**: 화면은 로드 때 받은 `Page.version`을 `updatePage(...,
   { expectedVersion })`에 넘긴다. API 어댑터가 저장 직전 조회한 최신 버전으로 바꾸면 stale 편집이

@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { Avatar, Badge, Button, Dropdown, TopBar } from "@chanho/react";
 import { Bell, Database, DatabaseBackup, Keyboard, KeyRound, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, Users } from "lucide-react";
 import type { User } from "../store/types";
-import { getCurrentUser, getSearchIndexStatus } from "../store/wikiStore";
+import { getCurrentUser, getOrgMe } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
 import { useAuth } from "../../../auth/AuthGate";
 import { GlobalSearchField } from "./GlobalSearchField";
@@ -37,23 +37,25 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const navigate = useNavigate();
   /*
-   * 전역 관리자에게만 색인 관리 항목을 띄운다.
+   * 전역 관리자에게만 관리 항목을 띄운다.
    *
-   * 판단 근거는 org-service의 GLOBAL ADMIN grant다 — Keycloak realm role과는 다른 개념이라
-   * 토큰의 roles로 대신할 수 없다. 그래서 권위 있는 곳에 직접 물어본다: 현황 조회가 통하면
-   * 관리자다. 상단바는 앱당 한 번 마운트되므로 세션당 요청 하나로 끝난다.
+   * 판단 근거는 `/api/org/me.globalRoles`다(U4, 설계 §6) — org-service의 GLOBAL/ADMIN grant에서
+   * 나오며 Keycloak realm role과는 다른 개념이라 토큰의 roles로 대신할 수 없다. 전에는 관리자
+   * 전용 엔드포인트(색인 현황)를 찔러 성공 여부로 판단했는데, 그러면 **그 서비스의 장애가
+   * "관리자가 아님"으로 둔갑해** 관리 메뉴가 통째로 사라진다. 상단바는 앱당 한 번 마운트되므로
+   * 세션당 요청 하나로 끝난다.
    */
-  const [canManageSearch, setCanManageSearch] = useState(false);
+  const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   useEffect(() => {
-    // 읽기 전용 인스턴스에는 관리자 메뉴 자체가 없다 — 프로브를 보내면 403 잡음만 남는다.
+    // 읽기 전용(익명) 인스턴스에는 관리자 메뉴 자체가 없다 — 물어봐야 401/403 잡음만 남는다.
     if (readOnly) return;
     let cancelled = false;
-    void getSearchIndexStatus()
-      .then((status) => {
-        if (!cancelled) setCanManageSearch(status !== null);
+    void getOrgMe()
+      .then((me) => {
+        if (!cancelled) setIsGlobalAdmin(me.globalRoles.includes("ADMIN"));
       })
       .catch(() => {
-        if (!cancelled) setCanManageSearch(false);
+        if (!cancelled) setIsGlobalAdmin(false);
       });
     return () => {
       cancelled = true;
@@ -138,14 +140,13 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
                 onSelect: () => setShortcutHelpOpen(true),
               },
               // 전역 관리자에게만 보인다 — 아닌 사람에게 띄우면 눌러도 "권한 없음"만 나온다
-              // 두 항목 모두 전역 관리자용이라 같은 게이트를 쓴다 — 팀 쓰기는 org-service가 GLOBAL ADMIN을 요구한다
-              ...(canManageSearch
+              ...(isGlobalAdmin
                 ? [
                     {
-                      label: "팀 관리",
-                      description: "스페이스 권한에 쓰는 팀을 만들고 구성원을 관리합니다",
+                      label: "사용자·팀",
+                      description: "사람을 초대하고 팀과 전역 역할을 관리합니다",
                       icon: <Users size={16} aria-hidden="true" />,
-                      onSelect: () => navigate("/admin/teams"),
+                      onSelect: () => navigate("/admin/org"),
                     },
                     {
                       label: "검색 색인 관리",

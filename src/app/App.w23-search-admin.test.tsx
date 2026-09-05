@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
-import { renderApp } from "./testUtils";
+import { renderApp, seedOrgState } from "./testUtils";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
 
@@ -46,8 +46,12 @@ describe("W23 검색 색인 관리", () => {
     ).toBeInTheDocument();
   });
 
-  /** 아닌 사람에게 띄우면 눌러도 "권한 없음"만 나온다 — 없는 것이 낫다. */
+  /**
+   * 아닌 사람에게 띄우면 눌러도 "권한 없음"만 나온다 — 없는 것이 낫다.
+   * 판정 근거는 `/api/org/me.globalRoles`다(U4) — 목업 기본값은 관리자라 여기서 비관리자를 심는다.
+   */
   it("전역 관리자가 아니면 설정 메뉴에 색인 항목이 없다", async () => {
+    seedOrgState({ self: { status: "ACTIVE", globalRoles: [] } });
     const user = (await import("@testing-library/user-event")).default.setup();
     renderApp("/spaces/sp1");
     await screen.findByRole("navigation", { name: "페이지 트리" });

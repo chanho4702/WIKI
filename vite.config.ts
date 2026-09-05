@@ -13,6 +13,8 @@ export default defineConfig(({ mode }) => {
     // basename은 이 값에서 파생하므로(main.tsx) 둘이 어긋날 수 없다.
     base: env.VITE_BASE || "/wiki/",
     plugins: [react()],
+    // 앱과 `@chanho/org-admin`이 같은 react-router 한 벌을 봐야 한다 - 갈리면 라우터 컨텍스트가 둘이 된다
+    resolve: { dedupe: ["react", "react-dom", "react-router"] },
     server: proxyTarget
       ? {
           proxy: {

@@ -38,7 +38,7 @@ MSA_TEMPLATE의 **위키(컨플루언스 클론) 프론트엔드**. 3개 프론�
 |---|---|
 | 빌드/런타임 | Vite 7 · React 19 · TypeScript |
 | 라우팅 | react-router 7 (`BrowserRouter basename="/wiki"`) |
-| 디자인 시스템 | `@chanho/react` 0.5.0 + `@chanho/tokens` 0.3.0 (tarball `file:(레지스트리: GitHub Packages, `.npmrc` 참고)/*.tgz`) |
+| 디자인 시스템 | `@chanho/react` 0.8.0 + `@chanho/tokens` 0.4.0 + `@chanho/org-admin` 0.1.1 — GitHub Packages(`@chanho4702/*`)를 pnpm alias로 받는다(`.npmrc` 참고) |
 | 에디터 | **TipTap 2.27** — `@tiptap/react` · `starter-kit` · 확장(link, image, table/row/header/cell, task-list/item, placeholder) + `tiptap-markdown`(마크다운 왕복) |
 | 공동 편집 | Yjs 13.6 · Hocuspocus Provider 4.6 — 본문·제목 CRDT, 인증 presence, 공동 커서, page+generation 원자 저장 (기능 플래그) |
 | 보기 렌더 | react-markdown 10 + remark-gfm 4 (표) · remark-math 6 + KaTeX 0.18 (수식) · mermaid 11 (다이어그램, 지연 로드) |
@@ -169,14 +169,23 @@ src/
 
 | 경로 | 화면 | 비고 |
 |---|---|---|
+| `/admin/org/*` | `OrgAdminPage` → `@chanho/org-admin` | 사용자·초대·팀·전역 역할·승인 대기 (공용 패키지) |
+| `/admin/teams` | → `/admin/org/teams` 리다이렉트 | 옛 팀 관리 경로 |
 | `/admin/search` | `SearchAdminPage` | 검색 색인 현황·재색인 |
-| `/admin/teams` | `TeamsAdminPage` | 스페이스 권한에 쓰는 팀·팀원 |
 | `/admin/audit` | `SpaceAuditAdminPage` | 스페이스 삭제 기록 |
 | `/admin/migrations` | `MigrationsAdminPage` | 컨플루언스 DC 이관 — 연결 확인·새 잡·잡 목록 |
 | `/admin/migrations/:jobId` | `MigrationJobPage` | 잡 상세 — 발견/시작/취소·진행률(5초 폴링)·손실 보고서·데드레터 |
 
 관리 화면은 메뉴(⚙ 드롭다운)에서 전역 관리자에게만 보이고, 주소를 직접 쳐도 화면이 스스로
-"관리할 수 없습니다"를 보여준다.
+"관리할 수 없습니다"를 보여준다. **전역 관리자 판정의 근거는 `GET /api/org/me`의
+`globalRoles`에 `"ADMIN"`이 있는지 하나뿐이다**(스토어 `getOrgMe`) — 전에는 관리자 전용
+엔드포인트를 찔러 성공 여부로 판단했는데, 그러면 그 서비스의 장애가 "관리자가 아님"으로
+둔갑했다.
+
+`/admin/org/*`의 화면은 이 리포가 아니라 공용 패키지 `@chanho/org-admin`에 있다(wiki·ALM 공용).
+위키는 인증 fetch(`orgApiFetch`)·현재 사용자·스페이스 이름 풀이(`resolveResource`)만 넘긴다.
+초대 없이 로그인한 계정(`status === "PENDING"`)은 `OrgPendingGate`가 셸 대신 승인 대기 안내를
+그린다 — 로그인 게이트가 켜진 인스턴스에서만 동작한다.
 
 ---
 

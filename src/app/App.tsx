@@ -15,7 +15,7 @@ import { SearchPage } from "../features/wiki/pages/SearchPage";
 import { TasksPage } from "../features/wiki/pages/TasksPage";
 import { NotificationSettingsPage } from "../features/wiki/pages/NotificationSettingsPage";
 import { SearchAdminPage } from "../features/wiki/pages/SearchAdminPage";
-import { TeamsAdminPage } from "../features/wiki/pages/TeamsAdminPage";
+import { OrgAdminPage } from "../features/wiki/pages/OrgAdminPage";
 import { SpaceAuditAdminPage } from "../features/wiki/pages/SpaceAuditAdminPage";
 import { MigrationsAdminPage } from "../features/wiki/pages/MigrationsAdminPage";
 import { MigrationJobPage } from "../features/wiki/pages/MigrationJobPage";
@@ -124,8 +124,11 @@ export function App() {
             <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
             {/* 검색 색인 관리 — 전역 관리자 전용. 아니면 화면이 스스로 "권한 없음"을 보여준다 */}
             <Route path="/admin/search" element={<SearchAdminPage />} />
-            {/* 팀 관리 — 전역 관리자 전용(서버가 판정). 스페이스 권한 부여에 쓰는 팀을 여기서 만든다 */}
-            <Route path="/admin/teams" element={<TeamsAdminPage />} />
+            {/* 사용자·팀 관리(U4) — 공용 패키지 `@chanho/org-admin`을 마운트한다(설계 §6).
+              * 사용자·초대·팀·전역 역할·승인 대기가 한 셸 안에 있고, 권한 판정은 서버가 한다. */}
+            <Route path="/admin/org/*" element={<OrgAdminPage />} />
+            {/* 팀 관리 화면은 위 패키지의 "팀" 탭으로 옮겼다 — 기존 링크·북마크를 살린다 */}
+            <Route path="/admin/teams" element={<Navigate to="/admin/org/teams" replace />} />
             {/* 스페이스 삭제 기록 — 전역 관리자 전용(서버가 판정). 스페이스 안에서는 읽을 곳이 없는 기록 */}
             <Route path="/admin/audit" element={<SpaceAuditAdminPage />} />
             {/* 컨플루언스 DC 이관(M1) — 전역 관리자 전용(서버가 판정). 목록+새 잡, 그리고 잡 상세 */}

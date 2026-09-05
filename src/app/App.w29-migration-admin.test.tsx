@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderApp } from "./testUtils";
+import { renderApp, seedOrgState } from "./testUtils";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
 
@@ -257,8 +257,12 @@ describe("W29 마이그레이션 관리 — 접근", () => {
     ).toBeInTheDocument();
   });
 
-  /** 전역 관리자가 아니면 메뉴에 띄우지 않는다 — 눌러 봐야 "권한 없음"만 나온다. */
+  /**
+   * 전역 관리자가 아니면 메뉴에 띄우지 않는다 — 눌러 봐야 "권한 없음"만 나온다.
+   * 판정 근거는 `/api/org/me.globalRoles`다(U4) — 목업 기본값은 관리자라 여기서 비관리자를 심는다.
+   */
   it("전역 관리자가 아니면 설정 메뉴에 마이그레이션 항목이 없다", async () => {
+    seedOrgState({ self: { status: "ACTIVE", globalRoles: [] } });
     const user = userEvent.setup();
     renderApp("/spaces/sp1");
     await screen.findByRole("navigation", { name: "페이지 트리" });
