@@ -10,6 +10,7 @@
 ![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
 ![TipTap](https://img.shields.io/badge/TipTap-2.27-0D0D0D?logo=tiptap&logoColor=white)
 ![Self-hosted](https://img.shields.io/badge/deployment-self--hosted-0b7285)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## 특징
 
