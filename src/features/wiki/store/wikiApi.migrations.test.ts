@@ -51,7 +51,7 @@ describe("wikiApi 마이그레이션 — 연결 확인", () => {
       token: "pat-secret",
     });
 
-    expect(spy.mock.calls[0][0]).toBe("/api/wiki/migrations/confluence-dc/probe");
+    expect(spy.mock.calls[0][0]).toBe("/api/migration/confluence-dc/probe");
     expect(spy.mock.calls[0][1]).toMatchObject({ method: "POST" });
     // 경로에는 토큰이 없다 — 접근 로그에 남으면 안 된다
     expect(spy.mock.calls[0][0]).not.toContain("pat-secret");
@@ -106,7 +106,7 @@ describe("wikiApi 마이그레이션 — 잡", () => {
     const { listMigrationJobs } = await import("./wikiApi");
 
     const rows = await listMigrationJobs();
-    expect(spy.mock.calls[0][0]).toBe("/api/wiki/migrations");
+    expect(spy.mock.calls[0][0]).toBe("/api/migration");
     expect(rows).toEqual([
       {
         id: "42",
@@ -158,7 +158,7 @@ describe("wikiApi 마이그레이션 — 잡", () => {
       source: { baseUrl: "https://confluence.example.com", spaceKey: "DOCS", token: "pat-secret" },
     });
 
-    expect(spy.mock.calls[0][0]).toBe("/api/wiki/migrations");
+    expect(spy.mock.calls[0][0]).toBe("/api/migration");
     expect(bodyOf(spy.mock.calls[0])).toEqual({
       provider: "CONFLUENCE_DC",
       targetSpaceId: 5,
@@ -199,17 +199,17 @@ describe("wikiApi 마이그레이션 — 잡", () => {
       await import("./wikiApi");
 
     expect(await discoverMigrationJob("42")).toEqual({ discovered: 12, enqueued: 12, skipped: 0 });
-    expect(spy.mock.calls[0][0]).toBe("/api/wiki/migrations/42/discover");
+    expect(spy.mock.calls[0][0]).toBe("/api/migration/42/discover");
     expect(spy.mock.calls[0][1]).toMatchObject({ method: "POST" });
 
     await startMigrationJob("42");
-    expect(spy.mock.calls[1][0]).toBe("/api/wiki/migrations/42/start");
+    expect(spy.mock.calls[1][0]).toBe("/api/migration/42/start");
 
     await cancelMigrationJob("42");
-    expect(spy.mock.calls[2][0]).toBe("/api/wiki/migrations/42/cancel");
+    expect(spy.mock.calls[2][0]).toBe("/api/migration/42/cancel");
 
     const job = await getMigrationJob("42");
-    expect(spy.mock.calls[3][0]).toBe("/api/wiki/migrations/42");
+    expect(spy.mock.calls[3][0]).toBe("/api/migration/42");
     expect(job.source).toEqual({
       baseUrl: "https://confluence.example.com",
       spaceKey: "DOCS",
@@ -279,7 +279,7 @@ describe("wikiApi 마이그레이션 — 보고서·항목", () => {
     const { getMigrationReport } = await import("./wikiApi");
 
     const report = await getMigrationReport("42");
-    expect(spy.mock.calls[0][0]).toBe("/api/wiki/migrations/42/report");
+    expect(spy.mock.calls[0][0]).toBe("/api/migration/42/report");
     expect(report.job.id).toBe("42");
     expect(report.itemsByStatus.COMPLETED).toBe(11);
     // sampleSourcePath는 선택이다 — 서버가 안 주면 null이고 화면은 "-"로 그린다
@@ -334,13 +334,13 @@ describe("wikiApi 마이그레이션 — 보고서·항목", () => {
     const { listMigrationItems } = await import("./wikiApi");
 
     const page = await listMigrationItems("42", { status: "DEAD_LETTER", stage: "EXTRACT", page: 1 });
-    expect(spy.mock.calls[0][0]).toBe("/api/wiki/migrations/42/items?status=DEAD_LETTER&stage=EXTRACT&page=1");
+    expect(spy.mock.calls[0][0]).toBe("/api/migration/42/items?status=DEAD_LETTER&stage=EXTRACT&page=1");
     expect(page.items[0]).toMatchObject({ id: "901", jobId: "42", targetPageId: null });
     expect(page.total).toBe(1);
 
     // 필터가 없으면 쿼리 자체를 붙이지 않는다
     await listMigrationItems("42");
-    expect(spy.mock.calls[1][0]).toBe("/api/wiki/migrations/42/items");
+    expect(spy.mock.calls[1][0]).toBe("/api/migration/42/items");
   });
 
   it("targetPageId가 있는 항목은 문자열 id로 읽는다", async () => {

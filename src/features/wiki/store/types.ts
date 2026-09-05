@@ -726,7 +726,7 @@ export interface MigrationCounts {
   byStage: Record<string, number>;
 }
 
-/** 관리자 잡 목록의 한 줄(GET /api/wiki/migrations). */
+/** 관리자 잡 목록의 한 줄(GET /api/migration). */
 export interface MigrationJobSummary {
   id: string;
   provider: MigrationProvider;
@@ -738,7 +738,7 @@ export interface MigrationJobSummary {
   sourceSpaceKey: string | null;
 }
 
-/** 잡 상세(GET /api/wiki/migrations/{id}). */
+/** 잡 상세(GET /api/migration/{id}). */
 export interface MigrationJob {
   id: string;
   provider: MigrationProvider;

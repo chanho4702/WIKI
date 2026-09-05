@@ -41,6 +41,8 @@
 
 ## 4. API 계약 (wikiStore 함수 → REST 매핑 제안)
 
+> **2026-09-05 이관 모듈 분리(A안)**: 아래 이관 API는 위키가 아니라 **migration-service**(`/api/migration/**`, 게이트웨이 라우트)가 제공한다. 계약은 그대로이고 접두사만 바뀌었다(`/api/migration` → `/api/migration`). 위키에는 내부 import API(`/internal/wiki/import/**`)만 남는다 — `docs/superpowers/specs/2026-09-05-migration-service-split-design.md`.
+
 | wikiStore 함수 | 메서드/경로 제안 | 비고 |
 |---|---|---|
 | listUsers() | GET /api/wiki/users | `{id, name}[]` |
@@ -71,13 +73,13 @@
 | setPageOwner(pageId, userId\|null) | PUT /api/wiki/pages/{id}/owner | **V33(W27-5)** `{ownerId}` — null이면 해제. EDIT 권한. 메타데이터라 version·리비전 불변. 감사 로그 PAGE_OWNER_CHANGED |
 | verifyPage(pageId, until?) | PUT /api/wiki/pages/{id}/verification | **V33** `{verifiedUntil: "YYYY-MM-DD"}` 또는 `{}`(기본 90일). verified_at=now, verified_by=호출자. 지난 날짜도 그대로 저장 — **만료 판정은 프론트**가 한다. 감사 로그 PAGE_VERIFIED |
 | unverifyPage(pageId) | DELETE /api/wiki/pages/{id}/verification | **V33** 세 필드를 비운다. 감사 로그 PAGE_UNVERIFIED |
-| probeConfluenceDc({baseUrl, spaceKey, token}) | POST /api/wiki/migrations/confluence-dc/probe | **V34(W29)** 원본 DC 연결 확인 → `{spaceName, homepageId, pageCount\|null}`. **전역 관리자만**(GLOBAL grant — 감사 로그 space-deletions와 같은 판정). `pageCount`는 사이트가 총계를 안 주면 null. token은 요청 본문에만 — 어떤 응답에도 실리지 않는다. 실패: 401/403→403 "원본 컨플루언스 인증에 실패했습니다 — 토큰과 권한을 확인하세요", 404→404, 연결 불가/429/5xx→503, 3xx→400(리다이렉트 비허용), baseUrl이 http(s)가 아니면 400 |
-| listMigrationJobs() | GET /api/wiki/migrations | **V34** 최신순 50건 `[{id, provider, targetSpaceId, mode, status, createdAt, discoveredCount\|null, sourceSpaceKey\|null}]`. **전역 관리자만**. 원본이 없는 잡(예전 NOTION)은 뒤 두 필드가 null |
-| createMigrationJob({provider, targetSpaceId, mode, source?}) | POST /api/wiki/migrations | **V34 확장** 기존 필드 + `source: {baseUrl, spaceKey, token}`. provider=CONFLUENCE_DC면 source 필수(없으면 400 "원본 컨플루언스 접속 정보가 필요합니다"). `sourceInstanceId`는 이제 선택 — 비우면 서버가 baseUrl의 호스트로 채운다. 대상 스페이스 ADMIN |
-| discoverMigrationJob(id) | POST /api/wiki/migrations/{jobId}/discover | **V34** 원본 트리를 훑어 대기열을 채운다 → `{discovered, enqueued, skipped}`. 조상 깊이 오름차순·같은 깊이는 id 순으로 담는다(부모가 먼저 처리돼야 트리가 선다). **멱등** — 다시 눌러도 새 항목만 늘고 기존은 skipped로 센다. PENDING 잡만(아니면 409), CONFLUENCE_DC만(아니면 409). 상한 `platform.wiki.migration.dc.max-pages`(기본 5000). **M3부터 블로그 글(`type=blogpost`)도 발견 대상**이라 `discovered`에 함께 센다 |
-| getMigrationJob(id) | GET /api/wiki/migrations/{jobId} | **V34 확장** 기존 `MigrationJobResponse` 필드 전부 + `source: {baseUrl, spaceKey, spaceName, discoveredCount}\|null` + `counts: {byStatus: {...}, byStage: {...}}`. **source에 token 필드는 없다.** 진행률 = `counts.byStatus.COMPLETED / itemCount` |
-| listMigrationItems(id, {status?, stage?, page?}) | GET /api/wiki/migrations/{jobId}/items?status=&stage=&page= | **V34** `{items: MigrationItemResponse[], page, size, total}`. page는 0부터, size는 50 고정. status: PENDING\|RUNNING\|RETRY_WAIT\|COMPLETED\|DEAD_LETTER, stage: EXTRACT\|NORMALIZE\|MEDIA_COPY\|RESOLVE\|VERIFY\|DONE. 대상 스페이스 ADMIN |
-| startMigrationJob(id) | POST /api/wiki/migrations/{jobId}/start | **V34 확장** 항목이 0건이면 400 `{"error": "옮길 항목이 없습니다 — 먼저 원본 발견을 실행하세요"}`. 항목 0으로 시작하면 잡이 즉시 COMPLETED가 되어 "성공적으로 아무것도 안 옮겼다"가 되기 때문 |
+| probeConfluenceDc({baseUrl, spaceKey, token}) | POST /api/migration/confluence-dc/probe | **V34(W29)** 원본 DC 연결 확인 → `{spaceName, homepageId, pageCount\|null}`. **전역 관리자만**(GLOBAL grant — 감사 로그 space-deletions와 같은 판정). `pageCount`는 사이트가 총계를 안 주면 null. token은 요청 본문에만 — 어떤 응답에도 실리지 않는다. 실패: 401/403→403 "원본 컨플루언스 인증에 실패했습니다 — 토큰과 권한을 확인하세요", 404→404, 연결 불가/429/5xx→503, 3xx→400(리다이렉트 비허용), baseUrl이 http(s)가 아니면 400 |
+| listMigrationJobs() | GET /api/migration | **V34** 최신순 50건 `[{id, provider, targetSpaceId, mode, status, createdAt, discoveredCount\|null, sourceSpaceKey\|null}]`. **전역 관리자만**. 원본이 없는 잡(예전 NOTION)은 뒤 두 필드가 null |
+| createMigrationJob({provider, targetSpaceId, mode, source?}) | POST /api/migration | **V34 확장** 기존 필드 + `source: {baseUrl, spaceKey, token}`. provider=CONFLUENCE_DC면 source 필수(없으면 400 "원본 컨플루언스 접속 정보가 필요합니다"). `sourceInstanceId`는 이제 선택 — 비우면 서버가 baseUrl의 호스트로 채운다. 대상 스페이스 ADMIN |
+| discoverMigrationJob(id) | POST /api/migration/{jobId}/discover | **V34** 원본 트리를 훑어 대기열을 채운다 → `{discovered, enqueued, skipped}`. 조상 깊이 오름차순·같은 깊이는 id 순으로 담는다(부모가 먼저 처리돼야 트리가 선다). **멱등** — 다시 눌러도 새 항목만 늘고 기존은 skipped로 센다. PENDING 잡만(아니면 409), CONFLUENCE_DC만(아니면 409). 상한 `platform.wiki.migration.dc.max-pages`(기본 5000). **M3부터 블로그 글(`type=blogpost`)도 발견 대상**이라 `discovered`에 함께 센다 |
+| getMigrationJob(id) | GET /api/migration/{jobId} | **V34 확장** 기존 `MigrationJobResponse` 필드 전부 + `source: {baseUrl, spaceKey, spaceName, discoveredCount}\|null` + `counts: {byStatus: {...}, byStage: {...}}`. **source에 token 필드는 없다.** 진행률 = `counts.byStatus.COMPLETED / itemCount` |
+| listMigrationItems(id, {status?, stage?, page?}) | GET /api/migration/{jobId}/items?status=&stage=&page= | **V34** `{items: MigrationItemResponse[], page, size, total}`. page는 0부터, size는 50 고정. status: PENDING\|RUNNING\|RETRY_WAIT\|COMPLETED\|DEAD_LETTER, stage: EXTRACT\|NORMALIZE\|MEDIA_COPY\|RESOLVE\|VERIFY\|DONE. 대상 스페이스 ADMIN |
+| startMigrationJob(id) | POST /api/migration/{jobId}/start | **V34 확장** 항목이 0건이면 400 `{"error": "옮길 항목이 없습니다 — 먼저 원본 발견을 실행하세요"}`. 항목 0으로 시작하면 잡이 즉시 COMPLETED가 되어 "성공적으로 아무것도 안 옮겼다"가 되기 때문 |
 | listVersions(pageId) | GET /api/wiki/pages/{pageId}/versions | version 내림차순 |
 | restoreVersion(pageId, versionId) | POST /api/wiki/pages/{pageId}/restore | updatePage 경로 재사용(새 버전으로 쌓임) |
 | listComments(pageId) | GET /api/wiki/pages/{pageId}/comments | createdAt 오름차순 |

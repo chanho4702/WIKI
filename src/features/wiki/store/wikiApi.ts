@@ -1338,7 +1338,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
 /** 연결 확인(M-01) — 잡을 만들기 전에 주소·키·토큰이 맞는지만 본다. */
 export async function probeConfluenceDc(input: MigrationSourceInput): Promise<MigrationSourceProbe> {
   const dto = await json<{ spaceName: string; homepageId?: string | number | null; pageCount?: number | null }>(
-    await sharedApiFetch("/api/wiki/migrations/confluence-dc/probe", {
+    await sharedApiFetch("/api/migration/confluence-dc/probe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1359,7 +1359,7 @@ export async function probeConfluenceDc(input: MigrationSourceInput): Promise<Mi
 
 /** 관리자 잡 목록(최신순 50). 403이면 null — 전역 관리자가 아니다(색인 관리와 같은 판정). */
 export async function listMigrationJobs(): Promise<MigrationJobSummary[] | null> {
-  const res = await sharedApiFetch("/api/wiki/migrations");
+  const res = await sharedApiFetch("/api/migration");
   if (res.status === 403) return null;
   return (await json<MigrationJobSummaryDto[]>(res)).map(mapMigrationJobSummary);
 }
@@ -1372,7 +1372,7 @@ export async function createMigrationJob(input: {
 }): Promise<MigrationJob> {
   return mapMigrationJob(
     await json<MigrationJobDto>(
-      await sharedApiFetch("/api/wiki/migrations", {
+      await sharedApiFetch("/api/migration", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1397,7 +1397,7 @@ export async function createMigrationJob(input: {
 /** 원본 페이지를 BFS로 enqueue. 재발견은 멱등이라 새 항목만 더한다(sourceKey 유니크). */
 export async function discoverMigrationJob(id: string): Promise<MigrationDiscoverResult> {
   const dto = await json<{ discovered?: number; enqueued?: number; skipped?: number }>(
-    await sharedApiFetch(`/api/wiki/migrations/${toBackendId(id)}/discover`, { method: "POST" }),
+    await sharedApiFetch(`/api/migration/${toBackendId(id)}/discover`, { method: "POST" }),
   );
   return { discovered: dto.discovered ?? 0, enqueued: dto.enqueued ?? 0, skipped: dto.skipped ?? 0 };
 }
@@ -1405,7 +1405,7 @@ export async function discoverMigrationJob(id: string): Promise<MigrationDiscove
 export async function startMigrationJob(id: string): Promise<MigrationJob> {
   return mapMigrationJob(
     await json<MigrationJobDto>(
-      await sharedApiFetch(`/api/wiki/migrations/${toBackendId(id)}/start`, { method: "POST" }),
+      await sharedApiFetch(`/api/migration/${toBackendId(id)}/start`, { method: "POST" }),
     ),
   );
 }
@@ -1413,20 +1413,20 @@ export async function startMigrationJob(id: string): Promise<MigrationJob> {
 export async function cancelMigrationJob(id: string): Promise<MigrationJob> {
   return mapMigrationJob(
     await json<MigrationJobDto>(
-      await sharedApiFetch(`/api/wiki/migrations/${toBackendId(id)}/cancel`, { method: "POST" }),
+      await sharedApiFetch(`/api/migration/${toBackendId(id)}/cancel`, { method: "POST" }),
     ),
   );
 }
 
 export async function getMigrationJob(id: string): Promise<MigrationJob> {
   return mapMigrationJob(
-    await json<MigrationJobDto>(await sharedApiFetch(`/api/wiki/migrations/${toBackendId(id)}`)),
+    await json<MigrationJobDto>(await sharedApiFetch(`/api/migration/${toBackendId(id)}`)),
   );
 }
 
 export async function getMigrationReport(id: string): Promise<MigrationReport> {
   return mapMigrationReport(
-    await json<MigrationReportDto>(await sharedApiFetch(`/api/wiki/migrations/${toBackendId(id)}/report`)),
+    await json<MigrationReportDto>(await sharedApiFetch(`/api/migration/${toBackendId(id)}/report`)),
   );
 }
 
@@ -1441,7 +1441,7 @@ export async function listMigrationItems(
   const search = query.toString();
   const suffix = search ? `?${search}` : "";
   const dto = await json<{ items?: MigrationItemDto[]; page?: number; size?: number; total?: number }>(
-    await sharedApiFetch(`/api/wiki/migrations/${toBackendId(id)}/items${suffix}`),
+    await sharedApiFetch(`/api/migration/${toBackendId(id)}/items${suffix}`),
   );
   return {
     items: (dto.items ?? []).map(mapMigrationItem),

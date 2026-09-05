@@ -25,7 +25,7 @@
 ## 1. 목표 구조
 
 ```
-migration-service (새 리포·새 DB migrationdb·:9140)        wiki-backend
+migration-service (새 리포·새 DB migrationdb·:9170 — 9140은 search-service)        wiki-backend
  ├ job/item/issue/object_map/source/payload (자기 Flyway)   ├ /internal/wiki/import/**  ← X-Internal-Token
  ├ DC 클라이언트·discover·정규화기·IR 스키마·검증기·writer     │   페이지/리비전/첨부/댓글/제한/라벨/본문 재작성/검증 조회
  ├ 핸들러 5종 → WikiImportClient(HTTP)                       ├ page.imported_author_name/url (남김)
@@ -53,7 +53,7 @@ migration-service (새 리포·새 DB migrationdb·:9140)        wiki-backend
 공통: 오류 `{"error"}`, 404/409 그대로. 트랜잭션 경계는 요청 단위. 모든 쓰기는 `WikiEvents.pageCreated/pageUpdated`(색인)만 발행하고 알림·watch·감사(감사는 `IMPORTED` 액션 1건은 남긴다)를 건너뛴다.
 
 ## 3. migration-service
-- 리포 `migration-service`(GHCR `ghcr.io/chanho4702/migration-service`), Spring Boot·Java 24, 포트 9140(REST), DB `migrationdb`(compose `migration-db-init`, agent-service 온보딩 절차 그대로), common-starter(JWT 검증·오류 계약)·common-proto(org gRPC).
+- 리포 `migration-service`(GHCR `ghcr.io/chanho4702/migration-service`), Spring Boot·Java 24, 포트 9170(REST, 9140은 search-service와 충돌), DB `migrationdb`(compose `migration-db-init`, agent-service 온보딩 절차 그대로), common-starter(JWT 검증·오류 계약)·common-proto(org gRPC).
 - Flyway V1: 기존 V6/V7/V34/V35/V36의 migration_* 테이블을 **새 번호로 재작성**(page 컬럼은 제외). 데이터 이전은 없다(dev 전용 잡뿐).
 - 패키지 이동: `migration/**` 전부 + `schema/document-ir-v1.schema.json` + 픽스처·테스트(FakeConfluenceDcServer 포함). `ImportedPageWriter`·`MigrationAttachmentImporter`·`MigrationCommentImporter`·`MigrationRestrictionApplier`·`MigrationLinkFixupWriter`는 **WikiImportClient**(JDK HttpClient, `X-Internal-Token`) 호출로 바뀐다. MEDIA_COPY는 DC → 엔진 임시 파일 → 위키 업로드(스트리밍, 상한 그대로).
 - REST `/api/migration/**`(기존 `/api/wiki/migrations/**`와 같은 계약, 접두사만 변경). 전역 관리자·대상 스페이스 ADMIN 판정은 org gRPC(`CheckPermission`)로 — 위키에 묻지 않는다.
@@ -68,7 +68,7 @@ migration-service (새 리포·새 DB migrationdb·:9140)        wiki-backend
 ## 5. 단계
 - **X1 wiki-backend**: import API §2 + 내부 토큰 필터 + 계약 테스트. 기존 엔진은 아직 남긴 채(같은 내부 서비스 메서드를 API가 감싼다) — 두 경로가 같은 코드를 타게.
 - **X2 migration-service**: 리포 생성·골격·엔진 이동·WikiImportClient·테스트 이관(가짜 위키 서버)·CI.
-- **X3 배선**: gateway·compose·deploy·wiki-front base path·운영 가이드 이동(wiki-backend README → migration-service README).
+- **X3 배선**: gateway·compose·deploy·wiki-front base path·운영 가이드 이동(wiki-backend README → migration-service README). **완료(2026-09-05)** — infra a844957·gateway 63a48e6·migration-service d0e8b43/4ea8dfd, wiki-front 이 커밋. 게이트웨이 라우트 `migration`(`MIGRATION_SERVICE_URI`), compose `migration-service`+`migration-db-init`+스테이징 볼륨, `WIKI_INTERNAL_TOKEN`은 `.env`/`C:\deploy\platform.env`에 양쪽 같은 값. 포트는 9170(9140은 search-service).
 - **X4 위키 정리**: `migration/**` 삭제, V37로 migration_* 테이블 제거(page.imported_* 유지), README·문서 갱신, docs 프로필의 `/api/wiki/migrations` 차단 제거.
 X1과 X2는 병렬 가능(계약 §2 고정). X3·X4는 X2 뒤.
 
