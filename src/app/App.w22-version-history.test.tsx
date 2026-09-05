@@ -68,15 +68,19 @@ describe("W22 버전 히스토리 — 화면", () => {
     expect(latest.savedByName).toBeTruthy();
   });
 
-  it("이력에 변경 요약이 함께 보인다", async () => {
+  it("이력 표의 변경 요약 칸에 그 요약이 보인다", async () => {
     const user = userEvent.setup();
     await updatePage("pg2", { body: "고침" }, { changeNote: "표 정리" });
     renderApp("/spaces/sp1/pages/pg2");
     await screen.findByRole("heading", { level: 1, name: "팀 규칙" });
 
     await user.click(screen.getByRole("button", { name: "히스토리" }));
+    await screen.findByRole("heading", { level: 1, name: "페이지 히스토리" });
 
-    expect(await screen.findByText("표 정리")).toBeInTheDocument();
+    const rows = screen.getAllByRole("row").slice(1); // 헤더 제외
+    expect(rows[0]).toHaveTextContent("표 정리");
+    // 요약을 남기지 않은 버전은 빈 칸이 아니라 "—"
+    expect(rows[1]).toHaveTextContent("—");
   });
 
   /**
@@ -101,7 +105,11 @@ describe("W22 버전 히스토리 — 화면", () => {
     });
   });
 
-  it("비교 기준을 골라 임의의 두 버전을 견줄 수 있다", async () => {
+  /**
+   * 직전 비교에 고정돼 있던 한계를 닫은 것이 W22였다 — 화면이 표로 바뀐 뒤에도 "3주 전 그
+   * 상태와 지금"을 고를 수 있어야 한다. 이제 그 선택이 주소에 남는다.
+   */
+  it("표에서 임의의 두 버전을 골라 견줄 수 있다", async () => {
     const user = userEvent.setup();
     await updatePage("pg2", { body: "두 번째" });
     await updatePage("pg2", { body: "세 번째" });
@@ -109,20 +117,22 @@ describe("W22 버전 히스토리 — 화면", () => {
     await screen.findByRole("heading", { level: 1, name: "팀 규칙" });
 
     await user.click(screen.getByRole("button", { name: "히스토리" }));
-    const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("tab", { name: "변경사항" }));
+    await screen.findByRole("heading", { level: 1, name: "페이지 히스토리" });
 
-    // 기본은 직전 버전과 비교한다
-    const picker = await within(dialog).findByLabelText("비교 기준");
-    expect(picker).toHaveValue("");
-
-    // v1을 기준으로 바꾸면 첫 버전과의 차이를 본다
-    const versions = await listVersions("pg2");
-    const first = versions[versions.length - 1];
-    await user.selectOptions(picker, first.id);
+    // 직전(v. 2↔v. 3)이 아니라 첫 버전과 최신을 고른다
+    await user.click(screen.getByRole("checkbox", { name: "v. 1 선택" }));
+    await user.click(screen.getByRole("checkbox", { name: "v. 3 선택" }));
+    await user.click(screen.getByRole("button", { name: "선택한 버전 비교" }));
 
     await waitFor(() => {
-      expect(picker).toHaveValue(first.id);
+      expect(screen.getByTestId("location")).toHaveTextContent(
+        "/spaces/sp1/pages/pg2/history/compare?from=1&to=3",
+      );
     });
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "v. 1 ↔ v. 3 비교" }),
+    ).toBeInTheDocument();
+    const diff = await screen.findByTestId("diff-view");
+    expect(within(diff).getByText("세 번째")).toHaveClass("diff-added");
   });
 });

@@ -1537,16 +1537,21 @@ export async function getVersion(pageId: string, versionId: string): Promise<Pag
   return clone(version);
 }
 
-export async function restoreVersion(pageId: string, versionId: string): Promise<Page> {
+export async function restoreVersion(
+  pageId: string,
+  versionId: string,
+  changeNote?: string,
+): Promise<Page> {
   const data = load();
   const version = data.versions.find((v) => v.id === versionId && v.pageId === pageId);
   if (!version) throw new Error("버전을 찾을 수 없습니다");
   // updatePage 경로 재사용 → 복원도 새 버전으로 쌓인다 (히스토리 안 끊김).
-  // 어느 버전에서 되돌렸는지가 다음 사람에게 가장 중요한 정보다(백엔드와 같은 문구).
+  // 어느 버전에서 되돌렸는지가 다음 사람에게 가장 중요한 정보다(백엔드와 같은 문구) —
+  // 화면이 요약을 받아 넘기면 그것을 쓰고, 비워 두면 이 기본 문구가 남는다.
   return updatePage(
     pageId,
     { title: version.title, body: version.body },
-    { changeNote: `v${version.version} 버전으로 복원` },
+    { changeNote: changeNote ?? `v${version.version} 버전으로 복원` },
   );
 }
 

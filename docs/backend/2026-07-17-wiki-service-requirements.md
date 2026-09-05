@@ -81,7 +81,7 @@
 | listMigrationItems(id, {status?, stage?, page?}) | GET /api/migration/{jobId}/items?status=&stage=&page= | **V34** `{items: MigrationItemResponse[], page, size, total}`. page는 0부터, size는 50 고정. status: PENDING\|RUNNING\|RETRY_WAIT\|COMPLETED\|DEAD_LETTER, stage: EXTRACT\|NORMALIZE\|MEDIA_COPY\|RESOLVE\|VERIFY\|DONE. 대상 스페이스 ADMIN |
 | startMigrationJob(id) | POST /api/migration/{jobId}/start | **V34 확장** 항목이 0건이면 400 `{"error": "옮길 항목이 없습니다 — 먼저 원본 발견을 실행하세요"}`. 항목 0으로 시작하면 잡이 즉시 COMPLETED가 되어 "성공적으로 아무것도 안 옮겼다"가 되기 때문 |
 | listVersions(pageId) | GET /api/wiki/pages/{pageId}/versions | version 내림차순 |
-| restoreVersion(pageId, versionId) | POST /api/wiki/pages/{pageId}/restore | updatePage 경로 재사용(새 버전으로 쌓임) |
+| restoreVersion(pageId, versionId, changeNote?) | POST /api/wiki/pages/{pageId}/revisions/{version}/restore | updatePage 경로 재사용(새 버전으로 쌓임). 어댑터는 `changeNote`가 있을 때만 본문 `{ changeNote }`를 싣는다 — **백엔드는 아직 본문을 읽지 않는다(후속: `RevisionController.restore`에 선택 본문 추가)**. 그때까지 백엔드 모드의 복원 버전에는 서버가 만든 문구가 남는다 |
 | listComments(pageId) | GET /api/wiki/pages/{pageId}/comments | createdAt 오름차순 |
 | addComment(pageId, body, parentId?) | POST /api/wiki/pages/{pageId}/comments | |
 | updateComment(id, body) | PATCH /api/wiki/comments/{id} | **본인만** |

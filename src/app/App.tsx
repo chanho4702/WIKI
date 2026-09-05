@@ -10,6 +10,9 @@ import { SpaceIndexPage } from "../features/wiki/pages/SpaceIndexPage";
 import { SpaceDirectoryPage } from "../features/wiki/pages/SpaceDirectoryPage";
 import { HomePage } from "../features/wiki/pages/HomePage";
 import { PageViewPage } from "../features/wiki/pages/PageViewPage";
+import { PageHistoryPage } from "../features/wiki/pages/PageHistoryPage";
+import { PageVersionPage } from "../features/wiki/pages/PageVersionPage";
+import { PageCompareVersionsPage } from "../features/wiki/pages/PageCompareVersionsPage";
 import { FolderPage } from "../features/wiki/pages/FolderPage";
 import { SearchPage } from "../features/wiki/pages/SearchPage";
 import { TasksPage } from "../features/wiki/pages/TasksPage";
@@ -145,6 +148,8 @@ export function App() {
               {/* 편집기 청크는 lazy라 이 라우트가 없으면 번들에서도 빠진다 */}
               <Route path="pages/new" element={<RedirectToSpace fallbackSpaceId={spaces[0].id} />} />
               <Route path="pages/:pageId/edit" element={<RedirectToSpace fallbackSpaceId={spaces[0].id} />} />
+              {/* 히스토리도 쓰기 화면이다 — 복원 버튼이 있고, 공개 문서에는 편집 주체가 없다 */}
+              <Route path="pages/:pageId/history/*" element={<RedirectToSpace fallbackSpaceId={spaces[0].id} />} />
               <Route path="trash" element={<RedirectToSpace fallbackSpaceId={spaces[0].id} />} />
               <Route path="archive" element={<RedirectToSpace fallbackSpaceId={spaces[0].id} />} />
               <Route path="settings" element={<RedirectToSpace fallbackSpaceId={spaces[0].id} />} />
@@ -168,6 +173,14 @@ export function App() {
                   </Suspense>
                 }
               />
+              {/*
+                페이지 히스토리(W30) — 모달이 아니라 전용 화면 셋이다. 비교 대상·보고 있는 버전이
+                주소에 남아야 공유·북마크·뒤로가기가 성립한다. `:version`은 내부 id가 아니라
+                버전 번호이고, 정적 경로인 compare가 그 앞에 온다.
+              */}
+              <Route path="pages/:pageId/history" element={<PageHistoryPage />} />
+              <Route path="pages/:pageId/history/compare" element={<PageCompareVersionsPage />} />
+              <Route path="pages/:pageId/history/:version" element={<PageVersionPage />} />
               {/* 휴지통은 스페이스 스코프 — 컨플루언스 스페이스 설정의 휴지통 위치를 따른다 */}
               <Route path="trash" element={<TrashPage />} />
               {/* 보관함(W23) — 끝났지만 남겨 둔 문서. 휴지통과 같은 표를 쓴다 */}

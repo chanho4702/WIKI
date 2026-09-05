@@ -732,7 +732,7 @@ body {
 .page-tree-row a:focus-visible,
 .page-tree-toggle:focus-visible,
 .page-tree-add:focus-visible,
-.history-item:focus-visible {
+.history-back:focus-visible {
   outline: none;
   box-shadow: var(--chanho-focus-ring);
 }
@@ -1842,79 +1842,6 @@ body {
 }
 
 /* ── 버전 히스토리 모달 (W3) ──────────────────────────── */
-
-/* Modal 기본 패널 폭(480px)을 넓힌다 — 속성 선택자로 특이도를 올려 로드 순서와 무관하게 이긴다 */
-.history-modal[role="dialog"] {
-  width: min(880px, calc(100vw - 32px));
-}
-
-.history-body {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: var(--chanho-space-300);
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--chanho-space-50);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.history-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--chanho-space-25);
-  width: 100%;
-  padding: var(--chanho-space-100) var(--chanho-space-150);
-  border: 1px solid var(--chanho-color-border-default);
-  border-radius: var(--chanho-radius-medium);
-  background: transparent;
-  font-size: var(--chanho-font-size-100);
-  color: var(--chanho-color-text-default);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--chanho-transition-base), border-color var(--chanho-transition-base),
-    color var(--chanho-transition-base);
-}
-
-.history-item:hover {
-  background: var(--chanho-color-background-neutral-hovered);
-}
-
-.history-item[aria-pressed="true"] {
-  border-color: var(--chanho-color-border-brand);
-  background: var(--chanho-color-background-selected);
-  color: var(--chanho-color-text-selected);
-}
-
-.history-item-meta {
-  color: var(--chanho-color-text-subtle);
-}
-
-.history-item[aria-pressed="true"] .history-item-meta {
-  color: var(--chanho-color-text-selected);
-}
-
-.history-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--chanho-space-200);
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.history-preview h2 {
-  margin: 0;
-  font-size: var(--chanho-font-size-300);
-  line-height: var(--chanho-font-lineHeight-300);
-}
 
 /* ── 코멘트 (W3) ──────────────────────────────────────── */
 
@@ -4246,7 +4173,7 @@ body.is-column-reordering {
  * 자형에서는 "1"이 좁아 목록 항목마다 글자폭이 달라져 열이 흔들려 보인다. */
 .page-view-meta,
 .home-resume-meta,
-.history-item-meta,
+.history-table,
 .diff-view,
 .markdown-body td {
   font-variant-numeric: tabular-nums;
@@ -5287,34 +5214,6 @@ body.is-column-reordering {
 
 .inline-comment-resolved {
   opacity: 0.7;
-}
-
-/* ── 버전 이력(W22) ───────────────────────────────────────── */
-/* 변경 요약은 보조 정보 — 버전 번호·작성자보다 약하게, 줄바꿈 없이 한 줄로 */
-.history-item-note {
-  display: block;
-  margin-top: var(--chanho-space-50, 4px);
-  font-size: var(--chanho-font-size-75);
-  color: var(--chanho-color-text-subtle);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.history-compare {
-  display: flex;
-  align-items: center;
-  gap: var(--chanho-space-100);
-  margin-bottom: var(--chanho-space-150);
-  font-size: var(--chanho-font-size-75);
-}
-
-.history-compare select {
-  padding: 2px var(--chanho-space-100);
-  border: 1px solid var(--chanho-color-border-default);
-  border-radius: var(--chanho-radius-small);
-  background: var(--chanho-color-background-surface);
-  color: var(--chanho-color-text-default);
 }
 
 /* 액션 바에서 요약 입력이 버튼을 밀어내지 않게 — 남는 폭만 쓰고 상한을 둔다 */
@@ -6687,4 +6586,156 @@ body.is-column-reordering {
   color: var(--chanho-color-text-subtle);
   font-size: var(--chanho-font-size-75);
   font-weight: var(--chanho-font-weight-semibold);
+}
+
+/* ── 페이지 히스토리(W30) — 컨플루언스식 전용 화면 셋 ──────────────
+ * 색·간격·radius는 전부 토큰이라 다크 모드는 토큰 재정의만으로 따라온다(전용 규칙 없음). */
+.history-page {
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: var(--chanho-space-400) var(--chanho-space-400) var(--chanho-space-600);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-300);
+}
+
+/* 돌아갈 곳을 화면 맨 위에 둔다 — 이력은 "잠깐 들렀다 나가는" 화면이다 */
+.history-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  align-self: flex-start;
+  border-radius: var(--chanho-radius-small);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+  text-decoration: none;
+}
+
+.history-back:hover {
+  color: var(--chanho-color-text-default);
+  text-decoration: underline;
+}
+
+.history-page-title {
+  margin: 0;
+  font-size: var(--chanho-font-size-400);
+  font-weight: var(--chanho-font-weight-bold);
+  line-height: var(--chanho-font-lineHeight-400);
+}
+
+.history-page-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-200);
+  flex-wrap: wrap;
+}
+
+.history-page-hint {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+/* 체크박스 라벨("v. 7 선택")은 접근 이름 전용 — 표 칸에 글자로 나오면 열이 밀린다 */
+.history-select > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.history-version-cell,
+.history-author-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+}
+
+/* 배너 안에 안내 문구와 액션이 함께 있다 — 좁으면 액션이 아래로 내려간다.
+ * DS Banner의 콘텐츠 칸 안에서 배치하므로 flex는 배너 루트가 아니라 이 래퍼에 건다. */
+.history-banner-inner {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-200);
+  flex-wrap: wrap;
+}
+
+.history-banner-text {
+  min-width: 0;
+}
+
+.history-banner-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  flex-wrap: wrap;
+}
+
+.history-current-note {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+}
+
+.history-version-title {
+  margin: 0;
+  font-size: var(--chanho-font-size-500);
+  font-weight: var(--chanho-font-weight-bold);
+  line-height: var(--chanho-font-lineHeight-500);
+}
+
+/* 두 버전의 "누가·언제·왜"를 나란히 — 어느 쪽이 옛것인지 왼쪽/오른쪽으로 읽는다 */
+.history-compare-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-200);
+  flex-wrap: wrap;
+}
+
+.history-compare-card {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: var(--chanho-space-200);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-surface);
+}
+
+.history-compare-card-title {
+  margin: 0 0 var(--chanho-space-100);
+  font-size: var(--chanho-font-size-200);
+  font-weight: var(--chanho-font-weight-semibold);
+  line-height: var(--chanho-font-lineHeight-200);
+}
+
+.history-compare-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-restore-desc {
+  margin: 0 0 var(--chanho-space-200);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+}
+
+.history-restore-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--chanho-space-100);
+  margin-top: var(--chanho-space-300);
 }

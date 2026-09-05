@@ -4,7 +4,7 @@ import { Avatar, Banner, Button, Dropdown, Lozenge, PageHeader, Tooltip, useToas
 import type { BreadcrumbItem } from "@chanho/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { applyOverflowTitle } from "../components/TruncatedText";
-import { Archive, BadgeCheck, Download, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock, UserCog } from "lucide-react";
+import { Archive, BadgeCheck, Download, History, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock, UserCog } from "lucide-react";
 import type { DeletePageOptions, Page, PageNode, PageRestrictions, User } from "../store/types";
 import {
   deletePage,
@@ -23,7 +23,6 @@ import {
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
 import { TableOfContents } from "../components/TableOfContents";
-import { HistoryModal } from "../components/HistoryModal";
 import { ChildPages } from "../components/ChildPages";
 import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { CommentSection } from "../components/CommentSection";
@@ -434,15 +433,18 @@ export function PageViewPage() {
                     편집
                   </Button>
                 )}
-                {/* 히스토리: 아이콘 버튼(HistoryModal 내부). 모달 트리거라 native title 사용 */}
-                <HistoryModal
-                  page={page}
-                  users={users}
-                  onRestored={async (restored) => {
-                    setPage(restored); // 재조회 없이 반환 Page로 즉시 갱신
-                    await reloadPages(); // 제목이 복원된 경우 사이드바 트리 반영
-                  }}
-                />
+                {/* 히스토리(W30): 전용 화면으로 이동한다 — 모달로는 버전이 쌓일수록 읽히지 않았다 */}
+                <Tooltip content="히스토리">
+                  <Button
+                    size="small"
+                    variant="subtle"
+                    iconOnly
+                    aria-label="히스토리"
+                    onClick={() => navigate(`/spaces/${space.id}/pages/${page.id}/history`)}
+                  >
+                    <History size={16} aria-hidden="true" />
+                  </Button>
+                </Tooltip>
                 <WatchButton pageId={page.id} />
                 {/* 공유(W23) — 보는 사람이면 누구나. 헤더 액션 중 가장 자주 눌리는 것이라 드롭다운에 숨기지 않는다 */}
                 <Button
@@ -478,6 +480,11 @@ export function PageViewPage() {
                 ...(readOnly
                   ? []
                   : [
+                      {
+                        label: "페이지 히스토리",
+                        icon: <History size={16} aria-hidden="true" />,
+                        onSelect: () => navigate(`/spaces/${space.id}/pages/${page.id}/history`),
+                      },
                       {
                         // 보관(W23) — 끝났지만 남겨 둘 문서. 트리·검색에서 빠지고 링크로는 열린다
                         label: page.archivedAt ? "보관 해제" : "보관",

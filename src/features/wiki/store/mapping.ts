@@ -78,7 +78,7 @@ function toDateOnly(iso: string | null | undefined): string | null {
 }
 export function mapPage(dto: PageDto): Page {
   // 백엔드 PageResponse엔 시각/작성자가 없다 → 빈 문자열. ⚠️ 백엔드 모드에서 PageView 메타의
-  // "N이 수정"(작성자)·수정일(new Date("")→"Invalid Date")과 HistoryModal의 no-op 판정
+  // "N이 수정"(작성자)·수정일(new Date("")→"Invalid Date")과 RestoreVersionDialog의 no-op 판정
   // (restored.updatedAt === page.updatedAt, 둘 다 "" → 항상 "변경 없음")이 어긋난다 — 화면 폴백 배선은
   // 후속(설계 §7 backend-mode 알려진 한계). 목업 모드는 실제 값이 있어 무관.
   const now = "";

@@ -934,10 +934,25 @@ export async function getVersion(pageId: string, versionId: string): Promise<Pag
   return mapVersionFull(dto, pageId);
 }
 
-export async function restoreVersion(pageId: string, versionId: string): Promise<Page> {
+export async function restoreVersion(
+  pageId: string,
+  versionId: string,
+  changeNote?: string,
+): Promise<Page> {
   // versionId는 어댑터가 만든 `${pageId}:${version}` — 버전 번호를 추출해 restore 엔드포인트 호출.
   const version = Number(versionId.split(":")[1]);
-  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/revisions/${version}/restore`, { method: "POST" });
+  // 변경 요약은 있을 때만 실어 보낸다. 백엔드(RevisionController.restore)는 **아직 본문을 읽지
+  // 않아** 서버가 만든 버전에는 자기 문구가 남는다 — 계약 문서의 후속 항목이다.
+  const res = await sharedApiFetch(
+    `/api/wiki/pages/${toBackendId(pageId)}/revisions/${version}/restore`,
+    changeNote === undefined
+      ? { method: "POST" }
+      : {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ changeNote }),
+        },
+  );
   return mapPage(await json(res));
 }
 

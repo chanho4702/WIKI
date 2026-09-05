@@ -23,4 +23,16 @@ describe("wikiApi versions", () => {
     expect(spy).toHaveBeenCalledWith("/api/wiki/pages/3/revisions/2/restore", { method: "POST" });
     expect(page).toMatchObject({ id: "3", title: "복원됨", body: "본문", version: 5 });
   });
+
+  /** 복원 확인 모달의 변경 요약 — 있을 때만 본문에 싣는다(백엔드는 아직 읽지 않는다). */
+  it("restoreVersion에 변경 요약을 주면 JSON 본문으로 보낸다", async () => {
+    const spy = once(200, { id: 3, spaceId: 1, parentId: null, title: "복원됨", content: "본문", version: 5 });
+    const { restoreVersion } = await import("./wikiApi");
+    await restoreVersion("3", "3:2", "v. 2에서 복원");
+    expect(spy).toHaveBeenCalledWith("/api/wiki/pages/3/revisions/2/restore", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ changeNote: "v. 2에서 복원" }),
+    });
+  });
 });

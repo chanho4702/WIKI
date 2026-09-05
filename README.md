@@ -60,7 +60,7 @@ UI는 100% `@chanho` 디자인 시스템으로 구성한다 — 타 UI 라이브
 - **위키 링크** — `[[제목]]`을 에디터에서 원자 노드(칩)로 승격(입력 규칙), 존재하지 않는 페이지 제목은
   `.wiki-chip-missing` 데코레이션으로 표시. 보기 화면에서는 내부 링크(존재=`wiki-link`, 부재=생성 링크)로 렌더.
 - **페이지 보기** — Breadcrumbs(스페이스→조상→현재), 수정자/수정일, 마크다운 렌더(raw HTML 미렌더 = XSS 방어).
-- **버전 히스토리** — 저장마다 자동 스냅샷(스토어 부수효과). HistoryModal에서 버전 목록·미리보기·diff(`DiffView`)·복원,
+- **버전 히스토리** — 저장마다 자동 스냅샷(스토어 부수효과). 전용 화면 셋(버전 표·이전 버전 보기·두 버전 비교 `DiffView`)에서 복원,
   복원도 새 버전으로 쌓여 히스토리가 끊기지 않는다.
 - **코멘트** — 최상위 + 1단 답글, 본인만 수정/삭제, 최상위 삭제 시 답글 연쇄 삭제.
 - **템플릿** — 코드에 정의된 기본 템플릿 10종(회의록·결정 기록·PRD·회고·프로젝트 계획·주간 보고·
@@ -141,7 +141,7 @@ src/
 ├── auth/                 # client.ts(createAuthClient), AuthGate.tsx(useAuth), returnTo.ts, types.ts
 ├── features/wiki/
 │   ├── pages/            # SpaceIndexPage, PageViewPage, PageEditPage, FolderPage, SearchPage
-│   ├── components/       # AppShell, GlobalSidebar, PageTree, HistoryModal, GlobalSearchField,
+│   ├── components/       # AppShell, GlobalSidebar, PageTree, RestoreVersionDialog, GlobalSearchField,
 │   │                     # SearchHighlights, CommentSection, MarkdownView, SpaceCreateModal
 │   ├── editor/           # WikiEditor, Markdown 왕복, collaboration/(ticket 세션·presence), extensions/
 │   ├── lib/              # wikiLinks.ts, lineDiff.ts
@@ -162,6 +162,9 @@ src/
 | `/spaces/:spaceId/pages/new` | `PageEditPage` (생성) | 쿼리 `?parent=<id>`, `?title=<프리필>` |
 | `/spaces/:spaceId/pages/:pageId` | `PageViewPage` | 스페이스 URL 불일치 시 실제 스페이스로 redirect |
 | `/spaces/:spaceId/pages/:pageId/edit` | `PageEditPage` (수정) | |
+| `/spaces/:spaceId/pages/:pageId/history` | `PageHistoryPage` | 버전 표 — 2개까지 선택해 비교, 행에서 복원 |
+| `/spaces/:spaceId/pages/:pageId/history/:version` | `PageVersionPage` | 이전 버전 보기(`:version`은 버전 번호) |
+| `/spaces/:spaceId/pages/:pageId/history/compare?from=&to=` | `PageCompareVersionsPage` | 두 버전 비교(`from`>`to`면 바꿔서 표시) |
 | `/spaces/:spaceId/folder/:folderId` | `FolderPage` | 폴더 자식 목록 |
 | `*` | 첫 스페이스로 `Navigate` | 스페이스가 하나도 없으면 `EmptySpaces` |
 
