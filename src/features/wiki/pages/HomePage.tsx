@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Avatar, EmptyState } from "@chanho/react";
+import { Avatar, Button, EmptyState } from "@chanho/react";
 import { FileText, Folder, History, Star } from "lucide-react";
 import type { Page, PageNode, Space, User } from "../store/types";
 import { getPage, listRecentlyUpdated, listSpaces, listUsers } from "../store/wikiStore";
@@ -64,28 +64,39 @@ export function HomePage() {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [recent, setRecent] = useState<RecentItem[] | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  /**
+   * 홈 로드 실패 — 계정이 정지·비활성되면 서버가 모든 호출을 403 + 한국어 사유로 막는다(U4).
+   * 삼키면 "최근 방문한 페이지가 없습니다"라는 거짓 빈 상태가 되므로 사유를 그대로 노출한다.
+   */
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const { starred } = useStarredSpaces();
 
   useEffect(() => {
     let active = true;
     void (async () => {
-      const spaces = await listSpaces();
-      if (active) setSpaces(spaces);
-      const visits = getRecentVisits(6);
-      // 방문 로그 id로 페이지를 병렬 하이드레이트(삭제된 페이지는 null → 제외)
-      const pages = await Promise.all(visits.map((v) => getPage(v.id).catch(() => null)));
-      if (!active) return;
-      const spaceById = new Map(spaces.map((s) => [s.id, s]));
-      const items: ResumeItem[] = visits
-        .map((visit, i) => ({ visit, page: pages[i] }))
-        .filter((x): x is { visit: RecentVisit; page: Page } => x.page !== null)
-        .map((x) => ({ ...x, space: spaceById.get(x.page.spaceId) }));
-      setResume(items);
+      try {
+        const spaces = await listSpaces();
+        if (active) setSpaces(spaces);
+        const visits = getRecentVisits(6);
+        // 방문 로그 id로 페이지를 병렬 하이드레이트(삭제된 페이지는 null → 제외)
+        const pages = await Promise.all(visits.map((v) => getPage(v.id).catch(() => null)));
+        if (!active) return;
+        const spaceById = new Map(spaces.map((s) => [s.id, s]));
+        const items: ResumeItem[] = visits
+          .map((visit, i) => ({ visit, page: pages[i] }))
+          .filter((x): x is { visit: RecentVisit; page: Page } => x.page !== null)
+          .map((x) => ({ ...x, space: spaceById.get(x.page.spaceId) }));
+        setResume(items);
+      } catch (e: unknown) {
+        if (!active) return;
+        setLoadError(e instanceof Error ? e.message : "홈을 불러오지 못했습니다");
+      }
     })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadAttempt]);
 
   // "최근 업데이트" — 스페이스별 최근 목록을 합쳐 시각 내림차순 상위 N. 한 스페이스가 실패해도
   // 나머지는 보여준다.
@@ -130,6 +141,25 @@ export function HomePage() {
     ...spaces.filter((s) => starred.includes(s.id)),
     ...spaces.filter((s) => !starred.includes(s.id)),
   ];
+
+  if (loadError !== null) {
+    return (
+      <div className="page-view-error" role="alert">
+        <p>{loadError}</p>
+        <div className="page-view-error-actions">
+          <Button
+            variant="subtle"
+            onClick={() => {
+              setLoadError(null);
+              setLoadAttempt((attempt) => attempt + 1);
+            }}
+          >
+            다시 시도
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     /* AppShell의 .wiki-content가 이미 <main> 랜드마크다 — 여기서 또 <main>을 쓰면 랜드마크가

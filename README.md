@@ -187,8 +187,10 @@ src/
 
 `/admin/org/*`의 화면은 이 리포가 아니라 공용 패키지 `@chanho/org-admin`에 있다(wiki·ALM 공용).
 위키는 인증 fetch(`orgApiFetch`)·현재 사용자·스페이스 이름 풀이(`resolveResource`)만 넘긴다.
-초대 없이 로그인한 계정(`status === "PENDING"`)은 `OrgPendingGate`가 셸 대신 승인 대기 안내를
-그린다 — 로그인 게이트가 켜진 인스턴스에서만 동작한다.
+계정 상태가 정상이 아닌 로그인(`PENDING`·`SUSPENDED`·`DEACTIVATED`)은 `OrgAccountGate`가 셸 대신
+안내 한 장만 그린다 — 승인 대기는 공용 패키지 화면, 정지·비활성은 위키가 직접 그린다(ALM과 같은
+문구). `/api/org/me`를 여기서 한 번만 읽어 승인 대기 화면에 그대로 넘기고, 조회가 실패하면 앱을
+열지 않는다(fail-closed). 로그인 게이트가 켜진 인스턴스에서만 동작한다.
 
 ---
 

@@ -1,10 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ToastProvider } from "@chanho/react";
 import { renderApp, seedOrgState } from "./testUtils";
-import { OrgPendingGate } from "./OrgPendingGate";
 import { __resetForTest, listTeamMembers, listTeams } from "../features/wiki/store/wikiStore";
+import * as store from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
 
 beforeEach(() => {
@@ -12,6 +11,8 @@ beforeEach(() => {
   __resetForTest();
   localStorage.setItem("wiki.v1", JSON.stringify(createSeedData()));
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 /**
  * 사용자·팀 관리(U4) — 화면은 공용 패키지 `@chanho/org-admin`이 그리고, 위키는 마운트만 한다.
@@ -86,39 +87,6 @@ describe("U4 사용자·팀 관리 마운트", () => {
   });
 });
 
-describe("U4 승인 대기 격리", () => {
-  /**
-   * 초대 없이 로그인한 계정은 셸의 모든 호출이 403이라, 셸 대신 안내 한 장만 그린다.
-   * 게이트는 로그인 게이트와 같은 조건으로 켜지므로(vitest에서는 꺼짐) 여기서만 강제로 켠다.
-   */
-  it("PENDING이면 셸 대신 승인 대기 화면을 그린다", async () => {
-    seedOrgState({ self: { status: "PENDING", globalRoles: [] } });
-    render(
-      <ToastProvider>
-        <OrgPendingGate enabled>
-          <div>위키 셸</div>
-        </OrgPendingGate>
-      </ToastProvider>,
-    );
-
-    expect(await screen.findByRole("heading", { name: "승인 대기 중" })).toBeInTheDocument();
-    expect(screen.queryByText("위키 셸")).not.toBeInTheDocument();
-  });
-
-  it("활성 계정이면 셸을 그대로 그린다", async () => {
-    seedOrgState({ self: { status: "ACTIVE", globalRoles: [] } });
-    render(
-      <ToastProvider>
-        <OrgPendingGate enabled>
-          <div>위키 셸</div>
-        </OrgPendingGate>
-      </ToastProvider>,
-    );
-
-    expect(await screen.findByText("위키 셸")).toBeInTheDocument();
-  });
-});
-
 describe("U4 전역 관리자 판정", () => {
   /** 판정 근거는 `/api/org/me.globalRoles` 하나다 — 아니면 관리 항목이 통째로 없다. */
   it("globalRoles에 ADMIN이 없으면 설정 메뉴에 관리 항목이 없다", async () => {
@@ -152,5 +120,32 @@ describe("U4 스페이스 권한 대상 검색", () => {
       "href",
       "/admin/org/invitations?scope=SPACE&resourceId=sp1",
     );
+  });
+});
+
+/**
+ * 계정 상태 거부(U4) — 정지·비활성·승인 대기 계정에게 백엔드는 403 + `{"error": 한국어 사유}`를
+ * 준다(`PermissionDecision`). 게이트를 지나온 뒤(예: 세션 중에 정지된 계정)에도 화면이 그 사유를
+ * 삼키고 빈 목록으로 보이면 안 된다 — `extractError`가 살린 문구를 그대로 노출한다.
+ */
+describe("U4 계정 상태 거부 문구 노출", () => {
+  it("홈은 스페이스 조회 거부 사유를 그대로 보여준다 — 빈 상태로 삼키지 않는다", async () => {
+    vi.spyOn(store, "listSpaces").mockRejectedValue(new Error("정지된 계정입니다"));
+    renderApp("/home");
+
+    expect(await screen.findByText(/정지된 계정입니다/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "최근 방문한 페이지가 없습니다" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+  });
+
+  it("페이지 보기는 본문 조회 거부 사유를 그대로 보여준다", async () => {
+    vi.spyOn(store, "getPage").mockRejectedValue(new Error("승인 대기 중인 계정입니다"));
+    renderApp("/spaces/sp1/pages/pg1");
+
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText("승인 대기 중인 계정입니다")).toBeInTheDocument();
+    expect(screen.queryByText("페이지를 찾을 수 없습니다")).not.toBeInTheDocument();
   });
 });

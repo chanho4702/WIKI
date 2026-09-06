@@ -13,7 +13,7 @@ import { App } from "./App";
 import { initTheme } from "./theme";
 import { AuthGate } from "../auth/AuthGate";
 import { ReadOnlyProvider } from "../features/wiki/lib/readOnly";
-import { OrgPendingGate } from "./OrgPendingGate";
+import { OrgAccountGate } from "./OrgAccountGate";
 
 // 렌더 전에 저장된 테마를 적용해 첫 페인트 깜빡임을 막는다
 initTheme();
@@ -29,12 +29,12 @@ createRoot(document.getElementById("root")!).render(
     <ToastProvider>
       <AuthGate>
         <ReadOnlyProvider>
-          {/* 승인 대기 계정은 셸 대신 안내 한 장만 본다(U4) — 라우터 바깥이라 어느 경로로 들어와도 같다 */}
-          <OrgPendingGate>
+          {/* 승인 대기·정지·비활성 계정은 셸 대신 안내 한 장만 본다(U4) — 라우터 바깥이라 어느 경로로 들어와도 같다 */}
+          <OrgAccountGate>
             <BrowserRouter basename={basename}>
               <App />
             </BrowserRouter>
-          </OrgPendingGate>
+          </OrgAccountGate>
         </ReadOnlyProvider>
       </AuthGate>
     </ToastProvider>
