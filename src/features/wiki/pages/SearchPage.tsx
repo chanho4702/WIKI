@@ -13,6 +13,7 @@ import {
 import { FileText, Folder, Newspaper, Paperclip, SearchX } from "lucide-react";
 import { listPagePaths, listUsers, searchContent, suggestLabels } from "../store/wikiStore";
 import { useReadOnly } from "../lib/readOnly";
+import { usePlatformFeatures } from "../lib/usePlatformFeatures";
 import {
   ContentSearchError,
   type LabelCount,
@@ -71,6 +72,14 @@ function normalizedPage(value: string | null): number {
 
 export function SearchPage() {
   const readOnly = useReadOnly();
+  /*
+   * 라이트 설치(`SEARCH_MODE=lite`)는 결과의 성격이 다르다 — 형태소 분석 없이 부분 문자열로
+   * 맞추고 위키 안만 본다. 적어 두지 않으면 "검색이 이상하다"는 버그로 되돌아온다(설계 §9-3).
+   * 공개 문서 인스턴스에는 적지 않는다: 읽는 사람이 설치 옵션을 어쩔 수 없고, 배포 구성을
+   * 익명 방문자에게 알릴 이유도 없다.
+   */
+  const features = usePlatformFeatures();
+  const liteSearch = !readOnly && features?.search.mode === "lite";
   const [params, setParams] = useSearchParams();
   const query = (params.get("q") ?? "").trim();
   const page = normalizedPage(params.get("page"));
@@ -219,6 +228,12 @@ export function SearchPage() {
       <div id="search-page-title">
         <PageHeader title="검색" />
       </div>
+
+      {liteSearch ? (
+        <Banner variant="info">
+          이 설치는 위키 자체 검색입니다. 통합 검색(OpenSearch) 옵션은 꺼져 있습니다.
+        </Banner>
+      ) : null}
 
       {query ? (
         <div className="search-filters">

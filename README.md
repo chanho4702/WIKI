@@ -70,6 +70,12 @@ UI는 100% `@chanho` 디자인 시스템으로 구성한다 — 타 UI 라이브
 - **제목 검색** — 부분일치(대소문자 무시), 매치의 조상 체인을 유지해 트리 구조 보존.
 - **통합 검색** — 상단 검색폼 → `/search?q=`. search-service GraphQL로 제목·본문·폴더·첨부파일명을
   권한 필터링해 검색하고 PAGE/FOLDER/ATTACHMENT 경로, 안전한 하이라이트, 429·503 재시도를 제공한다.
+- **검색 설치 옵션(`SEARCH_MODE`)** — 통합 검색(OpenSearch)은 설치 시 끌 수 있고, 끄면 같은 GraphQL
+  계약의 위키 자체 검색(라이트)이 대신 답한다. 화면은 계약이 같아 무수정이고, 런타임 플래그
+  (`GET /api/platform/features`, `store/platformApi.ts` · 세션 1회 조회)로 달라지는 것은 둘뿐이다:
+  색인 관리 메뉴·화면을 감추고, 검색 화면 상단에 라이트라는 안내 한 줄을 띄운다. **조회 실패는
+  전부 라이트로 읽는다**(구버전 게이트웨이·로그인 전·공개 문서 인스턴스) — 모르는 상태에서 능력을
+  켜면 죽은 화면으로 안내하게 된다.
 - **실시간 공동 편집(기능 플래그)** — 제목·본문 Yjs 동시 편집, 인증된 presence·공동 caret, 터치 가능한
   참여자 명단과 연결 상태를 제공한다. 단절 중에는 로컬 편집을 유지하되 서버 재동기화 전 게시를 막고,
   수동 재연결에도 현재 탭의 Yjs snapshot을 이어 붙인다.
@@ -174,7 +180,7 @@ src/
 |---|---|---|
 | `/admin/org/*` | `OrgAdminPage` → `@chanho/org-admin` | 사용자·초대·팀·전역 역할·승인 대기 (공용 패키지) |
 | `/admin/teams` | → `/admin/org/teams` 리다이렉트 | 옛 팀 관리 경로 |
-| `/admin/search` | `SearchAdminPage` | 검색 색인 현황·재색인 |
+| `/admin/search` | `SearchAdminPage` | 검색 색인 현황·재색인 (라이트 설치에서는 "옵션이 꺼져 있습니다" 안내) |
 | `/admin/audit` | `SpaceAuditAdminPage` | 스페이스 삭제 기록 |
 | `/admin/migrations` | `MigrationsAdminPage` | 컨플루언스 DC 이관 — 연결 확인·새 잡·잡 목록 |
 | `/admin/migrations/:jobId` | `MigrationJobPage` | 잡 상세 — 발견/시작/취소·진행률(5초 폴링)·손실 보고서·데드레터 |

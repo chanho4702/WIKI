@@ -11,6 +11,7 @@ import { GlobalSearchField } from "./GlobalSearchField";
 import { ShortcutHelpModal } from "./ShortcutHelpModal";
 import { NotificationBell } from "./NotificationBell";
 import { useReadOnly } from "../lib/readOnly";
+import { usePlatformFeatures } from "../lib/usePlatformFeatures";
 
 export interface WikiTopBarProps {
   /** 지정하면 브랜드 슬롯 좌측에 사이드바 토글 버튼을 렌더한다(WikiLayout 전용 — 사이드바가 있는
@@ -61,6 +62,14 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
       cancelled = true;
     };
   }, [readOnly]);
+
+  /*
+   * 설치 옵션(`/api/platform/features`) — 통합 검색이 꺼진 설치(`SEARCH_MODE=lite`)에는 색인 자체가
+   * 없어 "검색 색인 관리"가 죽은 화면으로 안내한다. 못 읽으면 라이트로 접히므로(설계 §6.2) 이
+   * 항목은 **확실히 켜진 설치에서만** 뜬다. 조회는 세션 1회다.
+   */
+  const features = usePlatformFeatures();
+  const reindexAvailable = features?.search.reindex ?? false;
 
   // 익명 인스턴스는 `/api/me`를 호출하지 않는다 — me가 null이면 아바타 자체가 뜨지 않는다.
   // 실패도 삼킨다: 사용자 이름을 못 읽는 것이 상단바 전체를 죽일 이유는 아니다.
@@ -148,12 +157,17 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
                       icon: <Users size={16} aria-hidden="true" />,
                       onSelect: () => navigate("/admin/org"),
                     },
-                    {
-                      label: "검색 색인 관리",
-                      description: "검색 색인 상태를 보고 다시 만듭니다",
-                      icon: <Database size={16} aria-hidden="true" />,
-                      onSelect: () => navigate("/admin/search"),
-                    },
+                    // 통합 검색이 꺼진 설치에는 색인이 없다 — 항목을 남기면 죽은 화면으로 안내한다
+                    ...(reindexAvailable
+                      ? [
+                          {
+                            label: "검색 색인 관리",
+                            description: "검색 색인 상태를 보고 다시 만듭니다",
+                            icon: <Database size={16} aria-hidden="true" />,
+                            onSelect: () => navigate("/admin/search"),
+                          },
+                        ]
+                      : []),
                     {
                       label: "스페이스 삭제 기록",
                       description: "지워진 스페이스와 누가 지웠는지",

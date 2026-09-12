@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Banner, Button, EmptyState, Spinner, useToast } from "@chanho/react";
-import { RefreshCw, Database } from "lucide-react";
+import { RefreshCw, Database, SearchX } from "lucide-react";
 import { SettingsHeader } from "../components/SettingsItem";
 import type { ReindexJob, SearchIndexStatus } from "../store/types";
 import { getReindexJob, getSearchIndexStatus, startReindex } from "../store/wikiStore";
+import { usePlatformFeatures } from "../lib/usePlatformFeatures";
 
 /**
  * 검색 색인 관리(W23) — 전역 관리자 전용.
@@ -24,6 +25,13 @@ function formatCount(value: number): string {
 
 export function SearchAdminPage() {
   const toast = useToast();
+  /*
+   * 통합 검색이 꺼진 설치(`SEARCH_MODE=lite`)에는 색인이 없다 — 메뉴에서는 항목을 빼지만 URL로
+   * 바로 들어올 수 있으므로 여기서도 막는다. "권한 없음"으로 뭉뚱그리면 관리자가 권한을 찾아
+   * 헤매게 된다 — 원인은 권한이 아니라 설치 옵션이다.
+   */
+  const features = usePlatformFeatures();
+  const reindexAvailable = features?.search.reindex ?? false;
   const [status, setStatus] = useState<SearchIndexStatus | null | "denied">(null);
   const [job, setJob] = useState<ReindexJob | null>(null);
   const [starting, setStarting] = useState(false);
@@ -41,8 +49,10 @@ export function SearchAdminPage() {
   }, []);
 
   useEffect(() => {
+    // 라이트 설치에서는 묻지 않는다 — 어차피 404이고, 그 404를 "권한 없음"으로 읽으면 안내가 틀린다.
+    if (!reindexAvailable) return;
     void reload();
-  }, [reload]);
+  }, [reload, reindexAvailable]);
 
   // 진행 중인 잡만 따라간다. 끝나면 현황을 한 번 다시 읽어 새 세대·문서 수를 반영한다.
   useEffect(() => {
@@ -75,6 +85,26 @@ export function SearchAdminPage() {
       setStarting(false);
     }
   };
+
+  if (features === null) {
+    return (
+      <div className="space-settings" role="status">
+        <Spinner size="large" label="설치 옵션 확인 중" />
+      </div>
+    );
+  }
+
+  if (!reindexAvailable) {
+    return (
+      <div className="space-settings">
+        <EmptyState
+          title="통합 검색 옵션이 꺼져 있습니다"
+          description="이 설치는 위키 자체 검색만 씁니다 — 색인이 없어 재색인할 것도 없습니다. 통합 검색을 쓰려면 설치 옵션 SEARCH_MODE를 참고하세요."
+          media={<SearchX size={32} aria-hidden="true" />}
+        />
+      </div>
+    );
+  }
 
   if (status === null) {
     return (

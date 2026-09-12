@@ -10,6 +10,11 @@ import { App } from "./App";
 import "../features/wiki/pages/PageEditPage";
 import type { OrgMockState, PageNode, WikiData } from "../features/wiki/store/types";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
+import {
+  MOCK_FEATURES_KEY,
+  __resetPlatformFeaturesForTest,
+  type SearchMode,
+} from "../features/wiki/store/platformApi";
 import { ReadOnlyProvider } from "../features/wiki/lib/readOnly";
 
 /** 현재 pathname을 노출하는 테스트 프로브 */
@@ -48,6 +53,16 @@ export function seedOrgState(org: OrgMockState): void {
   const data = JSON.parse(raw) as WikiData;
   localStorage.setItem("wiki.v1", JSON.stringify({ ...data, org }));
   __resetForTest();
+}
+
+/**
+ * 플랫폼 설치 옵션을 심는다 — 통합 검색 모드(`SEARCH_MODE`)는 런타임 기능 플래그로 오고,
+ * 목업 기본값은 `opensearch`(현재 화면 그대로)다. **라이트 설치 테스트만** 부른다.
+ * 세션 캐시를 함께 비우므로 렌더 전에 호출한다.
+ */
+export function seedPlatformFeatures(mode: SearchMode): void {
+  localStorage.setItem(MOCK_FEATURES_KEY, JSON.stringify({ search: { mode } }));
+  __resetPlatformFeaturesForTest();
 }
 
 export interface RenderAppOptions {
