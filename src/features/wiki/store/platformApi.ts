@@ -45,6 +45,8 @@ export const MOCK_FEATURES_KEY = "platform.features.v1";
 
 function parseMode(raw: unknown): SearchMode {
   // 모르는 값은 라이트다 — 새 모드를 아는 게이트웨이 + 모르는 프론트 조합에서 능력을 앞질러 켜지 않는다.
+  // 이 화이트리스트는 게이트웨이 `SearchMode` enum의 짝이다. 모드를 늘리는 커밋은 양쪽이 같은
+  // 시점에 나가야 한다 — 한쪽만 알면 오류가 아니라 **조용한 기능 꺼짐**으로 나타난다.
   return raw === "opensearch" || raw === "external" ? raw : "lite";
 }
 
