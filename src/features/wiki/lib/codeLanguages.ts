@@ -11,11 +11,15 @@ import { common } from "lowlight";
  * 기본으로 쓰므로 이 목록이 양쪽과 일치한다. 전체 192종으로 넓히려면 두 경로의 레지스트리를
  * **함께** 바꿔야 한다 — 한쪽만 넓히면 "고를 수는 있는데 강조가 안 되는" 상태로 돌아간다.
  */
-export const CODE_LANGUAGES: string[] = [
-  // 언어 미지정 — lowlight에 등록돼 있지만 contains 규칙이 없어 토큰이 생기지 않는다(무하이라이트)
-  "plaintext",
-  // Mermaid(W27-2) — 하이라이터에 등록된 언어가 아니라 예외로 손으로 넣는다. 이 언어의 코드 블록은
-  // 보기에서 코드가 아니라 다이어그램으로 렌더된다(lib/rehypeMermaid.ts) — 고를 수 있어야 쓴다.
-  "mermaid",
-  ...Object.keys(common).sort((a, b) => a.localeCompare(b)),
-];
+// 앞의 두 항목은 자리를 고정하고, `common`에 같은 이름이 있으면(plaintext가 그렇다) 한 번만 남긴다 —
+// 중복되면 <option key>가 겹쳐 React 경고와 드롭다운 중복 항목이 생긴다(2026-09-13).
+export const CODE_LANGUAGES: string[] = Array.from(
+  new Set([
+    // 언어 미지정 — lowlight에 등록돼 있지만 contains 규칙이 없어 토큰이 생기지 않는다(무하이라이트)
+    "plaintext",
+    // Mermaid(W27-2) — 하이라이터에 등록된 언어가 아니라 예외로 손으로 넣는다. 이 언어의 코드 블록은
+    // 보기에서 코드가 아니라 다이어그램으로 렌더된다(lib/rehypeMermaid.ts) — 고를 수 있어야 쓴다.
+    "mermaid",
+    ...Object.keys(common).sort((a, b) => a.localeCompare(b)),
+  ]),
+);
