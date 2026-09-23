@@ -6,6 +6,7 @@ settings:
 
 overrides:
   '@chanho/tokens': npm:@chanho4702/tokens@0.4.0
+  '@chanho/react': npm:@chanho4702/react@0.11.0
 
 importers:
 
@@ -13,10 +14,10 @@ importers:
     dependencies:
       '@chanho/org-admin':
         specifier: npm:@chanho4702/org-admin@0.2.1
-        version: '@chanho4702/org-admin@0.2.1(@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.4.0)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)'
+        version: '@chanho4702/org-admin@0.2.1(@chanho4702/react@0.11.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.4.0)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)'
       '@chanho/react':
-        specifier: npm:@chanho4702/react@0.8.0
-        version: '@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)'
+        specifier: npm:@chanho4702/react@0.11.0
+        version: '@chanho4702/react@0.11.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)'
       '@chanho/tokens':
         specifier: npm:@chanho4702/tokens@0.4.0
         version: '@chanho4702/tokens@0.4.0'
@@ -297,8 +298,8 @@ packages:
       react-dom: ^19.0.0
       react-router: ^7.0.0
 
-  '@chanho4702/react@0.8.0':
-    resolution: {integrity: sha512-AWT7GRM4dgtKKrihqR1hJCm/L9Xw/AkXTatuH5vSJP5fGD6GmpwUYyte6PC9GYqo83x+0xTB+YEpvR/hsR6psw==, tarball: https://npm.pkg.github.com/download/@chanho4702/react/0.8.0/73c474cd4ffa6ab384d428ca722099abcfb16e4a}
+  '@chanho4702/react@0.11.0':
+    resolution: {integrity: sha512-a72+6N3MahVGsgIos/aZ7Xt4e9aJ3dxbaYOMjXCtjBEsr73/2topOE2rU1NjIgIHQPRYKwoNh/9D9s2KYnK0DQ==, tarball: https://npm.pkg.github.com/download/@chanho4702/react/0.11.0/4975228f7508b29bacf1a1e6910f2a99b0efaf9c}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
@@ -3353,16 +3354,16 @@ snapshots:
 
   '@braintree/sanitize-url@7.1.2': {}
 
-  '@chanho4702/org-admin@0.2.1(@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.4.0)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
+  '@chanho4702/org-admin@0.2.1(@chanho4702/react@0.11.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.4.0)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@chanho/react': '@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)'
+      '@chanho/react': '@chanho4702/react@0.11.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)'
       '@chanho/tokens': '@chanho4702/tokens@0.4.0'
       lucide-react: 1.35.0(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
       react-router: 7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
 
-  '@chanho4702/react@0.8.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@chanho4702/react@0.11.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@chanho/tokens': '@chanho4702/tokens@0.4.0'
       radix-ui: 1.6.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
