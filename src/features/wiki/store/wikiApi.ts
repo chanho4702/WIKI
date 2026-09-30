@@ -23,6 +23,7 @@ import {
   type CollaborationDraftCommit,
   type CollaborationDraftCommitOptions,
   type CollaborationTicket,
+  CollaborationDraftResetError,
   type DeletePageOptions,
   type BlogPost,
   type NotificationList,
@@ -573,6 +574,10 @@ export async function requestCollaborationTicket(pageId: string): Promise<Collab
     || typeof response.room !== "string"
     || typeof response.websocketPath !== "string"
     || typeof response.expiresAt !== "string"
+    || (response.pageVersion !== undefined
+      && (!Number.isSafeInteger(response.pageVersion) || response.pageVersion <= 0))
+    || (response.draftEpoch !== undefined
+      && (!Number.isSafeInteger(response.draftEpoch) || response.draftEpoch < 0))
   ) {
     throw new Error("공동 편집 연결 정보를 확인할 수 없습니다");
   }
@@ -586,7 +591,7 @@ export async function bootstrapCollaborationDocument(
   ticket: string,
   state: Uint8Array,
 ): Promise<CollaborationBootstrap> {
-  const response = await json<CollaborationBootstrap>(await sharedCollaborationFetch(
+  const res = await sharedCollaborationFetch(
     `/api/wiki/collaboration/pages/${toBackendId(pageId)}/bootstrap`,
     ticket,
     {
@@ -597,7 +602,18 @@ export async function bootstrapCollaborationDocument(
       },
       body: state as BodyInit,
     },
-  ));
+  );
+  // 409 = 이 탭의 페이지 버전이 티켓 발급 시점의 버전과 다르다(옛 페이지를 들고 있다).
+  if (res.status === 409) {
+    const body: unknown = await res.json().catch(() => null);
+    const message = body && typeof body === "object"
+      && typeof (body as { error?: unknown }).error === "string"
+      && (body as { error: string }).error.trim()
+      ? (body as { error: string }).error
+      : undefined;
+    throw new CollaborationDraftResetError(message);
+  }
+  const response = await json<CollaborationBootstrap>(res);
   if (
     typeof response.created !== "boolean"
     || !Number.isSafeInteger(response.basePageVersion)

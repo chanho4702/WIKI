@@ -16,7 +16,7 @@ import { useWikiLinkCache } from "../lib/useWikiLinkCache";
 import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
 import { DRAFT_TITLE } from "../lib/useCreateContent";
-import { EditConflictPanel } from "../components/EditConflictPanel";
+import { EditConflictPanel, type EditConflictVariant } from "../components/EditConflictPanel";
 import { PageConflictError, type Page, type User } from "../store/types";
 import { SkeletonLines } from "../components/WikiSkeleton";
 import { TruncatedText } from "../components/TruncatedText";
@@ -30,6 +30,7 @@ import { EmojiPicker } from "../editor/components/EmojiPicker";
 import { canCommitCollaborationDraft } from "../editor/collaboration/availability";
 
 interface EditConflict {
+  variant: EditConflictVariant;
   serverPage: Page | null;
   localTitle: string;
   localBody: string;
@@ -49,6 +50,10 @@ export function PageEditPage() {
   // 단독 편집(WikiEditor)과 공동 편집(useCollaborationSession)이 같은 링크 캐시를 봐야
   // 링크 칩 판별이 두 경로에서 일관된다(2026-08-28).
   const linkCache = useWikiLinkCache();
+  // 편집 라우트는 A→B 이동 때 이 컴포넌트를 재사용한다. 비동기 결과를 적용하기 전에 요청 시점의 페이지가
+  // 아직 현재 페이지인지 확인해, A의 응답이 B에 적용되지 않게 한다.
+  const currentPageIdRef = useRef(pageId);
+  currentPageIdRef.current = pageId;
   const isEdit = pageId !== undefined;
 
   const editorRef = useRef<WikiEditorHandle>(null);
@@ -107,6 +112,43 @@ export function PageEditPage() {
     collaboration.generation,
   );
 
+  // 공동 초안 리셋(다른 경로의 저장·close 4409·옛 페이지 버전) — 조용히 재연결하지 않는다. 서버 최신본과
+  // 이 탭의 편집(현재 에디터 Markdown)을 나란히 보여 주고, 사용자가 확인해야 최신 버전 기준으로 새로 시작한다.
+  const resetHandledRef = useRef(false);
+  const pageLoaded = baseVersion !== null;
+  useEffect(() => {
+    if (collaboration.status !== "stale") {
+      resetHandledRef.current = false;
+      return;
+    }
+    // 페이지 로드 전(기준 버전 없음)에는 처리하지 않는다 — 로드가 충돌 상태를 비운다.
+    if (resetHandledRef.current || !pageId || !pageLoaded) return;
+    resetHandledRef.current = true;
+    // 편집기가 살아 있으면 지금 내용을, 이미 닫혔으면 훅이 스냅샷에서 되살린 사본을 보여 준다.
+    const liveBody = editorRef.current?.getMarkdown();
+    const localCopy = collaboration.localCopy;
+    setConflict({
+      variant: "collaboration-reset",
+      serverPage: null,
+      localTitle: liveBody === undefined && localCopy ? localCopy.title : title,
+      localBody: liveBody ?? localCopy?.markdown ?? initialBody ?? "",
+    });
+    setConflictComparisonOpen(false);
+    let cancelled = false;
+    void getPage(pageId).catch(() => null).then((serverPage) => {
+      if (cancelled) return;
+      setConflict((current) => (current?.variant === "collaboration-reset"
+        ? { ...current, serverPage }
+        : current));
+      setConflictComparisonOpen(Boolean(serverPage));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // title·initialBody는 리셋을 감지한 시점의 값만 필요하다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collaboration.status, pageId, pageLoaded]);
+
   // 제목도 본문과 같은 Y.Doc의 Y.Text를 사용한다. 원격 update가 오면 controlled input과 dirty 표시를
   // 함께 갱신하고, 재연결 뒤에는 마지막 published title과 비교해 미게시 변경을 숨기지 않는다.
   useEffect(() => {
@@ -123,7 +165,9 @@ export function PageEditPage() {
   }, [collaboration.binding?.title, initialTitle]);
 
   // Task 5: 이탈 가드 — 제목·본문 미저장 변경 감지
-  const isDirty = () => titleDirty || imageUploading || (editorRef.current?.isDirty() ?? false);
+  // 리셋 뒤 편집기가 닫혀도 훅이 되살린 로컬 사본은 이 탭에만 남은 유일한 편집이다 — 재시작 전까지 미저장으로 본다.
+  const isDirty = () => titleDirty || imageUploading || collaboration.localCopy !== null
+    || (editorRef.current?.isDirty() ?? false);
 
   // 브라우저 새로고침/닫기 가드 — 라우터 내비게이션은 선언형 Routes라 useBlocker 불가(스펙 각주 참조)
   // 훅은 조건부가 아닌 곳에 고정해야 함 — early return 가드 이전에 배치
@@ -228,20 +272,37 @@ export function PageEditPage() {
       toast({ title: "이미지 업로드가 끝난 뒤 저장해 주세요", appearance: "info" });
       return;
     }
-    // 본문 불변 보장 — 본문 미수정이면 직렬화 대신 원문 그대로 (버전 diff 노이즈 방지)
-    const body = editorRef.current?.isDirty() ? editorRef.current.getMarkdown() : initialBody;
+    // 공동 편집은 dirty 여부와 무관하게 항상 공유 Y.Doc(편집기)을 직렬화해 보낸다. 다른 편집자의 게시·재연결로
+    // 공유 문서가 initialBody와 달라져도 편집기의 isDirty()는 false일 수 있다 — 그때 initialBody를 보내면
+    // 옛 본문이 새 버전으로 게시돼 최신 게시본을 덮는다. 제목도 공유 title에서 읽는다.
+    const sharedTitle = collaborationRequired ? collaboration.binding?.title.toString() : undefined;
+    if (collaborationRequired && (!editorRef.current || sharedTitle === undefined)) {
+      toast({ title: "공동 편집 문서를 준비한 뒤 저장해 주세요", appearance: "info" });
+      return;
+    }
+    const saveTitle = sharedTitle ?? title;
+    // 단독 편집의 본문 불변 보장 — 본문 미수정이면 직렬화 대신 원문 그대로 (버전 diff 노이즈 방지)
+    const body = collaborationRequired || editorRef.current?.isDirty()
+      ? editorRef.current!.getMarkdown()
+      : initialBody;
+    const requestedPageId = pageId;
     setSaving(true);
     try {
       if (isEdit && pageId) {
         const saved = collaborationRequired
-          ? (await commitCollaborationDraft(pageId, { title, body }, {
-              expectedVersion: baseVersion!,
+          ? (await commitCollaborationDraft(pageId, { title: saveTitle, body }, {
+              // 다른 편집자의 정상 게시로 초안 기준이 앞서 나갔으면 그 버전을 기대 버전으로 쓴다.
+              expectedVersion: collaboration.basePageVersion ?? baseVersion!,
               expectedGeneration: collaboration.generation!,
             })).page
-          : await updatePage(pageId, { title, body }, {
+          : await updatePage(pageId, { title: saveTitle, body }, {
               expectedVersion: baseVersion ?? undefined,
               changeNote: changeNote.trim() || undefined,
             });
+        if (currentPageIdRef.current !== requestedPageId) {
+          setSaving(false);
+          return;
+        }
         setBaseVersion(saved.version);
         await editorRef.current?.finalizePendingUploads();
         // 초안은 "저장"만으로 공개되지 않는다 — 이 버튼이 곧 게시다(라벨도 "게시").
@@ -261,8 +322,19 @@ export function PageEditPage() {
         navigate(`/spaces/${spaceId}/pages/${created.id}`);
       }
     } catch (error) {
+      if (currentPageIdRef.current !== requestedPageId) {
+        setSaving(false);
+        return;
+      }
       if (error instanceof PageConflictError) {
-        setConflict({ serverPage: error.serverPage, localTitle: title, localBody: body });
+        // 공동 편집 게시의 409는 초안의 기준 버전이 낡았다는 뜻이다. 옛 Y.Doc 위에서 "병합 계속"하면
+        // 옛 본문이 새 기준으로 bootstrap되므로, 최신 버전 기준 재시작 흐름으로 보낸다.
+        setConflict({
+          variant: collaborationRequired ? "collaboration-reset" : "save",
+          serverPage: error.serverPage,
+          localTitle: saveTitle,
+          localBody: body,
+        });
         setConflictComparisonOpen(Boolean(error.serverPage));
         toast({
           title: "저장하지 않았습니다",
@@ -309,7 +381,9 @@ export function PageEditPage() {
     if (!window.confirm(
       "내 편집 내용을 버리고 서버에 저장된 최신 내용으로 다시 불러오시겠습니까?",
     )) return;
+    const requestedPageId = pageId;
     await editorRef.current?.discardPendingUploads();
+    if (currentPageIdRef.current !== requestedPageId) return;
     setTitle(serverPage.title);
     setInitialTitle(serverPage.title);
     setInitialBody(serverPage.body);
@@ -322,7 +396,44 @@ export function PageEditPage() {
     setEditorGeneration((generation) => generation + 1);
   };
 
+  /** 리셋된 공동 초안을 최신 페이지 버전 기준의 새 세션으로 다시 연다. 옛 Y.Doc 스냅샷은 쓰지 않는다. */
+  const restartCollaboration = async () => {
+    if (!pageId) return;
+    if (!window.confirm(
+      "이 탭의 편집 내용은 새 공동 문서에 합쳐지지 않습니다. 옮길 내용을 복사해 두었다면 서버 최신본 기준으로 공동 편집을 다시 시작하시겠습니까?",
+    )) return;
+    const requestedPageId = pageId;
+    const latest = await getPage(requestedPageId).catch(() => null);
+    if (currentPageIdRef.current !== requestedPageId) return;
+    if (!latest) {
+      toast({
+        title: "최신 문서를 불러오지 못했습니다",
+        description: "잠시 후 다시 시도해 주세요. 이 탭의 편집 내용은 그대로 있습니다.",
+        appearance: "danger",
+      });
+      return;
+    }
+    await editorRef.current?.discardPendingUploads();
+    if (currentPageIdRef.current !== requestedPageId) return;
+    setTitle(latest.title);
+    setInitialTitle(latest.title);
+    setInitialBody(latest.body);
+    setBaseVersion(latest.version);
+    setIsDraft(latest.status === "draft");
+    setTitleDirty(false);
+    setBodyDirty(false);
+    setImageUploading(false);
+    setConflict(null);
+    setConflictComparisonOpen(false);
+    setEditorGeneration((generation) => generation + 1);
+    collaboration.restart();
+  };
+
   const continueManualMerge = () => {
+    if (conflict?.variant === "collaboration-reset") {
+      void restartCollaboration();
+      return;
+    }
     const serverPage = conflict?.serverPage;
     if (!serverPage) return;
     setBaseVersion(serverPage.version);
@@ -344,8 +455,25 @@ export function PageEditPage() {
     // 손대지 않은 초안은 닫을 때 지운다. 생성 버튼이 초안을 즉시 만들어 트리에 세우는 구조라,
     // 정리하지 않으면 실수로 누른 만큼 "제목 없음"이 트리에 쌓인다. 제목이나 본문을 건드렸으면
     // 사용자의 작업물이므로 남긴다(초안 상태로).
-    if (isEdit && pageId && isDraft && !isDirty() && title === DRAFT_TITLE && !initialBody) {
+    // 공동 편집에서는 다른 편집자가 공유 문서에 쓴 내용이 이 탭의 isDirty()·initialBody에 드러나지 않는다 —
+    // 동기화된(synced) 세션의 공유 문서(편집기) 자체가 비어 있을 때만 "손대지 않은 초안"으로 본다. 리셋·연결 전
+    // 등 synced가 아니면 이 탭의 편집기는 서버를 대변하지 못하므로 자동 삭제를 하지 않는다.
+    const untouchedBody = collaborationRequired
+      ? collaboration.status === "synced"
+        && editorRef.current !== null
+        && !editorRef.current.getMarkdown().trim()
+      : !initialBody;
+    if (isEdit && pageId && isDraft && !isDirty() && title === DRAFT_TITLE && untouchedBody) {
       try {
+        // 지우기 직전에 서버본을 다시 확인한다 — 그사이 다른 경로가 채우거나 게시했으면 남긴다.
+        const server = await getPage(pageId);
+        const expectedVersion = collaboration.basePageVersion ?? baseVersion;
+        const stillEmptyDraft = server !== null
+          && server.status === "draft"
+          && server.title === DRAFT_TITLE
+          && !server.body.trim()
+          && server.version === expectedVersion;
+        if (!stillEmptyDraft) throw new Error("초안이 그사이 바뀌었습니다");
         await deletePage(pageId);
         await reloadPages();
         navigate(`/spaces/${spaceId}`);
@@ -431,8 +559,19 @@ export function PageEditPage() {
           localTitle={conflict.localTitle}
           localBody={conflict.localBody}
           comparisonOpen={conflictComparisonOpen}
+          variant={conflict.variant}
           onToggleComparison={() => setConflictComparisonOpen((open) => !open)}
-          onCopyLocal={() => void copyDocument("내 변경", conflict.localTitle, conflict.localBody)}
+          onCopyLocal={() => {
+            // 리셋 뒤에도 편집기는 이 탭의 로컬 문서로 계속 열려 있다 — 복사는 지금 내용 기준이다.
+            const liveBody = conflict.variant === "collaboration-reset"
+              ? editorRef.current?.getMarkdown()
+              : undefined;
+            void copyDocument(
+              "내 변경",
+              liveBody === undefined ? conflict.localTitle : title,
+              liveBody ?? conflict.localBody,
+            );
+          }}
           onCopyServer={() => {
             if (conflict.serverPage) {
               void copyDocument("서버본", conflict.serverPage.title, conflict.serverPage.body);
@@ -452,13 +591,19 @@ export function PageEditPage() {
           <span className="collaboration-editor-gate-mark" aria-hidden="true" />
           <div>
             <strong>
-              {collaboration.status === "error"
-                ? "공동 편집 연결을 복구해 주세요"
-                : collaboration.status === "offline"
-                  ? "네트워크 연결을 기다리고 있습니다"
-                  : "공동 편집 문서를 준비하고 있습니다"}
+              {collaboration.status === "stale"
+                ? "공동 초안이 새로 시작되었습니다"
+                : collaboration.status === "error"
+                  ? "공동 편집 연결을 복구해 주세요"
+                  : collaboration.status === "offline"
+                    ? "네트워크 연결을 기다리고 있습니다"
+                    : "공동 편집 문서를 준비하고 있습니다"}
             </strong>
-            <p>기존 내용을 안전하게 동기화한 뒤 편집기가 열립니다.</p>
+            <p>
+              {collaboration.status === "stale"
+                ? "서버 최신본을 확인한 뒤 최신 버전 기준으로 다시 시작해 주세요."
+                : "기존 내용을 안전하게 동기화한 뒤 편집기가 열립니다."}
+            </p>
           </div>
         </div>
         </div>

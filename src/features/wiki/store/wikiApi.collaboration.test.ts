@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as client from "./apiClient";
+import { CollaborationDraftResetError } from "./types";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -56,6 +57,62 @@ describe("wikiApi collaboration ticket", () => {
         body: state,
       }),
     );
+  });
+
+  it("bootstrap 409는 옛 페이지 버전이라는 뜻이다 — 서버 문구 그대로 리셋 오류로 바꾼다", async () => {
+    vi.spyOn(client, "sharedCollaborationFetch").mockResolvedValue(
+      new Response(JSON.stringify({
+        error: "페이지가 그사이 변경되었습니다. 최신 페이지를 다시 불러와 주세요",
+      }), { status: 409 }),
+    );
+    const { bootstrapCollaborationDocument } = await import("./wikiApi");
+    const failure = bootstrapCollaborationDocument("7", 4, "ticket", Uint8Array.from([1]));
+
+    await expect(failure).rejects.toBeInstanceOf(CollaborationDraftResetError);
+    await expect(failure).rejects.toThrow("페이지가 그사이 변경되었습니다. 최신 페이지를 다시 불러와 주세요");
+  });
+
+  it("티켓의 pageVersion(스키마 v2)을 그대로 넘기고, 형식이 틀리면 거부한다", async () => {
+    const body = {
+      ticket: "opaque-ticket",
+      room: "page:7",
+      websocketPath: "/api/wiki/collaboration",
+      expiresAt: "2026-08-16T10:00:00Z",
+      pageVersion: 6,
+    };
+    const spy = vi.spyOn(client, "sharedApiFetch").mockResolvedValue(
+      new Response(JSON.stringify(body), { status: 201 }),
+    );
+    const { requestCollaborationTicket } = await import("./wikiApi");
+    await expect(requestCollaborationTicket("7")).resolves.toEqual(body);
+
+    spy.mockResolvedValue(new Response(JSON.stringify({ ...body, pageVersion: "6" }), { status: 201 }));
+    await expect(requestCollaborationTicket("7")).rejects.toThrow(
+      "공동 편집 연결 정보를 확인할 수 없습니다",
+    );
+  });
+
+  it("티켓의 draftEpoch는 0 이상 정수만 받는다(행이 없으면 0)", async () => {
+    const body = {
+      ticket: "opaque-ticket",
+      room: "page:7",
+      websocketPath: "/api/wiki/collaboration",
+      expiresAt: "2026-08-16T10:00:00Z",
+      pageVersion: 6,
+      draftEpoch: 0,
+    };
+    const spy = vi.spyOn(client, "sharedApiFetch").mockResolvedValue(
+      new Response(JSON.stringify(body), { status: 201 }),
+    );
+    const { requestCollaborationTicket } = await import("./wikiApi");
+    await expect(requestCollaborationTicket("7")).resolves.toEqual(body);
+
+    for (const draftEpoch of [-1, 1.5, "2"]) {
+      spy.mockResolvedValue(new Response(JSON.stringify({ ...body, draftEpoch }), { status: 201 }));
+      await expect(requestCollaborationTicket("7")).rejects.toThrow(
+        "공동 편집 연결 정보를 확인할 수 없습니다",
+      );
+    }
   });
 
   it("bootstrap metadata가 손상됐으면 공유 편집기를 열지 않는다", async () => {

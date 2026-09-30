@@ -37,6 +37,9 @@ function statusLabel(
     case "offline": return hasLocalDocument
       ? "오프라인 · 이 탭에 임시 보관"
       : "오프라인";
+    case "stale": return hasLocalDocument
+      ? "공동 초안 새로 시작됨 · 이 탭에 임시 보관"
+      : "공동 초안 새로 시작됨";
     case "error": return hasLocalDocument
       ? "연결 끊김 · 이 탭에 임시 보관"
       : "공동 편집 연결 실패";

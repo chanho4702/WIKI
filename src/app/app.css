@@ -1445,7 +1445,8 @@ body {
   animation: collaboration-pulse 1.4s ease-in-out infinite;
 }
 
-.collaboration-status--offline .collaboration-status-signal {
+.collaboration-status--offline .collaboration-status-signal,
+.collaboration-status--stale .collaboration-status-signal {
   background: var(--chanho-color-background-warning-subtle, #fff7d6);
   color: var(--chanho-color-text-warning, #7f5f01);
 }
@@ -1627,6 +1628,7 @@ body {
 }
 
 .collaboration-editor-gate--offline .collaboration-editor-gate-mark,
+.collaboration-editor-gate--stale .collaboration-editor-gate-mark,
 .collaboration-editor-gate--error .collaboration-editor-gate-mark {
   border-color: var(--chanho-color-border-danger, #ae2a19);
   animation: none;
