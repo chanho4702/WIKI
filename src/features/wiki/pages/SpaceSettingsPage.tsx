@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router";
 import { Button, ConfirmDialog, EmptyState, TextField, useToast } from "@chanho/react";
 import { LayoutTemplate, ScrollText, Settings, Trash2, UserPlus, Users } from "lucide-react";
@@ -18,6 +18,7 @@ import type { WikiOutletContext } from "../components/wikiContext";
 import { AuditSettings } from "../components/AuditSettings";
 import { TemplateSettings } from "../components/TemplateSettings";
 import { SpaceExportPanel } from "../components/SpaceExportPanel";
+import { SpaceLabelsEditor } from "../components/SpaceLabelsEditor";
 import { displayUserName } from "../lib/userName";
 
 /** 설정 섹션 — 사이드바 항목과 URL 조각이 같은 목록에서 나온다. */
@@ -43,7 +44,7 @@ export const SECTION_ICON = {
 
 /** 사이드바용 짧은 설명 — 한 줄에 들어가야 한다. 긴 설명은 화면 머리(SECTION_DESC)에 있다. */
 export const SECTION_SHORT: Record<SettingsSection, string> = {
-  general: "이름 · 설명 · 내보내기",
+  general: "이름 · 설명 · 라벨 · 내보내기",
   permissions: "누가 보고 편집하는지",
   templates: "새 문서의 틀",
   audit: "권한 변경 기록",
@@ -51,7 +52,7 @@ export const SECTION_SHORT: Record<SettingsSection, string> = {
 };
 
 export const SECTION_DESC: Record<SettingsSection, string> = {
-  general: "스페이스 이름과 설명을 바꾸고, 문서 전체를 내보냅니다.",
+  general: "스페이스 이름·설명·라벨을 바꾸고, 문서 전체를 내보냅니다.",
   permissions: "누가 보고, 댓글 달고, 편집하고, 관리할지 정합니다.",
   templates: "이 스페이스에서 새 문서를 만들 때 고를 수 있는 템플릿입니다.",
   audit: "권한이 언제 누구에 의해 어떻게 바뀌었는지의 기록입니다.",
@@ -85,7 +86,7 @@ export function SpaceSettingsPage() {
   const spaceId = params.spaceId;
   const navigate = useNavigate();
   const toast = useToast();
-  const { space, reloadPages } = useOutletContext<WikiOutletContext>();
+  const { space, reloadPages, reloadSpaces } = useOutletContext<WikiOutletContext>();
 
   const [name, setName] = useState(space.name);
   const [description, setDescription] = useState(space.description ?? "");
@@ -108,9 +109,22 @@ export function SpaceSettingsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  /**
+   * 마지막으로 서버에서 받은 이름·설명. 같은 스페이스가 다시 내려오면(라벨 저장 뒤 목록 갱신 등)
+   * 사용자가 고치지 않은 칸만 새 값을 따라간다 — 저장 전인 이름·설명 초안을 덮어쓰지 않는다.
+   */
+  const baseline = useRef({ id: space.id, name: space.name, description: space.description ?? "" });
   useEffect(() => {
-    setName(space.name);
-    setDescription(space.description ?? "");
+    const prev = baseline.current;
+    const next = { id: space.id, name: space.name, description: space.description ?? "" };
+    baseline.current = next;
+    if (prev.id !== next.id) {
+      setName(next.name);
+      setDescription(next.description);
+      return;
+    }
+    setName((current) => (current === prev.name ? next.name : current));
+    setDescription((current) => (current === prev.description ? next.description : current));
   }, [space]);
 
   const reloadGrants = useCallback(async () => {
@@ -155,6 +169,7 @@ export function SpaceSettingsPage() {
     try {
       await updateSpace(spaceId, { name, description });
       await reloadPages();
+      await reloadSpaces?.(); // 셸·디렉토리의 이름도 새 값으로
       toast({ title: "스페이스 정보를 저장했습니다", appearance: "success" });
     } catch (e) {
       toast({ title: e instanceof Error ? e.message : String(e), appearance: "danger" });
@@ -243,6 +258,7 @@ export function SpaceSettingsPage() {
                   저장
                 </Button>
               </div>
+              <SpaceLabelsEditor space={space} onSaved={() => reloadSpaces?.()} />
               {/* 스페이스 내보내기(W23) — 문서 하나씩 받던 것을 스페이스 단위로. 관리자가 백업·이관에 쓴다 */}
               <SpaceExportPanel spaceId={space.id} spaceName={space.name} />
         </>

@@ -221,7 +221,14 @@ export function SearchPage() {
     setParams(next);
   };
 
-  const hasNextPage = results !== null && page * PAGE_SIZE < results.total;
+  /**
+   * total이 정확하면 그것으로 끝을 안다. 정확하지 않으면(totalExact=false) total은 **하한**이라
+   * "total 너머에는 없다"고 단정할 수 없다 — 이 쪽이 꽉 찼으면 다음 쪽을 열어 둔다(비어 있으면
+   * 아래의 빈 쪽 상태가 알려 준다). 하한을 끝으로 읽으면 더 있는 결과에 닿을 길이 사라진다.
+   */
+  const hasNextPage =
+    results !== null &&
+    (page * PAGE_SIZE < results.total || (!results.totalExact && results.hits.length === PAGE_SIZE));
 
   return (
     <section className="search-page" aria-labelledby="search-page-title">
@@ -338,7 +345,7 @@ export function SearchPage() {
         </Banner>
       ) : null}
 
-      {!loading && !error && results?.total === 0 ? (
+      {!loading && !error && results?.total === 0 && results.totalExact ? (
         <EmptyState
           title="검색 결과가 없습니다"
           description={`‘${query}’와 일치하는 공개 문서를 찾지 못했습니다.`}
@@ -346,7 +353,26 @@ export function SearchPage() {
         />
       ) : null}
 
-      {!loading && !error && results && results.total > 0 ? (
+      {/* 0건이 정확하지 않다 = 일부만 확인했다. "없다"고 단정하면 실제로 있는 문서를 포기하게 된다. */}
+      {!loading && !error && results?.total === 0 && !results.totalExact ? (
+        <EmptyState
+          title="확인한 범위에서 볼 수 있는 결과를 찾지 못했습니다"
+          description="일치하는 문서가 너무 많아 일부만 확인했습니다. 검색어를 더 구체적으로 쓰거나 스페이스·기간 필터로 좁혀 다시 검색하세요."
+          media={<SearchX size={32} aria-hidden="true" />}
+        />
+      ) : null}
+
+      {/* 주소로 끝 너머의 쪽을 열었거나(공유 링크) 하한 total에서 다음 쪽을 열었는데 비어 있는 경우 */}
+      {!loading && !error && results && results.total > 0 && results.hits.length === 0 ? (
+        <EmptyState
+          title="이 페이지에는 결과가 없습니다"
+          description={`‘${query}’ 검색 결과는 앞쪽 페이지에 있습니다.`}
+          media={<SearchX size={32} aria-hidden="true" />}
+          primaryAction={{ label: "첫 페이지로", onClick: () => movePage(1) }}
+        />
+      ) : null}
+
+      {!loading && !error && results && results.total > 0 && results.hits.length > 0 ? (
         <>
           <div className="search-result-summary" role="status">
             <strong>‘{query}’ 검색 결과</strong>
@@ -354,6 +380,11 @@ export function SearchPage() {
               {results.total.toLocaleString("ko-KR")}
               {results.totalExact ? "개" : "개 이상"}
             </span>
+            {results.totalExact ? null : (
+              <span className="search-result-summary-note">
+                일치하는 문서가 많아 일부만 셌습니다. 검색어를 좁히면 정확한 수가 나옵니다.
+              </span>
+            )}
           </div>
           {/* 결과 목록에 이름을 준다 — 페이지 안에 목록이 여럿이라 스크린리더가 구분해야 한다 */}
           <ol className="search-result-list" aria-label="검색 결과">

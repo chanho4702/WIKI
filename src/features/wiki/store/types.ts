@@ -11,6 +11,12 @@ export interface Space {
   createdAt: string;
   /** 개인 스페이스의 주인(W23). 없으면 팀 스페이스. */
   ownerId?: string | null;
+  /**
+   * 스페이스 라벨(V41) — 디렉토리 분류. **문서 라벨(setLabels)과 다른 원장**이다: 스페이스 ADMIN이
+   * 붙이고 디렉토리 필터만 읽는다. 이름 규칙은 문서 라벨과 같고 이름순(코드유닛)이다. 어댑터·목업은
+   * 언제나 배열을 준다(없으면 빈 배열) — undefined는 이 필드 이전에 만든 테스트 픽스처뿐이다.
+   */
+  labels?: string[];
 }
 
 /**
@@ -99,6 +105,33 @@ export interface PageVersion {
    * 버전이 수십 개가 되면 누가·언제만으로는 어느 것이 되돌릴 지점인지 알 수 없다.
    */
   changeNote?: string;
+}
+
+/**
+ * 버전 이력 한 쪽 — 최신부터. 다음 쪽은 `nextBefore`(버전 번호)를 `before`로 넘겨 읽는다.
+ * 쪽 경계가 번호라 읽는 사이에 새 버전이 저장돼도 겹치거나 빠지지 않는다.
+ */
+export interface VersionPage {
+  /** 메타만(title·body는 빈 값) — 본문은 getVersionByNumber/getVersion으로 읽는다. */
+  versions: PageVersion[];
+  nextBefore: number | null;
+  /** 이 문서의 전체 버전 수. */
+  total: number;
+}
+
+export type CommentKind = "page" | "inline";
+
+/**
+ * 댓글 스레드 한 쪽. 단위는 **스레드**(최상위 + 답글 전부) — 답글만 다음 쪽으로 밀리지 않는다.
+ * 스레드는 최신부터 내려가고(`nextBefore` = 더 오래된 쪽), 화면은 오래된 순으로 다시 그린다.
+ */
+export interface CommentThreadPage {
+  comments: Comment[];
+  nextBefore: string | null;
+  /** 이 종류(page/inline)의 전체 스레드 수. */
+  threadCount: number;
+  /** 이 종류의 전체 댓글 수(답글 포함). */
+  commentCount: number;
 }
 
 export interface Comment {

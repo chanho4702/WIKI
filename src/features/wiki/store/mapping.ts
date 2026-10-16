@@ -31,7 +31,15 @@ export function toBackendId(s: string): number {
   return n;
 }
 
-interface SpaceDto { id: number; key: string; name: string; description?: string | null; ownerId?: number | string | null }
+interface SpaceDto {
+  id: number;
+  key: string;
+  name: string;
+  description?: string | null;
+  ownerId?: number | string | null;
+  /** V41 — 구버전 백엔드 응답에는 없다(빈 배열로 접는다). */
+  labels?: string[] | null;
+}
 export function mapSpace(dto: SpaceDto): Space {
   return {
     id: toClientId(dto.id),
@@ -39,6 +47,7 @@ export function mapSpace(dto: SpaceDto): Space {
     name: dto.name,
     description: dto.description ?? undefined,
     ownerId: dto.ownerId === null || dto.ownerId === undefined ? null : String(dto.ownerId),
+    labels: dto.labels ?? [],
     // 백엔드 SpaceResponse엔 createdAt이 없다 → 빈 문자열. ⚠️ 백엔드 모드에서 화면이 이 값을
     // new Date("")로 포맷하면 "Invalid Date"가 노출된다 — 디렉토리 생성일 "-" 폴백은 후속 화면 배선 필요
     // (설계 §7 backend-mode 알려진 한계). 목업 모드는 실제 createdAt이 있어 무관.
@@ -149,12 +158,23 @@ export function mapVersionMeta(dto: RevMetaDto, pageId: string): PageVersion {
     changeNote: dto.changeNote ?? undefined,
   };
 }
-interface RevFullDto { version: number; title: string; content: string; editedBy: number; editedByName?: string | null }
+interface RevFullDto {
+  version: number;
+  title: string;
+  content: string;
+  editedBy: number;
+  editedByName?: string | null;
+  /** 2026-10 추가 — 목록 첫 쪽 밖의 버전을 주소로 열어도 시각·요약을 보이기 위해. 구버전 응답엔 없다. */
+  createdAt?: string | null;
+  changeNote?: string | null;
+}
 export function mapVersionFull(dto: RevFullDto, pageId: string, savedAt = ""): PageVersion {
   return {
     id: `${pageId}:${dto.version}`, pageId, version: dto.version,
     title: dto.title, body: dto.content,
-    savedBy: toClientId(dto.editedBy), savedByName: dto.editedByName ?? null, savedAt,
+    savedBy: toClientId(dto.editedBy), savedByName: dto.editedByName ?? null,
+    savedAt: dto.createdAt ?? savedAt,
+    changeNote: dto.changeNote ?? undefined,
   };
 }
 

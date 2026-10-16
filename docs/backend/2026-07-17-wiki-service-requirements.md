@@ -47,7 +47,8 @@
 |---|---|---|
 | listUsers() | GET /api/wiki/users | `{id, name}[]` |
 | getCurrentUser() | (auth 백엔드) GET /api/me | 프론트에서 id 매핑 |
-| listSpaces() | GET /api/wiki/spaces | |
+| listSpaces() | GET /api/wiki/spaces | **V41** 각 행에 `labels: string[]`(스페이스 라벨, 이름순, 없으면 `[]`). 단건 GET·생성·수정 응답도 같은 필드 |
+| setSpaceLabels(spaceId, labels) | PUT /api/wiki/spaces/{id}/labels | **V41(2026-10)** 본문 `{labels: string[]}` **전량 교체**, 스페이스 **ADMIN**만(아니면 403). 문서 라벨과 같은 정규화(trim+소문자+공백→하이픈), 중복 접기, 스페이스당 10개(넘으면 400 "스페이스 라벨은 10개까지입니다"). 응답 SpaceResponse. 문서 라벨(`page_label`)과 **다른 원장**(`space_label`) — 디렉토리 분류 전용 |
 | createSpace({key, name}) | POST /api/wiki/spaces | 키 대문자 정규화+중복 409 |
 | listPages(spaceId) | GET /api/wiki/spaces/{spaceId}/pages | 전체 목록(트리 구성은 프론트) |
 | getPage(id) | GET /api/wiki/pages/{id} | 없으면 404 |
@@ -80,9 +81,12 @@
 | getMigrationJob(id) | GET /api/migration/{jobId} | **V34 확장** 기존 `MigrationJobResponse` 필드 전부 + `source: {baseUrl, spaceKey, spaceName, discoveredCount}\|null` + `counts: {byStatus: {...}, byStage: {...}}`. **source에 token 필드는 없다.** 진행률 = `counts.byStatus.COMPLETED / itemCount` |
 | listMigrationItems(id, {status?, stage?, page?}) | GET /api/migration/{jobId}/items?status=&stage=&page= | **V34** `{items: MigrationItemResponse[], page, size, total}`. page는 0부터, size는 50 고정. status: PENDING\|RUNNING\|RETRY_WAIT\|COMPLETED\|DEAD_LETTER, stage: EXTRACT\|NORMALIZE\|MEDIA_COPY\|RESOLVE\|VERIFY\|DONE. 대상 스페이스 ADMIN |
 | startMigrationJob(id) | POST /api/migration/{jobId}/start | **V34 확장** 항목이 0건이면 400 `{"error": "옮길 항목이 없습니다 — 먼저 원본 발견을 실행하세요"}`. 항목 0으로 시작하면 잡이 즉시 COMPLETED가 되어 "성공적으로 아무것도 안 옮겼다"가 되기 때문 |
-| listVersions(pageId) | GET /api/wiki/pages/{pageId}/versions | version 내림차순 |
+| listVersions(pageId) | GET /api/wiki/pages/{pageId}/revisions | version 내림차순 **전량**(기존 호출자 계약 유지). 2026-10부터 메타 프로젝션이라 본문 바이트를 읽지 않는다 |
+| listVersionPage(pageId, {before?, limit?}) | GET /api/wiki/pages/{pageId}/revisions/paged?before=&limit= | **2026-10** 쪽 목록 `{items: RevisionMeta[], nextBefore: number\|null, total}`. 버전 번호 커서(before보다 작은 것부터 내림차순), limit 1~100(기본 50). 히스토리 표가 쓴다 |
+| getVersionByNumber(pageId, n) | GET /api/wiki/pages/{pageId}/revisions/{n} | 본문 포함 단건. **2026-10** 응답에 `createdAt`·`changeNote` 추가(목록 첫 쪽 밖 버전을 주소로 열 때 메타 출처). 없으면 404 → 어댑터 null |
 | restoreVersion(pageId, versionId, changeNote?) | POST /api/wiki/pages/{pageId}/revisions/{version}/restore | updatePage 경로 재사용(새 버전으로 쌓임). 어댑터는 `changeNote`가 있을 때만 본문 `{ changeNote }`를 싣는다 — **백엔드는 아직 본문을 읽지 않는다(후속: `RevisionController.restore`에 선택 본문 추가)**. 그때까지 백엔드 모드의 복원 버전에는 서버가 만든 문구가 남는다 |
-| listComments(pageId) | GET /api/wiki/pages/{pageId}/comments | createdAt 오름차순 |
+| listComments(pageId) | GET /api/wiki/pages/{pageId}/comments | createdAt 오름차순 **전량**(기존 호출자 계약 유지) |
+| listCommentThreads(pageId, {kind?, before?, limit?}) | GET /api/wiki/pages/{pageId}/comments/threads?kind=page\|inline&before=&limit= | **2026-10** 스레드 단위 쪽 `{items, nextBefore: string\|null, threadCount, commentCount}`. 단위는 스레드(최상위+답글 전부) — 최상위는 (createdAt, id) 내림차순 키셋, 답글은 스레드 안 오름차순. limit 1~100(기본 20). `before`는 불투명 커서(형식 오류 400 "댓글 목록 커서가 올바르지 않습니다: …"), `kind` 그 외 값 400. 건수는 그 종류 기준 |
 | addComment(pageId, body, parentId?) | POST /api/wiki/pages/{pageId}/comments | |
 | updateComment(id, body) | PATCH /api/wiki/comments/{id} | **본인만** |
 | deleteComment(id) | DELETE /api/wiki/comments/{id} | **본인만**, 답글 연쇄 삭제 |

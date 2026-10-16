@@ -4,6 +4,9 @@ import { parseTasks, toggleTaskLine, type ParsedTask } from "../lib/tasks";
 import { createOrgMockFetch } from "./orgMockApi";
 import { defaultVerifiedUntil } from "../lib/verification";
 import type {
+  CommentKind,
+  CommentThreadPage,
+  VersionPage,
   Attachment,
   CollaborationDraftCommit,
   CollaborationDraftCommitOptions,
@@ -64,6 +67,7 @@ import type {
 import { CURRENT_USER_ID } from "../../../mock/users";
 import { createSeedData } from "../../../mock/seed";
 import { WIKI_LINK_SOURCE } from "../lib/wikiLinks";
+import { byCreatedAsc } from "../lib/commentOrder";
 
 const STORAGE_KEY = "wiki.v1";
 
@@ -183,7 +187,25 @@ export async function searchUsers(q: string): Promise<User[]> {
 // ── spaces ───────────────────────────────────────────────────
 
 export async function listSpaces(): Promise<Space[]> {
-  return clone(load().spaces);
+  // 백엔드 어댑터와 같이 라벨은 언제나 배열 — 화면이 두 모드에서 같은 모양을 본다.
+  return clone(load().spaces).map((space) => ({ ...space, labels: [...(space.labels ?? [])].sort() }));
+}
+
+/** 스페이스 라벨 상한 — 백엔드 SpaceService.MAX_LABELS_PER_SPACE와 같다. */
+const MAX_SPACE_LABELS = 10;
+
+/** 스페이스 라벨 전량 교체(V41) — 백엔드와 같은 정규화·중복 접기·이름순·상한. */
+export async function setSpaceLabels(spaceId: string, raw: string[]): Promise<Space> {
+  const data = load();
+  const space = data.spaces.find((s) => s.id === spaceId);
+  if (!space) throw new Error("스페이스를 찾을 수 없습니다");
+  const names = [...new Set(raw.map(normalizeLabel))].sort();
+  if (names.length > MAX_SPACE_LABELS) {
+    throw new Error(`스페이스 라벨은 ${MAX_SPACE_LABELS}개까지입니다`);
+  }
+  space.labels = names;
+  persist();
+  return clone({ ...space, labels: names });
 }
 
 /** 개인 스페이스(W23) — 백엔드와 같이 key는 `me-{id}`, 한 사람에 하나(멱등). */
@@ -388,6 +410,37 @@ export async function listVersions(pageId: string): Promise<PageVersion[]> {
       .versions.filter((v) => v.pageId === pageId)
       .sort((a, b) => b.version - a.version), // 최신 먼저
   );
+}
+
+/** 백엔드 RevisionController.page와 같은 상한·기본값. */
+const VERSION_PAGE_DEFAULT = 50;
+const VERSION_PAGE_MAX = 100;
+
+/**
+ * 이력 한 쪽 — 백엔드와 같이 메타만 준다(title·body 빈 값). 목업이 본문까지 주면 화면이 목업에서만
+ * 목록의 본문에 기대는 코드를 품게 된다.
+ */
+export async function listVersionPage(
+  pageId: string,
+  options: { before?: number | null; limit?: number } = {},
+): Promise<VersionPage> {
+  const size = Math.max(1, Math.min(options.limit ?? VERSION_PAGE_DEFAULT, VERSION_PAGE_MAX));
+  const all = load()
+    .versions.filter((v) => v.pageId === pageId)
+    .sort((a, b) => b.version - a.version);
+  const before = options.before;
+  const rest = before == null ? all : all.filter((v) => v.version < before);
+  const items = rest.slice(0, size);
+  return {
+    versions: clone(items).map((v) => ({ ...v, title: "", body: "" })),
+    nextBefore: rest.length > size ? items[items.length - 1].version : null,
+    total: all.length,
+  };
+}
+
+export async function getVersionByNumber(pageId: string, version: number): Promise<PageVersion | null> {
+  const found = load().versions.find((v) => v.pageId === pageId && v.version === version);
+  return found ? clone(found) : null;
 }
 
 export async function updatePage(
@@ -681,7 +734,9 @@ export async function sharePage(pageId: string, userIds: string[], note?: string
   return delivered;
 }
 
-export async function listNotifications(): Promise<NotificationList> {
+export async function listNotifications(options: { signal?: AbortSignal } = {}): Promise<NotificationList> {
+  // 백엔드 fetch와 같이 이미 끊긴 요청은 AbortError로 끝난다
+  if (options.signal?.aborted) throw new DOMException("요청이 취소되었습니다", "AbortError");
   const rows = (load().notifications ?? [])
     .filter((n) => n.userId === CURRENT_USER_ID)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -1556,6 +1611,59 @@ export async function restoreVersion(
 }
 
 // ── comments ─────────────────────────────────────────────────
+
+/** 백엔드 CommentService.listThreads와 같은 상한·기본값. */
+const THREAD_PAGE_DEFAULT = 20;
+const THREAD_PAGE_MAX = 100;
+
+/** 백엔드와 같은 키셋 순서 — 작성 시각 내림차순, 같으면 id 내림차순. */
+function compareThreadDesc(a: Comment, b: Comment): number {
+  return byCreatedAsc(b, a);
+}
+
+/**
+ * 스레드 한 쪽 — 커서 모양은 목업 전용(`작성시각~id`)이지만 화면에는 불투명한 문자열이라 상관없다.
+ * 깨진 커서는 백엔드처럼 거부한다(첫 쪽으로 조용히 되돌리지 않는다).
+ */
+export async function listCommentThreads(
+  pageId: string,
+  options: { kind?: CommentKind; before?: string | null; limit?: number } = {},
+): Promise<CommentThreadPage> {
+  const data = load();
+  const kind = options.kind ?? "page";
+  const size = Math.max(1, Math.min(options.limit ?? THREAD_PAGE_DEFAULT, THREAD_PAGE_MAX));
+  const ofPage = data.comments.filter((c) => c.pageId === pageId);
+  const roots = ofPage
+    .filter((c) => c.parentId === null && (c.anchorType ?? "page") === kind)
+    .sort(compareThreadDesc);
+  let rest = roots;
+  if (options.before) {
+    const tilde = options.before.lastIndexOf("~");
+    const at = tilde < 0 ? "" : options.before.slice(0, tilde);
+    const id = tilde < 0 ? "" : options.before.slice(tilde + 1);
+    if (!at || !id || Number.isNaN(Date.parse(at))) {
+      throw new Error(`댓글 목록 커서가 올바르지 않습니다: ${options.before}`);
+    }
+    const cursor = { createdAt: at, id } as Comment;
+    rest = roots.filter((c) => compareThreadDesc(c, cursor) > 0);
+  }
+  const page = rest.slice(0, size);
+  const rootIds = new Set(roots.map((c) => c.id));
+  const pageIds = new Set(page.map((c) => c.id));
+  const replies = ofPage
+    .filter((c) => c.parentId !== null && pageIds.has(c.parentId))
+    .sort(byCreatedAsc);
+  const last = page[page.length - 1];
+  return {
+    comments: clone([...page, ...replies]).map((c) => ({
+      ...c,
+      reactions: summarizeReactions(data, `COMMENT:${c.id}`),
+    })),
+    nextBefore: rest.length > size && last ? `${last.createdAt}~${last.id}` : null,
+    threadCount: roots.length,
+    commentCount: roots.length + ofPage.filter((c) => c.parentId !== null && rootIds.has(c.parentId)).length,
+  };
+}
 
 export async function listComments(pageId: string): Promise<Comment[]> {
   const data = load();

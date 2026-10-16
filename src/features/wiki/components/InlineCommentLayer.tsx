@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import { Avatar, Button, TextArea, useToast } from "@chanho/react";
 import { Check, MessageSquare, RotateCcw, X } from "lucide-react";
-import type { Comment, CommentAnchor, User } from "../store/types";
-import { addComment, listComments, setCommentResolved } from "../store/wikiStore";
+import type { Comment, CommentAnchor, CommentThreadPage, User } from "../store/types";
+import { addComment, listCommentThreads, setCommentResolved } from "../store/wikiStore";
 import { anchorFromSelection, applyHighlights, clearHighlights } from "../lib/inlineAnchors";
 import { formatCommentTime } from "./CommentSection";
 import { useReadOnly } from "../lib/readOnly";
@@ -31,6 +31,9 @@ interface Placement {
   below: number;
 }
 
+/** 인라인 스레드를 읽는 쪽 크기(서버 상한). 하이라이트는 본문 전체에 칠해야 하므로 끝까지 잇는다. */
+const INLINE_PAGE = 100;
+
 export function InlineCommentLayer({
   pageId,
   body,
@@ -46,6 +49,8 @@ export function InlineCommentLayer({
   const readOnly = useReadOnly();
   const toast = useToast();
   const [comments, setComments] = useState<Comment[]>([]);
+  /** 읽기 실패 — 읽어 둔 스레드는 지우지 않고(본문 하이라이트 유지) 실패 사실만 알린다 */
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [locatedIds, setLocatedIds] = useState<Set<string>>(new Set());
   const [target, setTarget] = useState<Target | null>(null);
   const [placement, setPlacement] = useState<Placement | null>(null);
@@ -55,11 +60,39 @@ export function InlineCommentLayer({
   const [busy, setBusy] = useState(false);
   const draftRef = useRef<HTMLTextAreaElement>(null);
 
+  /** 문서가 바뀐 뒤 늦게 도착한 이전 문서의 스레드를 칠하지 않게 */
+  const loadedFor = useRef(pageId);
+
+  /**
+   * 인라인 스레드만 읽는다(하단 댓글은 CommentSection 몫) — 예전에는 두 컴포넌트가 같은 전량 목록을
+   * 따로 받아 각자 걸렀다. 하이라이트는 본문 전체에 칠해야 하므로 쪽을 끝까지 잇는다.
+   */
   const reload = useCallback(async () => {
+    const switched = loadedFor.current !== pageId;
+    loadedFor.current = pageId;
+    if (switched) {
+      setComments([]);
+      setLoadError(null);
+    }
     try {
-      setComments(await listComments(pageId));
-    } catch {
-      setComments([]); // 인라인 댓글을 못 읽는다고 본문을 막지 않는다
+      const all: Comment[] = [];
+      const seenCursors = new Set<string>();
+      let before: string | null = null;
+      do {
+        const page: CommentThreadPage = await listCommentThreads(pageId, { kind: "inline", before, limit: INLINE_PAGE });
+        if (loadedFor.current !== pageId) return;
+        all.push(...page.comments);
+        before = page.nextBefore;
+        // 커서가 제자리면(서버 결함) 끝없이 돌지 않는다 — 읽은 만큼으로 끝낸다
+        if (before !== null && seenCursors.has(before)) break;
+        if (before !== null) seenCursors.add(before);
+      } while (before !== null);
+      setComments(all);
+      setLoadError(null);
+    } catch (e) {
+      // 일부만 읽혔어도 반쯤 칠한 본문을 만들지 않는다 — 이전 상태를 그대로 두고 실패를 알린다.
+      // 본문 자체는 막지 않는다(인라인 댓글을 못 읽는다고 문서를 못 읽으면 안 된다).
+      if (loadedFor.current === pageId) setLoadError(e instanceof Error ? e.message : String(e));
     }
   }, [pageId]);
 
@@ -342,6 +375,14 @@ export function InlineCommentLayer({
         본문에서 사라진 대화만 목록으로 남긴다 — 하이라이트가 유일한 진입점인데, 위치를 못 찾거나
         해결된 스레드는 하이라이트가 없어 영영 닿을 수 없게 된다.
       */}
+      {loadError !== null ? (
+        <p className="inline-comment-load-error" role="status">
+          인라인 댓글을 불러오지 못했습니다: {loadError}{" "}
+          <Button size="small" variant="subtle" onClick={() => void reload()}>
+            다시 시도
+          </Button>
+        </p>
+      ) : null}
       {orphans.length > 0 || resolvedThreads.length > 0 ? (
         <section className="inline-comment-strays" aria-label="본문에 표시되지 않는 댓글">
           {orphans.length > 0 ? (

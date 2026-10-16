@@ -19,7 +19,8 @@ export function PageHistoryPage() {
   const { spaceId, pageId } = useParams();
   const navigate = useNavigate();
   const { reloadPages } = useOutletContext<WikiOutletContext>();
-  const { page, versions, users, error, reload } = usePageHistory(pageId);
+  const { page, versions, total, hasMore, loadingMore, moreError, loadMore, users, error, reload } =
+    usePageHistory(pageId);
   /**
    * 비교 대상 — 버전 **번호**로 들고 있다(비교 URL이 번호를 쓴다).
    * 컨플루언스처럼 두 개까지만 고를 수 있고, 세 번째를 고르면 가장 먼저 고른 것이 풀린다.
@@ -65,7 +66,7 @@ export function PageHistoryPage() {
     return <Navigate to={`/spaces/${page.spaceId}/pages/${page.id}/history`} replace />;
   }
 
-  // 현재 버전 = 목록의 첫 항목(스토어가 version 내림차순을 보장한다)
+  // 현재 버전 = 목록의 첫 항목(첫 쪽은 언제나 최신부터다)
   const currentVersion = versions[0]?.version;
 
   const columns: TableColumn<PageVersion>[] = [
@@ -166,13 +167,30 @@ export function PageHistoryPage() {
           description="문서를 저장할 때마다 그 시점의 내용이 여기에 쌓입니다."
         />
       ) : (
-        <Table
-          aria-label="페이지 히스토리"
-          className="history-table"
-          columns={columns}
-          rows={versions}
-          resizable
-        />
+        <>
+          <Table
+            aria-label="페이지 히스토리"
+            className="history-table"
+            columns={columns}
+            rows={versions}
+            resizable
+          />
+          {/* 쪽 단위로 읽는다 — 버전이 수백 개인 문서를 첫 화면에 전부 싣지 않는다. 읽은 수와 전체 수를
+            * 함께 보여 "목록이 여기서 끝인가"를 사용자가 추측하지 않게 한다. */}
+          <div className="history-more">
+            <span className="history-more-count" role="status">
+              전체 {total.toLocaleString("ko-KR")}개 중 {versions.length.toLocaleString("ko-KR")}개 표시
+            </span>
+            {moreError !== null ? (
+              <span className="history-more-error">이전 버전을 더 불러오지 못했습니다: {moreError}</span>
+            ) : null}
+            {hasMore ? (
+              <Button variant="subtle" size="small" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? "불러오는 중…" : moreError !== null ? "다시 시도" : "이전 버전 더 보기"}
+              </Button>
+            ) : null}
+          </div>
+        </>
       )}
       {restoreTarget ? (
         <RestoreVersionDialog

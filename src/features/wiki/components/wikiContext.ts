@@ -17,4 +17,9 @@ export interface WikiOutletContext {
    * 페이지를 들고 있지 않으므로, 목록이 필요한 화면은 각자 서버에 묻는다.
    */
   reloadPages: () => Promise<void>;
+  /**
+   * 스페이스 목록(이름·라벨)을 다시 읽는다 — 설정에서 바꾼 것이 디렉토리·셸에 바로 보이게.
+   * 선택인 이유: 하위 화면을 Outlet 없이 띄우는 테스트 하네스가 이 값을 주지 않는다.
+   */
+  reloadSpaces?: () => void | Promise<void>;
 }

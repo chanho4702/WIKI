@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
-import { Avatar, EmptyState, Table, TextField } from "@chanho/react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
+import { Avatar, EmptyState, Select, Table, TextField } from "@chanho/react";
 import { Star } from "lucide-react";
 import type { TableColumn } from "@chanho/react";
 import type { Space, User } from "../store/types";
@@ -22,9 +22,17 @@ function matchesQuery(space: Space, query: string): boolean {
 }
 
 /**
+ * Select는 빈 문자열 value를 못 쓴다(DS 규칙) — "모든 라벨"의 자리표시 값. 라벨은 정규화로 언제나
+ * 소문자이므로 대문자를 넣으면 실제 라벨과 겹칠 수 없다.
+ */
+const LABEL_ANY = "ALL_LABELS";
+
+/**
  * 스페이스 디렉토리 페이지 (`/spaces`) — 컨플루언스 "스페이스 디렉토리" 복제(`space 페이지.png`).
  * "자주 찾는 스페이스"(별표된 것, 카드) + "모든 스페이스"(테이블: Space name·Labels·Owner·Actions).
- * Labels는 백엔드가 주지 않아 빈칸, Owner는 개인 스페이스(ownerId)만 이름을 보인다(설계 §1.3).
+ * Labels는 스페이스 라벨(V41 — 문서 라벨이 아니다, 컨플루언스의 스페이스 카테고리)이고 라벨로
+ * 거를 수 있다(`?label=` — 공유·뒤로가기가 되게 주소에 둔다). Owner는 개인 스페이스(ownerId)만
+ * 이름을 보인다(설계 §1.3).
  */
 export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
   const readOnly = useReadOnly();
@@ -32,6 +40,14 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
   const navigate = useNavigate();
   const { starred, toggle } = useStarredSpaces();
   const [query, setQuery] = useState("");
+  const [params, setParams] = useSearchParams();
+  const labelFilter = params.get("label") ?? "";
+  const setLabelFilter = (value: string) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set("label", value);
+    else next.delete("label");
+    setParams(next, { replace: true });
+  };
   // 소유자 열 — 개인 스페이스의 ownerId를 이름으로. 실패해도 표는 뜨고 `사용자 #id` 폴백으로 간다.
   const [users, setUsers] = useState<User[]>([]);
   useEffect(() => {
@@ -48,7 +64,14 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
   }, [readOnly]);
 
   const starredSpaces = spaces.filter((s) => starred.includes(s.id));
-  const filtered = spaces.filter((s) => matchesQuery(s, query));
+  /** 필터 후보 — 지금 보이는 스페이스들에 실제로 붙은 라벨만, 이름순(코드유닛: 칩 순서와 같다). */
+  const allLabels = useMemo(
+    () => [...new Set(spaces.flatMap((s) => s.labels ?? []))].sort(),
+    [spaces],
+  );
+  const filtered = spaces.filter(
+    (s) => matchesQuery(s, query) && (labelFilter === "" || (s.labels ?? []).includes(labelFilter)),
+  );
 
   // 별표는 쓰기다(서버 원장 + 브라우저 사본). 읽기 전용에서는 토글도 목록도 두지 않는다 —
   // /docs와 /wiki가 같은 오리진이면 localStorage를 공유해 남의 별표가 공개 화면에 새어 든다.
@@ -68,9 +91,33 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
         </button>
       ),
     },
-    // 백엔드 Space에 labels가 없다 → 빈칸(설계 §1.3, 후속 백엔드 필드). 나머지 UI가 전부 한국어라
-    // 머리글도 한국어로 — 이 표만 영문이면 다른 제품이 끼어든 것처럼 보인다(휴리스틱 #4).
-    { key: "labels", header: "라벨", render: () => <span className="space-directory-muted">—</span> },
+    // 스페이스 라벨(V41). 칩을 누르면 그 라벨로 거른다 — 라벨이 탐색축이 아니면 장식일 뿐이다.
+    // 나머지 UI가 전부 한국어라 머리글도 한국어로(휴리스틱 #4).
+    {
+      key: "labels",
+      header: "라벨",
+      render: (space) => {
+        const labels = space.labels ?? [];
+        if (labels.length === 0) return <span className="space-directory-muted">—</span>;
+        return (
+          <ul className="space-directory-labels" aria-label={`${space.name} 라벨`}>
+            {labels.map((label) => (
+              <li key={label}>
+                <button
+                  type="button"
+                  className={label === labelFilter ? "label-chip label-chip-active" : "label-chip"}
+                  aria-pressed={label === labelFilter}
+                  aria-label={`라벨 ${label}로 거르기`}
+                  onClick={() => setLabelFilter(label === labelFilter ? "" : label)}
+                >
+                  {label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        );
+      },
+    },
     {
       key: "owner",
       header: "소유자",
@@ -155,15 +202,40 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
 
       <section className="space-directory-all" aria-label="모든 스페이스">
         <h2>모든 스페이스</h2>
-        <TextField
-          className="space-directory-filter"
-          label="제목으로 필터링"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="스페이스 이름 또는 키"
-        />
+        <div className="space-directory-filters">
+          <TextField
+            className="space-directory-filter"
+            label="제목으로 필터링"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="스페이스 이름 또는 키"
+          />
+          {/* 라벨이 하나도 없으면 고를 것이 없는 셀렉트를 두지 않는다(빈 상태는 표의 "—"가 말한다) */}
+          {allLabels.length > 0 || labelFilter !== "" ? (
+            <Select
+              className="space-directory-label-filter"
+              label="라벨"
+              value={labelFilter === "" ? LABEL_ANY : labelFilter}
+              options={[
+                { value: LABEL_ANY, label: "모든 라벨" },
+                // 주소로 들어온 라벨이 지금 목록에 없어도 선택 상태를 보여 준다(풀 수 있어야 한다)
+                ...(labelFilter !== "" && !allLabels.includes(labelFilter) ? [labelFilter] : []).concat(allLabels)
+                  .map((label) => ({ value: label, label })),
+              ]}
+              onValueChange={(next: string) => setLabelFilter(next === LABEL_ANY ? "" : next)}
+            />
+          ) : null}
+        </div>
         {filtered.length === 0 ? (
-          <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
+          labelFilter !== "" ? (
+            <EmptyState
+              title="이 라벨의 스페이스가 없습니다"
+              description={`‘${labelFilter}’ 라벨이 붙은 스페이스${query.trim() ? " 중 검색어와 맞는 것" : ""}이 없습니다.`}
+              primaryAction={{ label: "라벨 필터 지우기", onClick: () => setLabelFilter("") }}
+            />
+          ) : (
+            <EmptyState title="검색 결과 없음" description="다른 검색어를 입력해 보세요." />
+          )
         ) : (
           <Table columns={columns} rows={filtered} aria-label="모든 스페이스" />
         )}

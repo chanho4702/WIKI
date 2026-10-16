@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { Avatar, Button, EmptyState } from "@chanho/react";
 import { ArrowLeft } from "lucide-react";
 import type { PageVersion } from "../store/types";
-import { getVersion } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { DiffView } from "../components/DiffView";
 import { SkeletonLines } from "../components/WikiSkeleton";
 import { RestoreVersionDialog } from "../components/RestoreVersionDialog";
-import { formatVersionDateTime, usePageHistory, versionAuthorName, versionLabel } from "../lib/pageHistory";
+import { formatVersionDateTime, usePageVersions, versionAuthorName, versionLabel } from "../lib/pageHistory";
 
 /** 비교 대상 한 쪽의 메타 카드 — 누가·언제·무엇을 고쳤다고 적었는지. */
 function CompareMetaCard({ version, authorName }: { version: PageVersion; authorName: string }) {
@@ -38,9 +37,6 @@ export function PageCompareVersionsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { reloadPages } = useOutletContext<WikiOutletContext>();
-  const { page, versions, users, error, reload } = usePageHistory(pageId);
-  const [bodies, setBodies] = useState<Record<string, PageVersion>>({});
-  const [bodyError, setBodyError] = useState<string | null>(null);
   const [restoreOpen, setRestoreOpen] = useState(false);
 
   const rawFrom = Number(searchParams.get("from"));
@@ -49,25 +45,13 @@ export function PageCompareVersionsPage() {
   const fromVersion = valid ? Math.min(rawFrom, rawTo) : null;
   const toVersion = valid ? Math.max(rawFrom, rawTo) : null;
 
-  const fromMeta = versions?.find((v) => v.version === fromVersion) ?? null;
-  const toMeta = versions?.find((v) => v.version === toVersion) ?? null;
-
-  // 화면에 필요한 두 버전의 본문만 읽는다(목록은 메타만 준다).
-  useEffect(() => {
-    if (!pageId || !fromMeta || !toMeta) return;
-    let cancelled = false;
-    setBodyError(null);
-    void Promise.all([getVersion(pageId, fromMeta.id), getVersion(pageId, toMeta.id)])
-      .then(([older, newer]) => {
-        if (!cancelled) setBodies({ [older.id]: older, [newer.id]: newer });
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setBodyError(e instanceof Error ? e.message : String(e));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [pageId, fromMeta?.id, toMeta?.id]);
+  // 두 버전을 번호로 바로 읽는다(본문 포함) — 이력 목록 첫 쪽 밖의 버전도 비교할 수 있게.
+  const { page, versions, currentVersion, users, error, reload } = usePageVersions(
+    pageId,
+    fromVersion !== null && toVersion !== null ? [fromVersion, toVersion] : [],
+  );
+  const fromMeta: PageVersion | null = versions?.[0] ?? null;
+  const toMeta: PageVersion | null = versions?.[1] ?? null;
 
   const historyPath = `/spaces/${spaceId}/pages/${pageId}/history`;
 
@@ -82,7 +66,7 @@ export function PageCompareVersionsPage() {
       </div>
     );
   }
-  if (page === undefined || versions === null) {
+  if (page === undefined || (valid && versions === undefined)) {
     return (
       <div className="history-page">
         <SkeletonLines label="버전 로딩 중" widths={["70%", "65%", "72%", "60%"]} />
@@ -105,9 +89,8 @@ export function PageCompareVersionsPage() {
     );
   }
 
-  const currentVersion = versions[0]?.version;
-  const olderBody = bodies[fromMeta.id];
-  const newerBody = bodies[toMeta.id];
+  const olderBody = fromMeta;
+  const newerBody = toMeta;
 
   return (
     <div className="history-page">
@@ -127,25 +110,13 @@ export function PageCompareVersionsPage() {
           </Button>
         )}
       </div>
-      {bodyError !== null ? (
-        <EmptyState
-          title="버전 본문을 불러올 수 없습니다"
-          description={bodyError}
-          primaryAction={{ label: "다시 시도", onClick: reload }}
-        />
-      ) : !olderBody || !newerBody ? (
-        <SkeletonLines label="버전 본문 로딩 중" widths={["92%", "100%", "86%", "54%"]} />
-      ) : (
-        <>
-          {/* 제목은 diff 대상(본문)이 아니라 별도로 바뀐다 — 바뀐 경우에만 한 줄로 알린다 */}
-          {olderBody.title !== newerBody.title ? (
-            <p className="diff-title-change">
-              제목: {olderBody.title} → {newerBody.title}
-            </p>
-          ) : null}
-          <DiffView oldText={olderBody.body} newText={newerBody.body} />
-        </>
-      )}
+      {/* 제목은 diff 대상(본문)이 아니라 별도로 바뀐다 — 바뀐 경우에만 한 줄로 알린다 */}
+      {olderBody.title !== newerBody.title ? (
+        <p className="diff-title-change">
+          제목: {olderBody.title} → {newerBody.title}
+        </p>
+      ) : null}
+      <DiffView oldText={olderBody.body} newText={newerBody.body} />
       <RestoreVersionDialog
         open={restoreOpen}
         onOpenChange={setRestoreOpen}

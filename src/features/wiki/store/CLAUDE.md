@@ -76,6 +76,14 @@ wiki-service가 붙으면 함수 내부만 `apiFetch`로 교체한다 — **함�
   `/api/org/*` 경로 계약으로 답한다. 목업이 백엔드보다 관대하면 화면이 목업에서만 동작하므로,
   없는 것은 없는 대로 준다(팀원 역할 변경 400, 이력 빈 배열, 목록의 `inviteUrl`은 항상 null —
   서버는 토큰 해시만 저장해 링크를 되살릴 수 없고 재발송만 새 링크를 준다).
+- **쪽 목록(2026-10)**: `listVersionPage`(버전 번호 커서, 최신부터)·`listCommentThreads`(스레드 단위,
+  최신 스레드부터, kind `page`/`inline`)·`getVersionByNumber`. 전량 함수(`listVersions`·`listComments`)는
+  **기존 호출자를 위해 그대로 둔다** — 쪽 함수로 몰래 바꾸면 그 호출자가 잘린 목록을 받는다. 쪽 목록의
+  버전 메타에는 본문이 없다(title·body 빈 값, 백엔드와 같다). 댓글 커서는 화면에 불투명한 문자열이며
+  목업 형식(`작성시각~id`)과 백엔드 형식이 달라도 된다 — 깨진 커서는 두 모드 모두 거부한다.
+- **스페이스 라벨(V41)**: `setSpaceLabels(spaceId, labels)` 전량 교체, `Space.labels`는 어댑터·목업 모두
+  언제나 배열(이름순). 문서 라벨(`setLabels`)과 **다른 원장**이다 — 디렉토리 분류이고 스페이스 ADMIN만
+  바꾼다. 정규화 규칙은 문서 라벨과 같고(`normalizeLabel`), 상한 10개.
 - **에러는 한국어 사용자 문구로 throw** — 화면이 메시지를 그대로 노출한다.
 - **편집 세션 낙관적 락**: 화면은 로드 때 받은 `Page.version`을 `updatePage(...,
   { expectedVersion })`에 넘긴다. API 어댑터가 저장 직전 조회한 최신 버전으로 바꾸면 stale 편집이

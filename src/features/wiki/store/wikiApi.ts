@@ -18,6 +18,9 @@ import {
   MoveImpactError,
   type Attachment,
   type Comment,
+  type CommentKind,
+  type CommentThreadPage,
+  type VersionPage,
   type AttachmentUploadOptions,
   type CollaborationBootstrap,
   type CollaborationDraftCommit,
@@ -156,6 +159,28 @@ export async function listComments(pageId: string): Promise<Comment[]> {
     await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/comments`),
   );
   return rows.map(mapComment);
+}
+
+/** 스레드 단위 한 쪽(CommentThreadPage) — 전량 목록(listComments)은 기존 호출자를 위해 그대로 둔다. */
+export async function listCommentThreads(
+  pageId: string,
+  options: { kind?: CommentKind; before?: string | null; limit?: number } = {},
+): Promise<CommentThreadPage> {
+  const params = new URLSearchParams({ kind: options.kind ?? "page" });
+  if (options.before) params.set("before", options.before);
+  if (options.limit != null) params.set("limit", String(options.limit));
+  const dto = await json<{
+    items: CommentDto[];
+    nextBefore: string | null;
+    threadCount: number;
+    commentCount: number;
+  }>(await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/comments/threads?${params.toString()}`));
+  return {
+    comments: dto.items.map(mapComment),
+    nextBefore: dto.nextBefore ?? null,
+    threadCount: dto.threadCount,
+    commentCount: dto.commentCount,
+  };
 }
 
 export async function addComment(
@@ -479,14 +504,17 @@ export async function updateNotificationPrefs(patch: NotificationPrefsPatch): Pr
 }
 
 /** 알림 — 백엔드 V11 계약. 타입은 서버 enum(MENTIONED…)을 프론트 소문자로 매핑한다. */
-export async function listNotifications(): Promise<NotificationList> {
+/** signal: 알림 벨의 주기 갱신이 걸린 요청을 끊고 새로 읽을 때 쓴다(요청을 겹치지 않게). */
+export async function listNotifications(options: { signal?: AbortSignal } = {}): Promise<NotificationList> {
   const body = await json<{
     unreadCount: number;
     items: Array<{
       id: number; type: string; pageId: number; spaceId: number | null; pageTitle: string;
       actorId: number; createdAt: string; read: boolean; note?: string | null;
     }>;
-  }>(await sharedApiFetch("/api/wiki/notifications"));
+  }>(await (options.signal
+    ? sharedApiFetch("/api/wiki/notifications", { signal: options.signal })
+    : sharedApiFetch("/api/wiki/notifications")));
   const typeOf = (t: string): NotificationType =>
     t === "MENTIONED" ? "mentioned"
       : t === "COMMENT" ? "comment"
@@ -681,6 +709,16 @@ export async function updateSpace(
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: input.name.trim(), description: input.description ?? null }),
+  });
+  return mapSpace(await json(res));
+}
+
+/** 스페이스 라벨 전량 교체(V41) — 서버가 스페이스 ADMIN만 허용하고 정규화·정렬한 결과를 준다. */
+export async function setSpaceLabels(spaceId: string, labels: string[]): Promise<Space> {
+  const res = await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/labels`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ labels }),
   });
   return mapSpace(await json(res));
 }
@@ -930,6 +968,34 @@ export async function movePage(
     throw new Error(body?.error ?? "이동 충돌이 발생했습니다");
   }
   return mapPage(await json(res));
+}
+
+/** 이력 한 쪽(최신순, 버전 번호 커서) — 버전이 수백 개인 문서도 첫 화면은 한 쪽만 읽는다. */
+export async function listVersionPage(
+  pageId: string,
+  options: { before?: number | null; limit?: number } = {},
+): Promise<VersionPage> {
+  const params = new URLSearchParams();
+  if (options.before != null) params.set("before", String(options.before));
+  if (options.limit != null) params.set("limit", String(options.limit));
+  const query = params.toString();
+  const dto = await json<{
+    items: Parameters<typeof mapVersionMeta>[0][];
+    nextBefore: number | null;
+    total: number;
+  }>(await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/revisions/paged${query ? `?${query}` : ""}`));
+  return {
+    versions: dto.items.map((m) => mapVersionMeta(m, pageId)),
+    nextBefore: dto.nextBefore ?? null,
+    total: dto.total,
+  };
+}
+
+/** 버전 번호로 본문까지 — 주소의 `v. 5`를 목록 없이 바로 연다(목록 첫 쪽 밖이어도). 없으면 null. */
+export async function getVersionByNumber(pageId: string, version: number): Promise<PageVersion | null> {
+  const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(pageId)}/revisions/${version}`);
+  if (res.status === 404) return null;
+  return mapVersionFull(await json<Parameters<typeof mapVersionFull>[0]>(res), pageId);
 }
 
 export async function listVersions(pageId: string): Promise<PageVersion[]> {

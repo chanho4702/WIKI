@@ -188,7 +188,7 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
 
   // 홈·디렉토리 라우트도 이 컨텍스트를 받지만 space를 읽지 않는다(스페이스 페이지 화면만 읽는다).
   // 스페이스 라우트에서는 위 리다이렉트로 space가 non-null임이 보장되므로 캐스트가 안전하다.
-  const outletContext: WikiOutletContext = { space: space as Space, reloadPages };
+  const outletContext: WikiOutletContext = { space: space as Space, reloadPages, reloadSpaces: onSpacesChanged };
 
   return (
     <div className="wiki-layout">

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import type { ComponentType } from "react";
 import { Navigate, Route, Routes, useParams } from "react-router";
 import { Button, Spinner } from "@chanho/react";
@@ -79,12 +79,19 @@ export function App() {
   // 에러 화면 + 재시도로 노출한다(설계 §9 관측성).
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * 마지막으로 보낸 목록 요청만 반영한다. 설정 화면에서 이름 저장과 라벨 저장이 잇달아 다시 읽게 하면
+   * 앞 요청의 늦은 응답(라벨 전)이 뒤 요청의 결과를 덮어, 라벨 편집기가 옛 상태에서 전량 교체를 보내게 된다.
+   */
+  const reloadSeq = useRef(0);
   const reload = useCallback(async () => {
+    const mine = ++reloadSeq.current;
     setError(null);
     try {
-      setSpaces(await listSpaces());
+      const next = await listSpaces();
+      if (mine === reloadSeq.current) setSpaces(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (mine === reloadSeq.current) setError(e instanceof Error ? e.message : String(e));
     }
   }, []);
 

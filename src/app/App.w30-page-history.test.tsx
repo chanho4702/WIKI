@@ -12,11 +12,15 @@ import { createSeedData } from "../mock/seed";
  * 모달을 걷어내고 표·이전 버전 보기·비교 화면으로 나눴다. 여기서 고정하는 것은 그 화면들이
  * 서로 이어지는 방식이다 — 2개 제한 선택 → 비교, 배너에서 현재 버전과 비교, 복원 확인.
  */
-const storeMocks = vi.hoisted(() => ({ listVersions: vi.fn() }));
+const storeMocks = vi.hoisted(() => ({ listVersions: vi.fn(), listVersionPage: vi.fn() }));
 
 vi.mock("../features/wiki/store/wikiStore", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../features/wiki/store/wikiStore")>();
-  return { ...actual, listVersions: storeMocks.listVersions };
+  return {
+    ...actual,
+    listVersions: storeMocks.listVersions,
+    listVersionPage: storeMocks.listVersionPage,
+  };
 });
 
 /** 목업 사용자 디렉터리에 없는 저장자 — 이름 폴백(스냅샷 / `사용자 #{id}`)을 만든다. */
@@ -53,6 +57,8 @@ beforeEach(() => {
   __resetForTest();
   storeMocks.listVersions.mockReset();
   storeMocks.listVersions.mockImplementation(mockStore.listVersions);
+  storeMocks.listVersionPage.mockReset();
+  storeMocks.listVersionPage.mockImplementation(mockStore.listVersionPage);
 });
 
 describe("W30 히스토리 표", () => {
@@ -113,16 +119,85 @@ describe("W30 히스토리 표", () => {
 
   it("버전 목록을 못 읽으면 빈 표가 아니라 에러 상태와 다시 시도를 보여준다", async () => {
     const user = userEvent.setup();
-    storeMocks.listVersions.mockRejectedValue(new Error("이력 서비스를 사용할 수 없습니다"));
+    storeMocks.listVersionPage.mockRejectedValue(new Error("이력 서비스를 사용할 수 없습니다"));
     renderApp("/spaces/sp1/pages/pg1/history");
 
     expect(await screen.findByText("히스토리를 불러올 수 없습니다")).toBeInTheDocument();
     expect(screen.getByText("이력 서비스를 사용할 수 없습니다")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
 
-    storeMocks.listVersions.mockImplementation(mockStore.listVersions);
+    storeMocks.listVersionPage.mockImplementation(mockStore.listVersionPage);
     await user.click(screen.getByRole("button", { name: "다시 시도" }));
     expect(await screen.findByRole("link", { name: "v. 2" })).toBeInTheDocument();
+  });
+
+  /** 버전이 한 쪽(50)보다 많은 문서 — 첫 화면은 한 쪽만 읽고, 더 보기로 끝까지 닿는다. */
+  function seedManyVersions(count: number) {
+    const seed = createSeedData();
+    seed.versions = seed.versions.filter((v) => v.pageId !== "pg2");
+    for (let n = 1; n <= count; n++) {
+      seed.versions.push({
+        id: `pv-many-${n}`,
+        pageId: "pg2",
+        version: n,
+        title: "팀 규칙",
+        body: `본문 ${n}`,
+        savedBy: "u1",
+        savedAt: new Date(Date.UTC(2026, 0, 1, 0, n)).toISOString(),
+      });
+    }
+    const pg2 = seed.pages.find((p) => p.id === "pg2");
+    if (pg2) pg2.version = count;
+    localStorage.setItem("wiki.v1", JSON.stringify(seed));
+    __resetForTest();
+  }
+
+  it("버전이 한 쪽보다 많으면 한 쪽만 읽고 '이전 버전 더 보기'로 가장 오래된 버전까지 닿는다", async () => {
+    const user = userEvent.setup();
+    seedManyVersions(70);
+    renderApp("/spaces/sp1/pages/pg2/history");
+
+    expect(await screen.findByRole("link", { name: "v. 70" })).toBeInTheDocument();
+    expect(screen.getByText("전체 70개 중 50개 표시")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "v. 20" })).not.toBeInTheDocument();
+    // 목록 전량 API를 부르지 않는다 — 첫 화면 비용이 버전 수에 비례하지 않는다.
+    expect(storeMocks.listVersions).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "이전 버전 더 보기" }));
+    expect(await screen.findByRole("link", { name: "v. 1" })).toBeInTheDocument();
+    expect(screen.getByText("전체 70개 중 70개 표시")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "이전 버전 더 보기" })).not.toBeInTheDocument();
+    // 쪽 경계의 버전이 두 번 그려지지 않는다
+    expect(screen.getAllByRole("link", { name: "v. 21" })).toHaveLength(1);
+  });
+
+  it("더 보기가 실패해도 읽은 행은 남고 다시 시도할 수 있다", async () => {
+    const user = userEvent.setup();
+    seedManyVersions(60);
+    renderApp("/spaces/sp1/pages/pg2/history");
+    expect(await screen.findByRole("link", { name: "v. 60" })).toBeInTheDocument();
+
+    storeMocks.listVersionPage.mockRejectedValueOnce(new Error("일시 오류"));
+    await user.click(screen.getByRole("button", { name: "이전 버전 더 보기" }));
+    expect(await screen.findByText(/이전 버전을 더 불러오지 못했습니다: 일시 오류/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "v. 60" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "다시 시도" }));
+    expect(await screen.findByRole("link", { name: "v. 1" })).toBeInTheDocument();
+  });
+
+  it("목록 첫 쪽 밖의 버전도 주소로 바로 열고 비교할 수 있다", async () => {
+    seedManyVersions(120);
+    renderApp("/spaces/sp1/pages/pg2/history/3");
+    expect(await screen.findByText("본문 3")).toBeInTheDocument();
+    expect(screen.getByText(/이전 버전\(v\. 3\)을 보고 있습니다/)).toBeInTheDocument();
+  });
+
+  it("첫 쪽 밖의 두 버전 비교", async () => {
+    seedManyVersions(120);
+    renderApp("/spaces/sp1/pages/pg2/history/compare?from=2&to=5");
+    expect(await screen.findByRole("heading", { name: "v. 2 ↔ v. 5 비교" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "v. 5로 복원" })).toBeInTheDocument();
   });
 });
 

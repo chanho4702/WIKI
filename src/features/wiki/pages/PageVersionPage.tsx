@@ -1,49 +1,32 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router";
 import { Banner, Button, EmptyState } from "@chanho/react";
 import { ArrowLeft } from "lucide-react";
-import type { PageVersion } from "../store/types";
-import { getVersion } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
 import { SkeletonLines } from "../components/WikiSkeleton";
 import { RestoreVersionDialog } from "../components/RestoreVersionDialog";
-import { formatVersionDateTime, usePageHistory, versionAuthorName, versionLabel } from "../lib/pageHistory";
+import { formatVersionDateTime, usePageVersions, versionAuthorName, versionLabel } from "../lib/pageHistory";
 
 /**
  * 이전 버전 보기 (`/spaces/:spaceId/pages/:pageId/history/:version`).
  *
  * 주소의 `:version`은 버전 번호다(내부 id가 아니다) — 이력 화면의 링크는 공유되고, 공유받은
- * 사람에게 "v. 5"는 말이 되지만 합성 id는 되지 않는다. 본문은 목록이 주지 않으므로(메타만)
- * 이 화면이 그때 단건으로 읽는다.
+ * 사람에게 "v. 5"는 말이 되지만 합성 id는 되지 않는다. 이력 목록은 쪽 단위라 그 버전이 첫 쪽에
+ * 없을 수 있다 — 목록에 기대지 않고 번호로 단건(본문+메타)을 바로 읽는다.
  */
 export function PageVersionPage() {
   const { spaceId, pageId, version } = useParams();
   const navigate = useNavigate();
   const { reloadPages } = useOutletContext<WikiOutletContext>();
-  const { page, versions, users, error, reload } = usePageHistory(pageId);
   const versionNumber = Number(version);
-  const meta = versions?.find((v) => v.version === versionNumber) ?? null;
-  const [full, setFull] = useState<PageVersion | null>(null);
-  const [bodyError, setBodyError] = useState<string | null>(null);
+  const validNumber = Number.isInteger(versionNumber) && versionNumber > 0;
+  const { page, versions, currentVersion, users, error, reload } = usePageVersions(
+    pageId,
+    validNumber ? [versionNumber] : [],
+  );
+  const meta = versions?.[0] ?? null;
   const [restoreOpen, setRestoreOpen] = useState(false);
-
-  useEffect(() => {
-    if (!pageId || !meta) return;
-    let cancelled = false;
-    setFull(null);
-    setBodyError(null);
-    void getVersion(pageId, meta.id)
-      .then((loaded) => {
-        if (!cancelled) setFull(loaded);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setBodyError(e instanceof Error ? e.message : String(e));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [pageId, meta?.id]);
 
   const historyPath = `/spaces/${spaceId}/pages/${pageId}/history`;
 
@@ -58,7 +41,7 @@ export function PageVersionPage() {
       </div>
     );
   }
-  if (page === undefined || versions === null) {
+  if (page === undefined || versions === undefined) {
     return (
       <div className="history-page">
         <SkeletonLines label="버전 로딩 중" widths={["70%", "65%", "72%", "60%"]} />
@@ -80,7 +63,6 @@ export function PageVersionPage() {
     );
   }
 
-  const currentVersion = versions[0]?.version;
   const isCurrent = meta.version === currentVersion;
   const authorName = versionAuthorName(users, meta);
   const savedAt = formatVersionDateTime(meta.savedAt);
@@ -129,20 +111,8 @@ export function PageVersionPage() {
           </span>
         </Banner>
       )}
-      {bodyError !== null ? (
-        <EmptyState
-          title="이 버전을 불러올 수 없습니다"
-          description={bodyError}
-          primaryAction={{ label: "다시 시도", onClick: reload }}
-        />
-      ) : full === null ? (
-        <SkeletonLines label="버전 본문 로딩 중" widths={["92%", "100%", "86%", "54%"]} />
-      ) : (
-        <>
-          <h1 className="history-version-title">{full.title}</h1>
-          <MarkdownView markdown={full.body} spaceId={spaceId} />
-        </>
-      )}
+      <h1 className="history-version-title">{meta.title}</h1>
+      <MarkdownView markdown={meta.body} spaceId={spaceId} />
       <RestoreVersionDialog
         open={restoreOpen}
         onOpenChange={setRestoreOpen}

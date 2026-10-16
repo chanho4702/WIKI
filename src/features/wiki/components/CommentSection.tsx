@@ -12,7 +12,16 @@ import type { CommentAction } from "@chanho/react";
 import { MessageSquare } from "lucide-react";
 import { CommentSkeleton } from "./WikiSkeleton";
 import type { Comment, User } from "../store/types";
-import { addComment, deleteComment, getCurrentUser, listComments, setCommentReaction, updateComment } from "../store/wikiStore";
+import {
+  addComment,
+  deleteComment,
+  getCurrentUser,
+  listCommentThreads,
+  setCommentReaction,
+  updateComment,
+} from "../store/wikiStore";
+import type { CommentThreadPage } from "../store/types";
+import { byCreatedAsc } from "../lib/commentOrder";
 import { ReactionBar } from "./ReactionBar";
 import { useReadOnly } from "../lib/readOnly";
 
@@ -46,11 +55,69 @@ interface PendingDelete {
   replyCount: number;
 }
 
-/** 페이지 하단 코멘트 — 최상위 목록 + 답글 1단 + 본인 수정/삭제. */
+/** 한 번에 읽는 스레드 수 — 댓글이 수천 개인 문서도 첫 화면은 이만큼이다. */
+export const COMMENT_THREAD_PAGE = 20;
+
+
+/**
+ * 최신 쪽을 다시 받아 지금 들고 있는 스레드에 합친다.
+ *
+ * 최신 쪽에 든 스레드는 서버 것으로 통째로 갈아끼우고(남이 단 답글·고친 본문 반영), 그 범위 안인데
+ * 서버에 없는 스레드는 지워진 것이다. 그보다 오래된, 사용자가 "더 보기"로 읽어 둔 스레드는 그대로
+ * 둔다. 최신 쪽과 들고 있던 범위 사이에 빈틈이 생겼으면(그 사이 남이 한 쪽 넘게 썼다) 최신 쪽으로
+ * 다시 시작한다 — 빈틈을 둔 채 "이전 코멘트" 커서를 잇면 그 사이 스레드에 닿을 길이 없다.
+ */
+function mergeLatest(
+  current: { comments: Comment[]; nextBefore: string | null },
+  fresh: CommentThreadPage,
+): { comments: Comment[]; nextBefore: string | null } {
+  const freshRoots = fresh.comments.filter((c) => c.parentId === null);
+  const oldestFresh = [...freshRoots].sort(byCreatedAsc)[0];
+  const currentRoots = current.comments.filter((c) => c.parentId === null).sort(byCreatedAsc);
+  const newestCurrent = currentRoots[currentRoots.length - 1];
+  const gap =
+    fresh.nextBefore !== null &&
+    oldestFresh !== undefined &&
+    newestCurrent !== undefined &&
+    byCreatedAsc(newestCurrent, oldestFresh) < 0 &&
+    !freshRoots.some((r) => r.id === newestCurrent.id);
+  // 최신 쪽이 끝까지 다 담았거나(nextBefore=null — 서버에 그 밖의 스레드가 없다) 들고 있던 것이 없으면
+  // 최신 쪽이 곧 전부다. 옛 스레드를 남기면 다른 곳에서 지운 댓글이 화면에 남는다.
+  if (gap || fresh.nextBefore === null || oldestFresh === undefined || newestCurrent === undefined) {
+    return { comments: fresh.comments, nextBefore: fresh.nextBefore };
+  }
+  // 최신 쪽 범위(가장 오래된 최신 스레드 이후)에 드는 옛 스레드는 버리고 서버 것으로 바꾼다.
+  const keptRootIds = new Set(
+    currentRoots.filter((r) => byCreatedAsc(r, oldestFresh) < 0).map((r) => r.id),
+  );
+  const kept = current.comments.filter((c) => keptRootIds.has(c.parentId ?? c.id));
+  return { comments: [...kept, ...fresh.comments], nextBefore: current.nextBefore };
+}
+
+/**
+ * 페이지 하단 코멘트 — 최상위 목록 + 답글 1단 + 본인 수정/삭제.
+ *
+ * 스레드는 쪽 단위로 읽는다(최신 스레드부터). 화면은 오래된 순으로 그리므로 더 읽을 것은 언제나
+ * **위쪽**이다 — "이전 코멘트 더 보기"가 목록 위에 있고, 새 댓글은 이미 읽은 범위 끝에 붙어 빈틈이
+ * 생기지 않는다.
+ */
 export function CommentSection({ pageId, users }: CommentSectionProps) {
   const readOnly = useReadOnly();
-  // null = 로딩 중
-  const [comments, setComments] = useState<Comment[] | null>(null);
+  // null = 로딩 중. 스레드와 "더 오래된 쪽" 커서는 함께 바뀌어야 해서 한 상태로 둔다.
+  const [threads, setThreads] = useState<{ comments: Comment[]; nextBefore: string | null } | null>(null);
+  const comments = threads?.comments ?? null;
+  const nextBefore = threads?.nextBefore ?? null;
+  /** 지금의 "더 오래된 쪽" 커서 — 늦게 온 응답이 아직 유효한지 then 안에서 확인한다 */
+  const cursorRef = useRef<string | null>(null);
+  cursorRef.current = nextBefore;
+  /** 쓰기 세대 — 작성·수정·삭제와 그 뒤 재조회마다 오른다. 그 전에 나간 "이전 코멘트" 응답을 가린다. */
+  const writeEpoch = useRef(0);
+  const [counts, setCounts] = useState({ threadCount: 0, commentCount: 0 });
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderError, setOlderError] = useState<string | null>(null);
+  /** pageId가 바뀌면 늦게 도착한 이전 문서의 응답을 버린다 */
+  const generation = useRef(0);
   const [me, setMe] = useState<User | null>(null);
   const [draft, setDraft] = useState("");
   const [composerActive, setComposerActive] = useState(false);
@@ -73,16 +140,95 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
   }, []);
 
   useEffect(() => {
-    setComments(null);
+    const mine = ++generation.current;
+    setThreads(null);
+    setLoadError(null);
+    setOlderError(null);
+    setLoadingOlder(false);
     setDraft("");
     setComposerActive(false);
     setReplyTo(null);
     setEditingId(null);
     setPendingDelete(null);
-    void listComments(pageId).then(setComments);
+    void listCommentThreads(pageId, { kind: "page", limit: COMMENT_THREAD_PAGE })
+      .then((first) => {
+        if (generation.current !== mine) return;
+        setThreads({ comments: first.comments, nextBefore: first.nextBefore });
+        setCounts({ threadCount: first.threadCount, commentCount: first.commentCount });
+      })
+      .catch((error: unknown) => {
+        // 빈 목록으로 삼키지 않는다 — "코멘트가 없다"와 "못 읽었다"는 다르다
+        if (generation.current === mine) setLoadError(error instanceof Error ? error.message : String(error));
+      });
   }, [pageId]);
 
-  const reload = async () => setComments(await listComments(pageId));
+  /** 쓰기 뒤 최신 쪽을 다시 받아 합친다 — 남이 그 사이 단 댓글도 함께 들어온다. */
+  const reload = async () => {
+    writeEpoch.current += 1; // 쓰기 뒤의 재조회다 — 그 전에 나간 "이전 코멘트" 응답의 건수는 낡았다
+    const mine = generation.current;
+    const fresh = await listCommentThreads(pageId, { kind: "page", limit: COMMENT_THREAD_PAGE });
+    if (generation.current !== mine) return;
+    setCounts({ threadCount: fresh.threadCount, commentCount: fresh.commentCount });
+    setThreads((prev) => mergeLatest(prev ?? { comments: [], nextBefore: null }, fresh));
+  };
+
+  /**
+   * 쓰기 결과를 들고 있는 목록에 바로 반영한다. 최신 쪽 재조회(reload)는 "더 보기"로 읽어 둔 옛
+   * 스레드를 다시 받지 않으므로, 옛 스레드의 답글·수정·삭제는 여기서 맞춰야 화면에 남는다.
+   */
+  const applyLocal = (change: (list: Comment[]) => Comment[]) => {
+    writeEpoch.current += 1;
+    setThreadsLocal(change);
+  };
+  const setThreadsLocal = (change: (list: Comment[]) => Comment[]) =>
+    setThreads((prev) => (prev ? { ...prev, comments: change(prev.comments) } : prev));
+
+  /** 쓰기 때문에 늦은 "이전 코멘트" 응답을 버리고 다시 읽는 횟수 상한 — 넘으면 다시 시도를 맡긴다 */
+  const OLDER_RETRIES = 3;
+
+  const loadOlder = () => {
+    if (nextBefore === null || loadingOlder) return;
+    const mine = generation.current;
+    setLoadingOlder(true);
+    setOlderError(null);
+
+    /**
+     * 요청이 나가 있는 동안 이 화면에서 쓰기(작성·수정·삭제와 그 뒤 재조회)가 있었으면 그 응답은 쓰기 전
+     * 세계의 것이다 — 어떤 스레드가 지워졌는지·갈아끼워졌는지를 하나씩 따져 거르는 대신 **통째로 버리고**
+     * 지금의 커서로 다시 읽는다. 목록이 다시 세워져 커서가 바뀌었으면 그 응답은 옛 자리의 것이라 버린다.
+     */
+    const fetchOlder = (cursor: string, attempt: number): Promise<void> => {
+      const epoch = writeEpoch.current;
+      return listCommentThreads(pageId, { kind: "page", before: cursor, limit: COMMENT_THREAD_PAGE }).then(
+        (older) => {
+          if (generation.current !== mine || cursorRef.current !== cursor) return;
+          if (writeEpoch.current !== epoch) {
+            if (attempt + 1 >= OLDER_RETRIES) {
+              throw new Error("코멘트가 바뀌는 중이라 이전 코멘트를 불러오지 못했습니다");
+            }
+            return fetchOlder(cursor, attempt + 1);
+          }
+          setThreads((prev) => {
+            if (!prev || prev.nextBefore !== cursor) return prev;
+            const have = prev.comments;
+            // 응답과 들고 있는 것은 같은 시점이지만, 겹치는 스레드가 있으면 들고 있는 쪽을 둔다(이중 방어).
+            const heldRoots = new Set(have.filter((c) => c.parentId === null).map((c) => c.id));
+            const fresh = older.comments.filter((c) => !heldRoots.has(c.parentId ?? c.id));
+            return { comments: [...fresh, ...have], nextBefore: older.nextBefore };
+          });
+          setCounts({ threadCount: older.threadCount, commentCount: older.commentCount });
+        },
+      );
+    };
+
+    void fetchOlder(nextBefore, 0)
+      .catch((error: unknown) => {
+        if (generation.current === mine) setOlderError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (generation.current === mine) setLoadingOlder(false);
+      });
+  };
   // 이름 해석: users 목록(목업/디렉터리) → 서버 스냅샷(백엔드 모드) → "알 수 없음"
   const userName = (id: string, snapshot?: string) =>
     users.find((u) => u.id === id)?.name ?? snapshot ?? "알 수 없음";
@@ -110,7 +256,8 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
     event.preventDefault();
     if (!replyTo) return;
     try {
-      await addComment(pageId, replyDraft, replyTo);
+      const reply = await addComment(pageId, replyDraft, replyTo);
+      applyLocal((list) => (list.some((c) => c.id === reply.id) ? list : [...list, reply]));
       setReplyDraft("");
       setReplyTo(null);
       await reload();
@@ -123,7 +270,8 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
   const handleEditSave = async () => {
     if (!editingId) return;
     try {
-      await updateComment(editingId, editDraft);
+      const edited = await updateComment(editingId, editDraft);
+      applyLocal((list) => list.map((c) => (c.id === edited.id ? { ...c, ...edited, reactions: c.reactions } : c)));
       setEditingId(null);
       await reload();
       toast({ title: "코멘트를 수정했습니다", appearance: "success" });
@@ -136,7 +284,9 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
     if (!pendingDelete) return;
     setDeleting(true);
     try {
-      await deleteComment(pendingDelete.comment.id);
+      const doomed = pendingDelete.comment.id;
+      await deleteComment(doomed);
+      applyLocal((list) => list.filter((c) => c.id !== doomed && c.parentId !== doomed));
       setPendingDelete(null);
       await reload();
       toast({ title: "코멘트를 삭제했습니다", appearance: "success" });
@@ -155,13 +305,24 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
     }
   };
 
+  if (loadError !== null) {
+    return (
+      <section className="comment-section" aria-label="코멘트">
+        <h2 className="comment-section-title">코멘트</h2>
+        <p className="comment-load-error" role="alert">
+          코멘트를 불러오지 못했습니다: {loadError}
+        </p>
+      </section>
+    );
+  }
   if (comments === null) {
     return <CommentSkeleton label="코멘트 로딩 중" />;
   }
 
-  // 인라인 스레드(W21-4)는 본문 옆 InlineCommentLayer가 맡는다 — 페이지 댓글 목록에 섞지 않는다.
-  const topLevel = comments.filter((c) => c.parentId === null && c.anchorType !== "inline");
-  const repliesOf = (id: string) => comments.filter((c) => c.parentId === id);
+  // 인라인 스레드(W21-4)는 본문 옆 InlineCommentLayer가 맡는다 — 서버가 kind=page만 준다.
+  const topLevel = comments.filter((c) => c.parentId === null && c.anchorType !== "inline").sort(byCreatedAsc);
+  const repliesOf = (id: string) => comments.filter((c) => c.parentId === id).sort(byCreatedAsc);
+  const unloadedThreads = Math.max(0, counts.threadCount - topLevel.length);
 
   /**
    * DS Comment의 actions prop으로 하단 액션을 구성한다.
@@ -240,7 +401,12 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
                 <ReactionBar
                   label="댓글 리액션"
                   reactions={comment.reactions ?? []}
-                  onToggle={(emoji, on) => setCommentReaction(comment.id, emoji, on)}
+                  onToggle={async (emoji, on) => {
+                    const reactions = await setCommentReaction(comment.id, emoji, on);
+                    // 칩 상태는 ReactionBar가 들고 있지만, 수정 뒤 다시 그릴 때는 목록의 값을 쓴다
+                    applyLocal((list) => list.map((c) => (c.id === comment.id ? { ...c, reactions } : c)));
+                    return reactions;
+                  }}
                 />
               )}
             </>
@@ -287,9 +453,25 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
 
   return (
     <section className="comment-section" aria-label="코멘트">
-      <h2 className="comment-section-title">코멘트 ({comments.length})</h2>
+      <h2 className="comment-section-title">코멘트 ({counts.commentCount})</h2>
+      {nextBefore !== null ? (
+        <div className="comment-older">
+          <Button variant="subtle" size="small" onClick={loadOlder} disabled={loadingOlder}>
+            {loadingOlder
+              ? "불러오는 중…"
+              : olderError !== null
+                ? "다시 시도"
+                : unloadedThreads > 0
+                  ? `이전 코멘트 ${unloadedThreads}개 더 보기`
+                  : "이전 코멘트 더 보기"}
+          </Button>
+          {olderError !== null ? (
+            <span className="comment-load-error">이전 코멘트를 불러오지 못했습니다: {olderError}</span>
+          ) : null}
+        </div>
+      ) : null}
       {topLevel.map((comment) => renderComment(comment, repliesOf(comment.id)))}
-      {comments.length === 0 ? (
+      {topLevel.length === 0 && nextBefore === null ? (
         <p className="comment-empty">
           <MessageSquare size={16} aria-hidden />
           {readOnly ? "코멘트가 없습니다" : "아직 코멘트가 없습니다 — 가장 먼저 의견을 남겨보세요"}

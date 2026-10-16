@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "@chanho/react";
 import { AtSign, Bell, FilePlus, FileText, MessageSquare, Share2 } from "lucide-react";
-import type { NotificationList, NotificationType, User } from "../store/types";
-import { listNotifications, listUsers, markNotificationsRead } from "../store/wikiStore";
+import type { NotificationType, User } from "../store/types";
+import { listUsers, markNotificationsRead } from "../store/wikiStore";
+import { useNotificationFeed } from "../lib/useNotificationFeed";
 import { relativeTime } from "../lib/relativeTime";
 import { useDismissablePopover } from "../lib/useDismissablePopover";
 
@@ -19,30 +20,23 @@ const TYPE_META: Record<NotificationType, { icon: typeof Bell; text: (actor: str
 
 /**
  * TopBar 알림 벨 — 미읽음 배지 + 클릭 시 알림함 팝오버.
- * 목록은 마운트 시 1회 + 열 때마다 다시 불러온다(폴링 없음 — 실시간 푸시는 후속 결정).
+ * 목록은 마운트·열 때·보이는 탭에서 주기적으로·탭 복귀/창 포커스 때 다시 불러온다
+ * (useNotificationFeed — 숨은 탭은 건너뛰고 실패하면 간격을 늘린다. 실시간 푸시는 후속 결정).
  * 항목 클릭 = 해당 알림 읽음 + 페이지로 이동. 행위자 이름은 org 디렉터리(listUsers)로
  * 해석하고 없으면 "사용자 #id" 폴백(작성자 표시와 같은 규칙).
  */
 export function NotificationBell() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [list, setList] = useState<NotificationList | null>(null);
+  const { list, reload } = useNotificationFeed();
   const [users, setUsers] = useState<User[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const reload = useCallback(() => {
-    void listNotifications().then(setList).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
   useEffect(() => {
     if (!open) return;
     reload();
-    void listUsers().then(setUsers);
+    void listUsers().then(setUsers).catch(() => {}); // 이름은 부가 정보 — 실패하면 `사용자 #id` 폴백
   }, [open, reload]);
 
   const close = useCallback(() => setOpen(false), []);

@@ -3476,6 +3476,16 @@ body {
   font-size: var(--chanho-font-size-100);
 }
 
+/* 하한 total 안내 — 요약 줄 아래 한 줄을 다 쓴다(좁은 화면에서 숫자 옆에 끼우면 줄이 깨진다). */
+.search-result-summary {
+  flex-wrap: wrap;
+}
+
+.search-result-summary .search-result-summary-note {
+  flex-basis: 100%;
+  font-size: var(--chanho-font-size-75);
+}
+
 .search-result-list {
   margin: 0;
   padding: 0;
@@ -4968,6 +4978,77 @@ body.is-column-reordering {
   text-decoration: underline;
 }
 
+/* 스페이스 디렉토리 라벨 열(V41) — 칩이 여러 개면 줄을 바꾼다(표 칸이 좁아도 가로 스크롤 없이). */
+.space-directory-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--chanho-space-50);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.space-directory-labels .label-chip {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--chanho-font-size-75);
+}
+
+.space-directory-labels .label-chip:focus-visible {
+  outline: 2px solid var(--chanho-color-border-focused);
+  outline-offset: 1px;
+}
+
+.space-directory-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--chanho-space-200);
+  margin-bottom: var(--chanho-space-100);
+}
+
+.space-directory-filters .space-directory-filter {
+  margin-bottom: 0;
+}
+
+/* 좁은 화면에서는 두 칸이 한 줄을 나눠 쓰다 모자라면 줄을 바꾼다 — 고정 최소폭으로 밀어내지 않는다. */
+.space-directory-filters > * {
+  flex: 1 1 11rem;
+  min-width: 0;
+  max-width: 20rem;
+}
+
+/* 스페이스 설정의 라벨 편집(V41) */
+/* 카드 모양은 .space-settings-form(이름·내보내기 카드)과 같다 — 간격만 칩 목록에 맞춰 좁힌다. */
+.space-settings-form.space-labels-editor {
+  gap: var(--chanho-space-150);
+  margin-top: var(--chanho-space-300);
+}
+
+.space-labels-editor-title {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-75);
+  margin: 0;
+  font-size: var(--chanho-font-size-200);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+
+.space-labels-editor-hint,
+.space-labels-editor-empty {
+  margin: 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.space-labels-editor-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--chanho-space-100);
+}
+
 .label-chip-active {
   background: var(--chanho-color-background-brand-subtle);
 }
@@ -5315,6 +5396,12 @@ body.is-column-reordering {
 }
 
 /* 하이라이트가 유일한 진입점이라, 본문에서 사라진 대화만 아래에 남긴다 */
+.inline-comment-load-error {
+  margin: var(--chanho-space-150) 0 0;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
 .inline-comment-strays {
   margin-top: var(--chanho-space-300);
   display: flex;
@@ -6760,6 +6847,26 @@ body.is-column-reordering {
   font-size: var(--chanho-font-size-400);
   font-weight: var(--chanho-font-weight-bold);
   line-height: var(--chanho-font-lineHeight-400);
+}
+
+/* 히스토리 "더 보기" 줄 — 표 아래 오른쪽 정렬, 좁은 화면에서는 줄바꿈. */
+.history-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--chanho-space-150);
+  margin-top: var(--chanho-space-200);
+}
+
+.history-more-count {
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.history-more-error {
+  color: var(--chanho-color-text-danger);
+  font-size: var(--chanho-font-size-75);
 }
 
 .history-page-toolbar {

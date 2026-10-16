@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Page, PageVersion, User } from "../store/types";
-import { getPage, listUsers, listVersions } from "../store/wikiStore";
+import { getPage, getVersionByNumber, listUsers, listVersionPage } from "../store/wikiStore";
 import { displayUserName } from "./userName";
 
 /**
@@ -38,11 +38,23 @@ export function versionAuthorName(users: User[], version: PageVersion): string {
   );
 }
 
+/** 히스토리 표 한 쪽 — 버전이 수백 개인 문서도 첫 화면은 이만큼만 읽는다. */
+export const HISTORY_PAGE_SIZE = 50;
+
 export interface PageHistoryData {
   /** undefined = 로딩 중, null = 없는 페이지 */
   page: Page | null | undefined;
-  /** null = 로딩 중. 스토어가 version 내림차순(최신 먼저)을 보장한다 */
+  /** null = 로딩 중. 지금까지 읽은 쪽들 — version 내림차순(최신 먼저) */
   versions: PageVersion[] | null;
+  /** 이 문서의 전체 버전 수(읽은 수가 아니다) */
+  total: number;
+  /** 아직 읽지 않은 더 오래된 버전이 있는가 */
+  hasMore: boolean;
+  /** 다음 쪽을 읽는 중 */
+  loadingMore: boolean;
+  /** 다음 쪽 읽기 실패 — 읽은 쪽은 그대로 두고 다시 시도할 수 있게 따로 둔다 */
+  moreError: string | null;
+  loadMore: () => void;
   /** 이름 표기용 디렉터리 — 실패는 빈 목록(부가 정보라 화면을 막지 않는다) */
   users: User[];
   /** 페이지·버전 로드 실패 — 빈 표로 삼키지 않고 화면이 에러 상태로 노출한다 */
@@ -53,23 +65,36 @@ export interface PageHistoryData {
 export function usePageHistory(pageId: string | undefined): PageHistoryData {
   const [page, setPage] = useState<Page | null | undefined>(undefined);
   const [versions, setVersions] = useState<PageVersion[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [nextBefore, setNextBefore] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  /** 페이지가 바뀌거나 다시 읽으면 늦게 온 "더 보기" 응답을 버리기 위한 세대 번호 */
+  const generation = useRef(0);
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
 
   useEffect(() => {
     if (!pageId) return;
     let cancelled = false;
+    generation.current += 1;
     setPage(undefined);
     setVersions(null);
+    setTotal(0);
+    setNextBefore(null);
+    setLoadingMore(false);
+    setMoreError(null);
     setError(null);
-    void Promise.all([getPage(pageId), listVersions(pageId)])
-      .then(([loadedPage, loadedVersions]) => {
+    void Promise.all([getPage(pageId), listVersionPage(pageId, { limit: HISTORY_PAGE_SIZE })])
+      .then(([loadedPage, first]) => {
         if (cancelled) return;
         setPage(loadedPage);
-        setVersions(loadedVersions);
+        setVersions(first.versions);
+        setTotal(first.total);
+        setNextBefore(first.nextBefore);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -80,11 +105,117 @@ export function usePageHistory(pageId: string | undefined): PageHistoryData {
     };
   }, [pageId, attempt]);
 
+  const loadMore = useCallback(() => {
+    if (!pageId || nextBefore === null || loadingMore) return;
+    const mine = generation.current;
+    setLoadingMore(true);
+    setMoreError(null);
+    void listVersionPage(pageId, { before: nextBefore, limit: HISTORY_PAGE_SIZE })
+      .then((next) => {
+        if (generation.current !== mine) return;
+        // 번호 커서라 겹치지 않지만, 같은 쪽을 두 번 받는 경합에서도 행이 중복되지 않게 거른다.
+        setVersions((prev) => {
+          const seen = new Set((prev ?? []).map((v) => v.version));
+          return [...(prev ?? []), ...next.versions.filter((v) => !seen.has(v.version))];
+        });
+        setTotal(next.total);
+        setNextBefore(next.nextBefore);
+      })
+      .catch((e: unknown) => {
+        if (generation.current === mine) setMoreError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
+        if (generation.current === mine) setLoadingMore(false);
+      });
+  }, [pageId, nextBefore, loadingMore]);
+
   useEffect(() => {
     void listUsers()
       .then(setUsers)
       .catch(() => setUsers([]));
   }, []);
 
-  return { page, versions, users, error, reload };
+  return {
+    page,
+    versions,
+    total,
+    hasMore: nextBefore !== null,
+    loadingMore,
+    moreError,
+    loadMore,
+    users,
+    error,
+    reload,
+  };
+}
+
+export interface PageVersionsData {
+  /** undefined = 로딩 중, null = 없는 페이지 */
+  page: Page | null | undefined;
+  /**
+   * 요청한 번호 순서 그대로의 버전(본문 포함). null 항목 = 이력에 없는 번호.
+   * undefined = 로딩 중.
+   */
+  versions: (PageVersion | null)[] | undefined;
+  /** 가장 최신 버전 번호(이력이 없으면 null) — "현재" 판정. undefined = 로딩 중 */
+  currentVersion: number | null | undefined;
+  users: User[];
+  error: string | null;
+  reload: () => void;
+}
+
+/**
+ * 이전 버전 보기·비교 화면용 — 버전 **번호**로 바로 읽는다.
+ *
+ * 예전에는 이력 전체 목록에서 메타를 찾아 본문을 따로 읽었다. 목록을 쪽 단위로 읽게 된 뒤로는
+ * 첫 쪽 밖의 버전(공유된 "v. 3" 링크)을 열 수 없게 되므로 목록에 기대지 않는다. 현재 버전은
+ * `page.version`이다.
+ */
+export function usePageVersions(pageId: string | undefined, numbers: number[]): PageVersionsData {
+  const [page, setPage] = useState<Page | null | undefined>(undefined);
+  const [versions, setVersions] = useState<(PageVersion | null)[] | undefined>(undefined);
+  const [currentVersion, setCurrentVersion] = useState<number | null | undefined>(undefined);
+  const [users, setUsers] = useState<User[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const key = numbers.join(",");
+
+  const reload = useCallback(() => setAttempt((n) => n + 1), []);
+
+  useEffect(() => {
+    if (!pageId) return;
+    let cancelled = false;
+    setPage(undefined);
+    setVersions(undefined);
+    setCurrentVersion(undefined);
+    setError(null);
+    const wanted = key === "" ? [] : key.split(",").map(Number);
+    // 최신 번호는 한 줄짜리 쪽으로 묻는다 — page.version과 이력 번호가 어긋난 옛 데이터에서도
+    // "현재" 배지가 이력의 실제 최신을 가리키게.
+    void Promise.all([
+      getPage(pageId),
+      Promise.all(wanted.map((n) => getVersionByNumber(pageId, n))),
+      listVersionPage(pageId, { limit: 1 }),
+    ])
+      .then(([loadedPage, loaded, latest]) => {
+        if (cancelled) return;
+        setPage(loadedPage);
+        setVersions(loaded);
+        setCurrentVersion(latest.versions[0]?.version ?? null);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pageId, key, attempt]);
+
+  useEffect(() => {
+    void listUsers()
+      .then(setUsers)
+      .catch(() => setUsers([]));
+  }, []);
+
+  return { page, versions, currentVersion, users, error, reload };
 }
