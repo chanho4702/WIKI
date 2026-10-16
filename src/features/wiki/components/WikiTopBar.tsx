@@ -1,17 +1,20 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { Avatar, Badge, Button, Dropdown, TopBar } from "@chanho/react";
+import { Avatar, Badge, Button, Dropdown, Modal, Spinner, TopBar } from "@chanho/react";
 import { Bell, Database, DatabaseBackup, Keyboard, KeyRound, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, Users } from "lucide-react";
 import type { User } from "../store/types";
 import { getCurrentUser, getOrgMe } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
 import { useAuth } from "../../../auth/AuthGate";
 import { GlobalSearchField } from "./GlobalSearchField";
-import { ShortcutHelpModal } from "./ShortcutHelpModal";
 import { NotificationBell } from "./NotificationBell";
 import { useReadOnly } from "../lib/readOnly";
 import { usePlatformFeatures } from "../lib/usePlatformFeatures";
+
+// 도움말은 편집기 명령 목록을 참조한다. 닫힌 모달까지 미리 불러오면 읽기 화면에도
+// TipTap이 포함되므로, 실제로 도움말을 열 때만 같은 단일 원천을 가져온다.
+const ShortcutHelpModal = lazy(() => import("./ShortcutHelpModal").then((m) => ({ default: m.ShortcutHelpModal })));
 
 export interface WikiTopBarProps {
   /** 지정하면 브랜드 슬롯 좌측에 사이드바 토글 버튼을 렌더한다(WikiLayout 전용 — 사이드바가 있는
@@ -184,7 +187,15 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
                 : []),
             ]}
           />
-          <ShortcutHelpModal open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
+          {shortcutHelpOpen ? (
+            <Suspense fallback={
+              <Modal open onOpenChange={setShortcutHelpOpen} title="단축키 도움말">
+                <Spinner label="도움말 불러오는 중" />
+              </Modal>
+            }>
+              <ShortcutHelpModal open onOpenChange={setShortcutHelpOpen} />
+            </Suspense>
+          ) : null}
           {/* 사용자 — 아바타 드롭다운(이름·로그아웃) */}
           {me ? (
             <Dropdown

@@ -9,25 +9,28 @@ import { EmptySpaces } from "../features/wiki/components/EmptySpaces";
 import { SpaceIndexPage } from "../features/wiki/pages/SpaceIndexPage";
 import { SpaceDirectoryPage } from "../features/wiki/pages/SpaceDirectoryPage";
 import { HomePage } from "../features/wiki/pages/HomePage";
-import { PageViewPage } from "../features/wiki/pages/PageViewPage";
-import { PageHistoryPage } from "../features/wiki/pages/PageHistoryPage";
-import { PageVersionPage } from "../features/wiki/pages/PageVersionPage";
-import { PageCompareVersionsPage } from "../features/wiki/pages/PageCompareVersionsPage";
-import { FolderPage } from "../features/wiki/pages/FolderPage";
-import { SearchPage } from "../features/wiki/pages/SearchPage";
-import { TasksPage } from "../features/wiki/pages/TasksPage";
-import { NotificationSettingsPage } from "../features/wiki/pages/NotificationSettingsPage";
-import { SearchAdminPage } from "../features/wiki/pages/SearchAdminPage";
-import { OrgAdminPage } from "../features/wiki/pages/OrgAdminPage";
-import { SpaceAuditAdminPage } from "../features/wiki/pages/SpaceAuditAdminPage";
-import { MigrationsAdminPage } from "../features/wiki/pages/MigrationsAdminPage";
-import { MigrationJobPage } from "../features/wiki/pages/MigrationJobPage";
-import { TrashPage } from "../features/wiki/pages/TrashPage";
-import { ArchivePage } from "../features/wiki/pages/ArchivePage";
-import { LabelsPage } from "../features/wiki/pages/LabelsPage";
-import { BlogPage } from "../features/wiki/pages/BlogPage";
-import { SpaceSettingsPage } from "../features/wiki/pages/SpaceSettingsPage";
 import { useReadOnly } from "../features/wiki/lib/readOnly";
+
+// 첫 진입에 필요한 개요·홈·디렉토리만 먼저 받는다. 본문 렌더러와 관리 화면은 해당 경로에서
+// 로드하고, AppShell의 Suspense가 본문만 대체해 탐색 메뉴와 사이드바 상태를 유지한다.
+const PageViewPage = lazy(() => import("../features/wiki/pages/PageViewPage").then((m) => ({ default: m.PageViewPage })));
+const PageHistoryPage = lazy(() => import("../features/wiki/pages/PageHistoryPage").then((m) => ({ default: m.PageHistoryPage })));
+const PageVersionPage = lazy(() => import("../features/wiki/pages/PageVersionPage").then((m) => ({ default: m.PageVersionPage })));
+const PageCompareVersionsPage = lazy(() => import("../features/wiki/pages/PageCompareVersionsPage").then((m) => ({ default: m.PageCompareVersionsPage })));
+const FolderPage = lazy(() => import("../features/wiki/pages/FolderPage").then((m) => ({ default: m.FolderPage })));
+const SearchPage = lazy(() => import("../features/wiki/pages/SearchPage").then((m) => ({ default: m.SearchPage })));
+const TasksPage = lazy(() => import("../features/wiki/pages/TasksPage").then((m) => ({ default: m.TasksPage })));
+const NotificationSettingsPage = lazy(() => import("../features/wiki/pages/NotificationSettingsPage").then((m) => ({ default: m.NotificationSettingsPage })));
+const SearchAdminPage = lazy(() => import("../features/wiki/pages/SearchAdminPage").then((m) => ({ default: m.SearchAdminPage })));
+const OrgAdminPage = lazy(() => import("../features/wiki/pages/OrgAdminPage").then((m) => ({ default: m.OrgAdminPage })));
+const SpaceAuditAdminPage = lazy(() => import("../features/wiki/pages/SpaceAuditAdminPage").then((m) => ({ default: m.SpaceAuditAdminPage })));
+const MigrationsAdminPage = lazy(() => import("../features/wiki/pages/MigrationsAdminPage").then((m) => ({ default: m.MigrationsAdminPage })));
+const MigrationJobPage = lazy(() => import("../features/wiki/pages/MigrationJobPage").then((m) => ({ default: m.MigrationJobPage })));
+const TrashPage = lazy(() => import("../features/wiki/pages/TrashPage").then((m) => ({ default: m.TrashPage })));
+const ArchivePage = lazy(() => import("../features/wiki/pages/ArchivePage").then((m) => ({ default: m.ArchivePage })));
+const LabelsPage = lazy(() => import("../features/wiki/pages/LabelsPage").then((m) => ({ default: m.LabelsPage })));
+const BlogPage = lazy(() => import("../features/wiki/pages/BlogPage").then((m) => ({ default: m.BlogPage })));
+const SpaceSettingsPage = lazy(() => import("../features/wiki/pages/SpaceSettingsPage").then((m) => ({ default: m.SpaceSettingsPage })));
 
 /**
  * 편집기를 이 산출물에 넣을지 — **빌드 상수**다(설계 §2.2).
@@ -39,10 +42,10 @@ import { useReadOnly } from "../features/wiki/lib/readOnly";
 const EDITOR_BUNDLED = import.meta.env.VITE_WIKI_READONLY !== "true";
 
 /**
- * 편집 화면만 지연 로딩한다(2026-08-29).
+ * 편집 화면은 별도 청크로 유지한다(2026-08-29).
  *
  * TipTap 확장 묶음이 번들의 큰 덩어리인데, 읽기만 하는 사용자는 한 번도 쓰지 않는다.
- * 나머지 화면은 크기가 작아 쪼갤수록 왕복만 늘어 그대로 둔다.
+ * 공개 문서 빌드는 아래 상수 분기로 편집 화면의 import 자체를 제거한다.
  */
 const PageEditPage: ComponentType = EDITOR_BUNDLED
   ? lazy(() => import("../features/wiki/pages/PageEditPage").then((m) => ({ default: m.PageEditPage })))

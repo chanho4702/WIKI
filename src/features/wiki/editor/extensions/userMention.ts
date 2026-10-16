@@ -1,4 +1,7 @@
 import { Node } from "@tiptap/core";
+import { sanitizeMentionName } from "../../lib/userMention";
+
+export { mentionUserIdFromHref, sanitizeMentionName } from "../../lib/userMention";
 
 /**
  * 사용자 멘션(@) 인라인 원자 노드.
@@ -12,17 +15,6 @@ import { Node } from "@tiptap/core";
  * W19 IR `mention` 노드와의 대응: attrs.target = user:id, 표시 텍스트 = 이름.
  */
 export const USER_MENTION_NAME = "userMention";
-
-/** `user:123` href → "123". 멘션이 아니면 null. */
-export function mentionUserIdFromHref(href: string | null | undefined): string | null {
-  if (!href) return null;
-  return /^user:(\d+)$/.exec(href)?.[1] ?? null;
-}
-
-/** 이름의 문법 충돌 문자 제거 — `[`/`]`는 링크 라벨을, 개행은 인라인을 깨뜨린다. */
-export function sanitizeMentionName(name: string): string {
-  return name.replace(/[[\]]/g, "").replace(/\s+/g, " ").trim();
-}
 
 export const UserMention = Node.create({
   name: USER_MENTION_NAME,

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router";
-import { Button } from "@chanho/react";
+import { Button, Spinner } from "@chanho/react";
 import { FolderPlus, MapPin, Plus } from "lucide-react";
 import type { PageType, Space } from "../store/types";
 import { GlobalSidebar } from "./GlobalSidebar";
@@ -37,9 +37,38 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
   const readOnly = useReadOnly();
   const { spaceId } = useParams();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, key: locationKey } = useLocation();
   const { collapsed, setCollapsed } = useSidebarPrefs();
   const mainRef = useRef<HTMLElement>(null);
+  const [compactLayout, setCompactLayout] = useState(
+    () => typeof window.matchMedia === "function" && window.matchMedia("(max-width: 700px)").matches,
+  );
+  const [mobileNavigation, setMobileNavigation] = useState<{ locationKey: string } | null>(null);
+  // 좁은 화면의 탐색 열림은 일시 상태다. 데스크톱에서 저장한 접힘·너비 설정을 덮어쓰지 않는다.
+  const sidebarExpanded = compactLayout ? mobileNavigation?.locationKey === locationKey : !collapsed;
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(max-width: 700px)");
+    const update = () => {
+      const focusedNavigation = document.activeElement?.closest(".wiki-sidebar");
+      setCompactLayout(media.matches);
+      setMobileNavigation(null);
+      if (focusedNavigation && (media.matches || collapsed)) {
+        requestAnimationFrame(() => mainRef.current?.focus());
+      }
+    };
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [collapsed]);
+
+  useEffect(() => {
+    if (mobileNavigation && mobileNavigation.locationKey !== locationKey) {
+      setMobileNavigation(null);
+      // 이동한 링크가 있던 탐색 영역은 닫힌다. 키보드 포커스는 새 본문으로 이어 준다.
+      if (compactLayout) mainRef.current?.focus();
+    }
+  }, [compactLayout, mobileNavigation, locationKey]);
 
   // spaceId가 있는 라우트(/spaces/:spaceId/*)에서만 현재 스페이스를 특정한다. 홈·디렉토리는 null.
   const space = spaceId ? spaces.find((s) => s.id === spaceId) ?? null : null;
@@ -165,16 +194,31 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
     <div className="wiki-layout">
       {/* WCAG 2.4.1 — 사이드바의 글로벌 네비 + 페이지 트리(수십 항목)를 Tab으로 전부 지나지 않고
         * 본문으로 바로 가는 경로. 포커스를 받을 때만 화면에 나타난다(.wiki-skip-link). */}
-      <a className="wiki-skip-link" href="#wiki-main">
+      <a
+        className="wiki-skip-link"
+        href="#wiki-main"
+        onClick={() => {
+          if (compactLayout && sidebarExpanded) {
+            setMobileNavigation(null);
+            requestAnimationFrame(() => mainRef.current?.focus());
+          }
+        }}
+      >
         본문으로 건너뛰기
       </a>
       <WikiTopBar
-        onSidebarToggle={() => setCollapsed(!collapsed)}
-        sidebarExpanded={!collapsed}
+        onSidebarToggle={() => {
+          if (compactLayout) {
+            setMobileNavigation(sidebarExpanded ? null : { locationKey });
+          } else {
+            setCollapsed(!collapsed);
+          }
+        }}
+        sidebarExpanded={sidebarExpanded}
         create={createControl}
       />
-      <div className="wiki-body">
-        {collapsed ? null : inSettings && space ? (
+      <div className={`wiki-body${compactLayout && sidebarExpanded ? " wiki-body--mobile-navigation" : ""}`}>
+        {!sidebarExpanded ? null : inSettings && space ? (
           /* 설정은 페이지 트리와 함께 볼 이유가 없는 별도 화면이다 — 사이드바째 바꾼다 */
           <SpaceSettingsSidebar space={space} />
         ) : (
@@ -189,8 +233,10 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
         )}
         {/* tabIndex={-1}: 스킵 링크(#wiki-main)의 앵커 점프가 포커스까지 옮기려면 대상이
           * 포커스 가능해야 한다. -1이라 Tab 순서에는 들어가지 않는다. */}
-        <main className="wiki-content" id="wiki-main" ref={mainRef} tabIndex={-1}>
-          <Outlet context={outletContext} />
+        <main className="wiki-content" id="wiki-main" ref={mainRef} tabIndex={-1} hidden={compactLayout && sidebarExpanded}>
+          <Suspense fallback={<div className="app-loading"><Spinner size="large" label="화면 불러오는 중" /></div>}>
+            <Outlet context={outletContext} />
+          </Suspense>
         </main>
       </div>
       {readOnly ? null : (

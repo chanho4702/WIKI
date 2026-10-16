@@ -4,6 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { renderApp, seedOrgState } from "./testUtils";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
+// 폴링 테스트의 가짜 타이머는 지연 라우트의 모듈 로드까지 기다리지 않는다.
+// 상세 화면을 미리 읽고, 아래에서는 실제 화면 전환과 잡 상태를 그대로 검증한다.
+import "../features/wiki/pages/MigrationJobPage";
 
 beforeEach(() => {
   localStorage.clear();

@@ -1,4 +1,8 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
+import { isBgColor, isTextColor, type BgColorName, type TextColorName } from "../../lib/textColors";
+
+export { BG_COLORS, TEXT_COLORS, isBgColor, isTextColor } from "../../lib/textColors";
+export type { BgColorName, TextColorName } from "../../lib/textColors";
 
 /**
  * 글자색·배경색(하이라이트) 마크 — Notion/Confluence의 제한 팔레트 방식.
@@ -16,29 +20,6 @@ import { Mark, mergeAttributes } from "@tiptap/core";
  * 열화(컬럼과 같은 트레이드오프). 임의 hex는 받지 않는다 — 팔레트 밖 색은 다크모드·대비
  * 검증이 불가능하다(제한 팔레트가 Notion/Confluence의 선택이기도 하다).
  */
-
-/** 글자색 팔레트 — CSS 클래스 `txt-<이름>`이 라이트/다크 값을 정의한다(스펙트럼 순).
- * 노랑 글자는 흰 배경 대비 때문에 황토 톤(#7f5f01) — 순색 노랑은 4.5:1을 못 넘는다. */
-export const TEXT_COLORS = [
-  "gray", "red", "orange", "yellow", "green", "teal", "blue", "purple", "magenta",
-] as const;
-/** 배경색 팔레트 — CSS 클래스 `bg-<이름>`. 표 셀 배경(cell-bg-*)도 같은 목록을 쓴다. */
-export const BG_COLORS = [
-  "gray", "red", "orange", "yellow", "green", "teal", "blue", "purple", "magenta",
-] as const;
-
-export type TextColorName = (typeof TEXT_COLORS)[number];
-export type BgColorName = (typeof BG_COLORS)[number];
-
-const TEXT_COLOR_SET = new Set<string>(TEXT_COLORS);
-const BG_COLOR_SET = new Set<string>(BG_COLORS);
-
-export function isTextColor(value: string): value is TextColorName {
-  return TEXT_COLOR_SET.has(value);
-}
-export function isBgColor(value: string): value is BgColorName {
-  return BG_COLOR_SET.has(value);
-}
 
 /* ── markdown-it 인라인 규칙 (편집 경로) ──────────────────────
  * `:name[내용]{.color}` — 내용은 재귀 인라인 파싱해 굵게 등 중첩 마크를 보존한다. */
@@ -79,7 +60,7 @@ function textDirectiveRule(state: MarkdownItInlineState, silent: boolean): boole
   const attr = /^\{\.([a-z]+)\}/.exec(src.slice(i));
   if (!attr) return false;
   const color = attr[1];
-  const valid = name === "c" ? TEXT_COLOR_SET.has(color) : BG_COLOR_SET.has(color);
+  const valid = name === "c" ? isTextColor(color) : isBgColor(color);
   if (!valid) return false;
   if (silent) return true;
 

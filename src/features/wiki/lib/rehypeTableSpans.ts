@@ -1,6 +1,7 @@
 import { visit } from "unist-util-visit";
 import { COLSPAN_MARKER, ROWSPAN_MARKER, foldSpanGrid, type SpanMarker } from "./tableSpans";
-import { CELL_BG_MARKER_RE, CELL_TH_MARKER_RE, isBgColor } from "../editor/extensions/tableCellColor";
+import { CELL_BG_MARKER_RE, CELL_TH_MARKER_RE } from "./tableCellMarkers";
+import { isBgColor } from "./textColors";
 
 /**
  * 표 셀 마커 보기 렌더 — 편집 경로(tableSpanBridge.ts)와 같은 fold 알고리즘.

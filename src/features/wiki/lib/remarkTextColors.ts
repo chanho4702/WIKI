@@ -1,6 +1,6 @@
 import type { Root } from "mdast";
 import { visit } from "unist-util-visit";
-import { isBgColor, isTextColor } from "../editor/extensions/textColors";
+import { isBgColor, isTextColor } from "./textColors";
 
 /**
  * 글자색·배경색 보기 렌더 — remark-directive의 텍스트 지시자(`:c[..]{.red}`, `:bg[..]{.yellow}`)를
