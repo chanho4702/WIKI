@@ -181,6 +181,9 @@ export async function copyPage(id: string, options?: CopyPageOptions): Promise<P
     body: JSON.stringify({
       includeDescendants: options?.includeDescendants ?? false,
       includeRestrictions: options?.includeRestrictions ?? true,
+      // 대상 위치(F-03) — 주지 않으면 키 자체를 빼서 예전처럼 원본 옆에 만든다
+      ...(options?.targetSpaceId ? { targetSpaceId: toBackendId(options.targetSpaceId) } : {}),
+      ...(options?.targetParentId ? { targetParentId: toBackendId(options.targetParentId) } : {}),
     }),
   });
   return mapPage(await json(res));

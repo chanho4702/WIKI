@@ -131,6 +131,13 @@ export interface CopyPageOptions {
    * 복사 한 번으로 스페이스 전체에 내용이 열린다.
    */
   includeRestrictions?: boolean;
+  /**
+   * 복사할 곳(F-03). 둘 다 비우면 원본 옆(같은 스페이스·같은 부모). 스페이스만 주면 그 스페이스 맨 위.
+   * 대상 스페이스 편집 권한이 없으면 403, 대상 부모가 다른 스페이스면 400(서버 판정).
+   */
+  targetSpaceId?: string;
+  /** 대상 부모. null이면 대상 스페이스의 맨 위. */
+  targetParentId?: string | null;
 }
 
 /** 페이지 템플릿 — 그 스페이스가 합의한 문서 형태. */

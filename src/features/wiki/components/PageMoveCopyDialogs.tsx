@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Checkbox, ConfirmDialog, Radio, RadioGroup, useToast } from "@chanho/react";
+import { Banner, Checkbox, ConfirmDialog, Radio, RadioGroup, useToast } from "@chanho/react";
 import { MoveImpactError } from "../store/types";
 import type { PageNode, Space } from "../store/types";
 import { copyPage, listChildren, listDescendants, listSpaces, movePage, searchPageTitles } from "../store/wikiStore";
@@ -44,40 +44,97 @@ export async function moveWithImpactConfirm(
 export interface CopyPageDialogProps {
   /** 복제할 문서. null이면 닫힘. */
   page: MoveCopySubject | null;
+  /** 원본이 속한 스페이스 — 대상 위치 선택의 기본값 */
+  spaceId: string;
+  /** "다른 스페이스" 후보. 생략하면 대화상자가 직접 읽는다. */
+  spaces?: Space[];
   onClose: () => void;
   /** 복제 성공 뒤(트리 새로고침 등). 실패는 대화상자가 알린다. */
-  onCopied?: (copy: { id: string; title: string }) => void | Promise<void>;
+  onCopied?: (copy: { id: string; title: string; spaceId: string }) => void | Promise<void>;
 }
 
-/** 복제는 옵션이 있어 한 번 물어본다 — 하위까지 복사하는지는 결과가 크게 달라지는 선택이다. */
-export function CopyPageDialog({ page, onClose, onCopied }: CopyPageDialogProps) {
+/** 대상 위치 선택의 "원본 옆" 센티널 — 서버에 대상을 보내지 않는다(예전 동작 그대로). */
+const BESIDE_SOURCE = "__beside__";
+
+/**
+ * 복제는 옵션이 있어 한 번 물어본다 — 하위까지 복사하는지, 어디에 둘지(F-03, 컨플 Copy page의 대상 선택).
+ * 기본은 "원본 옆"이라 아무것도 고르지 않으면 예전과 같다. 서버 거부(대상 스페이스 편집 권한 403,
+ * 다른 스페이스의 부모 400, 보관 409)는 대화상자 안에 그대로 보이고 아무것도 생기지 않는다.
+ */
+export function CopyPageDialog({ page, spaceId, spaces, onClose, onCopied }: CopyPageDialogProps) {
   const toast = useToast();
   const [includeDescendants, setIncludeDescendants] = useState(false);
   const [includeRestrictions, setIncludeRestrictions] = useState(true);
   const [copying, setCopying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [targetSpaceId, setTargetSpaceId] = useState(spaceId);
+  const [location, setLocation] = useState<string>(BESIDE_SOURCE);
+  const [candidates, setCandidates] = useState<PageNode[] | null>(null);
+  const [loadedSpaces, setLoadedSpaces] = useState<Space[] | null>(null);
+  const spaceOptions = spaces ?? loadedSpaces ?? [];
 
   // 열 때마다 기본값 — 지난 복제의 선택이 다음 복제에 조용히 남으면 안 된다. 호출부가 렌더마다 새 객체를
   // 넘겨도 다시 초기화하지 않게 "어느 문서가 열렸나"(id)에만 반응한다.
   const openId = page?.id ?? null;
   useEffect(() => {
-    if (openId !== null) {
-      setIncludeDescendants(false);
-      setIncludeRestrictions(true);
+    if (openId === null) return;
+    setIncludeDescendants(false);
+    setIncludeRestrictions(true);
+    setError(null);
+    setTargetSpaceId(spaceId);
+    setLocation(BESIDE_SOURCE);
+    setCandidates(null);
+    let cancelled = false;
+    if (!spaces) {
+      void listSpaces()
+        .then((found) => {
+          if (!cancelled) setLoadedSpaces(found);
+        })
+        .catch(() => {
+          if (!cancelled) setLoadedSpaces([]);
+        });
     }
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openId]);
+
+  // 대상 위치 후보 — 그 스페이스의 최상위(이동 대화상자와 같은 규칙)
+  useEffect(() => {
+    if (openId === null) return;
+    let cancelled = false;
+    void listChildren(targetSpaceId, null)
+      .then((found) => {
+        if (!cancelled) setCandidates(found);
+      })
+      .catch(() => {
+        if (!cancelled) setCandidates([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [openId, targetSpaceId]);
+
+  const changeSpace = (next: string) => {
+    setTargetSpaceId(next);
+    setCandidates(null);
+    // 다른 스페이스에는 "원본 옆"이 없다 — 맨 위부터 고른다
+    setLocation(next === spaceId ? BESIDE_SOURCE : "");
+  };
 
   const confirm = async () => {
     if (!page) return;
     setCopying(true);
-    let copy: { id: string; title: string };
+    setError(null);
+    const target = location === BESIDE_SOURCE && targetSpaceId === spaceId
+      ? {}
+      : { targetSpaceId, targetParentId: location === "" || location === BESIDE_SOURCE ? null : location };
+    let copy: { id: string; title: string; spaceId: string };
     try {
-      copy = await copyPage(page.id, { includeDescendants, includeRestrictions });
-    } catch (error) {
-      toast({
-        title: "페이지 복제 실패",
-        description: error instanceof Error ? error.message : String(error),
-        appearance: "danger",
-      });
+      copy = await copyPage(page.id, { includeDescendants, includeRestrictions, ...target });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
       return;
     } finally {
       setCopying(false);
@@ -105,6 +162,40 @@ export function CopyPageDialog({ page, onClose, onCopied }: CopyPageDialogProps)
       onConfirm={() => void confirm()}
     >
       <div className="page-tree-copy-form">
+        {error !== null ? <Banner variant="danger">복제하지 못했습니다: {error}</Banner> : null}
+        {spaceOptions.length > 1 ? (
+          <select
+            className="page-tree-move-select"
+            aria-label="복사할 스페이스"
+            value={targetSpaceId}
+            onChange={(e) => changeSpace(e.target.value)}
+          >
+            {spaceOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+                {s.id === spaceId ? " (현재)" : ""}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        {candidates === null ? (
+          <p className="page-tree-move-loading" role="status">대상 위치를 불러오는 중…</p>
+        ) : (
+          <select
+            className="page-tree-move-select"
+            aria-label="복사할 위치"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          >
+            {targetSpaceId === spaceId ? <option value={BESIDE_SOURCE}>(원본 옆)</option> : null}
+            <option value="">(맨 위)</option>
+            {candidates.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.title}
+              </option>
+            ))}
+          </select>
+        )}
         {page && page.childCount > 0 ? (
           <Checkbox
             label="하위 문서도 함께 복제"

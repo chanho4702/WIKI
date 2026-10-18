@@ -462,7 +462,13 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
       ) : (
         renderNodes(roots)
       )}
-      <CopyPageDialog page={copyTarget} onClose={() => setCopyTarget(null)} onCopied={() => onMoved?.()} />
+      <CopyPageDialog
+        page={copyTarget}
+        spaceId={spaceId}
+        spaces={spaces ?? []}
+        onClose={() => setCopyTarget(null)}
+        onCopied={() => onMoved?.()}
+      />
       <MovePageDialog
         page={moveTarget}
         spaceId={spaceId}

@@ -570,6 +570,7 @@ export function PageViewPage() {
           />
           <CopyPageDialog
             page={copyOpen ? { id: page.id, title: page.title, parentId: page.parentId, childCount } : null}
+            spaceId={page.spaceId}
             onClose={() => setCopyOpen(false)}
             onCopied={() => reloadPages()}
           />

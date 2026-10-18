@@ -167,8 +167,20 @@ export async function copyPage(id: string, options?: CopyPageOptions): Promise<P
   const data = load();
   const source = data.pages.find((p) => p.id === id);
   if (!source) throw new Error("페이지를 찾을 수 없습니다");
+  if (source.archivedAt) throw new Error("보관된 문서는 복사할 수 없습니다. 먼저 보관을 해제하세요");
+  // 대상 위치(F-03) — 서버와 같은 규칙: 둘 다 비우면 원본 옆, 부모가 대상 스페이스 밖이면 거부
+  const targetSpaceId = options?.targetSpaceId ?? source.spaceId;
+  const targetParentId = options?.targetParentId !== undefined || options?.targetSpaceId !== undefined
+    ? (options?.targetParentId ?? null)
+    : source.parentId;
+  if (!data.spaces.some((s) => s.id === targetSpaceId)) throw new Error("스페이스를 찾을 수 없습니다");
+  if (targetParentId !== null) {
+    const parent = data.pages.find((p) => p.id === targetParentId);
+    if (!parent) throw new Error("부모 페이지를 찾을 수 없습니다");
+    if (parent.spaceId !== targetSpaceId) throw new Error("대상 부모가 대상 스페이스에 없습니다");
+  }
   const siblings = data.pages.filter(
-    (p) => p.spaceId === source.spaceId && p.parentId === source.parentId,
+    (p) => p.spaceId === targetSpaceId && p.parentId === targetParentId,
   );
   const now = new Date().toISOString();
 
@@ -189,7 +201,8 @@ export async function copyPage(id: string, options?: CopyPageOptions): Promise<P
       id: nextId(),
       // 사본 표시는 뿌리에만 — 하위까지 제목을 바꾸면 본문의 `[[제목]]`이 전부 어긋난다.
       title: isRoot ? `${original.title} (사본)` : original.title,
-      parentId: isRoot ? original.parentId : (newIdOf.get(original.parentId ?? "") ?? null),
+      spaceId: targetSpaceId,
+      parentId: isRoot ? targetParentId : (newIdOf.get(original.parentId ?? "") ?? null),
       position: isRoot ? Math.max(0, ...siblings.map((p) => p.position)) + 1 : original.position,
       version: 1,
       createdBy: CURRENT_USER_ID,
