@@ -66,6 +66,7 @@ export type {
   OrgMe,
   OrgMockState,
   OrgMockGrant,
+  OrgMockGrantAudit,
   OrgMockInvitation,
   TeamMember,
 } from "./model/org";

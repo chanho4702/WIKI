@@ -80,6 +80,21 @@ export interface OrgMockState {
   invitations?: OrgMockInvitation[];
   /** 전역 역할 grant — 스페이스 권한(`grants`)과 달리 리소스가 없다. */
   globalGrants?: OrgMockGrant[];
+  /** 전역 권한 변경 기록(org-service `GrantAuditResponse` 모양, 오래된 것부터 쌓는다) — 권한 이력 화면용. */
+  grantAudit?: OrgMockGrantAudit[];
+}
+
+export interface OrgMockGrantAudit {
+  id: string;
+  action: "GRANT_GRANTED" | "GRANT_CHANGED" | "GRANT_REVOKED";
+  targetType: "USER" | "TEAM";
+  targetId: string;
+  /** 기록 당시 이름 스냅샷 */
+  targetLabel: string | null;
+  /** 역할 — 변경이면 바뀐 뒤의 역할(서버 `detail`) */
+  detail: string;
+  actorId: string;
+  createdAt: string;
 }
 
 export interface OrgMockGrant {

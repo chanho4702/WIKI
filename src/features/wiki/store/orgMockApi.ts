@@ -10,6 +10,7 @@
 import type {
   OrgMemberStatus,
   OrgMockGrant,
+  OrgMockGrantAudit,
   OrgMockInvitation,
   SpaceGrant,
   Team,
@@ -338,6 +339,26 @@ export function createOrgMockFetch(deps: OrgMockDeps) {
 
     if (head === "grants") {
       const globals = (org().globalGrants ??= []);
+      /** 전역 권한 변경을 기록한다 — 서버는 GLOBAL grant 쓰기마다 GrantAudit을 남긴다. */
+      const audit = (action: OrgMockGrantAudit["action"], g: OrgMockGrant) => {
+        (org().grantAudit ??= []).push({
+          id: newId(),
+          action,
+          targetType: g.subjectType,
+          targetId: g.subjectId,
+          targetLabel: subjectName(g.subjectType, g.subjectId),
+          detail: g.role,
+          actorId: currentUserId,
+          createdAt: new Date().toISOString(),
+        });
+      };
+      if (a === "audit" && method === "GET") {
+        // 권한 이력(org-admin 0.3.0) — 서버와 같이 최신순 최근 100건, 필터·페이지 파라미터는 없다.
+        // 전역 범위는 전역 관리자만 본다(서버 403과 같은 문구).
+        if ((params.get("resourceType") ?? "GLOBAL") !== "GLOBAL") return ok([]);
+        if (!(org().self?.globalRoles ?? ["ADMIN"]).includes("ADMIN")) return fail("권한이 없습니다", 403);
+        return ok([...(org().grantAudit ?? [])].reverse().slice(0, 100));
+      }
       if (method === "GET" && a === undefined) {
         const scope = params.get("resourceType") ?? "GLOBAL";
         if (scope === "GLOBAL") return ok(globals.map((g) => grantRow(g, "GLOBAL", null)));
@@ -368,6 +389,7 @@ export function createOrgMockFetch(deps: OrgMockDeps) {
             role: role as OrgMockGrant["role"],
           };
           globals.push(grant);
+          audit("GRANT_GRANTED", grant);
           persist();
           return ok(grantRow(grant, "GLOBAL", null), 201);
         }
@@ -395,6 +417,7 @@ export function createOrgMockFetch(deps: OrgMockDeps) {
         const global = globals.find((g) => g.id === a);
         if (global) {
           global.role = role as OrgMockGrant["role"];
+          audit("GRANT_CHANGED", global);
           persist();
           return ok(null, 204);
         }
@@ -409,6 +432,8 @@ export function createOrgMockFetch(deps: OrgMockDeps) {
         return fail("권한을 찾을 수 없습니다", 404);
       }
       if (a !== undefined && method === "DELETE") {
+        const revoked = globals.find((g) => g.id === a);
+        if (revoked) audit("GRANT_REVOKED", revoked);
         org().globalGrants = globals.filter((g) => g.id !== a);
         for (const [spaceId, list] of Object.entries(data.grants ?? {})) {
           data.grants![spaceId] = list.filter((g) => g.id !== a);

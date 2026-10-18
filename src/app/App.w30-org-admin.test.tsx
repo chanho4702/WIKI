@@ -87,6 +87,40 @@ describe("U4 사용자·팀 관리 마운트", () => {
   });
 });
 
+/**
+ * 권한 이력(org-admin 0.3.0) — 전역 권한 부여·변경·회수 기록. 패키지가 `GET /api/org/grants/audit`를 부르므로
+ * 목업 fetch가 그 계약(최신순 배열, detail=역할)으로 답하는지와 메뉴 노출이 이 리포의 몫이다.
+ */
+describe("org-admin 0.3.0 권한 이력 마운트", () => {
+  it("전역 관리자는 메뉴에서 권한 이력으로 들어가 방금 부여한 전역 역할 기록을 본다", async () => {
+    const user = userEvent.setup();
+    const grant = await store.orgApiFetch("/api/org/grants", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subjectType: "USER", subjectId: "u2", resourceType: "GLOBAL", role: "ADMIN" }),
+    });
+    expect(grant.status).toBe(201);
+
+    renderApp("/admin/org/users");
+    await user.click(await screen.findByRole("link", { name: /권한 이력/ }));
+
+    const table = await screen.findByRole("table", { name: "권한 이력" });
+    expect(within(table).getByText("이서연")).toBeInTheDocument();
+    expect(within(table).getByText("부여")).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/admin/org/grant-audit");
+  });
+
+  it("전역 관리자가 아니면 권한 이력 메뉴가 없고, 목업도 서버처럼 403을 준다", async () => {
+    seedOrgState({ self: { status: "ACTIVE", globalRoles: [] } });
+    renderApp("/admin/org/users");
+    await screen.findByRole("heading", { name: "사용자·팀 관리" });
+
+    expect(screen.queryByRole("link", { name: /권한 이력/ })).not.toBeInTheDocument();
+    const res = await store.orgApiFetch("/api/org/grants/audit?resourceType=GLOBAL");
+    expect(res.status).toBe(403);
+  });
+});
+
 describe("U4 전역 관리자 판정", () => {
   /** 판정 근거는 `/api/org/me.globalRoles` 하나다 — 아니면 관리 항목이 통째로 없다. */
   it("globalRoles에 ADMIN이 없으면 설정 메뉴에 관리 항목이 없다", async () => {
