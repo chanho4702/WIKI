@@ -357,7 +357,13 @@ export async function updatePage(
   patch: { title?: string; body?: string },
   options: UpdatePageOptions = {},
 ): Promise<Page> {
-  const current = await getPage(id);
+  // PUT은 제목·본문·현재 부모·기대 버전을 모두 요구한다. 편집 화면은 넷을 이미 들고 있으므로 그때는
+  // 본문 포함 사전 조회를 생략한다(W-19) — 저장 한 번이 왕복 2회·본문 2배 전송이던 것. 결과는 PUT 응답.
+  const known = patch.title !== undefined && patch.body !== undefined
+    && options.expectedVersion !== undefined && options.parentId !== undefined;
+  const current = known
+    ? { title: patch.title!, body: patch.body!, parentId: options.parentId!, version: options.expectedVersion! }
+    : await getPage(id);
   if (!current) throw new Error("페이지를 찾을 수 없습니다");
   const res = await sharedApiFetch(`/api/wiki/pages/${toBackendId(id)}`, {
     method: "PUT", headers: { "Content-Type": "application/json" },
@@ -374,6 +380,12 @@ export async function updatePage(
   if (res.status === 409) {
     const serverPage = await getPage(id).catch(() => null);
     throw new PageConflictError(serverPage);
+  }
+  if (known && res.status === 400) {
+    // 편집하는 사이 다른 사람이 문서를 옮기면(이동은 버전을 올리지 않는다) 들고 있던 부모가 낡아 서버가
+    // "부모 변경" 400을 준다. 예전 경로(최신 부모 조회 후 PUT)로 한 번만 다시 보낸다 — 버전 검사는 그대로다.
+    const { parentId: _stale, ...rest } = options;
+    return updatePage(id, patch, rest);
   }
   return mapPage(await json(res));
 }

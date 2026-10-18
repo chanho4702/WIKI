@@ -56,6 +56,47 @@ describe("wikiApi pages", () => {
     });
   });
 
+  // W-19 — 편집 화면은 제목·본문·버전·부모를 이미 들고 있다. 그때는 PUT 전 본문 포함 GET을 보내지 않는다.
+  it("편집 세션이 title·body·expectedVersion·parentId를 모두 주면 사전 GET 없이 PUT 한 번이고, 응답으로 결과를 만든다", async () => {
+    const spy = mockSeq([
+      { status: 200, body: { id: 1, spaceId: 5, parentId: 3, title: "T2", content: "new", version: 5 } }, // put
+    ]);
+    const { updatePage } = await import("./wikiApi");
+    const saved = await updatePage("1", { title: "T2", body: "new" }, { expectedVersion: 4, parentId: "3" });
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.calls[0][1]!.method).toBe("PUT");
+    expect(JSON.parse(spy.mock.calls[0][1]!.body as string)).toMatchObject({
+      title: "T2", content: "new", parentId: 3, expectedVersion: 4,
+    });
+    expect(saved).toMatchObject({ id: "1", title: "T2", body: "new", version: 5, parentId: "3" });
+  });
+
+  it("루트 문서(parentId null)도 사전 GET을 건너뛴다 — null과 '모름(undefined)'은 다르다", async () => {
+    const spy = mockSeq([
+      { status: 200, body: { id: 1, spaceId: 5, parentId: null, title: "T2", content: "new", version: 5 } },
+    ]);
+    const { updatePage } = await import("./wikiApi");
+    await updatePage("1", { title: "T2", body: "new" }, { expectedVersion: 4, parentId: null });
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(spy.mock.calls[0][1]!.body as string)).toMatchObject({ parentId: null });
+  });
+
+  it("들고 있던 부모가 낡아 서버가 400을 주면(편집 중 다른 사람이 이동) 최신 부모를 조회해 한 번 다시 보낸다", async () => {
+    const spy = mockSeq([
+      { status: 400, body: { error: "부모 변경은 페이지 이동 API를 사용해야 합니다" } },
+      { status: 200, body: { id: 1, spaceId: 5, parentId: 7, title: "T", content: "old", version: 4 } }, // getPage
+      { status: 200, body: { id: 1, spaceId: 5, parentId: 7, title: "T2", content: "new", version: 5 } }, // put
+    ]);
+    const { updatePage } = await import("./wikiApi");
+    const saved = await updatePage("1", { title: "T2", body: "new" }, { expectedVersion: 4, parentId: "3" });
+
+    expect(spy).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(spy.mock.calls[2][1]!.body as string)).toMatchObject({ parentId: 7, expectedVersion: 4 });
+    expect(saved).toMatchObject({ parentId: "7", version: 5 });
+  });
+
   it("PUT 409는 충돌 한국어 에러", async () => {
     mockSeq([
       { status: 200, body: { id: 1, spaceId: 5, parentId: null, title: "T", content: "o", version: 4 } },

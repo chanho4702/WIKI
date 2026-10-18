@@ -69,6 +69,8 @@ export function PageEditPage() {
   }, []);
   // 수정 모드에서 로드한 페이지의 실제 spaceId (URL 불일치 가드용)
   const [pageSpaceId, setPageSpaceId] = useState<string | null>(null);
+  // 로드한 페이지의 현재 부모 — 저장 시 넘겨 어댑터의 사전 조회를 없앤다(W-19). undefined = 아직 모름.
+  const [baseParentId, setBaseParentId] = useState<string | null | undefined>(undefined);
   // Task 5: 제목 변경 추적 (본문은 WikiEditor.isDirty()로 추적)
   const [titleDirty, setTitleDirty] = useState(false);
   /**
@@ -219,6 +221,7 @@ export function PageEditPage() {
         setInitialBody(page.body);
         setBaseVersion(page.version);
         setPageSpaceId(page.spaceId);
+        setBaseParentId(page.parentId);
         setIsDraft(page.status === "draft");
         setIcon(page.icon ?? null);
       }
@@ -316,6 +319,7 @@ export function PageEditPage() {
           : await updatePage(pageId, { title: saveTitle, body }, {
               expectedVersion: baseVersion ?? undefined,
               changeNote: changeNote.trim() || undefined,
+              parentId: baseParentId,
             });
         if (currentPageIdRef.current !== requestedPageId) {
           setSaving(false);

@@ -235,6 +235,12 @@ export interface UpdatePageOptions {
   expectedVersion?: number;
   /** 변경 요약(선택) — 이 저장이 만든 버전의 이력에 붙는다. */
   changeNote?: string;
+  /**
+   * 호출자가 이미 아는 현재 부모(null = 루트). 제목·본문·expectedVersion과 함께 주면 백엔드 어댑터가
+   * 저장 직전 본문 포함 조회를 생략한다(W-19). 생략(undefined)하면 예전처럼 조회해 채운다.
+   * 부모 변경 수단이 아니다 — 다르면 서버가 거부한다(이동은 movePage).
+   */
+  parentId?: string | null;
 }
 
 /** 오래된 편집본 저장을 서버가 거부했을 때 로컬 작업과 최신 서버본을 함께 유지하기 위한 오류. */
