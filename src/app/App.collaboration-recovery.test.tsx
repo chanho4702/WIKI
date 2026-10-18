@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useNavigate, type NavigateFunction } from "react-router";
+import { RouterProvider, useNavigate, type NavigateFunction } from "react-router";
 import { ToastProvider } from "@chanho/react";
 import * as Y from "yjs";
-import { App } from "./App";
+import { createTestRouter } from "./testUtils";
 import { __resetForTest, createPage, getPage, updatePage } from "../features/wiki/store/wikiStore";
 import type { Page } from "../features/wiki/store/types";
 import { createCollaborationBootstrapState } from "../features/wiki/editor/collaboration/session";
@@ -74,10 +74,7 @@ function NavigatorProbe() {
 function renderAt(path: string) {
   return render(
     <ToastProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-        <NavigatorProbe />
-      </MemoryRouter>
+      <RouterProvider router={createTestRouter(path, <NavigatorProbe />)} />
     </ToastProvider>,
   );
 }
@@ -201,7 +198,10 @@ describe("공동 편집 복구 경로 — 페이지 전환 경합", () => {
     await user.click(restartButton);
     // restart가 실제로 A의 최신본 응답을 기다리는 중이어야 경합을 재현한 것이다.
     await waitFor(() => expect(storeControl.heldCalls).toBe(1));
-    act(() => navigate!(`/spaces/sp1/pages/${pageB.id}/edit`));
+    // 데이터 라우터의 navigate는 비동기다(W-17) — 이동이 끝날 때까지 act 안에서 기다린다.
+    await act(async () => {
+      await navigate!(`/spaces/sp1/pages/${pageB.id}/edit`);
+    });
     await waitFor(() => {
       const last = collaborationMock.useCollaborationSession.mock.calls.at(-1)![0];
       expect(last).toEqual(expect.objectContaining({ pageId: pageB.id, initialTitle: "B 문서" }));

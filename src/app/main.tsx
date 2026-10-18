@@ -7,7 +7,7 @@ import "katex/dist/katex.min.css";
 import "./app.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
+import { RouterProvider, createBrowserRouter } from "react-router";
 import { ToastProvider } from "@chanho/react";
 import { App } from "./App";
 import { initTheme } from "./theme";
@@ -24,6 +24,13 @@ initTheme();
  */
 const basename = import.meta.env.BASE_URL.replace(/\/+$/, "");
 
+/**
+ * 데이터 라우터(W-17) — 편집 화면의 앱 안 이탈 가드(`useBlocker`)는 데이터 라우터에서만 동작한다.
+ * 라우트 트리는 App의 선언형 `<Routes>`가 그대로 갖고, 여기서는 모든 경로를 App 하나로 보낸다
+ * (스페이스 목록을 먼저 받아야 리다이렉트 대상이 정해지므로 라우트 정의를 모듈 최상위로 끌어올리지 않는다).
+ */
+const router = createBrowserRouter([{ path: "*", element: <App /> }], { basename });
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ToastProvider>
@@ -31,9 +38,7 @@ createRoot(document.getElementById("root")!).render(
         <ReadOnlyProvider>
           {/* 승인 대기·정지·비활성 계정은 셸 대신 안내 한 장만 본다(U4) — 라우터 바깥이라 어느 경로로 들어와도 같다 */}
           <OrgAccountGate>
-            <BrowserRouter basename={basename}>
-              <App />
-            </BrowserRouter>
+            <RouterProvider router={router} />
           </OrgAccountGate>
         </ReadOnlyProvider>
       </AuthGate>

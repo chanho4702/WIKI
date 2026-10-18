@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { render } from "@testing-library/react";
-import { MemoryRouter, useLocation } from "react-router";
+import { RouterProvider, createMemoryRouter, useLocation } from "react-router";
 import { ToastProvider } from "@chanho/react";
 import { App } from "./App";
 /*
@@ -70,15 +71,32 @@ export interface RenderAppOptions {
   readOnly?: boolean;
 }
 
+/**
+ * 프로덕션(main.tsx)과 같은 데이터 라우터 모양 — 모든 경로를 App 하나로 보낸다.
+ * MemoryRouter로 감싸면 편집 화면의 `useBlocker`(W-17 이탈 가드)가 데이터 라우터 밖이라 터진다.
+ */
+export function createTestRouter(initialPath: string, extra?: ReactNode) {
+  return createMemoryRouter(
+    [{
+      path: "*",
+      element: (
+        <>
+          <App />
+          <LocationProbe />
+          {extra}
+        </>
+      ),
+    }],
+    { initialEntries: [initialPath] },
+  );
+}
+
 /** App 전체를 라우터+토스트로 감싸 렌더 — W1 App.test.tsx의 하네스 공용화 */
 export function renderApp(initialPath = "/", options: RenderAppOptions = {}) {
   return render(
     <ToastProvider>
       <ReadOnlyProvider value={options.readOnly}>
-        <MemoryRouter initialEntries={[initialPath]}>
-          <App />
-          <LocationProbe />
-        </MemoryRouter>
+        <RouterProvider router={createTestRouter(initialPath)} />
       </ReadOnlyProvider>
     </ToastProvider>,
   );

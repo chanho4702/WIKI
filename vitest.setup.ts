@@ -41,3 +41,24 @@ if (!window.HTMLElement.prototype.releasePointerCapture) {
 if (!document.elementsFromPoint) {
   document.elementsFromPoint = () => [];
 }
+
+/*
+ * 데이터 라우터(W-17, main.tsx·testUtils의 createMemoryRouter)는 이동마다 `new Request(url, { signal })`를
+ * 만든다. jsdom 환경에서는 AbortSignal이 jsdom 것이고 Request는 Node(undici) 것이라 instanceof 검사에
+ * 걸려 이동이 조용히 실패한다(브라우저에서는 둘이 같은 구현이라 생기지 않는 테스트 환경 문제).
+ * 신호만 떼어 넘긴다 — 이 앱의 라우트에는 loader/action이 없어 요청 취소 신호를 읽는 곳이 없다.
+ */
+{
+  const NodeRequest = globalThis.Request;
+  class JsdomCompatibleRequest extends NodeRequest {
+    constructor(input: RequestInfo | URL, init?: RequestInit) {
+      if (init?.signal) {
+        const { signal: _signal, ...rest } = init;
+        super(input, rest);
+      } else {
+        super(input, init);
+      }
+    }
+  }
+  globalThis.Request = JsdomCompatibleRequest as typeof Request;
+}

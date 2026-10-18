@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Navigate, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
-import { Button, TextField, useToast } from "@chanho/react";
+import { Navigate, useBlocker, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
+import { Button, ConfirmDialog, TextField, useToast } from "@chanho/react";
 import {
   commitCollaborationDraft,
   createPage,
@@ -169,7 +169,24 @@ export function PageEditPage() {
   const isDirty = () => titleDirty || imageUploading || collaboration.localCopy !== null
     || (editorRef.current?.isDirty() ?? false);
 
-  // 브라우저 새로고침/닫기 가드 — 라우터 내비게이션은 선언형 Routes라 useBlocker 불가(스펙 각주 참조)
+  /**
+   * 이 화면이 스스로 떠나는 이동(저장 성공·닫기 확인 뒤)은 가드를 건너뛴다. 저장 직후에도 titleDirty는
+   * 아직 true라, 표시를 끄지 않으면 방금 저장한 사용자에게 "저장하지 않은 변경"을 묻게 된다.
+   */
+  const leavingRef = useRef(false);
+  const leave = (to: string) => {
+    leavingRef.current = true;
+    navigate(to);
+  };
+
+  // 앱 안 이동 가드(W-17) — 사이드바 트리·상단 바·알림 링크 등 라우터 이동. 데이터 라우터(main.tsx)라
+  // useBlocker를 쓸 수 있다. 같은 경로 안의 쿼리 변경(?title= 프리필)은 편집을 버리지 않으므로 막지 않는다.
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    !leavingRef.current
+    && currentLocation.pathname !== nextLocation.pathname
+    && isDirty());
+
+  // 브라우저 새로고침/닫기 가드 — 라우터 밖 이동이라 useBlocker가 못 잡는다
   // 훅은 조건부가 아닌 곳에 고정해야 함 — early return 가드 이전에 배치
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -190,6 +207,7 @@ export function PageEditPage() {
     setConflictComparisonOpen(false);
     setTitleDirty(false);
     setBodyDirty(false);
+    leavingRef.current = false;
     let cancelled = false;
     void getPage(pageId).then((page) => {
       if (cancelled) return;
@@ -313,13 +331,13 @@ export function PageEditPage() {
           appearance: "success",
         });
         await reloadPages();
-        navigate(`/spaces/${spaceId}/pages/${saved.id}`);
+        leave(`/spaces/${spaceId}/pages/${saved.id}`);
       } else {
         const created = await createPage({ spaceId, parentId, title, body });
         if (icon) await setPageIcon(created.id, icon).catch(() => {});
         toast({ title: `"${created.title}" 페이지를 만들었습니다`, appearance: "success" });
         await reloadPages();
-        navigate(`/spaces/${spaceId}/pages/${created.id}`);
+        leave(`/spaces/${spaceId}/pages/${created.id}`);
       }
     } catch (error) {
       if (currentPageIdRef.current !== requestedPageId) {
@@ -476,18 +494,18 @@ export function PageEditPage() {
         if (!stillEmptyDraft) throw new Error("초안이 그사이 바뀌었습니다");
         await deletePage(pageId);
         await reloadPages();
-        navigate(`/spaces/${spaceId}`);
+        leave(`/spaces/${spaceId}`);
         return;
       } catch {
         // 삭제 실패는 조용히 넘긴다 — 취소 동작 자체를 막을 이유가 없다(초안은 그대로 남는다)
       }
     }
     if (isEdit) {
-      navigate(`/spaces/${spaceId}/pages/${pageId}`); // 수정 취소 → 보기
+      leave(`/spaces/${spaceId}/pages/${pageId}`); // 수정 취소 → 보기
     } else if (parentId) {
-      navigate(`/spaces/${spaceId}/pages/${parentId}`); // 하위 생성 취소 → 부모 보기
+      leave(`/spaces/${spaceId}/pages/${parentId}`); // 하위 생성 취소 → 부모 보기
     } else {
-      navigate(`/spaces/${spaceId}`); // 루트 생성 취소 → 스페이스 인덱스
+      leave(`/spaces/${spaceId}`); // 루트 생성 취소 → 스페이스 인덱스
     }
   };
 
@@ -552,6 +570,23 @@ export function PageEditPage() {
           </Button>
         </div>
       </div>
+      <ConfirmDialog
+        open={blocker.state === "blocked"}
+        onOpenChange={(open) => {
+          if (!open && blocker.state === "blocked") blocker.reset();
+        }}
+        title="저장하지 않은 변경이 있습니다"
+        description="이 화면을 떠나면 저장하지 않은 편집 내용이 사라집니다."
+        confirmLabel="나가기"
+        cancelLabel="계속 편집"
+        danger
+        onConfirm={() => {
+          if (blocker.state !== "blocked") return;
+          // 나가기로 한 이동이다 — 업로드 중이던 이미지도 함께 버린다(닫기 버튼과 같은 정리)
+          void editorRef.current?.discardPendingUploads();
+          blocker.proceed();
+        }}
+      />
       {conflict ? (
         <div className="page-edit-body">
         <EditConflictPanel
