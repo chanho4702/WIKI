@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useLocation } from "react-router";
 import { Avatar, Banner, Button, Dropdown, Lozenge, PageHeader, Tooltip, useToast } from "@chanho/react";
 import { DraftBadge } from "../components/DraftBadge";
+import { CopyPageDialog, MovePageDialog } from "../components/PageMoveCopyDialogs";
 import type { BreadcrumbItem } from "@chanho/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { applyOverflowTitle } from "../components/TruncatedText";
-import { Archive, BadgeCheck, Download, History, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock, UserCog } from "lucide-react";
+import { Archive, BadgeCheck, Copy, Download, FolderInput, History, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock, UserCog } from "lucide-react";
 import type { DeletePageOptions, Page, PageNode, PageRestrictions, User } from "../store/types";
 import {
   deletePage,
@@ -111,6 +112,9 @@ export function PageViewPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [ownerOpen, setOwnerOpen] = useState(false);
+  // 이동·복제(F-02) — 트리 행 메뉴와 같은 대화상자를 연다
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
 
   /** 검증 해제(W27-5) — 되돌리기 쉬운 조작이라 확인 없이 바로 지운다. */
@@ -486,6 +490,22 @@ export function PageViewPage() {
                         icon: <History size={16} aria-hidden="true" />,
                         onSelect: () => navigate(`/spaces/${space.id}/pages/${page.id}/history`),
                       },
+                      // 이동·복제(F-02, 컨플 문서 ⋯ 메뉴의 Move/Copy) — 트리에서만 되던 것을 문서를 보다가도 한다.
+                      // 보관 문서는 편집처럼 숨긴다(보관 해제 전에는 구조를 바꾸지 않는다). 권한은 서버가 판정한다.
+                      ...(page.archivedAt
+                        ? []
+                        : [
+                            {
+                              label: "이동…",
+                              icon: <FolderInput size={16} aria-hidden="true" />,
+                              onSelect: () => setMoveOpen(true),
+                            },
+                            {
+                              label: "복제",
+                              icon: <Copy size={16} aria-hidden="true" />,
+                              onSelect: () => setCopyOpen(true),
+                            },
+                          ]),
                       {
                         // 보관(W23) — 끝났지만 남겨 둘 문서. 트리·검색에서 빠지고 링크로는 열린다
                         label: page.archivedAt ? "보관 해제" : "보관",
@@ -532,6 +552,26 @@ export function PageViewPage() {
             page={page}
             users={users}
             onSaved={setPage}
+          />
+          <MovePageDialog
+            page={moveOpen ? { id: page.id, title: page.title, parentId: page.parentId, childCount } : null}
+            spaceId={page.spaceId}
+            onClose={() => setMoveOpen(false)}
+            onMoved={async (target) => {
+              await reloadPages();
+              if (target.spaceId !== page.spaceId) {
+                // 다른 스페이스로 옮겼으면 그 스페이스의 같은 문서로 따라간다
+                navigate(`/spaces/${target.spaceId}/pages/${page.id}`);
+                return;
+              }
+              const refreshed = await getPage(page.id).catch(() => null);
+              if (refreshed) setPage(refreshed);
+            }}
+          />
+          <CopyPageDialog
+            page={copyOpen ? { id: page.id, title: page.title, parentId: page.parentId, childCount } : null}
+            onClose={() => setCopyOpen(false)}
+            onCopied={() => reloadPages()}
           />
           <PageVerifyDialog
             open={verifyOpen}

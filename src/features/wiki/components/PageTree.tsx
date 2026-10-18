@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import {
   DndContext,
@@ -11,13 +11,13 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Checkbox, ConfirmDialog, Dropdown, Lozenge, Radio, RadioGroup, useToast } from "@chanho/react";
+import { Dropdown, Lozenge, useToast } from "@chanho/react";
 import { ChevronRight, Copy, FileText, Folder, FolderInput, Link2, MoreHorizontal, Pencil, Plus, Star } from "lucide-react";
 import { contentPathIn } from "../lib/contentPath";
 import type { ReactNode } from "react";
-import { MoveImpactError } from "../store/types";
 import type { PageNode, PageType, Space } from "../store/types";
-import { copyPage, listChildren, movePage, searchPageTitles, updatePage } from "../store/wikiStore";
+import { updatePage } from "../store/wikiStore";
+import { CopyPageDialog, MovePageDialog, moveWithImpactConfirm } from "./PageMoveCopyDialogs";
 import {
   descendantIdsOf,
   dropModeFor,
@@ -128,27 +128,9 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
   const [activeId, setActiveId] = useState<string | null>(null);
   // 드래그 중 드롭 대상과 의도(앞/뒤/하위) — 시각 표시와 최종 이동이 같은 값을 쓴다
   const [dropIntent, setDropIntent] = useState<{ overId: string; mode: DropMode } | null>(null);
-  // 복제 다이얼로그 대상 페이지 (null = 닫힘)
+  // 복제·이동 대화상자 대상 (null = 닫힘) — 대화상자 자체는 문서 보기 화면과 공유한다(F-02)
   const [copyTarget, setCopyTarget] = useState<PageNode | null>(null);
-  const [copyDescendants, setCopyDescendants] = useState(false);
-  const [copyRestrictions, setCopyRestrictions] = useState(true);
-  const [copying, setCopying] = useState(false);
-  // 이동 다이얼로그 대상 페이지 (null = 닫힘)
   const [moveTarget, setMoveTarget] = useState<PageNode | null>(null);
-  const [moveParentId, setMoveParentId] = useState<string | null>(null);
-  const [moving, setMoving] = useState(false);
-  // 스페이스 간 이동 — 대상 스페이스와 그 스페이스의 페이지 목록(부모 후보), 하위 처리 방식
-  const [moveSpaceId, setMoveSpaceId] = useState<string>(spaceId);
-  /**
-   * 이동 대상 위치 후보(2026-08-29). 대상 스페이스의 **최상위 + 제목 검색 결과**다.
-   *
-   * 예전에는 대상 스페이스의 전 페이지를 받아 계층 select를 만들었다. 지연 트리에서는 그 목록이
-   * 없을뿐더러(같은 스페이스라도 안 펼친 가지는 로드돼 있지 않다) 전량 조회 자체가 규모 상한이다.
-   * 컨플루언스의 이동 다이얼로그처럼 "쳐서 찾는다".
-   */
-  const [moveQuery, setMoveQuery] = useState("");
-  const [moveCandidates, setMoveCandidates] = useState<PageNode[] | null>(null);
-  const [moveChildren, setMoveChildren] = useState<"with" | "promote">("with");
   // 인라인 이름 바꾸기 — 트리 행의 라벨이 입력으로 바뀐다(모달 아님, 노션/컨플식)
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -227,30 +209,6 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
     }
   };
 
-  /**
-   * 이동 실행 + W18 영향 확인 — 새 위치의 보기 제한이 새로 적용되면(MoveImpactError)
-   * 어떤 제한이 적용되는지 보여주고 확인받은 뒤 confirmImpact로 재시도한다.
-   * @returns 이동을 실행했으면 true, 사용자가 취소했으면 false
-   */
-  const moveWithImpactConfirm = async (
-    id: string,
-    target: Parameters<typeof movePage>[1],
-  ): Promise<boolean> => {
-    try {
-      await movePage(id, target);
-      return true;
-    } catch (error) {
-      if (!(error instanceof MoveImpactError)) throw error;
-      const titles = error.newlyRestrictedBy.map((i) => `"${i.pageTitle}"`).join(", ");
-      const ok = window.confirm(
-        `이동하면 상위 ${titles}의 보기 제한이 새로 적용되어 접근 범위가 좁아질 수 있습니다. 계속할까요?`,
-      );
-      if (!ok) return false;
-      await movePage(id, { ...target, confirmImpact: true });
-      return true;
-    }
-  };
-
   /** 링크 복사 — 게이트웨이 뒤 실제 주소(base "/wiki" 포함)를 클립보드에 넣는다. */
   const handleCopyLink = async (page: PageNode) => {
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -288,120 +246,14 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
     }
   };
 
-  const handleCopyConfirm = async () => {
-    const page = copyTarget;
-    if (!page) return;
-    setCopying(true);
-    try {
-      const copy = await copyPage(page.id, {
-        includeDescendants: copyDescendants,
-        includeRestrictions: copyRestrictions,
-      });
-      setCopyTarget(null);
-      toast({ title: `"${copy.title}"을(를) 만들었습니다`, appearance: "success" });
-    } catch (error) {
-      toast({
-        title: "페이지 복제 실패",
-        description: error instanceof Error ? error.message : String(error),
-        appearance: "danger",
-      });
-      return;
-    } finally {
-      setCopying(false);
-    }
-    try {
-      await onMoved?.();
-    } catch {
-      /* 복제는 성공 — 새로고침 실패는 다음 로드에서 해소된다 */
-    }
-  };
-
-  const handleMoveConfirm = async () => {
-    if (!moveTarget) return;
-    setMoving(true);
-    try {
-      const moved = await moveWithImpactConfirm(moveTarget.id, {
-        parentId: moveParentId,
-        ...(moveSpaceId !== spaceId ? { spaceId: moveSpaceId, children: moveChildren } : {}),
-      });
-      if (!moved) return; // 사용자가 영향 확인에서 취소 — 다이얼로그는 열어 둔다
-      setMoveTarget(null);
-      toast({ title: "페이지를 이동했습니다", appearance: "success" });
-      await onMoved?.();
-    } catch (error) {
-      toast({
-        title: "페이지 이동 실패",
-        description: error instanceof Error ? error.message : String(error),
-        appearance: "danger",
-      });
-    } finally {
-      setMoving(false);
-    }
-  };
-
-  /** 복제는 옵션이 생겨 한 번 물어본다 — 하위까지 복사하는지는 결과가 크게 달라지는 선택이다. */
-  const openCopyDialog = (page: PageNode) => {
-    setCopyDescendants(false);
-    setCopyRestrictions(true);
-    setCopyTarget(page);
-  };
-
-  const openMoveDialog = (page: PageNode) => {
-    setMoveSpaceId(spaceId);
-    setMoveChildren("with");
-    setMoveParentId(page.parentId);
-    setMoveQuery("");
-    setMoveCandidates(null);
-    setMoveTarget(page);
-  };
-
-  const changeMoveSpace = (nextSpaceId: string) => {
-    setMoveSpaceId(nextSpaceId);
-    setMoveParentId(null); // 스페이스가 바뀌면 이전 부모는 무의미 — 최상위부터 다시 고른다
-    setMoveQuery("");
-    setMoveCandidates(null);
-  };
-
-  /**
-   * 대상 위치 후보를 채운다 — 검색어가 없으면 그 스페이스의 최상위, 있으면 제목 검색 결과.
-   * 다이얼로그가 열려 있는 동안에만 돈다.
-   */
-  useEffect(() => {
-    if (moveTarget === null) return;
-    let cancelled = false;
-    const q = moveQuery.trim();
-    const timer = setTimeout(() => {
-      const fetching = q.length === 0
-        ? listChildren(moveSpaceId, null)
-        : searchPageTitles(moveSpaceId, q);
-      void fetching
-        .then((found) => {
-          if (!cancelled) setMoveCandidates(found);
-        })
-        .catch(() => {
-          if (!cancelled) setMoveCandidates([]);
-        });
-    }, 200);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [moveTarget, moveSpaceId, moveQuery]);
-
-  /**
-   * 대상 부모 후보 — 같은 스페이스면 자기 자신·자손을 뺀다(순환).
-   * 자손 판정은 로드된 범위에서만 가능하다. 서버가 이동 시 순환을 최종 거부하므로 여기서는
-   * 명백한 것만 걸러 목록을 정리하는 용도다.
-   */
-  const moveOptions = (page: PageNode): PageNode[] => {
-    const candidates = moveCandidates ?? [];
-    if (moveSpaceId !== spaceId) return candidates;
+  /** 대상 위치에서 뺄 자기 자손 — 로드된 범위로 계산한다(최종 순환 거부는 서버 몫). */
+  const moveExcludeIds = (page: PageNode): Set<string> => {
     const excluded = descendantIdsOf(
       pages.map((p) => ({ id: p.id, parentId: p.parentId, depth: 0 })),
       page.id,
     );
     excluded.add(page.id);
-    return candidates.filter((c) => !excluded.has(c.id));
+    return excluded;
   };
 
   const renderNodes = (nodes: TreeNode[]) => (
@@ -559,12 +411,12 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
                     {
                       label: "복제",
                       icon: <Copy size={16} aria-hidden="true" />,
-                      onSelect: () => openCopyDialog(page),
+                      onSelect: () => setCopyTarget(page),
                     },
                     {
                       label: "이동…",
                       icon: <FolderInput size={16} aria-hidden="true" />,
-                      onSelect: () => openMoveDialog(page),
+                      onSelect: () => setMoveTarget(page),
                     },
                   ]}
                 />
@@ -610,96 +462,15 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
       ) : (
         renderNodes(roots)
       )}
-      <ConfirmDialog
-        open={copyTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setCopyTarget(null);
-        }}
-        title="페이지 복제"
-        description={copyTarget ? `"${copyTarget.title}"을(를) 복제합니다.` : undefined}
-        confirmLabel="복제"
-        cancelLabel="취소"
-        loading={copying}
-        onConfirm={() => void handleCopyConfirm()}
-      >
-        <div className="page-tree-copy-form">
-          {copyTarget && copyTarget.childCount > 0 ? (
-            <Checkbox
-              label="하위 문서도 함께 복제"
-              checked={copyDescendants}
-              onCheckedChange={(next) => setCopyDescendants(next === true)}
-            />
-          ) : null}
-          {/* 기본은 켜 둔다 — 제한된 문서의 사본이 열려 있으면 복제 한 번으로 내용이 열린다 */}
-          <Checkbox
-            label="제한도 함께 복제"
-            checked={copyRestrictions}
-            onCheckedChange={(next) => setCopyRestrictions(next === true)}
-          />
-        </div>
-      </ConfirmDialog>
-
-      <ConfirmDialog
-        open={moveTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setMoveTarget(null);
-        }}
-        title="페이지 이동"
-        description={moveTarget ? `"${moveTarget.title}"을(를) 어디로 옮길까요?` : undefined}
-        confirmLabel="이동"
-        cancelLabel="취소"
-        loading={moving}
-        onConfirm={() => void handleMoveConfirm()}
-      >
-        {moveTarget ? (
-          <div className="page-tree-move-form">
-            {spaces && spaces.length > 1 ? (
-              <select
-                className="page-tree-move-select"
-                aria-label="대상 스페이스"
-                value={moveSpaceId}
-                onChange={(e) => changeMoveSpace(e.target.value)}
-              >
-                {spaces.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                    {s.id === spaceId ? " (현재)" : ""}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-            {moveCandidates === null ? (
-              <p className="page-tree-move-loading" role="status">대상 위치를 불러오는 중…</p>
-            ) : (
-              <select
-                className="page-tree-move-select"
-                aria-label="대상 위치"
-                value={moveParentId ?? ""}
-                onChange={(e) => setMoveParentId(e.target.value === "" ? null : e.target.value)}
-              >
-                <option value="">(맨 위)</option>
-                {moveOptions(moveTarget).map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.title}
-                  </option>
-                ))}
-              </select>
-            )}
-            {/* 자식 유무는 서버가 준 childCount로 판단한다 — 지연 트리에서는 아직 안 펼친
-              * 가지의 자식이 로드돼 있지 않아, 로드된 목록으로 세면 선택지가 통째로 사라진다. */}
-            {moveSpaceId !== spaceId && moveTarget.childCount > 0 ? (
-              <RadioGroup
-                aria-label="하위 항목 처리"
-                value={moveChildren}
-                onValueChange={(v: string) => setMoveChildren(v as "with" | "promote")}
-              >
-                <Radio value="with" label="하위 항목도 함께 이동" />
-                <Radio value="promote" label="하위 항목은 현재 위치에 남기기 (한 단계 위로)" />
-              </RadioGroup>
-            ) : null}
-          </div>
-        ) : null}
-      </ConfirmDialog>
+      <CopyPageDialog page={copyTarget} onClose={() => setCopyTarget(null)} onCopied={() => onMoved?.()} />
+      <MovePageDialog
+        page={moveTarget}
+        spaceId={spaceId}
+        spaces={spaces ?? []}
+        excludeIds={moveTarget ? moveExcludeIds(moveTarget) : undefined}
+        onClose={() => setMoveTarget(null)}
+        onMoved={() => onMoved?.()}
+      />
     </nav>
   );
 }
