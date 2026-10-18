@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { orderSubtree, buildMarkdownExport, countForExport, toFileName } from "./exportContent";
+import * as store from "../store/wikiStore";
 import { __resetForTest, getPage, listDescendants } from "../store/wikiStore";
 import { createSeedData } from "../../../mock/seed";
 import type { PageNode } from "../store/types";
@@ -70,5 +71,31 @@ describe("W21-3 내보내기", () => {
   it("파일명에서 경로 문자를 지운다", () => {
     expect(toFileName("배포/가이드: 1편", "md")).toBe("배포가이드 1편.md");
     expect(toFileName("   ", "html")).toBe("문서.html");
+  });
+});
+
+afterEach(() => vi.restoreAllMocks());
+
+/* W-14 — 하위 포함 내보내기가 문서마다 getPage를 동시 실행 수 제한 없이 보냈다. */
+describe("내보내기 동시 요청 수(W-14)", () => {
+  it("하위 문서 본문을 읽을 때 동시에 5개를 넘겨 요청하지 않고, 순서는 트리 순서 그대로다", async () => {
+    const root = (await getPage("pg1"))!;
+    const kids = Array.from({ length: 20 }, (_, i) => node(`k${i}`, "pg1", i + 1));
+    vi.spyOn(store, "listDescendants").mockResolvedValue(kids);
+    let running = 0;
+    let peak = 0;
+    vi.spyOn(store, "getPage").mockImplementation(async (id: string) => {
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      running--;
+      return { ...root, id, title: id, body: `본문 ${id}` };
+    });
+
+    const md = await buildMarkdownExport({ root, includeChildren: true });
+
+    expect(peak).toBeLessThanOrEqual(5);
+    expect(peak).toBeGreaterThan(1);
+    expect(md.indexOf("# k0")).toBeLessThan(md.indexOf("# k19"));
   });
 });

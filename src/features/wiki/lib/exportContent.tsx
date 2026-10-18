@@ -6,6 +6,10 @@ import {
   listDescendants,
   lookupPagesByTitle, listChildren } from "../store/wikiStore";
 import { extractWikiLinkTitles, normalizeWikiTitle } from "./wikiLinks";
+import { mapLimit } from "./mapLimit";
+
+/** 내보내기가 문서 본문을 읽을 때 동시에 띄우는 요청 수(W-14). */
+const EXPORT_CONCURRENCY = 5;
 
 /**
  * 페이지 내보내기(W21-3) — 컨플루언스의 "내보내기"에 해당한다.
@@ -71,7 +75,8 @@ async function loadPages(input: ExportInput): Promise<Page[]> {
   if (!input.includeChildren) return [input.root];
   const ordered = orderSubtree(input.root.id, await listDescendants(input.root.id));
   // 트리 노드에는 본문이 없다 — 내보내기는 본문이 목적이라 반드시 다시 읽는다.
-  const loaded = await Promise.all(ordered.map((node) => getPage(node.id)));
+  // 동시 요청 수를 묶는다(W-14) — 하위 천 개를 한꺼번에 띄우면 rate-limit에 걸려 일부가 실패한다.
+  const loaded = await mapLimit(ordered, EXPORT_CONCURRENCY, (node) => getPage(node.id));
   return [input.root, ...loaded.filter((p): p is Page => p !== null)];
 }
 
@@ -120,7 +125,7 @@ export async function loadSpacePages(spaceId: string): Promise<Page[]> {
 
 export async function countForSpaceExport(spaceId: string): Promise<number> {
   const roots = await listChildren(spaceId, null);
-  const counts = await Promise.all(roots.map(async (r) => 1 + (await listDescendants(r.id)).length));
+  const counts = await mapLimit(roots, EXPORT_CONCURRENCY, async (r) => 1 + (await listDescendants(r.id)).length);
   return counts.reduce((a, b) => a + b, 0);
 }
 
