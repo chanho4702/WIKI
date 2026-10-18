@@ -17,6 +17,7 @@ import { WikiEditor, type WikiEditorHandle } from "../editor/WikiEditor";
 import { usePageWidth } from "../lib/pageWidth";
 import { DRAFT_TITLE } from "../lib/useCreateContent";
 import { EditConflictPanel, type EditConflictVariant } from "../components/EditConflictPanel";
+import { DraftBadge } from "../components/DraftBadge";
 import { PageConflictError, type Page, type User } from "../store/types";
 import { SkeletonLines } from "../components/WikiSkeleton";
 import { TruncatedText } from "../components/TruncatedText";
@@ -97,6 +98,8 @@ export function PageEditPage() {
   const [bodyDirty, setBodyDirty] = useState(false);
   // 편집 중인 문서가 초안인지 — 초안이면 "업데이트" 대신 "게시"가 주 액션이다(기획 P3).
   const [isDraft, setIsDraft] = useState(false);
+  // 초안 작성자 — "나만 보임/작성자만 보임" 표시용. 새 문서는 저장 전이라 작성자가 곧 나다.
+  const [draftAuthor, setDraftAuthor] = useState<string | null>(null);
   const collaboration = useCollaborationSession({
     enabled: COLLABORATION_ENABLED && isEdit && !notFound,
     pageId: pageId ?? null,
@@ -223,6 +226,7 @@ export function PageEditPage() {
         setPageSpaceId(page.spaceId);
         setBaseParentId(page.parentId);
         setIsDraft(page.status === "draft");
+        setDraftAuthor(page.createdBy);
         setIcon(page.icon ?? null);
       }
     });
@@ -442,6 +446,7 @@ export function PageEditPage() {
     setInitialBody(latest.body);
     setBaseVersion(latest.version);
     setIsDraft(latest.status === "draft");
+    setDraftAuthor(latest.createdBy);
     setTitleDirty(false);
     setBodyDirty(false);
     setImageUploading(false);
@@ -531,6 +536,7 @@ export function PageEditPage() {
               ? "초안 — 아직 게시되지 않음"
               : "저장됨"}
         </span>
+        {isDraft && draftAuthor !== null ? <DraftBadge createdBy={draftAuthor} /> : null}
         <CollaborationStatus
           status={collaboration.status}
           participants={collaboration.participants}

@@ -476,7 +476,10 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
                 ) : null}
                 {/* 아직 게시되지 않은 문서 — 캡처(07-26-편집구조_레이아웃.png)의 "초안" 배지.
                   * 링크의 접근 이름에 포함되므로 스크린리더에도 함께 읽힌다. */}
-                {page.status === "draft" ? <Lozenge appearance="info">초안</Lozenge> : null}
+                {/* 초안은 작성자(와 관리자)만 본다 — 트리는 폭이 좁아 짧은 배지에 설명을 툴팁으로 붙인다 */}
+                {page.status === "draft" ? (
+                  <Lozenge appearance="info" title="게시 전 초안 — 작성자만 볼 수 있습니다">초안</Lozenge>
+                ) : null}
               </NavLink>
               )}
               {/* NavLink의 형제 — 링크 안에 버튼 중첩 금지.

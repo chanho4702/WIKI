@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useLocation } from "react-router";
 import { Avatar, Banner, Button, Dropdown, Lozenge, PageHeader, Tooltip, useToast } from "@chanho/react";
+import { DraftBadge } from "../components/DraftBadge";
 import type { BreadcrumbItem } from "@chanho/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { applyOverflowTitle } from "../components/TruncatedText";
@@ -576,7 +577,8 @@ export function PageViewPage() {
           !updatedLabel &&
           views === null &&
           !ownerName &&
-          verified === "none"
+          verified === "none" &&
+          page.status !== "draft"
         ) {
           return null; // 표시할 게 하나도 없으면 메타 숨김
         }
@@ -605,6 +607,8 @@ export function PageViewPage() {
                 소유자 {ownerName}
               </span>
             ) : null}
+            {/* 초안은 작성자(와 관리자)만 본다 — 게시 전이라는 것과 누구에게 보이는지를 함께 알린다 */}
+            {page.status === "draft" ? <DraftBadge createdBy={page.createdBy} className="page-view-badge" /> : null}
             {/* 검증 배지 — 본문 `:status` 지시자와 같은 결(DS Lozenge)이라 한 화면에서 이질감이 없다 */}
             {verified === "verified" ? (
               <Lozenge appearance="success" className="page-view-badge">

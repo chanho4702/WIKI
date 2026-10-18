@@ -138,6 +138,17 @@ function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
+/**
+ * 초안 가시성(2026-10-18 사용자 결정) — 초안은 작성자와 전역 관리자만 본다. 서버가 강제하는 규칙과
+ * 같게 목업도 읽기 경로마다 거른다(목업이 더 관대하면 화면이 목업에서만 동작한다). 작성자에게는
+ * 그대로 보이므로 "만들기 → 초안 → 게시" 흐름은 바뀌지 않는다. 목업의 전역 관리자 판정은 getOrgMe와 같다
+ * (`org.self`가 없으면 관리자).
+ */
+function canSeePage(data: WikiData, page: Page): boolean {
+  if (page.status !== "draft" || page.createdBy === CURRENT_USER_ID) return true;
+  return (data.org?.self?.globalRoles ?? ["ADMIN"]).includes("ADMIN");
+}
+
 function nextId(): string {
   return crypto.randomUUID();
 }
@@ -326,8 +337,10 @@ export async function removeSpaceGrant(grantId: string): Promise<void> {
 
 
 export async function getPage(id: string): Promise<Page | null> {
-  const page = load().pages.find((p) => p.id === id);
-  return page ? clone(page) : null;
+  const data = load();
+  const page = data.pages.find((p) => p.id === id);
+  // 볼 수 없는 초안은 없는 문서와 같다(서버도 존재를 드러내지 않는다)
+  return page && canSeePage(data, page) ? clone(page) : null;
 }
 
 /** 버전 스냅샷 부수효과: 현재 페이지 내용을 version = max+1로 쌓는다 */
@@ -651,6 +664,8 @@ function autoWatch(data: WikiData, pageId: string, userId: string): void {
 }
 
 function deliver(data: WikiData, userId: string, type: NotificationType, page: Page) {
+  // 초안은 작성자만 본다 — 구독자·멘션 대상에게 초안의 존재(제목)를 알림으로 흘리지 않는다
+  if (page.status === "draft" && userId !== page.createdBy) return;
   const rows = (data.notifications ??= []);
   if (type !== "mentioned") {
     const unread = rows.find(
@@ -1039,7 +1054,7 @@ function toNode(data: WikiData, page: Page): PageNode {
     icon: page.icon ?? null,
     updatedBy: page.updatedBy,
     updatedAt: page.updatedAt,
-    childCount: data.pages.filter((p) => p.parentId === page.id).length,
+    childCount: data.pages.filter((p) => p.parentId === page.id && canSeePage(data, p)).length,
   };
 }
 
@@ -1051,7 +1066,7 @@ export async function listChildren(
   const data = load();
   return data.pages
     // 블로그 글(W24)은 부모가 없어도 트리가 아니다 — 백엔드 findChildren과 같은 제외
-    .filter((p) => p.spaceId === spaceId && p.parentId === parentId && !p.archivedAt && p.type !== "blog")
+    .filter((p) => p.spaceId === spaceId && p.parentId === parentId && !p.archivedAt && p.type !== "blog" && canSeePage(data, p))
     .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id))
     .map((p) => toNode(data, p));
 }
@@ -1063,8 +1078,9 @@ export async function downloadPagePdf(): Promise<void> {
 
 /** 블로그(W24) — 최신 작성순. 발췌는 백엔드 BlogPostView.excerptOf와 같은 규칙(기호 걷어내고 200자). */
 export async function listBlogPosts(spaceId: string): Promise<BlogPost[]> {
-  return load().pages
-    .filter((p) => p.spaceId === spaceId && p.type === "blog" && !p.archivedAt)
+  const data = load();
+  return data.pages
+    .filter((p) => p.spaceId === spaceId && p.type === "blog" && !p.archivedAt && canSeePage(data, p))
     // 같은 밀리초에 만든 글은 생성 순(position)이 시각보다 정확하다 — id는 무작위라 순서가 없다
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.position - a.position)
     .map((p) => ({
@@ -1116,7 +1132,7 @@ export async function listDescendants(pageId: string): Promise<PageNode[]> {
   while (queue.length > 0) {
     const current = queue.shift()!;
     for (const child of data.pages.filter((p) => p.parentId === current)) {
-      if (visited.has(child.id)) continue;
+      if (visited.has(child.id) || !canSeePage(data, child)) continue;
       visited.add(child.id);
       found.push(child);
       queue.push(child.id);
@@ -1136,7 +1152,7 @@ export async function lookupPagesByTitle(spaceId: string, titles: string[]): Pro
   );
   if (wanted.size === 0) return [];
   return data.pages
-    .filter((p) => p.spaceId === spaceId && wanted.has(p.title.trim().toLowerCase()))
+    .filter((p) => p.spaceId === spaceId && wanted.has(p.title.trim().toLowerCase()) && canSeePage(data, p))
     .map((p) => toNode(data, p));
 }
 
@@ -1144,7 +1160,7 @@ export async function lookupPagesByTitle(spaceId: string, titles: string[]): Pro
 export async function listRecentlyUpdated(spaceId: string, limit = 8): Promise<PageNode[]> {
   const data = load();
   return data.pages
-    .filter((p) => p.spaceId === spaceId && !p.archivedAt)
+    .filter((p) => p.spaceId === spaceId && !p.archivedAt && canSeePage(data, p))
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0))
     .slice(0, Math.min(Math.max(limit, 1), TREE_SEARCH_LIMIT))
     .map((p) => toNode(data, p));
@@ -1155,7 +1171,7 @@ export async function listPagesByIds(spaceId: string, ids: string[]): Promise<Pa
   const data = load();
   const wanted = new Set(ids.slice(0, TREE_LOOKUP_LIMIT));
   return data.pages
-    .filter((p) => p.spaceId === spaceId && wanted.has(p.id))
+    .filter((p) => p.spaceId === spaceId && wanted.has(p.id) && canSeePage(data, p))
     .map((p) => toNode(data, p));
 }
 
@@ -1165,7 +1181,7 @@ export async function searchPageTitles(spaceId: string, query: string): Promise<
   const q = query.trim().toLowerCase();
   if (!q) return [];
   return data.pages
-    .filter((p) => p.spaceId === spaceId && !p.archivedAt && p.title.toLowerCase().includes(q))
+    .filter((p) => p.spaceId === spaceId && !p.archivedAt && p.title.toLowerCase().includes(q) && canSeePage(data, p))
     .sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0))
     .slice(0, TREE_SEARCH_LIMIT)
     .map((p) => toNode(data, p));
@@ -1255,7 +1271,7 @@ export async function listPagesWithLabel(spaceId: string, name: string): Promise
   const data = load();
   const target = normalizeLabel(name);
   return data.pages
-    .filter((p) => p.spaceId === spaceId && (data.labels?.[p.id] ?? []).includes(target))
+    .filter((p) => p.spaceId === spaceId && (data.labels?.[p.id] ?? []).includes(target) && canSeePage(data, p))
     .map(clone);
 }
 
@@ -1270,7 +1286,7 @@ export async function listBacklinks(pageId: string): Promise<Page[]> {
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
   const title = page.title.trim().toLowerCase();
   return data.pages
-    .filter((p) => p.spaceId === page.spaceId && p.id !== pageId)
+    .filter((p) => p.spaceId === page.spaceId && p.id !== pageId && canSeePage(data, p))
     .filter((p) => extractLinkTargets(p.body).has(title))
     .sort((a, b) => (a.title < b.title ? -1 : 1))
     .map(clone);
@@ -1687,7 +1703,7 @@ export async function listMyTasks(done: boolean): Promise<MyTask[]> {
   const spaces = new Map(data.spaces.map((s) => [s.id, s]));
   const out: MyTask[] = [];
   for (const page of data.pages) {
-    if (page.archivedAt) continue;
+    if (page.archivedAt || !canSeePage(data, page)) continue;
     for (const t of parseTasks(page.body)) {
       if (t.assigneeId !== CURRENT_USER_ID || t.done !== done) continue;
       out.push({
