@@ -9,6 +9,9 @@ import { App } from "./App";
  * 데워 둔다. 앱 동작에는 영향이 없고, 테스트가 재는 것도 번들 크기가 아니다.
  */
 import "../features/wiki/pages/PageEditPage";
+// 보기 화면도 같다 — 마크다운 렌더러(KaTeX·하이라이트·Mermaid 지연 로더)를 끌고 와 병렬 부하에서 첫 변환이
+// 10초를 넘기기도 했다(2026-10-18 실측 11.5s). 그러면 그 파일의 첫 테스트가 findBy 상한에 걸린다.
+import "../features/wiki/pages/PageViewPage";
 import type { OrgMockState, PageNode, WikiData } from "../features/wiki/store/types";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
 import {
