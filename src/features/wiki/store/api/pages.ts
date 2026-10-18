@@ -3,6 +3,7 @@ import { sharedApiFetch } from "../apiClient";
 import { extractError, mapPage, toBackendId, toClientId } from "../mapping";
 import {
   type BlogPost,
+  type BlogPostPage,
   type CopyPageOptions,
   type DeletePageOptions,
   MoveImpactError,
@@ -127,17 +128,41 @@ export async function downloadPagePdf(pageId: string, includeChildren: boolean, 
   URL.revokeObjectURL(url);
 }
 
-/** 블로그(W24) — 트리 밖 글 목록, 최신순. 서버가 권한 필터와 발췌를 한다. */
-export async function listBlogPosts(spaceId: string): Promise<BlogPost[]> {
-  const rows = await json<Array<{
-    id: number; title: string; status: PageStatus; icon: string | null;
-    createdBy: number; updatedBy: number; createdAt: string; updatedAt: string; excerpt: string;
-  }>>(await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/blog`));
-  return rows.map((r) => ({
+interface BlogPostDto {
+  id: number; title: string; status: PageStatus; icon: string | null;
+  createdBy: number; updatedBy: number; createdAt: string; updatedAt: string; excerpt: string;
+}
+
+function mapBlogPost(r: BlogPostDto): BlogPost {
+  return {
     id: String(r.id), title: r.title, status: r.status ?? "published", icon: r.icon ?? null,
     createdBy: toClientId(r.createdBy), updatedBy: toClientId(r.updatedBy),
     createdAt: r.createdAt, updatedAt: r.updatedAt, excerpt: r.excerpt ?? "",
-  }));
+  };
+}
+
+/** 블로그(W24) — 트리 밖 글 목록 전부, 최신순. 서버가 권한 필터와 발췌를 한다. */
+export async function listBlogPosts(spaceId: string): Promise<BlogPost[]> {
+  const rows = await json<BlogPostDto[]>(await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/blog`));
+  return rows.map(mapBlogPost);
+}
+
+/**
+ * 블로그 한 쪽(키셋) — `?before=<커서>&limit=1~100`. 본문은 배열 그대로이고 다음 커서는 응답 헤더
+ * `X-Next-Before`다. 헤더가 없으면 마지막 쪽이고, **빈 배열이어도 헤더가 있으면 계속**이다(권한 필터로
+ * 한 쪽이 통째로 걸러질 수 있다). 커서는 화면에 불투명한 문자열이다.
+ */
+export async function listBlogPostPage(
+  spaceId: string,
+  options: { before?: string; limit: number },
+): Promise<BlogPostPage> {
+  const params = new URLSearchParams();
+  if (options.before) params.set("before", options.before);
+  params.set("limit", String(options.limit));
+  const res = await sharedApiFetch(`/api/wiki/spaces/${toBackendId(spaceId)}/blog?${params.toString()}`);
+  const rows = await json<BlogPostDto[]>(res);
+  const next = res.headers.get("X-Next-Before");
+  return { items: rows.map(mapBlogPost), nextBefore: next && next.trim() !== "" ? next : null };
 }
 
 /** 이모지 아이콘 설정/해제 — 메타데이터 변경(버전 스냅샷 없음). 백엔드 V10 계약. */

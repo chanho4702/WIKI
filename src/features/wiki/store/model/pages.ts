@@ -145,6 +145,12 @@ export interface CopyPageOptions {
   targetParentId?: string | null;
 }
 
+/** 블로그 한 쪽(키셋). nextBefore가 null이면 마지막 쪽 — 빈 items여도 nextBefore가 있으면 계속이다. */
+export interface BlogPostPage {
+  items: BlogPost[];
+  nextBefore: string | null;
+}
+
 /** 페이지 템플릿 — 그 스페이스가 합의한 문서 형태. */
 export interface PageTemplate {
   id: string;

@@ -40,6 +40,7 @@ export {
   deletePage,
   downloadPagePdf,
   listBlogPosts,
+  listBlogPostPage,
   movePage,
   setPageOwner,
   verifyPage,

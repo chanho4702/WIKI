@@ -39,6 +39,7 @@ export {
   updatePage,
   downloadPagePdf,
   listBlogPosts,
+  listBlogPostPage,
   setPageIcon,
   recordPageView,
   publishPage,

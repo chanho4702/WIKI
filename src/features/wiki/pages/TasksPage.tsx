@@ -39,10 +39,12 @@ export function TasksPage() {
     const key = `${task.pageId}:${task.lineNo}`;
     setBusy(key);
     try {
-      await setTaskDone(task.pageId, task.lineNo, next);
+      await setTaskDone(task.pageId, task.lineNo, next, task.text);
       await reload();
     } catch (e) {
       toast({ title: e instanceof Error ? e.message : String(e), appearance: "danger" });
+      // 문서가 그사이 바뀌었으면(409) 목록을 새로 읽어 지금 상태를 보여 준다
+      await reload();
     } finally {
       setBusy(null);
     }

@@ -39,6 +39,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
   const wantedLabels = input.labels?.length
     ? new Set(input.labels.map(normalizeLabel).filter((name) => name.length > 0))
     : null;
+  const wantedPageTypes = input.pageTypes?.length ? new Set(input.pageTypes) : null;
   const pageHits: SearchHit[] = !pagesRequested
     ? []
     : data.pages.flatMap((page): SearchHit[] => {
@@ -46,6 +47,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
         if (page.status === "draft" && !(input.includeDrafts === true && canSeePage(data, page))) return [];
         if (page.archivedAt || (allowedSpaces && !allowedSpaces.has(page.spaceId))) return [];
         if (authors && !authors.has(page.updatedBy)) return [];
+        if (wantedPageTypes && !wantedPageTypes.has(page.type === "folder" ? "FOLDER" : page.type === "blog" ? "BLOG" : "PAGE")) return [];
         if (wantedLabels && !(data.labels?.[page.id] ?? []).some((name) => wantedLabels.has(name))) return [];
         const updatedMillis = Date.parse(page.updatedAt);
         if (after !== null && !(updatedMillis >= after)) return [];

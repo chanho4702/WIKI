@@ -10,6 +10,8 @@ import { relativeTime } from "../lib/relativeTime";
 /** 한 쪽 크기 — 벨(서버 기본 30)보다 넉넉히. 서버 상한은 100. */
 const PAGE_SIZE = 50;
 const ALL = "ALL";
+/** 빈 쪽(권한 필터로 통째로 걸러진 쪽)을 만나면 이만큼까지 이어 읽는다 — nextBefore가 있는 한 끝이 아니다 */
+const EMPTY_PAGE_FOLLOW = 5;
 
 function typeFromParam(value: string | null): NotificationType | null {
   return value !== null && (NOTIFICATION_TYPES as string[]).includes(value) ? (value as NotificationType) : null;
@@ -19,6 +21,17 @@ function typeFromParam(value: string | null): NotificationType | null {
  * 전체 알림(`/notifications`, F-05) — 벨은 최근 한 쪽만 보여 준다. 여기서는 이전 알림을 계속 읽고(커서 쪽 넘김),
  * 종류로 거른다(URL `type`에 남아 공유·뒤로 가기에 유지). 안 읽은 수는 필터와 무관한 전체 기준이다.
  */
+/** 한 쪽을 읽되 빈 쪽이면 다음 커서로 몇 번 더 이어 읽는다(서버 계약: nextBefore가 null일 때만 끝). */
+async function readPage(before: string | undefined, type: NotificationType | null) {
+  const query = (cursor: string | undefined) =>
+    listNotifications({ limit: PAGE_SIZE, ...(cursor ? { before: cursor } : {}), ...(type ? { types: [type] } : {}) });
+  let page = await query(before);
+  for (let i = 0; i < EMPTY_PAGE_FOLLOW && page.items.length === 0 && page.nextBefore; i++) {
+    page = await query(page.nextBefore);
+  }
+  return page;
+}
+
 export function NotificationsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -42,7 +55,7 @@ export function NotificationsPage() {
     setError(null);
     setNextBefore(null);
     try {
-      const page = await listNotifications({ limit: PAGE_SIZE, ...(type ? { types: [type] } : {}) });
+      const page = await readPage(undefined, type);
       if (mine !== generation.current) return;
       setItems(page.items);
       setNextBefore(page.nextBefore ?? null);
@@ -61,11 +74,7 @@ export function NotificationsPage() {
     const mine = generation.current;
     setLoadingMore(true);
     try {
-      const page = await listNotifications({
-        before: nextBefore,
-        limit: PAGE_SIZE,
-        ...(type ? { types: [type] } : {}),
-      });
+      const page = await readPage(nextBefore, type);
       if (mine !== generation.current) return;
       // 그사이 새 알림이 와도 커서 기준이라 겹치지 않는다 — 혹시 겹치면 id로 한 번 더 거른다
       setItems((current) => {
@@ -143,7 +152,7 @@ export function NotificationsPage() {
       ) : null}
       {items === null ? (
         error === null ? <Spinner label="알림 불러오는 중" /> : null
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && !nextBefore ? (
         <EmptyState
           media={<Bell size={32} aria-hidden="true" />}
           title={type ? "이 종류의 알림이 없습니다" : "알림이 없습니다"}

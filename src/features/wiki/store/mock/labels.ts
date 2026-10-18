@@ -1,7 +1,7 @@
 // 라벨·백링크(W21-2) 목업.
 import { WIKI_LINK_SOURCE } from "../../lib/wikiLinks";
 import type { LabelCount, Page } from "../types";
-import { canSeePage, clone, load, persist } from "./db";
+import { canSeePage, clone, load, persist, requireWritable } from "./db";
 
 /** 백엔드 PageLabel.normalize와 같은 규칙 — 앞뒤 공백 제거 + 소문자 + 내부 공백은 하이픈. */
 export function normalizeLabel(raw: string): string {
@@ -21,7 +21,9 @@ export async function listLabels(pageId: string): Promise<string[]> {
 /** 전량 교체 — 화면이 최종 상태를 보낸다(백엔드 PUT /labels와 같은 계약). */
 export async function setLabels(pageId: string, raw: string[]): Promise<string[]> {
   const data = load();
-  if (!data.pages.some((p) => p.id === pageId)) throw new Error("페이지를 찾을 수 없습니다");
+  const page = data.pages.find((p) => p.id === pageId);
+  if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  requireWritable(page);
   const names = [...new Set(raw.map(normalizeLabel))];
   if (names.length > 30) throw new Error("라벨은 페이지당 30개까지입니다");
   data.labels ??= {};

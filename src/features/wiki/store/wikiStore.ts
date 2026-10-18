@@ -30,6 +30,7 @@ export const updatePage = impl.updatePage;
 export const setPageIcon = impl.setPageIcon;
 export const recordPageView = impl.recordPageView;
 export const listBlogPosts = impl.listBlogPosts;
+export const listBlogPostPage = impl.listBlogPostPage;
 export const downloadPagePdf = impl.downloadPagePdf;
 export const listNotifications = impl.listNotifications;
 export const markNotificationsRead = impl.markNotificationsRead;

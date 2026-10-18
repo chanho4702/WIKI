@@ -1,13 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 import { Banner, Button, EmptyState, Lozenge } from "@chanho/react";
 import { Newspaper, PenLine } from "lucide-react";
-import type { BlogPost, User } from "../store/types";
-import { listBlogPosts, listUsers } from "../store/wikiStore";
+import type { BlogPost, BlogPostPage, User } from "../store/types";
+import { listBlogPostPage, listUsers } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { useCreateContent } from "../lib/useCreateContent";
 import { usePersonName } from "../lib/userName";
 import { useReadOnly } from "../lib/readOnly";
+
+/** 블로그 한 쪽 크기 — 서버 상한(100) 안에서, 첫 화면에 충분한 양 */
+const BLOG_PAGE_SIZE = 20;
+/** 빈 쪽(권한 필터로 통째로 걸러진 쪽)을 만나면 이만큼까지 이어 읽는다 — 커서가 있는 한 끝이 아니다 */
+const EMPTY_PAGE_FOLLOW = 5;
+
+/** 한 쪽을 읽되, 빈 쪽이면 다음 커서로 몇 번 더 이어 읽는다(서버 계약: 빈 배열이어도 커서가 있으면 계속). */
+async function readBlogPage(spaceId: string, before: string | undefined): Promise<BlogPostPage> {
+  let page = await listBlogPostPage(spaceId, { before, limit: BLOG_PAGE_SIZE });
+  for (let i = 0; i < EMPTY_PAGE_FOLLOW && page.items.length === 0 && page.nextBefore; i++) {
+    page = await listBlogPostPage(spaceId, { before: page.nextBefore, limit: BLOG_PAGE_SIZE });
+  }
+  return page;
+}
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -29,16 +43,28 @@ export function BlogPage() {
   const [posts, setPosts] = useState<BlogPost[] | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /** 다음 쪽 커서(X-Next-Before). null이면 마지막 쪽 */
+  const [nextBefore, setNextBefore] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  /** 스페이스를 옮기면 앞 스페이스의 늦은 "더 보기" 응답을 버린다 */
+  const generation = useRef(0);
   const { createContent, creating } = useCreateContent(space.id, reloadPages);
   const readOnly = useReadOnly();
   const personName = usePersonName();
 
   useEffect(() => {
     let cancelled = false;
+    generation.current += 1;
     setPosts(null);
     setError(null);
-    void listBlogPosts(space.id)
-      .then((rows) => { if (!cancelled) setPosts(rows); })
+    setNextBefore(null);
+    // 쪽 넘김(키셋) — 글은 계속 쌓이므로 전부 받지 않는다
+    void readBlogPage(space.id, undefined)
+      .then((page) => {
+        if (cancelled) return;
+        setPosts(page.items);
+        setNextBefore(page.nextBefore);
+      })
       .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : "블로그를 불러오지 못했습니다"); });
     // 공개 문서에는 사람 이름을 싣지 않는다 — 디렉터리 조회 자체를 보내지 않는다.
     if (!readOnly) {
@@ -50,6 +76,22 @@ export function BlogPage() {
   }, [space.id, readOnly]);
 
   const author = (id: string) => personName(id, users);
+
+  const loadMore = async () => {
+    if (!nextBefore) return;
+    const mine = generation.current;
+    setLoadingMore(true);
+    try {
+      const page = await readBlogPage(space.id, nextBefore);
+      if (mine !== generation.current) return;
+      setPosts((current) => [...(current ?? []), ...page.items.filter((r) => !(current ?? []).some((c) => c.id === r.id))]);
+      setNextBefore(page.nextBefore);
+    } catch (e) {
+      if (mine === generation.current) setError(e instanceof Error ? e.message : "블로그를 불러오지 못했습니다");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   return (
     <div className="space-settings blog-page">
@@ -101,6 +143,11 @@ export function BlogPage() {
             </li>
           ))}
         </ol>
+      ) : null}
+      {posts && nextBefore ? (
+        <Button variant="subtle" loading={loadingMore} onClick={() => void loadMore()}>
+          이전 글 더 보기
+        </Button>
       ) : null}
     </div>
   );

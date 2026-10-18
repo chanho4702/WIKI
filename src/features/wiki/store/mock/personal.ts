@@ -2,7 +2,7 @@
 import { CURRENT_USER_ID } from "../../../../mock/users";
 import { type ParsedTask, parseTasks, toggleTaskLine } from "../../lib/tasks";
 import { type MyTask, type Page, REACTION_EMOJIS, type ReactionSummary, type StarredPageRow, type WikiData } from "../types";
-import { canSeePage, load, persist } from "./db";
+import { canSeePage, load, persist, requireWritable } from "./db";
 import { updatePage } from "./pages";
 
 export async function listMyTasks(done: boolean): Promise<MyTask[]> {
@@ -30,13 +30,17 @@ export async function listMyTasks(done: boolean): Promise<MyTask[]> {
   });
 }
 
-export async function setTaskDone(pageId: string, lineNo: number, done: boolean): Promise<MyTask> {
+export async function setTaskDone(pageId: string, lineNo: number, done: boolean, expectedText?: string): Promise<MyTask> {
   const data = load();
   const page = data.pages.find((p) => p.id === pageId);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
-  if (page.archivedAt) throw new Error("보관된 문서는 편집할 수 없습니다. 먼저 보관을 해제하세요");
+  requireWritable(page);
   const next = toggleTaskLine(page.body, lineNo, done);
   if (next === null) throw new Error("그 줄은 더 이상 작업 항목이 아닙니다. 문서를 새로고침하세요");
+  // 화면이 본 항목과 지금 그 줄의 항목이 다르면 거부한다(서버 409와 같은 문구)
+  if (expectedText !== undefined && parseTasks(page.body).find((t) => t.lineNo === lineNo)?.text !== expectedText) {
+    throw new Error("그 줄의 작업 항목이 바뀌었습니다. 문서를 새로고침하세요");
+  }
   // 편집이다 — 버전·리비전이 따라간다(updatePage와 같은 경로)
   await updatePage(pageId, { body: next }, { changeNote: done ? "작업 완료 표시" : "작업 다시 열기" });
   const refreshed = load().pages.find((p) => p.id === pageId) as Page;
@@ -112,13 +116,13 @@ export async function setSpaceStar(_spaceId: string, _starred: boolean): Promise
 }
 
 /** 내 초안 목록(F-04) — 내가 만든 초안, 보관 제외, 최근 수정순. 백엔드 제안 계약과 같은 행 모양. */
-export async function listMyDrafts(limit = 50): Promise<StarredPageRow[] | null> {
+export async function listMyDrafts(limit = 20): Promise<StarredPageRow[] | null> {
   const data = load();
   const spaces = new Map(data.spaces.map((s) => [s.id, s]));
   return data.pages
     .filter((p) => p.status === "draft" && p.createdBy === CURRENT_USER_ID && !p.archivedAt && canSeePage(data, p))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id))
-    .slice(0, Math.max(1, Math.min(limit, 100)))
+    .slice(0, Math.max(1, Math.min(limit, 50))) // 서버와 같은 상한(기본 20·최대 50)
     .map((p) => ({
       id: p.id,
       spaceId: p.spaceId,

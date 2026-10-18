@@ -36,6 +36,11 @@ export interface SearchContentInput {
   size?: number;
   spaceIds?: string[];
   docTypes?: SearchDocType[];
+  /**
+   * 문서 세부 종류(F-01 "블로그만") — PAGE 결과에만 걸린다. **라이트 검색만** 받는다(OpenSearch 스키마에는
+   * 없다) — 화면은 라이트 설치에서만 이 필터를 보여 준다.
+   */
+  pageTypes?: SearchPageType[];
   /** 초안 포함(서버 SearchInput.includeDrafts). 그래도 볼 수 있는 초안(작성자·관리자)만 나온다. 기본 제외. */
   includeDrafts?: boolean;
   /** 마지막 수정자 — 첨부에는 없는 필드라 페이지만 걸린다(W22). */

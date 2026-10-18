@@ -3,6 +3,7 @@ import { CURRENT_USER_ID } from "../../../../mock/users";
 import { defaultVerifiedUntil } from "../../lib/verification";
 import {
   type BlogPost,
+  type BlogPostPage,
   type CopyPageOptions,
   type DeletePageOptions,
   MoveImpactError,
@@ -13,7 +14,7 @@ import {
   type RestrictionPrincipal,
   type UpdatePageOptions,
 } from "../types";
-import { canSeePage, clone, load, nextId, persist } from "./db";
+import { canSeePage, clone, load, nextId, persist, requireWritable, requireWritableParent } from "./db";
 import { autoWatch, notifyPagePublished, notifyPageUpdated } from "./notifications";
 import { snapshotVersion } from "./versions";
 
@@ -44,6 +45,7 @@ export async function createPage(input: {
   if (parentId !== null) {
     const parent = data.pages.find((p) => p.id === parentId);
     if (!parent) throw new Error("부모 페이지를 찾을 수 없습니다");
+    requireWritableParent(parent);
     if (parent.spaceId !== input.spaceId) {
       throw new Error("부모 페이지가 같은 스페이스에 없습니다");
     }
@@ -92,6 +94,7 @@ export async function updatePage(
   const data = load();
   const page = data.pages.find((p) => p.id === id);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  requireWritable(page);
   if (options.expectedVersion !== undefined && options.expectedVersion !== page.version) {
     throw new PageConflictError(clone(page));
   }
@@ -122,6 +125,7 @@ export async function setPageIcon(id: string, icon: string | null): Promise<Page
   const data = load();
   const page = data.pages.find((p) => p.id === id);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  requireWritable(page);
   page.icon = icon;
   persist();
   return clone(page);
@@ -151,6 +155,7 @@ export async function publishPage(id: string): Promise<Page> {
   const data = load();
   const page = data.pages.find((p) => p.id === id);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  requireWritable(page);
   if (page.status === "published") return clone(page);
   if (!page.title.trim()) throw new Error("제목을 입력해야 게시할 수 있습니다");
   page.status = "published";
@@ -167,7 +172,7 @@ export async function copyPage(id: string, options?: CopyPageOptions): Promise<P
   const data = load();
   const source = data.pages.find((p) => p.id === id);
   if (!source) throw new Error("페이지를 찾을 수 없습니다");
-  if (source.archivedAt) throw new Error("보관된 문서는 복사할 수 없습니다. 먼저 보관을 해제하세요");
+  requireWritable(source);
   // 대상 위치(F-03) — 서버와 같은 규칙: 둘 다 비우면 원본 옆, 부모가 대상 스페이스 밖이면 거부
   const targetSpaceId = options?.targetSpaceId ?? source.spaceId;
   const targetParentId = options?.targetParentId !== undefined || options?.targetSpaceId !== undefined
@@ -309,6 +314,26 @@ export async function downloadPagePdf(): Promise<void> {
 
 /** 블로그(W24) — 최신 작성순. 발췌는 백엔드 BlogPostView.excerptOf와 같은 규칙(기호 걷어내고 200자). */
 export async function listBlogPosts(spaceId: string): Promise<BlogPost[]> {
+  return blogPostsOf(spaceId);
+}
+
+/** 블로그 한 쪽(키셋) — 서버와 같은 의미: before 글 다음부터 limit개, 더 있으면 nextBefore(마지막 글 id). */
+export async function listBlogPostPage(
+  spaceId: string,
+  options: { before?: string; limit: number },
+): Promise<BlogPostPage> {
+  if (!Number.isInteger(options.limit) || options.limit < 1 || options.limit > 100) {
+    throw new Error("limit은 1~100 사이여야 합니다");
+  }
+  const all = blogPostsOf(spaceId);
+  const start = options.before ? all.findIndex((p) => p.id === options.before) + 1 : 0;
+  if (options.before && start === 0) throw new Error("잘못된 커서입니다");
+  const items = all.slice(start, start + options.limit);
+  const more = start + options.limit < all.length;
+  return { items, nextBefore: more ? items[items.length - 1].id : null };
+}
+
+function blogPostsOf(spaceId: string): BlogPost[] {
   const data = load();
   return data.pages
     .filter((p) => p.spaceId === spaceId && p.type === "blog" && !p.archivedAt && canSeePage(data, p))
@@ -352,6 +377,8 @@ export async function movePage(
   const data = load();
   const page = data.pages.find((p) => p.id === id);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  requireWritable(page);
+  if (target.parentId) requireWritableParent(data.pages.find((p) => p.id === target.parentId));
   const targetSpaceId = target.spaceId ?? page.spaceId;
   // W18 이동 영향 — 백엔드와 같은 규칙: 새 조상 체인의 VIEW 제한 중 현 체인에 없던 것
   if (!target.confirmImpact
@@ -460,6 +487,7 @@ export async function setPageOwner(pageId: string, ownerId: string | null): Prom
   const data = load();
   const page = data.pages.find((p) => p.id === pageId);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  requireWritable(page);
   page.ownerId = ownerId;
   persist();
   return clone(page);
@@ -470,6 +498,7 @@ export async function verifyPage(pageId: string, until?: string): Promise<Page> 
   const data = load();
   const page = data.pages.find((p) => p.id === pageId);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  requireWritable(page);
   page.verifiedAt = new Date().toISOString();
   page.verifiedBy = CURRENT_USER_ID;
   page.verifiedUntil = until ?? defaultVerifiedUntil();
@@ -481,6 +510,7 @@ export async function unverifyPage(pageId: string): Promise<Page> {
   const data = load();
   const page = data.pages.find((p) => p.id === pageId);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  requireWritable(page);
   page.verifiedAt = null;
   page.verifiedBy = null;
   page.verifiedUntil = null;

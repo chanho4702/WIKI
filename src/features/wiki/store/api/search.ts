@@ -65,6 +65,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
           ...(input.spaceIds ? { spaceIds: input.spaceIds } : {}),
           ...(input.docTypes ? { docTypes: input.docTypes } : {}),
           ...(input.includeDrafts ? { includeDrafts: true } : {}),
+          ...(input.pageTypes?.length ? { pageTypes: input.pageTypes } : {}),
           ...(input.authorIds?.length ? { authorIds: input.authorIds } : {}),
           ...(input.updatedAfter ? { updatedAfter: input.updatedAfter } : {}),
           ...(input.updatedBefore ? { updatedBefore: input.updatedBefore } : {}),

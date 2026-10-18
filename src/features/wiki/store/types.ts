@@ -18,6 +18,7 @@ export {
   type PagePath,
   type DeletePageOptions,
   type BlogPost,
+  type BlogPostPage,
   type TrashItem,
   type PageRestoreResult,
   type PageNode,

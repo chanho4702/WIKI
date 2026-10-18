@@ -106,6 +106,19 @@ function isDraftAdmin(data: WikiData, spaceId: string): boolean {
     && ((g.subjectType === "user" && g.subjectId === CURRENT_USER_ID) || (g.subjectType === "team" && myTeams.has(g.subjectId))));
 }
 
+/** 서버 PageWriteGuard와 같은 문구 — 보관 문서 쓰기는 어느 경로든 409다. */
+export const ARCHIVED_MESSAGE = "보관된 문서는 편집할 수 없습니다. 먼저 보관을 해제하세요";
+
+/** 보관(Archive) 불변식 — "보관 해제 전까지 문서는 바뀌지 않는다". 모든 쓰기 경로가 부른다. */
+export function requireWritable(page: Page): void {
+  if (page.archivedAt) throw new Error(ARCHIVED_MESSAGE);
+}
+
+/** 보관 문서 아래로는 만들거나 옮기지 않는다(서버 requireWritableParent와 같은 문구). */
+export function requireWritableParent(parent: Page | undefined | null): void {
+  if (parent?.archivedAt) throw new Error("보관된 문서 아래로는 문서를 만들거나 옮길 수 없습니다. 먼저 보관을 해제하세요");
+}
+
 export function nextId(): string {
   return crypto.randomUUID();
 }

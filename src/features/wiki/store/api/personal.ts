@@ -53,7 +53,7 @@ export async function listRecentPages(limit = 10): Promise<StarredPageRow[]> {
  * `{page, spaceId, spaceName}`, 내가 만든 초안, 최근 수정순). 서버에 아직 없으면(404) null을 준다 —
  * 화면은 그 탭을 숨긴다(없는 기능을 빈 목록으로 꾸미지 않는다). 그 밖의 실패는 던진다.
  */
-export async function listMyDrafts(limit = 50): Promise<StarredPageRow[] | null> {
+export async function listMyDrafts(limit = 20): Promise<StarredPageRow[] | null> {
   const res = await sharedApiFetch(`/api/wiki/drafts?limit=${limit}`);
   if (res.status === 404) return null;
   return (await json<StarRowDto[]>(res)).map(mapStarRow);
@@ -84,11 +84,19 @@ export async function listMyTasks(done: boolean): Promise<MyTask[]> {
   return rows.map(mapTask);
 }
 
-/** 체크 토글은 그 문서의 본문을 다시 쓰는 편집이다 — 리비전이 남는다. */
-export async function setTaskDone(pageId: string, lineNo: number, done: boolean): Promise<MyTask> {
+/**
+ * 체크 토글은 그 문서의 본문을 다시 쓰는 편집이다 — 리비전이 남는다.
+ * expectedText(화면이 본 그 줄의 항목 텍스트)를 주면 서버가 대조해 다르면 409다 — 그사이 위에 줄이 들어가
+ * 줄 번호가 다른 항목을 가리키게 되면 남의 항목을 바꾸지 않고 거부한다.
+ */
+export async function setTaskDone(pageId: string, lineNo: number, done: boolean, expectedText?: string): Promise<MyTask> {
   return mapTask(await json<TaskDto>(await sharedApiFetch(
     `/api/wiki/pages/${toBackendId(pageId)}/tasks/${lineNo}`,
-    { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done }) })));
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(expectedText === undefined ? { done } : { done, text: expectedText }),
+    })));
 }
 
 /* ── 리액션(W23) ─────────────────────────────────────────── */

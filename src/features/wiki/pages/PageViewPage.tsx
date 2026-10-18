@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useLocation } from "react-router";
 import { Avatar, Banner, Button, Dropdown, Lozenge, PageHeader, Tooltip, useToast } from "@chanho/react";
+import { parseTasks } from "../lib/tasks";
 import { DraftBadge } from "../components/DraftBadge";
 import { CopyPageDialog, MovePageDialog } from "../components/PageMoveCopyDialogs";
 import type { BreadcrumbItem } from "@chanho/react";
@@ -139,8 +140,10 @@ export function PageViewPage() {
   /** 본문 체크박스 토글(W23) — 편집이라 리비전이 남는다. 결과 Page로 즉시 갱신한다. */
   const handleTaskToggle = async (lineNo: number, done: boolean) => {
     if (!page) return;
+    // 화면이 본 그 줄의 항목 텍스트를 함께 보낸다 — 그사이 줄이 밀렸으면 서버가 409로 거부한다
+    const expectedText = parseTasks(page.body).find((t) => t.lineNo === lineNo)?.text;
     try {
-      await setTaskDone(page.id, lineNo, done);
+      await setTaskDone(page.id, lineNo, done, expectedText);
       const refreshed = await getPage(page.id);
       if (refreshed) setPage(refreshed);
     } catch (error) {
@@ -149,6 +152,9 @@ export function PageViewPage() {
         description: error instanceof Error ? error.message : String(error),
         appearance: "danger",
       });
+      // 문서가 바뀌었다면 최신본으로 다시 그려 사용자가 바로 다시 고를 수 있게 한다
+      const refreshed = await getPage(page.id).catch(() => null);
+      if (refreshed) setPage(refreshed);
     }
   };
 

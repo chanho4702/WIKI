@@ -38,18 +38,30 @@ const AUTHOR_ANY = "ALL";
 const ANY = "ALL";
 
 /**
- * 종류 필터(F-01) — 검색 계약 `docTypes`(PAGE·ATTACHMENT)가 받는 값만 둔다. 문서 안의 세부 종류
- * (블로그·폴더)는 계약에 필터가 없어 여기서 거르지 않는다(결과 쪽만 걸러 내면 건수·쪽 나눔이 거짓이 된다).
+ * 종류 필터(F-01) — 검색 계약 `docTypes`(PAGE·ATTACHMENT)와, 라이트 검색만 받는 `pageTypes`(블로그만).
+ * OpenSearch 스키마에는 pageTypes가 없어 그 설치에서는 "블로그" 선택지를 두지 않는다 — 결과 쪽만 걸러 내면
+ * 건수·쪽 나눔이 거짓이 된다. URL에 `type=BLOG`가 남아 있어도 OpenSearch 설치에서는 무시한다(전체).
  * 값은 아이콘+텍스트로 보인다.
  */
-const TYPE_OPTIONS = [
+const BASE_TYPE_OPTIONS = [
   { value: ANY, label: "전체", icon: <Layers size={14} aria-hidden="true" /> },
   { value: "PAGE", label: "문서", icon: <FileText size={14} aria-hidden="true" /> },
   { value: "ATTACHMENT", label: "첨부파일", icon: <Paperclip size={14} aria-hidden="true" /> },
 ];
+const BLOG_TYPE_OPTION = { value: "BLOG", label: "블로그", icon: <Newspaper size={14} aria-hidden="true" /> };
 
-function normalizedDocType(value: string | null): SearchDocType | null {
-  return value === "PAGE" || value === "ATTACHMENT" ? value : null;
+type TypeFilter = SearchDocType | "BLOG";
+
+function normalizedTypeFilter(value: string | null, blogSupported: boolean): TypeFilter | null {
+  if (value === "PAGE" || value === "ATTACHMENT") return value;
+  return value === "BLOG" && blogSupported ? "BLOG" : null;
+}
+
+/** 화면의 종류 필터 → 검색 입력. 블로그는 "문서 중 블로그"다. */
+function typeFilterInput(filter: TypeFilter | null) {
+  if (filter === null) return {};
+  if (filter === "BLOG") return { docTypes: ["PAGE" as const], pageTypes: ["BLOG" as const] };
+  return { docTypes: [filter] };
 }
 
 const SORT_OPTIONS = [
@@ -110,7 +122,9 @@ export function SearchPage() {
   const authorId = params.get("author") ?? "";
   /** 스페이스(F-01) — 한 곳만 고른다. 스페이스 화면에서 검색하면 상단 검색창이 미리 채운다. */
   const spaceId = params.get("space") ?? "";
-  const docType = normalizedDocType(params.get("type"));
+  // 블로그만(pageTypes)은 라이트 검색만 받는다 — 설치 옵션을 아직 모르면(null) 켜지 않는다
+  const blogFilterSupported = features?.search.mode === "lite";
+  const docType = normalizedTypeFilter(params.get("type"), blogFilterSupported);
   const updatedAfter = params.get("after") ?? "";
   const updatedBefore = params.get("before") ?? "";
   const labelParam = params.get("labels") ?? "";
@@ -162,7 +176,7 @@ export function SearchPage() {
       page: page - 1,
       size: PAGE_SIZE,
       ...(spaceId ? { spaceIds: [spaceId] } : {}),
-      ...(docType ? { docTypes: [docType] } : {}),
+      ...typeFilterInput(docType),
       ...(authorId ? { authorIds: [authorId] } : {}),
       ...(labels.length ? { labels } : {}),
       ...(updatedAfter ? { updatedAfter } : {}),
@@ -295,7 +309,7 @@ export function SearchPage() {
             className="search-filter"
             label="종류"
             value={docType ?? ANY}
-            options={TYPE_OPTIONS}
+            options={blogFilterSupported ? [...BASE_TYPE_OPTIONS, BLOG_TYPE_OPTION] : BASE_TYPE_OPTIONS}
             onValueChange={(next: string) => setFilter("type", next === ANY ? "" : next)}
           />
           {/* 작성자 필터 — 읽기 전용에는 사람 개념이 없어 "전체"만 남은 빈 셀렉트가 된다 */}
