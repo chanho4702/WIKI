@@ -43,6 +43,7 @@ export async function listAncestors(pageId: string): Promise<PageNode[]> {
   const data = load();
   const page = data.pages.find((p) => p.id === pageId);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  if (!canSeePage(data, page)) throw new Error("이 페이지를 볼 권한이 없습니다");
   const chain: Page[] = [];
   const visited = new Set([pageId]);
   let cursor = page.parentId;

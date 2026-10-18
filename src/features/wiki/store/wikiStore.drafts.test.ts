@@ -48,7 +48,8 @@ describe("초안 가시성(목업)", () => {
   it("남의 초안은 비관리자에게 어떤 읽기 경로에도 나오지 않는다", async () => {
     seedWith([draft("dOther", "u2"), draft("dChild", "u2", "pg1")], NON_ADMIN);
 
-    expect(await getPage("dOther")).toBeNull();
+    // 서버처럼 제한 문서와 같은 403 문구로 거부한다(존재 여부를 "없음"과 구분하지 않는다)
+    await expect(getPage("dOther")).rejects.toThrow("이 페이지를 볼 권한이 없습니다");
     expect((await listChildren("sp1", null)).map((p) => p.id)).not.toContain("dOther");
     expect((await listDescendants("pg1")).map((p) => p.id)).not.toContain("dChild");
     expect((await listRecentlyUpdated("sp1", 50)).map((p) => p.id)).not.toContain("dOther");
@@ -121,13 +122,34 @@ describe("초안 가시성 — 나머지 읽기 경로", () => {
     expect((await listSpaceLabels("sp1")).map((l) => l.name)).not.toContain("비밀라벨");
   });
 
-  it("조상 경로는 볼 수 없는 초안 조상에서 멈춘다(제목이 새지 않는다)", async () => {
-    const child = { ...draft("visibleChild", "u2", "dParent"), status: "published" as const };
+  it("볼 수 없는 초안 아래의 문서도 함께 가려진다(서버와 같은 조상 체인 판정)", async () => {
+    const child = { ...draft("visibleChild", "u2", "dParent"), status: "published" as const, title: "게시된 자식" };
     seedWith([draft("dParent", "u2", "pg1"), child], NON_ADMIN);
 
-    const chain = await listAncestors("visibleChild");
-    expect(chain.map((n) => n.id)).not.toContain("dParent");
-    expect(chain.map((n) => n.title).join()).not.toContain("초안 dParent");
+    await expect(getPage("visibleChild")).rejects.toThrow("이 페이지를 볼 권한이 없습니다");
+    await expect(listAncestors("visibleChild")).rejects.toThrow("이 페이지를 볼 권한이 없습니다");
+    expect((await listDescendants("pg1")).map((n) => n.id)).not.toContain("visibleChild");
+    expect(await searchPageTitles("sp1", "게시된 자식")).toEqual([]);
+  });
+
+  it("그 스페이스의 관리자(직접 또는 팀 부여)는 남의 초안을 본다", async () => {
+    seedWith([draft("dOther", "u2")], NON_ADMIN);
+    const raw = JSON.parse(localStorage.getItem("wiki.v1")!) as WikiData;
+    raw.grants = { sp1: [{ id: "g1", subjectType: "user", subjectId: "u1", role: "admin" }] };
+    localStorage.setItem("wiki.v1", JSON.stringify(raw));
+    __resetForTest();
+    expect(await getPage("dOther")).not.toBeNull();
+
+    raw.grants = { sp1: [{ id: "g2", subjectType: "team", subjectId: "t9", role: "admin" }] };
+    raw.teamMembers = { t9: ["u1"] };
+    localStorage.setItem("wiki.v1", JSON.stringify(raw));
+    __resetForTest();
+    expect(await getPage("dOther")).not.toBeNull();
+
+    raw.grants = { sp1: [{ id: "g3", subjectType: "user", subjectId: "u1", role: "editor" }] };
+    localStorage.setItem("wiki.v1", JSON.stringify(raw));
+    __resetForTest();
+    await expect(getPage("dOther")).rejects.toThrow("이 페이지를 볼 권한이 없습니다");
   });
 
   it("초안은 공유할 수 없다 — 받는 사람이 열 수 없는 문서의 제목이 알림으로 새지 않게", async () => {

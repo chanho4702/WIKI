@@ -73,14 +73,37 @@ export function clone<T>(value: T): T {
 }
 
 /**
- * 초안 가시성(2026-10-18 사용자 결정) — 초안은 작성자와 전역 관리자만 본다. 서버가 강제하는 규칙과
- * 같게 목업도 읽기 경로마다 거른다(목업이 더 관대하면 화면이 목업에서만 동작한다). 작성자에게는
- * 그대로 보이므로 "만들기 → 초안 → 게시" 흐름은 바뀌지 않는다. 목업의 전역 관리자 판정은 getOrgMe와 같다
- * (`org.self`가 없으면 관리자).
+ * 초안 가시성(2026-10-18 사용자 결정) — 서버(EffectivePermissionService)와 같은 규칙을 목업도 읽기 경로마다
+ * 적용한다(목업이 더 관대하면 화면이 목업에서만 동작한다).
+ * - 남의 초안은 그 스페이스 관리자·전역 관리자만 본다. 작성자에게는 그대로 보인다.
+ * - 판정은 **조상 체인**에서 한다 — 볼 수 없는 초안 아래의 하위 문서도 함께 가려진다(트리 고아·위치 누출 방지).
+ * 목업의 전역 관리자 판정은 getOrgMe와 같다(`org.self`가 없으면 관리자). 스페이스 관리자는 스페이스 권한
+ * 원장(`grants`)의 admin — 사용자 직접 부여 또는 내가 속한 팀 부여.
  */
 export function canSeePage(data: WikiData, page: Page): boolean {
-  if (page.status !== "draft" || page.createdBy === CURRENT_USER_ID) return true;
-  return (data.org?.self?.globalRoles ?? ["ADMIN"]).includes("ADMIN");
+  const byId = new Map(data.pages.map((p) => [p.id, p]));
+  const visited = new Set<string>();
+  let cursor: Page | undefined = page;
+  while (cursor && !visited.has(cursor.id)) {
+    visited.add(cursor.id);
+    if (cursor.status === "draft" && cursor.createdBy !== CURRENT_USER_ID && !isDraftAdmin(data, cursor.spaceId)) {
+      return false;
+    }
+    cursor = cursor.parentId === null ? undefined : byId.get(cursor.parentId);
+  }
+  return true;
+}
+
+function isDraftAdmin(data: WikiData, spaceId: string): boolean {
+  if ((data.org?.self?.globalRoles ?? ["ADMIN"]).includes("ADMIN")) return true;
+  const myTeams = new Set(
+    Object.entries(data.teamMembers ?? {})
+      .filter(([, members]) => members.includes(CURRENT_USER_ID))
+      .map(([teamId]) => teamId),
+  );
+  return (data.grants?.[spaceId] ?? []).some((g) =>
+    g.role === "admin"
+    && ((g.subjectType === "user" && g.subjectId === CURRENT_USER_ID) || (g.subjectType === "team" && myTeams.has(g.subjectId))));
 }
 
 export function nextId(): string {

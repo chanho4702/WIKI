@@ -20,8 +20,10 @@ import { snapshotVersion } from "./versions";
 export async function getPage(id: string): Promise<Page | null> {
   const data = load();
   const page = data.pages.find((p) => p.id === id);
-  // 볼 수 없는 초안은 없는 문서와 같다(서버도 존재를 드러내지 않는다)
-  return page && canSeePage(data, page) ? clone(page) : null;
+  if (!page) return null;
+  // 볼 수 없는 초안(과 그 아래 문서)은 서버처럼 제한 문서와 같은 403 문구로 거부한다
+  if (!canSeePage(data, page)) throw new Error("이 페이지를 볼 권한이 없습니다");
+  return clone(page);
 }
 
 export async function createPage(input: {
