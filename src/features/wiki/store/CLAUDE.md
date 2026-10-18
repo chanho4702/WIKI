@@ -1,8 +1,10 @@
 # store/ — 데이터 스토어 규약
 
-`wikiStore.ts`는 **백엔드 교체 지점**이다. 화면은 이 파일의 async 함수만 호출하므로,
-wiki-service가 붙으면 함수 내부만 `apiFetch`로 교체한다 — **함수 시그니처와 아래 의미론을
-바꾸면 화면 전체에 파급된다.** REST 매핑 제안: `docs/backend/2026-07-17-wiki-service-requirements.md`.
+`wikiStore.ts`는 **듀얼모드 파사드**다. 화면은 이 파일의 async 함수만 호출하고, 파사드가
+백엔드 어댑터(`wikiApi.ts` → `api/*`)와 목업(`wikiMock.ts` → `mock/*`) 중 하나로 보낸다 — 두 구현은
+같은 시그니처·같은 의미론을 지킨다. **함수 시그니처와 아래 의미론을 바꾸면 화면 전체에 파급된다.**
+새 함수는 양쪽 도메인 모듈(`api/<도메인>.ts`·`mock/<도메인>.ts`)에 구현하고 배럴 두 곳과 wikiStore에
+한 줄씩 더한다. `api/*`는 목업을 import하지 않는다(프로덕션 번들 경계). REST 매핑 제안: `docs/backend/2026-07-17-wiki-service-requirements.md`.
 
 ## 지켜야 할 의미론 (테스트가 고정하고 있음)
 
@@ -70,7 +72,11 @@ wiki-service가 붙으면 함수 내부만 `apiFetch`로 교체한다 — **함�
   열려야 한다). 테스트는 `app/testUtils`의 `seedOrgState`로 비관리자·승인 대기를 만든다.
   `searchUsers(q)`는 `GET /api/org/members?q=`(서버가 이름·이메일 부분일치, 기본 필터
   `status=ACTIVE&kind=HUMAN`)이고 **실패를 삼키지 않는다** — 검색이 안 되는 것과 결과가 없는
-  것은 다르다(`listUsers`는 반대로 빈 목록을 준다: 디렉터리 장애가 화면 전체를 죽이면 안 된다).
+  것은 다르다. 멤버 전량(`GET /api/org/members`)은 백엔드 어댑터가 **진행 중 요청을 합치고 5분 TTL로
+  캐시**한다(실패는 캐시하지 않음, 호출자마다 독립 사본). 그 위에 두 함수가 있다: `listUsers`는 **이름
+  표시용**이라 장애를 빈 목록으로 접고(디렉터리 장애가 화면 전체를 죽이면 안 된다), `listSelectableUsers`는
+  **선택 UI용**이라 던진다. `listTeams`도 선택 UI 전용이라 던진다 — 고르는 화면이 장애를 빈 목록으로
+  받으면 "고를 대상이 없다"로 보여 잘못된 저장을 부른다(제한 다이얼로그는 배너로 원인을 보이고 저장을 막는다).
   `orgApiFetch`는 함수가 아니라 **HTTP 경로**를 부르는 소비자(`@chanho/org-admin`)를 위한
   인증 fetch다 — 백엔드 모드는 `sharedApiFetch`, 목업 모드는 `orgMockApi.ts`가 같은
   `/api/org/*` 경로 계약으로 답한다. 목업이 백엔드보다 관대하면 화면이 목업에서만 동작하므로,
@@ -85,14 +91,20 @@ wiki-service가 붙으면 함수 내부만 `apiFetch`로 교체한다 — **함�
   언제나 배열(이름순). 문서 라벨(`setLabels`)과 **다른 원장**이다 — 디렉토리 분류이고 스페이스 ADMIN만
   바꾼다. 정규화 규칙은 문서 라벨과 같고(`normalizeLabel`), 상한 10개.
 - **에러는 한국어 사용자 문구로 throw** — 화면이 메시지를 그대로 노출한다.
+- **초안 가시성(2026-10-18 사용자 결정)**: 초안(`status: "draft"`)은 작성자와 전역 관리자만 본다. 서버가
+  강제하고, 목업은 `mock/db.ts`의 `canSeePage`로 읽기 경로(getPage→null·트리·하위 수·후손·최근·id 묶음·
+  제목 조회·라벨·백링크·블로그·내 작업)마다 같은 규칙을 적용한다. 초안 알림은 작성자 외에게 보내지 않는다.
+  화면은 `DraftBadge`로 "초안 — 나만 보임"(남의 초안을 보는 관리자에게는 "작성자만 보임")을 표시한다.
 - **편집 세션 낙관적 락**: 화면은 로드 때 받은 `Page.version`을 `updatePage(...,
-  { expectedVersion })`에 넘긴다. API 어댑터가 저장 직전 조회한 최신 버전으로 바꾸면 stale 편집이
+  { expectedVersion })`에 넘긴다. 제목·본문과 함께 `parentId`(현재 부모, null=루트)까지 넘기면 어댑터가
+  PUT 전 사전 조회를 생략하고 PUT 응답을 그대로 쓴다(부모가 그사이 바뀌어 서버가 400을 주면 조회 경로로
+  한 번 재시도). API 어댑터가 저장 직전 조회한 최신 버전으로 바꾸면 stale 편집이
   다른 사용자의 변경을 덮어쓰므로 금지한다. `PageConflictError`는 최신 서버본을 함께 보존한다.
 
-## 목업 한정 사항 (백엔드 전환 시 제거 대상)
+## 목업 한정 사항
 
 - `CURRENT_USER_ID`(mock/users.ts u1) 하드코딩 — 서버는 토큰 주체로 `createdBy` 등을 채운다.
-- localStorage `wiki.v1` + 메모리 캐시, 손상 시 시드 재생성(`isWikiData` 검증 + `normalize` 구버전 보정).
+- localStorage `wiki.v1` + 메모리 캐시(`mock/db.ts`), 손상 시 시드 재생성(`isWikiData` 검증 + `normalize` 구버전 보정).
 - `__resetForTest()`는 테스트 전용(메모리 캐시만 초기화, localStorage 불변).
 
 ## `platformApi.ts` — 플랫폼 설치 옵션 (도메인 데이터 아님)
@@ -112,4 +124,5 @@ wiki-service가 붙으면 함수 내부만 `apiFetch`로 교체한다 — **함�
 
 ## 타입
 
-`types.ts`가 도메인 모델의 원천 — 백엔드 계약 문서의 엔티티 표와 1:1을 유지한다.
+`types.ts`(배럴) + `model/*.ts`가 도메인 모델의 원천 — 백엔드 계약 문서의 엔티티 표와 1:1을 유지한다.
+화면·스토어는 계속 `./types`에서 import한다.
