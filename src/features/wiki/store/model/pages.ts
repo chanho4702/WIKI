@@ -68,6 +68,11 @@ export interface Page {
   importedAuthorName?: string | null;
   /** 원본 문서 주소 — 이름만으로는 누구인지 확인할 길이 없어 툴팁으로 원본까지 연결한다. */
   importedSourceUrl?: string | null;
+  /**
+   * 내가 이 문서를 고칠 수 있는가(서버 PageResponse.canEdit). **단건 조회에서만** 채워지고 그 밖의 응답·목업은
+   * null/undefined = 모름이다. 모를 때는 쓰기 어포던스를 숨기지 않는다(서버가 403으로 최종 판정한다).
+   */
+  canEdit?: boolean | null;
 }
 
 /** 검증 배지의 세 상태 — 없음/유효/만료. `verifiedUntil`만으로 결정된다. */

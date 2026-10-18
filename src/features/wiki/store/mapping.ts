@@ -73,6 +73,8 @@ export interface PageDto {
   /** V36 원본 작성자 표시(W29 M3). 대조된 문서·구버전 응답에는 없다. */
   importedAuthorName?: string | null;
   importedSourceUrl?: string | null;
+  /** 내가 고칠 수 있는가 — 단건 GET에서만 채운다. 그 밖에는 null(모름). */
+  canEdit?: boolean | null;
 }
 
 /**
@@ -114,6 +116,7 @@ export function mapPage(dto: PageDto): Page {
     verifiedUntil: toDateOnly(dto.verifiedUntil),
     importedAuthorName: dto.importedAuthorName ?? null,
     importedSourceUrl: dto.importedSourceUrl ?? null,
+    canEdit: typeof dto.canEdit === "boolean" ? dto.canEdit : null,
   };
 }
 

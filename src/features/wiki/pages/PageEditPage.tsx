@@ -98,7 +98,7 @@ export function PageEditPage() {
   const [bodyDirty, setBodyDirty] = useState(false);
   // 편집 중인 문서가 초안인지 — 초안이면 "업데이트" 대신 "게시"가 주 액션이다(기획 P3).
   const [isDraft, setIsDraft] = useState(false);
-  // 초안 작성자 — "나만 보임/작성자만 보임" 표시용. 새 문서는 저장 전이라 작성자가 곧 나다.
+  // 초안 작성자 — "나만 보임/작성자·관리자만 보임" 표시용. 새 문서는 저장 전이라 작성자가 곧 나다.
   const [draftAuthor, setDraftAuthor] = useState<string | null>(null);
   const collaboration = useCollaborationSession({
     enabled: COLLABORATION_ENABLED && isEdit && !notFound,

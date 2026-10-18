@@ -492,7 +492,8 @@ export function PageViewPage() {
                       },
                       // 이동·복제(F-02, 컨플 문서 ⋯ 메뉴의 Move/Copy) — 트리에서만 되던 것을 문서를 보다가도 한다.
                       // 보관 문서는 편집처럼 숨긴다(보관 해제 전에는 구조를 바꾸지 않는다). 권한은 서버가 판정한다.
-                      ...(page.archivedAt
+                      // canEdit은 단건 조회에서만 온다 — false일 때만 숨기고, 모르면(null) 보여 준다
+                      ...(page.archivedAt || page.canEdit === false
                         ? []
                         : [
                             {

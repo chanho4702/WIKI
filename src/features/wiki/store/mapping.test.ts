@@ -21,6 +21,9 @@ describe("mapSpace", () => {
 describe("mapPage", () => {
   it("content→body, id/spaceId/parentId를 string으로, version 유지", () => {
     const p = mapPage({ id: 1, spaceId: 2, parentId: null, title: "T", content: "본문", version: 3 });
+    // canEdit은 단건 GET에서만 온다 — 없으면 null(모름)
+    expect(p.canEdit).toBeNull();
+    expect(mapPage({ id: 1, spaceId: 2, parentId: null, title: "T", content: "", version: 1, canEdit: false }).canEdit).toBe(false);
     expect(p).toMatchObject({ id: "1", spaceId: "2", parentId: null, title: "T", body: "본문", version: 3 });
   });
 });

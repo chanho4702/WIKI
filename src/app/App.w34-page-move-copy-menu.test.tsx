@@ -3,6 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
 import * as store from "../features/wiki/store/wikiStore";
+import { getPage as mockGetPage } from "../features/wiki/store/wikiMock";
 import { __resetForTest, archivePage, copyPage, createPage, createSpace, getPage, listChildren } from "../features/wiki/store/wikiStore";
 
 /*
@@ -52,6 +53,20 @@ describe("F-02 문서 ⋯ 메뉴의 이동·복제", () => {
       const roots = await listChildren("sp1", null);
       expect(roots.filter((p) => p.title.includes("팀 규칙")).length).toBe(2);
     });
+  });
+
+  it("서버가 편집 권한 없음(canEdit=false)을 주면 이동·복제가 없다 — 모르면(null) 보인다", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(store, "getPage").mockImplementation(async (id: string) => {
+      const page = await mockGetPage(id);
+      return page && id === "pg2" ? { ...page, canEdit: false } : page;
+    });
+    renderApp("/spaces/sp1/pages/pg2");
+    await screen.findByRole("heading", { level: 1, name: "팀 규칙" });
+    await openMore(user);
+    await screen.findByRole("menuitem", { name: "내보내기" });
+    expect(screen.queryByRole("menuitem", { name: "이동…" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "복제" })).not.toBeInTheDocument();
   });
 
   it("보관된 문서와 읽기 전용 인스턴스에는 이동·복제가 없다", async () => {
