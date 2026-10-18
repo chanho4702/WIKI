@@ -54,3 +54,42 @@ describe("홈 로드 실패", () => {
     ).toBeInTheDocument();
   });
 });
+
+/*
+ * W-13 — 홈이 스페이스 수만큼 요청을 한꺼번에 띄우고, "이어서 작업" 카드마다 본문 포함 getPage를 보냈다.
+ */
+describe("홈 요청 팬아웃(W-13)", () => {
+  it("서버 방문 원장이 있으면 그것 한 번으로 카드를 그리고 본문(getPage)을 읽지 않는다", async () => {
+    localStorage.setItem("wiki.ui.recentVisits", JSON.stringify([{ id: "pg2", at: new Date().toISOString() }]));
+    vi.spyOn(store, "listRecentPages").mockResolvedValue([
+      { id: "pg2", spaceId: "sp1", spaceName: "개발", title: "팀 규칙", icon: null, type: "page" },
+    ]);
+    const getPage = vi.spyOn(store, "getPage");
+    renderHome();
+
+    expect(await screen.findByRole("button", { name: /팀 규칙/ })).toBeInTheDocument();
+    expect(getPage).not.toHaveBeenCalled();
+  });
+
+  it("스페이스별 최근 업데이트는 동시에 4개까지만 묻는다", async () => {
+    const seed = createSeedData();
+    const many = Array.from({ length: 12 }, (_, i) => ({ ...seed.spaces[0], id: `bulk${i}`, key: `B${i}`, name: `스페이스 ${i}` }));
+    localStorage.setItem("wiki.v1", JSON.stringify({ ...seed, spaces: [...seed.spaces, ...many] }));
+    store.__resetForTest();
+    let running = 0;
+    let peak = 0;
+    let calls = 0;
+    vi.spyOn(store, "listRecentlyUpdated").mockImplementation(async () => {
+      calls++;
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      running--;
+      return [];
+    });
+    renderHome();
+
+    await vi.waitFor(() => expect(calls).toBe(seed.spaces.length + many.length), { timeout: 10000 });
+    expect(peak).toBeLessThanOrEqual(4);
+  });
+});

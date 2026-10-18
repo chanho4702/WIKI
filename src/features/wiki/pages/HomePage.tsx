@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Avatar, Button, EmptyState } from "@chanho/react";
 import { FileText, Folder, History, Star } from "lucide-react";
-import type { Page, PageNode, Space, User } from "../store/types";
-import { getPage, listRecentlyUpdated, listSpaces, listUsers } from "../store/wikiStore";
-import { getRecentVisits, type RecentVisit } from "../lib/recentVisits";
+import type { PageNode, Space, User } from "../store/types";
+import { getPage, listRecentPages, listRecentlyUpdated, listSpaces, listUsers } from "../store/wikiStore";
+import { mapLimit } from "../lib/mapLimit";
+import { getRecentVisits } from "../lib/recentVisits";
 import { relativeTime } from "../lib/relativeTime";
 import { useStarredSpaces } from "../lib/starredSpaces";
 import { contentPathIn } from "../lib/contentPath";
@@ -16,15 +17,26 @@ import { TruncatedText, overflowTitleProps } from "../components/TruncatedText";
 const RECENT_LIMIT = 8;
 /** 스페이스마다 이만큼만 읽어 합친다 — 상위 RECENT_LIMIT만 남기므로 그 이상은 낭비다. */
 const RECENT_PER_SPACE = RECENT_LIMIT;
+/**
+ * 스페이스별 "최근 업데이트" 요청을 한 번에 띄우는 수(W-13). 스페이스를 가로지르는 최근 목록 API가 없어
+ * 스페이스마다 묻는데, 스페이스가 많은 설치에서 홈 진입이 요청 수백 개를 동시에 띄워 rate-limit에 걸렸다.
+ */
+const RECENT_CONCURRENCY = 4;
+/** "이어서 작업" 카드 수 */
+const RESUME_LIMIT = 6;
 
 interface RecentItem {
   page: PageNode;
   space: Space;
 }
 
+/** 카드에 필요한 것만 — 본문은 읽지 않는다(W-13: 예전엔 카드마다 본문 포함 getPage를 보냈다). */
 interface ResumeItem {
-  page: Page;
-  visit: RecentVisit;
+  id: string;
+  spaceId: string;
+  title: string;
+  /** 이 브라우저에 남은 방문 시각 — 서버 방문 원장에는 시각이 없어 있을 때만 보인다 */
+  visitedAt?: string;
   space?: Space;
 }
 
@@ -78,15 +90,33 @@ export function HomePage() {
       try {
         const spaces = await listSpaces();
         if (active) setSpaces(spaces);
-        const visits = getRecentVisits(6);
-        // 방문 로그 id로 페이지를 병렬 하이드레이트(삭제된 페이지는 null → 제외)
-        const pages = await Promise.all(visits.map((v) => getPage(v.id).catch(() => null)));
-        if (!active) return;
         const spaceById = new Map(spaces.map((s) => [s.id, s]));
-        const items: ResumeItem[] = visits
-          .map((visit, i) => ({ visit, page: pages[i] }))
-          .filter((x): x is { visit: RecentVisit; page: Page } => x.page !== null)
-          .map((x) => ({ ...x, space: spaceById.get(x.page.spaceId) }));
+        const visits = getRecentVisits(RESUME_LIMIT);
+        const visitedAt = new Map(visits.map((v) => [v.id, v.at]));
+        // 서버 방문 원장 우선 — 한 번의 요청이고 본문이 없으며, 사이드바 "최근"과 같은 목록이다.
+        // 읽기 전용 인스턴스는 원장이 없고(익명), 목업은 null을 준다 → 브라우저 방문 기록으로 내려간다.
+        const fromServer = readOnly ? null : await listRecentPages(RESUME_LIMIT).catch(() => null);
+        if (!active) return;
+        let items: ResumeItem[];
+        if (fromServer !== null) {
+          items = fromServer.map((row) => ({
+            id: row.id,
+            spaceId: row.spaceId,
+            title: row.title,
+            visitedAt: visitedAt.get(row.id),
+            space: spaceById.get(row.spaceId),
+          }));
+        } else {
+          // 폴백: 방문 로그 id로 하이드레이트(삭제된 페이지는 null → 제외). 동시 요청 수를 묶는다.
+          const pages = await mapLimit(visits, 3, (v) => getPage(v.id).catch(() => null));
+          if (!active) return;
+          items = visits.flatMap((visit, i) => {
+            const page = pages[i];
+            return page
+              ? [{ id: page.id, spaceId: page.spaceId, title: page.title, visitedAt: visit.at, space: spaceById.get(page.spaceId) }]
+              : [];
+          });
+        }
         setResume(items);
       } catch (e: unknown) {
         if (!active) return;
@@ -96,7 +126,7 @@ export function HomePage() {
     return () => {
       active = false;
     };
-  }, [loadAttempt]);
+  }, [loadAttempt, readOnly]);
 
   // "최근 업데이트" — 스페이스별 최근 목록을 합쳐 시각 내림차순 상위 N. 한 스페이스가 실패해도
   // 나머지는 보여준다.
@@ -104,12 +134,10 @@ export function HomePage() {
     if (spaces.length === 0) return;
     let active = true;
     void (async () => {
-      const perSpace = await Promise.all(
-        spaces.map((space) =>
-          listRecentlyUpdated(space.id, RECENT_PER_SPACE)
-            .then((pages) => pages.map((page) => ({ page, space })))
-            .catch(() => [] as RecentItem[]),
-        ),
+      const perSpace = await mapLimit(spaces, RECENT_CONCURRENCY, (space) =>
+        listRecentlyUpdated(space.id, RECENT_PER_SPACE)
+          .then((pages) => pages.map((page) => ({ page, space })))
+          .catch(() => [] as RecentItem[]),
       );
       if (!active) return;
       const merged = perSpace
@@ -177,17 +205,19 @@ export function HomePage() {
           />
         ) : (
           <ul className="home-resume-grid">
-            {resume.map(({ page, visit, space }) => (
-              <li key={page.id}>
+            {resume.map(({ id, spaceId, title, visitedAt, space }) => (
+              <li key={id}>
                 <button
                   type="button"
                   className="home-resume-card"
-                  onClick={() => navigate(`/spaces/${page.spaceId}/pages/${page.id}`)}
+                  onClick={() => navigate(`/spaces/${spaceId}/pages/${id}`)}
                 >
                   <FileText className="home-resume-icon" size={18} aria-hidden="true" />
-                  <TruncatedText className="home-resume-title" text={page.title} />
+                  <TruncatedText className="home-resume-title" text={title} />
                   <span className="home-resume-meta">
-                    {space ? `${space.name} · ` : ""}방문 {relativeTime(visit.at)}
+                    {[space?.name, visitedAt ? `방문 ${relativeTime(visitedAt)}` : null]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </span>
                 </button>
               </li>
