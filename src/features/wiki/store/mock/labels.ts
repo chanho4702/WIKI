@@ -37,6 +37,7 @@ export async function suggestLabels(query: string): Promise<LabelCount[]> {
   const prefix = query.trim() === "" ? "" : normalizeLabel(query);
   const counts = new Map<string, number>();
   for (const page of data.pages) {
+    if (!canSeePage(data, page)) continue; // 숨은 초안의 라벨은 이름도 건수도 새면 안 된다
     for (const name of data.labels?.[page.id] ?? []) {
       if (prefix !== "" && !name.startsWith(prefix)) continue;
       counts.set(name, (counts.get(name) ?? 0) + 1);
@@ -51,7 +52,7 @@ export async function suggestLabels(query: string): Promise<LabelCount[]> {
 export async function listSpaceLabels(spaceId: string): Promise<LabelCount[]> {
   const data = load();
   const counts = new Map<string, number>();
-  for (const page of data.pages.filter((p) => p.spaceId === spaceId)) {
+  for (const page of data.pages.filter((p) => p.spaceId === spaceId && canSeePage(data, p))) {
     for (const name of data.labels?.[page.id] ?? []) {
       counts.set(name, (counts.get(name) ?? 0) + 1);
     }

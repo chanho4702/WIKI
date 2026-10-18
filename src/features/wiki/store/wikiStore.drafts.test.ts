@@ -7,7 +7,12 @@ import {
   listPagesByIds,
   listRecentlyUpdated,
   lookupPagesByTitle,
+  listAncestors,
+  listSpaceLabels,
+  searchContent,
   searchPageTitles,
+  sharePage,
+  suggestLabels,
   updatePage,
 } from "./wikiStore";
 import { createSeedData } from "../../../mock/seed";
@@ -89,5 +94,46 @@ describe("초안 알림(목업)", () => {
 
     const rows = (JSON.parse(localStorage.getItem("wiki.v1")!) as WikiData).notifications ?? [];
     expect(rows.filter((n) => n.pageId === "dMine" && n.userId === "u2")).toEqual([]);
+  });
+});
+
+/* Codex 교차 리뷰 지적(2026-10-18) — 읽기 경로마다 같은 규칙인지 */
+describe("초안 가시성 — 나머지 읽기 경로", () => {
+  function seedLabeled(pages: Page[], labels: Record<string, string[]>, org?: OrgMockState) {
+    const seed = createSeedData();
+    const data: WikiData = { ...seed, pages: [...seed.pages, ...pages], labels: { ...(seed.labels ?? {}), ...labels }, ...(org ? { org } : {}) };
+    localStorage.setItem("wiki.v1", JSON.stringify(data));
+    __resetForTest();
+  }
+
+  it("검색: 초안은 includeDrafts일 때만, 그리고 볼 수 있는 초안만 나온다", async () => {
+    seedWith([{ ...draft("dMine", "u1"), title: "초안검색어 내것" }, { ...draft("dOther", "u2"), title: "초안검색어 남것" }], NON_ADMIN);
+
+    expect((await searchContent({ query: "초안검색어" })).hits).toEqual([]);
+    const withDrafts = await searchContent({ query: "초안검색어", includeDrafts: true });
+    expect(withDrafts.hits.map((h) => h.id)).toEqual(["dMine"]);
+  });
+
+  it("라벨 후보·스페이스 라벨 집계에 숨은 초안의 라벨이 들어가지 않는다", async () => {
+    seedLabeled([draft("dOther", "u2")], { dOther: ["비밀라벨"] }, NON_ADMIN);
+
+    expect((await suggestLabels("비밀")).map((l) => l.name)).not.toContain("비밀라벨");
+    expect((await listSpaceLabels("sp1")).map((l) => l.name)).not.toContain("비밀라벨");
+  });
+
+  it("조상 경로는 볼 수 없는 초안 조상에서 멈춘다(제목이 새지 않는다)", async () => {
+    const child = { ...draft("visibleChild", "u2", "dParent"), status: "published" as const };
+    seedWith([draft("dParent", "u2", "pg1"), child], NON_ADMIN);
+
+    const chain = await listAncestors("visibleChild");
+    expect(chain.map((n) => n.id)).not.toContain("dParent");
+    expect(chain.map((n) => n.title).join()).not.toContain("초안 dParent");
+  });
+
+  it("초안은 공유할 수 없다 — 받는 사람이 열 수 없는 문서의 제목이 알림으로 새지 않게", async () => {
+    seedWith([draft("dMine", "u1")]);
+    await expect(sharePage("dMine", ["u2"])).rejects.toThrow("초안은 공유할 수 없습니다");
+    const rows = (JSON.parse(localStorage.getItem("wiki.v1")!) as WikiData).notifications ?? [];
+    expect(rows.filter((n) => n.pageId === "dMine")).toEqual([]);
   });
 });

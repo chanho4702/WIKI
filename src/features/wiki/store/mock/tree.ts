@@ -49,7 +49,8 @@ export async function listAncestors(pageId: string): Promise<PageNode[]> {
   while (cursor !== null && !visited.has(cursor)) {
     visited.add(cursor);
     const parent = data.pages.find((p) => p.id === cursor);
-    if (!parent) break;
+    // 볼 수 없는 초안 조상에서 멈춘다 — 그 위를 이어 붙이면 숨은 초안의 존재(와 제목)가 경로로 샌다
+    if (!parent || !canSeePage(data, parent)) break;
     chain.unshift(parent);
     cursor = parent.parentId;
   }

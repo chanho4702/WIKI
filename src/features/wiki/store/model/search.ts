@@ -36,6 +36,8 @@ export interface SearchContentInput {
   size?: number;
   spaceIds?: string[];
   docTypes?: SearchDocType[];
+  /** 초안 포함(서버 SearchInput.includeDrafts). 그래도 볼 수 있는 초안(작성자·관리자)만 나온다. 기본 제외. */
+  includeDrafts?: boolean;
   /** 마지막 수정자 — 첨부에는 없는 필드라 페이지만 걸린다(W22). */
   authorIds?: string[];
   /** ISO-8601 시각 또는 날짜(2026-08-01). 경계는 포함이다. */

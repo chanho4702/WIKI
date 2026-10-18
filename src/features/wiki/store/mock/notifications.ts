@@ -113,6 +113,8 @@ export async function sharePage(pageId: string, userIds: string[], note?: string
   const data = load();
   const page = data.pages.find((p) => p.id === pageId);
   if (!page) throw new Error("페이지를 찾을 수 없습니다");
+  // 초안은 작성자(와 관리자)만 본다 — 공유하면 받는 사람이 열 수 없는 문서의 제목이 알림으로 샌다
+  if (page.status === "draft") throw new Error("초안은 공유할 수 없습니다. 게시한 뒤 공유하세요");
   const rows = (data.notifications ??= []);
   let delivered = 0;
   for (const userId of new Set(userIds)) {

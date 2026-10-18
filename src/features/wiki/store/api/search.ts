@@ -64,6 +64,7 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
           size: input.size ?? 20,
           ...(input.spaceIds ? { spaceIds: input.spaceIds } : {}),
           ...(input.docTypes ? { docTypes: input.docTypes } : {}),
+          ...(input.includeDrafts ? { includeDrafts: true } : {}),
           ...(input.authorIds?.length ? { authorIds: input.authorIds } : {}),
           ...(input.updatedAfter ? { updatedAfter: input.updatedAfter } : {}),
           ...(input.updatedBefore ? { updatedBefore: input.updatedBefore } : {}),

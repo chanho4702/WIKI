@@ -1,6 +1,6 @@
 // 통합 검색 목업 — 백엔드와 같은 필터·정렬 규칙.
 import type { SearchContentInput, SearchHit, SearchResults } from "../types";
-import { load } from "./db";
+import { canSeePage, load } from "./db";
 import { normalizeLabel } from "./labels";
 
 function highlightSnippet(text: string, query: string): string | null {
@@ -42,7 +42,9 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
   const pageHits: SearchHit[] = !pagesRequested
     ? []
     : data.pages.flatMap((page): SearchHit[] => {
-        if (page.status === "draft" || page.archivedAt || (allowedSpaces && !allowedSpaces.has(page.spaceId))) return [];
+        // 초안은 요청이 includeDrafts일 때만, 그리고 볼 수 있는 초안(작성자·전역 관리자)만 — 서버 라이트 검색과 같다
+        if (page.status === "draft" && !(input.includeDrafts === true && canSeePage(data, page))) return [];
+        if (page.archivedAt || (allowedSpaces && !allowedSpaces.has(page.spaceId))) return [];
         if (authors && !authors.has(page.updatedBy)) return [];
         if (wantedLabels && !(data.labels?.[page.id] ?? []).some((name) => wantedLabels.has(name))) return [];
         const updatedMillis = Date.parse(page.updatedAt);
