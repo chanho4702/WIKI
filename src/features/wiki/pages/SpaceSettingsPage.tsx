@@ -96,6 +96,7 @@ export function SpaceSettingsPage() {
   const [grantError, setGrantError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [teamError, setTeamError] = useState<string | null>(null);
   const [subjectType, setSubjectType] = useState<"user" | "team">("user");
   const [subjectId, setSubjectId] = useState("");
   /* 대상 검색(U4) — 사람이 늘어나면 전체 목록 select로는 고를 수 없다. 사용자는 서버가
@@ -142,7 +143,12 @@ export function SpaceSettingsPage() {
     void reloadGrants();
     // 목록은 권한 표의 이름 풀이에도 쓰인다 — 검색 결과와 별개로 유지한다
     void listUsers().then(setUsers);
-    void listTeams().then(setTeams);
+    // 팀 선택지는 장애를 빈 목록으로 삼키지 않는다(W-18) — "팀 없음"과 "팀을 못 읽음"은 다르다
+    setTeamError(null);
+    void listTeams().then(setTeams, (e: unknown) => {
+      setTeams([]);
+      setTeamError(e instanceof Error ? e.message : String(e));
+    });
   }, [reloadGrants]);
 
   useEffect(() => {
@@ -324,6 +330,11 @@ export function SpaceSettingsPage() {
                         추가
                       </Button>
                     </div>
+                    {subjectType === "team" && teamError ? (
+                      <p className="space-settings-grant-error" role="status">
+                        팀 목록을 불러올 수 없습니다: {teamError}
+                      </p>
+                    ) : null}
                     {searchError ? (
                       <p className="space-settings-grant-error" role="status">
                         사용자를 검색할 수 없습니다: {searchError}

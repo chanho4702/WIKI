@@ -153,6 +153,11 @@ export async function listUsers(): Promise<User[]> {
   return clone(load().users);
 }
 
+/** 선택 UI용(W-18) — 백엔드는 디렉터리 장애를 던지지만 목업에는 장애가 없다. */
+export async function listSelectableUsers(): Promise<User[]> {
+  return clone(load().users);
+}
+
 export async function getCurrentUser(): Promise<User> {
   const user = load().users.find((u) => u.id === CURRENT_USER_ID);
   if (!user) throw new Error("현재 사용자를 찾을 수 없습니다");

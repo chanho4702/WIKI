@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ConfirmDialog, Lozenge, useToast } from "@chanho/react";
+import { Banner, ConfirmDialog, Lozenge, useToast } from "@chanho/react";
 import { X } from "lucide-react";
 import type {
   PageRestrictions,
@@ -7,7 +7,7 @@ import type {
   Team,
   User,
 } from "../store/types";
-import { getPageRestrictions, listTeams, setPageRestrictions } from "../store/wikiStore";
+import { getPageRestrictions, listSelectableUsers, listTeams, setPageRestrictions } from "../store/wikiStore";
 
 export interface RestrictionsDialogProps {
   open: boolean;
@@ -29,17 +29,32 @@ export function RestrictionsDialog({ open, onOpenChange, pageId, users, onSaved 
   const [view, setView] = useState<RestrictionPrincipal[]>([]);
   const [edit, setEdit] = useState<RestrictionPrincipal[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  // 고를 수 있는 사람 — 디렉터리를 이 다이얼로그가 직접 다시 묻는다(스토어 캐시라 요청은 늘지 않는다).
+  // 부모가 넘긴 users는 이름 표시용이라 장애 때 빈 목록이 되므로 선택 근거로 쓰지 않는다.
+  const [selectableUsers, setSelectableUsers] = useState<User[] | null>(null);
+  /** 조직 디렉터리 장애(W-18) — 빈 선택지로 삼키지 않고 원인을 보이며 저장을 막는다. */
+  const [directoryError, setDirectoryError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setLoaded(null);
-    void Promise.all([getPageRestrictions(pageId), listTeams()])
-      .then(([r, t]) => {
+    setDirectoryError(null);
+    setSelectableUsers(null);
+    void Promise.all([
+      getPageRestrictions(pageId),
+      Promise.allSettled([listTeams(), listSelectableUsers()]),
+    ])
+      .then(([r, [t, u]]) => {
         setLoaded(r);
         setView(r.view);
         setEdit(r.edit);
-        setTeams(t);
+        setTeams(t.status === "fulfilled" ? t.value : []);
+        setSelectableUsers(u.status === "fulfilled" ? u.value : null);
+        const failure = [t, u].find((x): x is PromiseRejectedResult => x.status === "rejected");
+        if (failure) {
+          setDirectoryError(failure.reason instanceof Error ? failure.reason.message : String(failure.reason));
+        }
       })
       .catch((e: unknown) => {
         toast({
@@ -53,12 +68,24 @@ export function RestrictionsDialog({ open, onOpenChange, pageId, users, onSaved 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, pageId]);
 
+  const pickableUsers = selectableUsers ?? [];
+  const nameUsers = selectableUsers ?? users;
+
   const nameOf = (p: RestrictionPrincipal) =>
     p.type === "team"
       ? (teams.find((t) => t.id === p.id)?.name ?? `팀 #${p.id}`)
-      : (users.find((u) => u.id === p.id)?.name ?? `사용자 #${p.id}`);
+      : (nameUsers.find((u) => u.id === p.id)?.name ?? `사용자 #${p.id}`);
 
   const handleSave = async () => {
+    if (directoryError !== null) {
+      // 누가 누구인지 확인할 수 없는 상태에서 제한을 전량 교체하면 잘못된 주체로 저장될 수 있다
+      toast({
+        title: "조직 디렉터리에 연결된 뒤 저장할 수 있습니다",
+        description: directoryError,
+        appearance: "danger",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const saved = await setPageRestrictions(pageId, { view, edit });
@@ -117,7 +144,7 @@ export function RestrictionsDialog({ open, onOpenChange, pageId, users, onSaved 
       >
         <option value="">사용자·팀 추가…</option>
         <optgroup label="사용자">
-          {users.map((u) => (
+          {pickableUsers.map((u) => (
             <option key={u.id} value={`user:${u.id}`}>
               {u.name}
             </option>
@@ -150,6 +177,11 @@ export function RestrictionsDialog({ open, onOpenChange, pageId, users, onSaved 
         <p role="status">제한 정보를 불러오는 중…</p>
       ) : (
         <div className="restriction-dialog">
+          {directoryError !== null ? (
+            <Banner variant="danger">
+              조직 디렉터리에 연결할 수 없습니다 — 사용자·팀을 고를 수 없어 저장을 막았습니다. ({directoryError})
+            </Banner>
+          ) : null}
           {section(
             "보기 제한",
             "비워 두면 스페이스 권한이 있는 모두가 볼 수 있습니다. 지정하면 목록의 주체만 봅니다(하위 페이지에 상속).",

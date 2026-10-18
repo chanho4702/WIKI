@@ -8,6 +8,7 @@ import { USE_BACKEND } from "./apiClient";
 const impl = USE_BACKEND ? api : mock;
 
 export const listUsers = impl.listUsers;
+export const listSelectableUsers = impl.listSelectableUsers;
 export const getCurrentUser = impl.getCurrentUser;
 // 조직(U4) — 전역 관리자 판정·사용자 검색·공용 관리 화면(`@chanho/org-admin`)의 인증 fetch
 export const getOrgMe = impl.getOrgMe;

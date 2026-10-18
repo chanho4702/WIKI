@@ -91,20 +91,57 @@ export async function getCurrentUser(): Promise<User> {
   const me = await json<{ id: number | string; name?: string; email?: string }>(await sharedApiFetch("/api/me"));
   return { id: String(me.id), name: me.name ?? me.email ?? `사용자 #${me.id}` };
 }
-export async function listUsers(): Promise<User[]> {
-  // org-service 사용자 디렉터리 — JWT 로그인 시 member로 미러링된 실사용자 목록.
-  // ACTIVE만 노출한다(비활성 계정은 멘션·선택 UI에 나오면 안 된다). 디렉터리 장애가
-  // 화면 전체를 죽이면 안 되므로 실패는 빈 목록 — 이름은 authorName 스냅샷/폴백이 대신한다.
-  try {
-    const rows = await json<{ id: number; displayName: string; email?: string | null; status: string }[]>(
+/**
+ * 조직 멤버 디렉터리 공유 캐시(W-12) — `/api/org/members`는 조직 전량이고 페이지 나눔이 없다. 화면마다
+ * (보기·알림 벨·홈·검색…) 따로 받으면 문서 하나 여는 데 같은 전량 응답을 두세 번 받는다. 진행 중 요청을
+ * 합치고 TTL 동안 재사용한다. 실패는 캐시하지 않는다 — 장애가 풀리면 다음 호출이 바로 성공해야 한다.
+ */
+const USER_DIRECTORY_TTL_MS = 5 * 60_000;
+let userDirectory: { fetchedAt: number; rows: Promise<User[]> } | null = null;
+
+function loadUserDirectory(): Promise<User[]> {
+  const now = Date.now();
+  if (userDirectory && now - userDirectory.fetchedAt < USER_DIRECTORY_TTL_MS) return userDirectory.rows;
+  const rows = (async () => {
+    const members = await json<{ id: number; displayName: string; email?: string | null; status: string }[]>(
       await sharedApiFetch("/api/org/members"),
     );
-    return rows
+    // ACTIVE만 노출한다(비활성 계정은 멘션·선택 UI에 나오면 안 된다).
+    return members
       .filter((m) => m.status === "ACTIVE")
       .map((m) => ({ id: String(m.id), name: m.displayName }));
+  })();
+  const entry = { fetchedAt: now, rows };
+  userDirectory = entry;
+  rows.catch(() => {
+    if (userDirectory === entry) userDirectory = null;
+  });
+  return rows;
+}
+
+/** 테스트 전용 — 디렉터리 캐시를 비운다. */
+export function __resetUserDirectoryForTest(): void {
+  userDirectory = null;
+}
+
+/**
+ * org-service 사용자 디렉터리 — **이름 표시용**. 디렉터리 장애가 화면 전체를 죽이면 안 되므로 실패는
+ * 빈 목록이다(이름은 authorName 스냅샷/`사용자 #id` 폴백이 대신한다). 고르는 UI는 listSelectableUsers.
+ */
+export async function listUsers(): Promise<User[]> {
+  try {
+    return (await loadUserDirectory()).map((u) => ({ ...u }));
   } catch {
     return [];
   }
+}
+
+/**
+ * 같은 디렉터리의 **선택 UI용**(W-18) — 실패를 삼키지 않는다. 사람·팀을 고르는 화면이 장애를 빈 목록으로
+ * 받으면 "고를 사람이 없다"로 보여 잘못된 저장(제한을 엉뚱한 주체로)을 부른다.
+ */
+export async function listSelectableUsers(): Promise<User[]> {
+  return (await loadUserDirectory()).map((u) => ({ ...u }));
 }
 /**
  * 조직 서비스가 보는 나(U4, 설계 §3.3). **전역 관리자 판정의 단일 근거**다 —
@@ -386,14 +423,13 @@ export async function setPageRestrictions(
   return mapRestrictions(await json<RestrictionsDto>(res));
 }
 
-/** org 팀 목록 — 제한 다이얼로그의 TEAM 주체 선택용. 디렉터리 장애가 화면을 죽이면 안 된다(빈 목록). */
+/**
+ * org 팀 목록 — 제한 다이얼로그·스페이스 권한의 TEAM 주체 선택용. 선택 UI라 장애를 빈 목록으로 삼키지
+ * 않는다(W-18) — "팀 없음"으로 보이면 관리자가 제한을 사람 단위로 잘못 저장한다.
+ */
 export async function listTeams(): Promise<Team[]> {
-  try {
-    const rows = await json<Array<{ id: number; name: string }>>(await sharedApiFetch("/api/org/teams"));
-    return rows.map((t) => ({ id: String(t.id), name: t.name }));
-  } catch {
-    return [];
-  }
+  const rows = await json<Array<{ id: number; name: string }>>(await sharedApiFetch("/api/org/teams"));
+  return rows.map((t) => ({ id: String(t.id), name: t.name }));
 }
 
 /* ── 스페이스 권한(W22) — org-service grant REST ─────────── */

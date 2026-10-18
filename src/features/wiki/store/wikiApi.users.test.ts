@@ -1,6 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "./apiClient";
+import { __resetUserDirectoryForTest } from "./wikiApi";
 
+// 디렉터리는 스토어가 TTL 동안 캐시한다(W-12) — 테스트마다 새 응답을 보게 비운다.
+beforeEach(() => __resetUserDirectoryForTest());
 afterEach(() => vi.restoreAllMocks());
 
 describe("wikiApi.getCurrentUser", () => {
