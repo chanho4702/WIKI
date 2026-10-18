@@ -136,6 +136,7 @@ export {
   setPageStar,
   setSpaceStar,
   listRecentPages,
+  listMyDrafts,
 } from "./mock/personal";
 export {
   listSpaceDeletions,

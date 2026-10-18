@@ -19,6 +19,7 @@ const PageVersionPage = lazy(() => import("../features/wiki/pages/PageVersionPag
 const PageCompareVersionsPage = lazy(() => import("../features/wiki/pages/PageCompareVersionsPage").then((m) => ({ default: m.PageCompareVersionsPage })));
 const FolderPage = lazy(() => import("../features/wiki/pages/FolderPage").then((m) => ({ default: m.FolderPage })));
 const SearchPage = lazy(() => import("../features/wiki/pages/SearchPage").then((m) => ({ default: m.SearchPage })));
+const MyItemsPage = lazy(() => import("../features/wiki/pages/MyItemsPage").then((m) => ({ default: m.MyItemsPage })));
 const TasksPage = lazy(() => import("../features/wiki/pages/TasksPage").then((m) => ({ default: m.TasksPage })));
 const NotificationSettingsPage = lazy(() => import("../features/wiki/pages/NotificationSettingsPage").then((m) => ({ default: m.NotificationSettingsPage })));
 const SearchAdminPage = lazy(() => import("../features/wiki/pages/SearchAdminPage").then((m) => ({ default: m.SearchAdminPage })));
@@ -133,6 +134,9 @@ export function App() {
           <>
             {/* 내 작업(W23) — 담당자가 나인 체크박스 항목을 문서를 가로질러 모은다 */}
             <Route path="/tasks" element={<TasksPage />} />
+            {/* 내 항목(F-04) — 최근 방문·별표·내 초안 전체 목록. 사이드바 플라이아웃의 "전체 보기"가 온다 */}
+            <Route path="/my" element={<Navigate to="/my/recent" replace />} />
+            <Route path="/my/:tab" element={<MyItemsPage spaces={spaces} />} />
             {/* 알림 설정(W23) — 이메일 채널 스위치. 사용자 메뉴·알림함 하단에서 온다 */}
             <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
             {/* 검색 색인 관리 — 전역 관리자 전용. 아니면 화면이 스스로 "권한 없음"을 보여준다 */}

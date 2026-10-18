@@ -100,6 +100,7 @@ export const listStars = impl.listStars;
 export const setPageStar = impl.setPageStar;
 export const setSpaceStar = impl.setSpaceStar;
 export const listRecentPages = impl.listRecentPages;
+export const listMyDrafts = impl.listMyDrafts;
 export const listAudit = impl.listAudit;
 export const listSpaceDeletions = impl.listSpaceDeletions;
 export const sharePage = impl.sharePage;

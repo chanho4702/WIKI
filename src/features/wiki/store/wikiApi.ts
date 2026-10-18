@@ -130,6 +130,7 @@ export {
   setPageStar,
   setSpaceStar,
   listRecentPages,
+  listMyDrafts,
   listMyTasks,
   setTaskDone,
   listPageReactions,

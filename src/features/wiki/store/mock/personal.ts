@@ -1,7 +1,7 @@
 // 별표·최근 방문·내 작업·리액션 목업.
 import { CURRENT_USER_ID } from "../../../../mock/users";
 import { type ParsedTask, parseTasks, toggleTaskLine } from "../../lib/tasks";
-import { type MyTask, type Page, REACTION_EMOJIS, type ReactionSummary, type WikiData } from "../types";
+import { type MyTask, type Page, REACTION_EMOJIS, type ReactionSummary, type StarredPageRow, type WikiData } from "../types";
 import { canSeePage, load, persist } from "./db";
 import { updatePage } from "./pages";
 
@@ -109,6 +109,24 @@ export async function setPageStar(_pageId: string, _starred: boolean): Promise<v
 
 export async function setSpaceStar(_spaceId: string, _starred: boolean): Promise<void> {
   // setPageStar와 같은 이유.
+}
+
+/** 내 초안 목록(F-04) — 내가 만든 초안, 보관 제외, 최근 수정순. 백엔드 제안 계약과 같은 행 모양. */
+export async function listMyDrafts(limit = 50): Promise<StarredPageRow[] | null> {
+  const data = load();
+  const spaces = new Map(data.spaces.map((s) => [s.id, s]));
+  return data.pages
+    .filter((p) => p.status === "draft" && p.createdBy === CURRENT_USER_ID && !p.archivedAt && canSeePage(data, p))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id))
+    .slice(0, Math.max(1, Math.min(limit, 100)))
+    .map((p) => ({
+      id: p.id,
+      spaceId: p.spaceId,
+      spaceName: spaces.get(p.spaceId)?.name ?? null,
+      title: p.title,
+      icon: p.icon ?? null,
+      type: p.type,
+    }));
 }
 
 export async function listRecentPages(_limit?: number): Promise<null> {

@@ -2279,6 +2279,19 @@ body {
   font-size: var(--chanho-font-size-75, 12px);
 }
 
+/* 별표 플라이아웃의 "전체 보기"는 이동을 호출 측(onNavigate)에 맡기는 버튼이다 — 링크처럼 보이게 */
+.starred-flyout-more {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--chanho-color-border-default);
+  background: transparent;
+  color: var(--chanho-color-text-brand);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--chanho-font-size-75, 12px);
+}
+
 /* 사용자 메뉴 트리거 — 아바타를 버튼으로 감싼다(드롭다운 접근성) */
 .wiki-user-menu-trigger {
   display: inline-flex;
@@ -6164,6 +6177,19 @@ body.is-column-reordering {
   font-family: var(--chanho-font-family-code, monospace);
   font-size: var(--chanho-font-size-75, 12px);
   color: var(--chanho-color-text-subtle);
+}
+
+/* ── 내 항목(F-04) — 최근 방문·별표·내 초안 ─────────────────── */
+.my-items-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--chanho-space-400) var(--chanho-space-400) var(--chanho-space-600);
+}
+
+.my-items-starred {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-400);
 }
 
 /* ── 내 작업(W23) ────────────────────────────────────────── */

@@ -310,7 +310,8 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
                 items={recentItems ?? []}
                 loading={recentItems === null}
                 emptyText="최근에 본 문서가 없습니다"
-                morePath="/home"
+                // 읽기 전용에는 내 항목 화면이 없다(사용자 개념이 없음) — 홈의 방문 카드로 간다
+                morePath={readOnly ? "/home" : "/my/recent"}
                 moreLabel="전체 보기"
                 onClose={closeRecentFlyout}
                 onNavigate={(path) => {

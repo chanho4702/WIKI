@@ -113,6 +113,10 @@ export function StarredFlyout({ spaces, starredSpaceIds, starredPages, onNavigat
           )}
         </>
       )}
+      {/* 플라이아웃은 검색해서 찾는 곳이고, 전체 목록·별표 해제는 내 항목 화면에서 한다(F-04) */}
+      <button type="button" className="nav-list-flyout-more starred-flyout-more" onClick={() => onNavigate("/my/starred")}>
+        전체 보기
+      </button>
     </div>
   );
 }
