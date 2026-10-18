@@ -19,6 +19,18 @@ export function GlobalSearchField() {
     const trimmed = draft.trim();
     const params = new URLSearchParams();
     if (trimmed) params.set("q", trimmed);
+    // 스페이스 안에서 검색하면 그 스페이스로 좁혀 시작한다(F-01, 컨플 검색과 같다). 검색 화면에서 다시
+    // 검색하면 이미 고른 스페이스·종류를 유지한다 — 검색어만 바꿨는데 필터가 풀리면 다시 골라야 한다.
+    const current = new URLSearchParams(search);
+    const inSpace = /^\/spaces\/([^/]+)/.exec(pathname);
+    if (pathname === "/search") {
+      for (const key of ["space", "type"]) {
+        const value = current.get(key);
+        if (value) params.set(key, value);
+      }
+    } else if (inSpace) {
+      params.set("space", decodeURIComponent(inSpace[1]));
+    }
     const target = trimmed ? `/search?${params.toString()}` : "/search";
     navigate(target, { replace: pathname === "/search" });
   };

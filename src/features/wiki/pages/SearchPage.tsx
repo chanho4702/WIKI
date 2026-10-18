@@ -10,15 +10,17 @@ import {
   Spinner,
   TextField,
 } from "@chanho/react";
-import { FileText, Folder, Newspaper, Paperclip, SearchX } from "lucide-react";
-import { listPagePaths, listUsers, searchContent, suggestLabels } from "../store/wikiStore";
+import { FileText, Folder, Layers, Newspaper, Paperclip, SearchX } from "lucide-react";
+import { listPagePaths, listSpaces, listUsers, searchContent, suggestLabels } from "../store/wikiStore";
 import { useReadOnly } from "../lib/readOnly";
 import { usePlatformFeatures } from "../lib/usePlatformFeatures";
 import {
   ContentSearchError,
   type LabelCount,
+  type SearchDocType,
   type SearchHit,
   type SearchResults,
+  type Space,
   type SearchSort,
   type User,
 } from "../store/types";
@@ -31,6 +33,24 @@ const PAGE_SIZE = 20;
  * 화면에서만 이 값을 쓰고, URL(`author=`)로 나갈 때는 빈 값으로 되돌린다.
  */
 const AUTHOR_ANY = "ALL";
+
+/** 스페이스·종류 필터의 "전체" 센티널 — 작성자와 같은 이유(DS Select는 빈 value 불가). */
+const ANY = "ALL";
+
+/**
+ * 종류 필터(F-01) — 검색 계약 `docTypes`(PAGE·ATTACHMENT)가 받는 값만 둔다. 문서 안의 세부 종류
+ * (블로그·폴더)는 계약에 필터가 없어 여기서 거르지 않는다(결과 쪽만 걸러 내면 건수·쪽 나눔이 거짓이 된다).
+ * 값은 아이콘+텍스트로 보인다.
+ */
+const TYPE_OPTIONS = [
+  { value: ANY, label: "전체", icon: <Layers size={14} aria-hidden="true" /> },
+  { value: "PAGE", label: "문서", icon: <FileText size={14} aria-hidden="true" /> },
+  { value: "ATTACHMENT", label: "첨부파일", icon: <Paperclip size={14} aria-hidden="true" /> },
+];
+
+function normalizedDocType(value: string | null): SearchDocType | null {
+  return value === "PAGE" || value === "ATTACHMENT" ? value : null;
+}
 
 const SORT_OPTIONS = [
   { value: "RELEVANCE", label: "관련도" },
@@ -88,12 +108,16 @@ export function SearchPage() {
    * 뒤로 가기가 필터를 잃으면 사용자는 처음부터 다시 좁혀야 한다.
    */
   const authorId = params.get("author") ?? "";
+  /** 스페이스(F-01) — 한 곳만 고른다. 스페이스 화면에서 검색하면 상단 검색창이 미리 채운다. */
+  const spaceId = params.get("space") ?? "";
+  const docType = normalizedDocType(params.get("type"));
   const updatedAfter = params.get("after") ?? "";
   const updatedBefore = params.get("before") ?? "";
   const labelParam = params.get("labels") ?? "";
   const sort = normalizedSort(params.get("sort"));
   const labels = labelParam.split(",").map((name) => name.trim()).filter((name) => name !== "");
   const [users, setUsers] = useState<User[]>([]);
+  const [spaces, setSpaces] = useState<Space[]>([]);
   const [labelOptions, setLabelOptions] = useState<LabelCount[]>([]);
   /** 결과의 조상 경로. 검색 엔진을 타지 않는 별도 조회라 두 배포에서 같은 답이 온다. */
   const [paths, setPaths] = useState<Map<string, string[]>>(new Map());
@@ -110,6 +134,11 @@ export function SearchPage() {
   useEffect(() => {
     if (readOnly) return; // 작성자 필터가 없으므로 디렉터리도 부르지 않는다
     void listUsers().then(setUsers).catch(() => setUsers([]));
+  }, []);
+
+  useEffect(() => {
+    // 스페이스 이름은 필터 선택지일 뿐이다 — 못 읽어도 검색은 막지 않는다(고른 값은 URL에 그대로 남는다)
+    void listSpaces().then(setSpaces).catch(() => setSpaces([]));
   }, []);
 
   // 뒤로 가기·필터 지우기로 URL이 바뀌면 입력칸도 따라와야 한다.
@@ -132,6 +161,8 @@ export function SearchPage() {
       query,
       page: page - 1,
       size: PAGE_SIZE,
+      ...(spaceId ? { spaceIds: [spaceId] } : {}),
+      ...(docType ? { docTypes: [docType] } : {}),
       ...(authorId ? { authorIds: [authorId] } : {}),
       ...(labels.length ? { labels } : {}),
       ...(updatedAfter ? { updatedAfter } : {}),
@@ -156,7 +187,7 @@ export function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, query, retryKey, authorId, updatedAfter, updatedBefore, labelParam, sort]);
+  }, [page, query, retryKey, spaceId, docType, authorId, updatedAfter, updatedBefore, labelParam, sort]);
 
   /**
    * 라벨 후보 — 자유 입력만 두면 오타를 쳤을 때 0건이 나오고 사용자는 이유를 알 수 없다.
@@ -208,6 +239,8 @@ export function SearchPage() {
   };
 
   const filtered =
+    spaceId !== "" ||
+    docType !== null ||
     authorId !== "" ||
     updatedAfter !== "" ||
     updatedBefore !== "" ||
@@ -244,6 +277,27 @@ export function SearchPage() {
 
       {query ? (
         <div className="search-filters">
+          <Select
+            className="search-filter"
+            label="스페이스"
+            value={spaceId === "" ? ANY : spaceId}
+            options={[
+              { value: ANY, label: "모든 스페이스" },
+              ...spaces.map((space) => ({ value: space.id, label: space.name })),
+              // 목록에 없는 id(권한을 잃었거나 아직 못 읽음)도 고른 값으로 보이게 둔다
+              ...(spaceId !== "" && !spaces.some((space) => space.id === spaceId)
+                ? [{ value: spaceId, label: `스페이스 #${spaceId}` }]
+                : []),
+            ]}
+            onValueChange={(next: string) => setFilter("space", next === ANY ? "" : next)}
+          />
+          <Select
+            className="search-filter"
+            label="종류"
+            value={docType ?? ANY}
+            options={TYPE_OPTIONS}
+            onValueChange={(next: string) => setFilter("type", next === ANY ? "" : next)}
+          />
           {/* 작성자 필터 — 읽기 전용에는 사람 개념이 없어 "전체"만 남은 빈 셀렉트가 된다 */}
           {readOnly ? null : (
             <Select
@@ -311,7 +365,7 @@ export function SearchPage() {
               variant="subtle"
               onClick={() => {
                 const next = new URLSearchParams(params);
-                ["author", "after", "before", "labels", "sort", "page"].forEach((k) => next.delete(k));
+                ["space", "type", "author", "after", "before", "labels", "sort", "page"].forEach((k) => next.delete(k));
                 setParams(next);
               }}
             >
