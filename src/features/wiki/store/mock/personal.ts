@@ -115,7 +115,7 @@ export async function setSpaceStar(_spaceId: string, _starred: boolean): Promise
   // setPageStar와 같은 이유.
 }
 
-/** 내 초안 목록(F-04) — 내가 만든 초안, 보관 제외, 최근 수정순. 백엔드 제안 계약과 같은 행 모양. */
+/** 내 초안 목록(F-04) — 내가 만든 초안, 보관 제외, 최근 수정순. 백엔드 계약과 같은 행 모양. */
 export async function listMyDrafts(limit = 20): Promise<StarredPageRow[] | null> {
   const data = load();
   const spaces = new Map(data.spaces.map((s) => [s.id, s]));

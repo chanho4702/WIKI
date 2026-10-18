@@ -49,9 +49,9 @@ export async function listRecentPages(limit = 10): Promise<StarredPageRow[]> {
 }
 
 /**
- * 내 초안 목록(F-04) — **제안 계약** `GET /api/wiki/drafts?limit=`(최근 방문과 같은 행 모양:
- * `{page, spaceId, spaceName}`, 내가 만든 초안, 최근 수정순). 서버에 아직 없으면(404) null을 준다 —
- * 화면은 그 탭을 숨긴다(없는 기능을 빈 목록으로 꾸미지 않는다). 그 밖의 실패는 던진다.
+ * 내 초안 목록(F-04) — `GET /api/wiki/drafts?limit=`(기본 20·최대 50, 최근 방문과 같은 행 모양:
+ * `{page, spaceId, spaceName}`, 내가 만든 초안, 최근 수정순). 이 경로가 없는 구버전 서버(404)에서는 null을
+ * 준다 — 화면은 그 탭을 숨긴다(없는 기능을 빈 목록으로 꾸미지 않는다). 그 밖의 실패는 던진다.
  */
 export async function listMyDrafts(limit = 20): Promise<StarredPageRow[] | null> {
   const res = await sharedApiFetch(`/api/wiki/drafts?limit=${limit}`);

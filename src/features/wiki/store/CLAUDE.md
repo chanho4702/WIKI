@@ -90,6 +90,20 @@
 - **스페이스 라벨(V41)**: `setSpaceLabels(spaceId, labels)` 전량 교체, `Space.labels`는 어댑터·목업 모두
   언제나 배열(이름순). 문서 라벨(`setLabels`)과 **다른 원장**이다 — 디렉토리 분류이고 스페이스 ADMIN만
   바꾼다. 정규화 규칙은 문서 라벨과 같고(`normalizeLabel`), 상한 10개.
+- **웨이브 2(2026-10-18) 계약**: 전부 **추가만**이라 구버전 서버·호출자와 호환된다.
+  - `copyPage(id, {targetSpaceId?, targetParentId?})` — 둘 다 비우면 원본 옆. 대상 스페이스 편집 권한 403,
+    다른 스페이스 부모 400, 보관 409(서버 판정, 목업도 같은 규칙). 거부 문구는 복제 대화상자 안에 보인다.
+  - `listNotifications({before?, limit?, types?})` → `nextBefore`(불투명 커서). **nextBefore가 null일 때만
+    끝**이다 — 빈 쪽이어도 커서가 있으면 이어 읽는다. `unreadCount`는 필터와 무관. 옵션이 없으면 예전 경로.
+    알림 설정 `pagePublished`(없으면 `pageUpdated`를 따른다).
+  - `listWatches()`/`unwatchMany({pageIds, spaceIds})` — 권한을 잃은 항목은 `hidden` + 제목 null.
+  - `listMyDrafts(limit)` — 404(구버전 서버)면 null → 내 항목의 초안 탭을 숨긴다.
+  - `Page.canEdit` — 단건 조회에서만 채워진다(그 밖은 null=모름). false일 때만 쓰기 어포던스를 숨긴다.
+  - `SearchContentInput.pageTypes` — 라이트 검색만 받는다. 화면은 라이트 설치에서만 "블로그" 필터를 보인다.
+  - `setTaskDone(page, line, done, expectedText?)` — 화면이 본 줄의 항목 text. 다르면 409.
+  - `listBlogPostPage(space, {before?, limit})` — 다음 커서는 응답 헤더 `X-Next-Before`(빈 배열이어도 있으면
+    계속). `listBlogPosts`(전부)는 그대로.
+  - 보관 문서 쓰기는 어느 경로든 거부(서버 PageWriteGuard 문구) — 목업은 `mock/db.ts`의 `requireWritable`.
 - **에러는 한국어 사용자 문구로 throw** — 화면이 메시지를 그대로 노출한다.
 - **초안 가시성(2026-10-18 사용자 결정)**: 초안(`status: "draft"`)은 작성자·그 스페이스 관리자·전역 관리자만
   본다. 판정은 **조상 체인**이다 — 볼 수 없는 초안 아래의 하위 문서도 함께 가려진다. 서버(EffectivePermissionService)가

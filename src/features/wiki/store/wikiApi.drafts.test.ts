@@ -7,7 +7,7 @@ afterEach(() => vi.restoreAllMocks());
 const res = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
-/* F-04 내 초안 — 제안 계약 GET /api/wiki/drafts?limit= (최근 방문과 같은 행 모양) */
+/* F-04 내 초안 — 계약 GET /api/wiki/drafts?limit= (최근 방문과 같은 행 모양) */
 describe("wikiApi.listMyDrafts", () => {
   it("행을 별표·최근과 같은 모양으로 매핑한다", async () => {
     const spy = vi.spyOn(client, "sharedApiFetch").mockResolvedValue(res(200, [
