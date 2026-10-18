@@ -75,6 +75,7 @@ export type {
   Notification,
   NotificationPrefs,
   NotificationPrefsPatch,
+  NotificationQuery,
   NotificationList,
 } from "./model/notifications";
 export type {

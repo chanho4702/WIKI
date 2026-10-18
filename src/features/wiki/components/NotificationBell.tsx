@@ -1,22 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "@chanho/react";
-import { AtSign, Bell, FilePlus, FileText, MessageSquare, Share2 } from "lucide-react";
-import type { NotificationType, User } from "../store/types";
+import { Bell } from "lucide-react";
+import type { User } from "../store/types";
+import { NOTIFICATION_TYPE_META as TYPE_META } from "./notificationMeta";
 import { listUsers, markNotificationsRead } from "../store/wikiStore";
 import { useNotificationFeed } from "../lib/useNotificationFeed";
 import { relativeTime } from "../lib/relativeTime";
 import { useDismissablePopover } from "../lib/useDismissablePopover";
-
-/** 타입별 아이콘·문구 — 사용자 스펙: 멘션됨 / 관심 페이지 업데이트 / 댓글. */
-const TYPE_META: Record<NotificationType, { icon: typeof Bell; text: (actor: string) => string }> = {
-  mentioned: { icon: AtSign, text: (actor) => `${actor}님이 나를 멘션했습니다` },
-  page_updated: { icon: FileText, text: (actor) => `${actor}님이 페이지를 업데이트했습니다` },
-  comment: { icon: MessageSquare, text: (actor) => `${actor}님이 댓글을 남겼습니다` },
-  shared: { icon: Share2, text: (actor) => `${actor}님이 이 문서를 공유했습니다` },
-  // 스페이스 구독(W27-4) — "고쳤다"가 아니라 "새로 생겼다"를 구분해서 알린다
-  page_published: { icon: FilePlus, text: (actor) => `${actor}님이 새 문서를 게시했습니다` },
-};
 
 /**
  * TopBar 알림 벨 — 미읽음 배지 + 클릭 시 알림함 팝오버.
@@ -117,6 +108,10 @@ export function NotificationBell() {
           )}
           {/* 설정으로 가는 길은 알림함 안에 있어야 한다 — "이거 어떻게 끄지"가 생기는 자리가 여기다 */}
           <div className="notification-popover-foot">
+            {/* 벨은 최근 한 쪽만 — 이전 알림·종류별 보기는 전체 화면에서(F-05) */}
+            <Link to="/notifications" onClick={() => setOpen(false)}>
+              모두 보기
+            </Link>
             <Link to="/settings/notifications" onClick={() => setOpen(false)}>
               알림 설정
             </Link>

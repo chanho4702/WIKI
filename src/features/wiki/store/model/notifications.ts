@@ -40,14 +40,36 @@ export interface NotificationPrefs {
   pageUpdated: boolean;
   comment: boolean;
   shared: boolean;
+  /**
+   * 새 문서 게시(F-05) — 예전에는 pageUpdated에 묶여 있었다. 이 필드를 모르는 구버전 서버 응답에서는
+   * 어댑터가 pageUpdated 값으로 채운다(서버도 저장값이 없으면 pageUpdated를 따른다).
+   */
+  pagePublished: boolean;
 }
 
 export type NotificationPrefsPatch = Pick<
   NotificationPrefs,
   "emailEnabled" | "emailMode" | "mentioned" | "pageUpdated" | "comment" | "shared"
->;
+> & {
+  /** 생략하면 서버가 pageUpdated를 따른다(구버전 화면 호환). */
+  pagePublished?: boolean;
+};
 
 export interface NotificationList {
+  /** 안 읽은 알림 수 — 종류 필터와 무관하게 전체 기준이다(배지). */
   unreadCount: number;
   items: Notification[];
+  /** 다음 쪽 커서(F-05). null이면 마지막 쪽. 화면에는 불투명한 문자열이다. 구버전 서버는 주지 않는다. */
+  nextBefore?: string | null;
+}
+
+/** 알림 목록 조회 옵션(F-05) — 모두 생략하면 예전처럼 최근 한 쪽(서버 기본 크기). */
+export interface NotificationQuery {
+  signal?: AbortSignal;
+  /** 이전 쪽의 nextBefore */
+  before?: string;
+  /** 1~100 */
+  limit?: number;
+  /** 이 종류만. 비우면 전부. */
+  types?: NotificationType[];
 }

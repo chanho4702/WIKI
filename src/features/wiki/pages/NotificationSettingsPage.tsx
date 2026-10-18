@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { Banner, Radio, RadioGroup, Switch, useToast } from "@chanho/react";
-import { AtSign, Bell, Clock, FileText, Mail, MessageSquare, Share2 } from "lucide-react";
+import { AtSign, Bell, Clock, FilePlus, FileText, Mail, MessageSquare, Share2 } from "lucide-react";
 import { SettingsHeader, SettingsItem } from "../components/SettingsItem";
 import type { NotificationPrefs, NotificationPrefsPatch } from "../store/types";
 import { getNotificationPrefs, updateNotificationPrefs } from "../store/wikiStore";
 
 const TYPE_ROWS: Array<{
-  key: "mentioned" | "pageUpdated" | "comment" | "shared";
+  key: "mentioned" | "pageUpdated" | "pagePublished" | "comment" | "shared";
   icon: typeof Bell;
   label: string;
   hint: string;
 }> = [
   { key: "mentioned", icon: AtSign, label: "나를 멘션했을 때", hint: "본문이나 댓글에서 @이름으로 나를 불렀을 때 보냅니다." },
-  // 스페이스 구독(W27-4)의 새 문서 알림도 이 스위치를 함께 쓴다 — 종류마다 스위치를 늘리면
-  // 설정 화면이 고르는 화면이 아니라 목록이 된다. 문구가 그 범위를 말해야 한다.
-  { key: "pageUpdated", icon: FileText, label: "구독한 문서·스페이스에 변화가 있을 때", hint: "내가 만들거나 고쳤거나 직접 구독한 문서가 바뀌면, 구독한 스페이스에 새 문서가 올라오면 보냅니다." },
+  { key: "pageUpdated", icon: FileText, label: "구독한 문서가 바뀌었을 때", hint: "내가 만들거나 고쳤거나 직접 구독한 문서가 바뀌면 보냅니다." },
+  // 새 문서 게시(F-05) — 예전에는 위 스위치에 묶여 있었다. 따로 저장한 적이 없으면 서버가 위 값을 따른다.
+  { key: "pagePublished", icon: FilePlus, label: "구독한 스페이스에 새 문서가 올라왔을 때", hint: "구독한 스페이스에 문서가 게시되면 보냅니다. 문서 수정 알림과 따로 끌 수 있습니다." },
   { key: "comment", icon: MessageSquare, label: "구독한 문서에 댓글이 달렸을 때", hint: "구독한 문서에 새 댓글이 달리면 보냅니다." },
   { key: "shared", icon: Share2, label: "누군가 문서를 공유했을 때", hint: "공유한 사람의 메모가 함께 옵니다." },
 ];
@@ -54,6 +54,7 @@ export function NotificationSettingsPage() {
         emailMode: prefs.emailMode,
         mentioned: prefs.mentioned,
         pageUpdated: prefs.pageUpdated,
+        pagePublished: prefs.pagePublished,
         comment: prefs.comment,
         shared: prefs.shared,
         ...patch,

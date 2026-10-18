@@ -1,7 +1,7 @@
 // 알림·알림 설정·구독·공유(백엔드 어댑터).
 import { sharedApiFetch } from "../apiClient";
 import { toBackendId } from "../mapping";
-import type { NotificationList, NotificationPrefs, NotificationPrefsPatch, NotificationType } from "../types";
+import type { NotificationList, NotificationPrefs, NotificationPrefsPatch, NotificationQuery, NotificationType } from "../types";
 import { json } from "./http";
 
 export async function getWatchState(pageId: string): Promise<boolean> {
@@ -37,32 +37,51 @@ export async function setSpaceWatchState(spaceId: string, watching: boolean): Pr
 /* ── 소유자·검증(W27-5) ───────────────────────────────────── */
 
 /** 알림 설정(W23) — 이메일 채널 스위치. 주소는 서버가 토큰에서 스냅샷한다(V29). */
+/** pagePublished를 모르는 구버전 서버 응답은 pageUpdated로 채운다 — 서버의 "없으면 따른다" 규칙과 같다. */
+function withPagePublished(raw: Omit<NotificationPrefs, "pagePublished"> & { pagePublished?: boolean | null }): NotificationPrefs {
+  return { ...raw, pagePublished: typeof raw.pagePublished === "boolean" ? raw.pagePublished : raw.pageUpdated };
+}
+
 export async function getNotificationPrefs(): Promise<NotificationPrefs> {
-  return json<NotificationPrefs>(await sharedApiFetch("/api/wiki/notifications/prefs"));
+  return withPagePublished(await json(await sharedApiFetch("/api/wiki/notifications/prefs")));
 }
 
 export async function updateNotificationPrefs(patch: NotificationPrefsPatch): Promise<NotificationPrefs> {
-  return json<NotificationPrefs>(
+  return withPagePublished(await json(
     await sharedApiFetch("/api/wiki/notifications/prefs", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     }),
-  );
+  ));
 }
 
 /** 알림 — 백엔드 V11 계약. 타입은 서버 enum(MENTIONED…)을 프론트 소문자로 매핑한다. */
 /** signal: 알림 벨의 주기 갱신이 걸린 요청을 끊고 새로 읽을 때 쓴다(요청을 겹치지 않게). */
-export async function listNotifications(options: { signal?: AbortSignal } = {}): Promise<NotificationList> {
+const SERVER_TYPE: Record<NotificationType, string> = {
+  mentioned: "MENTIONED",
+  page_updated: "PAGE_UPDATED",
+  comment: "COMMENT",
+  shared: "SHARED",
+  page_published: "PAGE_PUBLISHED",
+};
+
+export async function listNotifications(options: NotificationQuery = {}): Promise<NotificationList> {
+  // F-05 계약: ?before=&limit=&type=(쉼표). 아무것도 없으면 예전 경로 그대로 — 구버전 서버와 벨 호환.
+  const params = new URLSearchParams();
+  if (options.before) params.set("before", options.before);
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  if (options.types?.length) params.set("type", options.types.map((t) => SERVER_TYPE[t]).join(","));
+  const query = params.toString();
+  const path = query ? `/api/wiki/notifications?${query}` : "/api/wiki/notifications";
   const body = await json<{
     unreadCount: number;
     items: Array<{
       id: number; type: string; pageId: number; spaceId: number | null; pageTitle: string;
       actorId: number; createdAt: string; read: boolean; note?: string | null;
     }>;
-  }>(await (options.signal
-    ? sharedApiFetch("/api/wiki/notifications", { signal: options.signal })
-    : sharedApiFetch("/api/wiki/notifications")));
+    nextBefore?: number | string | null;
+  }>(await (options.signal ? sharedApiFetch(path, { signal: options.signal }) : sharedApiFetch(path)));
   const typeOf = (t: string): NotificationType =>
     t === "MENTIONED" ? "mentioned"
       : t === "COMMENT" ? "comment"
@@ -83,6 +102,7 @@ export async function listNotifications(options: { signal?: AbortSignal } = {}):
       read: n.read,
       note: n.note ?? null,
     })),
+    nextBefore: body.nextBefore === null || body.nextBefore === undefined ? null : String(body.nextBefore),
   };
 }
 

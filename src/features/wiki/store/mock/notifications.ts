@@ -4,6 +4,7 @@ import type {
   NotificationList,
   NotificationPrefs,
   NotificationPrefsPatch,
+  NotificationQuery,
   NotificationType,
   Page,
   WikiData,
@@ -137,16 +138,38 @@ export async function sharePage(pageId: string, userIds: string[], note?: string
   return delivered;
 }
 
-export async function listNotifications(options: { signal?: AbortSignal } = {}): Promise<NotificationList> {
+/** 서버 기본 쪽 크기(NotificationService.PAGE_SIZE)·상한과 같다. */
+const NOTIFICATION_PAGE_DEFAULT = 30;
+const NOTIFICATION_PAGE_MAX = 100;
+
+/** 목업 커서 — 백엔드는 id(Long), 목업은 `작성시각~id`. 화면에는 불투명하다(댓글 쪽 목록과 같은 규칙). */
+function notificationCursor(n: { createdAt: string; id: string }): string {
+  return `${n.createdAt}~${n.id}`;
+}
+
+export async function listNotifications(options: NotificationQuery = {}): Promise<NotificationList> {
   // 백엔드 fetch와 같이 이미 끊긴 요청은 AbortError로 끝난다
   if (options.signal?.aborted) throw new DOMException("요청이 취소되었습니다", "AbortError");
-  const rows = (load().notifications ?? [])
+  const limit = options.limit ?? NOTIFICATION_PAGE_DEFAULT;
+  if (!Number.isInteger(limit) || limit < 1 || limit > NOTIFICATION_PAGE_MAX) {
+    throw new Error(`limit은 1~${NOTIFICATION_PAGE_MAX} 사이여야 합니다`);
+  }
+  const mine = (load().notifications ?? [])
     .filter((n) => n.userId === CURRENT_USER_ID)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 30);
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+  const wanted = options.types?.length ? new Set(options.types) : null;
+  let rows = wanted ? mine.filter((n) => wanted.has(n.type)) : mine;
+  const before = options.before;
+  if (before) {
+    if (!before.includes("~")) throw new Error("잘못된 커서입니다");
+    rows = rows.filter((n) => notificationCursor(n) < before);
+  }
+  const page = rows.slice(0, limit);
   return {
-    unreadCount: rows.filter((n) => !n.read).length,
-    items: rows.map((n) => ({ ...n })),
+    // 배지 — 종류 필터와 무관하게 전체 기준(서버와 같다)
+    unreadCount: mine.filter((n) => !n.read).length,
+    items: page.map((n) => ({ ...n })),
+    nextBefore: rows.length > limit ? notificationCursor(page[page.length - 1]) : null,
   };
 }
 
@@ -158,8 +181,9 @@ const DEFAULT_PREFS: NotificationPrefsPatch = {
 
 function prefsView(data: WikiData): NotificationPrefs {
   // 이 필드 도입 이전 저장분은 emailMode가 없다 — 기본값으로 채운다
-  const saved = { ...DEFAULT_PREFS, ...(data.notificationPrefs?.[CURRENT_USER_ID] ?? {}) };
-  return { ...saved, emailConfigured: false, email: null };
+  const saved: NotificationPrefsPatch = { ...DEFAULT_PREFS, ...(data.notificationPrefs?.[CURRENT_USER_ID] ?? {}) };
+  // 새 문서 게시(F-05)는 따로 저장하지 않았으면 pageUpdated를 따른다(서버와 같다)
+  return { ...saved, pagePublished: saved.pagePublished ?? saved.pageUpdated, emailConfigured: false, email: null };
 }
 
 export async function getNotificationPrefs(): Promise<NotificationPrefs> {
