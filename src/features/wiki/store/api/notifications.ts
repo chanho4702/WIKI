@@ -1,7 +1,7 @@
 // 알림·알림 설정·구독·공유(백엔드 어댑터).
 import { sharedApiFetch } from "../apiClient";
 import { toBackendId } from "../mapping";
-import type { NotificationList, NotificationPrefs, NotificationPrefsPatch, NotificationQuery, NotificationType } from "../types";
+import type { NotificationList, NotificationPrefs, NotificationPrefsPatch, NotificationQuery, NotificationType, WatchList } from "../types";
 import { json } from "./http";
 
 export async function getWatchState(pageId: string): Promise<boolean> {
@@ -16,6 +16,42 @@ export async function setWatchState(pageId: string, watching: boolean): Promise<
       method: watching ? "POST" : "DELETE",
     }));
   return body.watching;
+}
+
+/* ── 구독 목록(F-06) ───────────────────────────────────────── */
+
+export async function listWatches(): Promise<WatchList> {
+  const body = await json<{
+    pages: Array<{ pageId: number | string; spaceId: number | string; title: string | null; spaceName: string | null; hidden: boolean }>;
+    spaces: Array<{ spaceId: number | string; name: string | null; hidden: boolean }>;
+  }>(await sharedApiFetch("/api/wiki/watches"));
+  return {
+    pages: (body.pages ?? []).map((p) => ({
+      pageId: String(p.pageId),
+      spaceId: String(p.spaceId),
+      // hidden이면 서버가 이미 비우지만, 혹시 와도 화면에 흘리지 않는다
+      title: p.hidden ? null : p.title,
+      spaceName: p.hidden ? null : p.spaceName,
+      hidden: p.hidden === true,
+    })),
+    spaces: (body.spaces ?? []).map((s) => ({
+      spaceId: String(s.spaceId),
+      name: s.hidden ? null : s.name,
+      hidden: s.hidden === true,
+    })),
+  };
+}
+
+/** 여러 구독을 한 번에 해제한다(F-06). 이미 해제된 것은 서버가 조용히 넘긴다. */
+export async function unwatchMany(input: { pageIds: string[]; spaceIds: string[] }): Promise<void> {
+  await json<null>(await sharedApiFetch("/api/wiki/watches/unwatch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      pageIds: input.pageIds.map(toBackendId),
+      spaceIds: input.spaceIds.map(toBackendId),
+    }),
+  }));
 }
 
 /* ── 스페이스 구독(W27-4) ─────────────────────────────────── */

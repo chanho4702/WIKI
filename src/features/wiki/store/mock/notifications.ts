@@ -5,11 +5,12 @@ import type {
   NotificationPrefs,
   NotificationPrefsPatch,
   NotificationQuery,
+  WatchList,
   NotificationType,
   Page,
   WikiData,
 } from "../types";
-import { load, persist } from "./db";
+import { canSeePage, load, persist } from "./db";
 
 const MENTION_RE = /\]\(user:([\w-]+)\)/g;
 
@@ -225,6 +226,42 @@ export async function setWatchState(pageId: string, watching: boolean): Promise<
 }
 
 /* ── 스페이스 구독(W27-4) ─────────────────────────────────── */
+
+/** 구독 목록(F-06) — 서버와 같은 모양. 볼 수 없게 된 문서(남의 초안 아래 등)는 hidden + 제목 null. */
+export async function listWatches(): Promise<WatchList> {
+  const data = load();
+  const spaces = new Map(data.spaces.map((s) => [s.id, s]));
+  const pages = Object.entries(data.watches ?? {})
+    .filter(([, users]) => users.includes(CURRENT_USER_ID))
+    .flatMap(([pageId]) => {
+      const page = data.pages.find((p) => p.id === pageId);
+      if (!page) return []; // 지워진 문서의 구독은 남기지 않는다
+      const hidden = !canSeePage(data, page);
+      return [{
+        pageId,
+        spaceId: page.spaceId,
+        title: hidden ? null : page.title,
+        spaceName: hidden ? null : (spaces.get(page.spaceId)?.name ?? null),
+        hidden,
+      }];
+    })
+    .sort((a, b) => (a.title ?? "").localeCompare(b.title ?? "") || a.pageId.localeCompare(b.pageId));
+  const watchedSpaces = Object.entries(data.spaceWatches ?? {})
+    .filter(([spaceId, users]) => users.includes(CURRENT_USER_ID) && spaces.has(spaceId))
+    .map(([spaceId]) => ({ spaceId, name: spaces.get(spaceId)?.name ?? null, hidden: false }));
+  return { pages, spaces: watchedSpaces };
+}
+
+export async function unwatchMany(input: { pageIds: string[]; spaceIds: string[] }): Promise<void> {
+  const data = load();
+  for (const id of input.pageIds) {
+    if (data.watches?.[id]) data.watches[id] = data.watches[id].filter((u) => u !== CURRENT_USER_ID);
+  }
+  for (const id of input.spaceIds) {
+    if (data.spaceWatches?.[id]) data.spaceWatches[id] = data.spaceWatches[id].filter((u) => u !== CURRENT_USER_ID);
+  }
+  persist();
+}
 
 export async function getSpaceWatchState(spaceId: string): Promise<boolean> {
   const data = load();

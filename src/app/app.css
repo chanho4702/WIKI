@@ -6353,6 +6353,26 @@ body.is-column-reordering {
   justify-content: space-between;
 }
 
+/* ── 구독 목록(F-06) ─────────────────────────────────────── */
+.watches-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--chanho-space-400) var(--chanho-space-400) var(--chanho-space-600);
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-300);
+}
+
+.watches-section-title {
+  margin: 0 0 var(--chanho-space-100);
+  font-size: var(--chanho-font-size-100);
+}
+
+.watches-hidden {
+  color: var(--chanho-color-text-subtle);
+  font-style: italic;
+}
+
 /* ── 블로그(W24) ─────────────────────────────────────────── */
 .blog-page-head {
   display: flex;

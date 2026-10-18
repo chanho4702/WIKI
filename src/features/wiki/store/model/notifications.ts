@@ -63,6 +63,29 @@ export interface NotificationList {
   nextBefore?: string | null;
 }
 
+/**
+ * 구독 목록(F-06, `GET /api/wiki/watches`). 권한을 잃은 항목은 `hidden`이고 제목·이름이 null이다 —
+ * 이름은 가리되 해제는 할 수 있어야 한다(알림을 끌 길이 없으면 안 된다).
+ */
+export interface WatchedPage {
+  pageId: string;
+  spaceId: string;
+  title: string | null;
+  spaceName: string | null;
+  hidden: boolean;
+}
+
+export interface WatchedSpace {
+  spaceId: string;
+  name: string | null;
+  hidden: boolean;
+}
+
+export interface WatchList {
+  pages: WatchedPage[];
+  spaces: WatchedSpace[];
+}
+
 /** 알림 목록 조회 옵션(F-05) — 모두 생략하면 예전처럼 최근 한 쪽(서버 기본 크기). */
 export interface NotificationQuery {
   signal?: AbortSignal;

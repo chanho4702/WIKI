@@ -20,6 +20,7 @@ const PageCompareVersionsPage = lazy(() => import("../features/wiki/pages/PageCo
 const FolderPage = lazy(() => import("../features/wiki/pages/FolderPage").then((m) => ({ default: m.FolderPage })));
 const SearchPage = lazy(() => import("../features/wiki/pages/SearchPage").then((m) => ({ default: m.SearchPage })));
 const NotificationsPage = lazy(() => import("../features/wiki/pages/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
+const WatchesPage = lazy(() => import("../features/wiki/pages/WatchesPage").then((m) => ({ default: m.WatchesPage })));
 const MyItemsPage = lazy(() => import("../features/wiki/pages/MyItemsPage").then((m) => ({ default: m.MyItemsPage })));
 const TasksPage = lazy(() => import("../features/wiki/pages/TasksPage").then((m) => ({ default: m.TasksPage })));
 const NotificationSettingsPage = lazy(() => import("../features/wiki/pages/NotificationSettingsPage").then((m) => ({ default: m.NotificationSettingsPage })));
@@ -142,6 +143,8 @@ export function App() {
             <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
             {/* 전체 알림(F-05) — 벨의 "모두 보기". 쪽 넘김·종류 필터 */}
             <Route path="/notifications" element={<NotificationsPage />} />
+            {/* 구독 목록(F-06) — 무엇을 구독했는지 보고 한꺼번에 해제 */}
+            <Route path="/settings/watches" element={<WatchesPage />} />
             {/* 검색 색인 관리 — 전역 관리자 전용. 아니면 화면이 스스로 "권한 없음"을 보여준다 */}
             <Route path="/admin/search" element={<SearchAdminPage />} />
             {/* 사용자·팀 관리(U4) — 공용 패키지 `@chanho/org-admin`을 마운트한다(설계 §6).

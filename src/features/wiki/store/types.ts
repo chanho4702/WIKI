@@ -76,6 +76,9 @@ export type {
   NotificationPrefs,
   NotificationPrefsPatch,
   NotificationQuery,
+  WatchedPage,
+  WatchedSpace,
+  WatchList,
   NotificationList,
 } from "./model/notifications";
 export type {

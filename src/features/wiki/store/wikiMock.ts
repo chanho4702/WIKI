@@ -79,6 +79,8 @@ export {
   getWatchState,
   setWatchState,
   getSpaceWatchState,
+  listWatches,
+  unwatchMany,
   setSpaceWatchState,
 } from "./mock/notifications";
 export {

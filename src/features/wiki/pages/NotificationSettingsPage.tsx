@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router";
 import { Banner, Radio, RadioGroup, Switch, useToast } from "@chanho/react";
 import { AtSign, Bell, Clock, FilePlus, FileText, Mail, MessageSquare, Share2 } from "lucide-react";
 import { SettingsHeader, SettingsItem } from "../components/SettingsItem";
@@ -81,6 +82,12 @@ export function NotificationSettingsPage() {
       description="알림함(벨)은 항상 켜져 있습니다. 여기서는 어떤 알림을 이메일로도 받을지 정합니다."
     />
   );
+  // 무엇을 구독했는지(=무엇이 알림을 만드는지)는 구독 목록에서 본다(F-06)
+  const watchesLink = (
+    <p className="settings-watches-link">
+      <Link to="/settings/watches">구독한 문서·스페이스 관리</Link>
+    </p>
+  );
 
   if (error) {
     return (
@@ -102,6 +109,7 @@ export function NotificationSettingsPage() {
   return (
     <div className="space-settings">
       {header}
+      {watchesLink}
 
       <div className="space-settings-form">
         {!prefs.emailConfigured ? (

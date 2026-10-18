@@ -75,6 +75,8 @@ export {
   getWatchState,
   setWatchState,
   getSpaceWatchState,
+  listWatches,
+  unwatchMany,
   setSpaceWatchState,
   getNotificationPrefs,
   updateNotificationPrefs,
