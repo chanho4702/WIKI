@@ -43,8 +43,10 @@ export async function searchContent(input: SearchContentInput): Promise<SearchRe
   const pageHits: SearchHit[] = !pagesRequested
     ? []
     : data.pages.flatMap((page): SearchHit[] => {
-        // 초안은 요청이 includeDrafts일 때만, 그리고 볼 수 있는 초안(작성자·전역 관리자)만 — 서버 라이트 검색과 같다
-        if (page.status === "draft" && !(input.includeDrafts === true && canSeePage(data, page))) return [];
+        // 모든 후보에 가시성 판정 — 게시 문서라도 숨은 초안 아래면 보이지 않는다(조상 체인까지 본다).
+        // 초안은 거기에 더해 요청이 includeDrafts일 때만 — 서버 라이트 검색과 같다
+        if (!canSeePage(data, page)) return [];
+        if (page.status === "draft" && input.includeDrafts !== true) return [];
         if (page.archivedAt || (allowedSpaces && !allowedSpaces.has(page.spaceId))) return [];
         if (authors && !authors.has(page.updatedBy)) return [];
         if (wantedPageTypes && !wantedPageTypes.has(page.type === "folder" ? "FOLDER" : page.type === "blog" ? "BLOG" : "PAGE")) return [];

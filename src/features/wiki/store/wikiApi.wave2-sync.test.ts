@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as client from "./apiClient";
-import { listBlogPostPage, listBlogPosts, searchContent, setTaskDone } from "./wikiApi";
+import { copyPage, listBlogPostPage, listBlogPosts, searchContent, setTaskDone } from "./wikiApi";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -39,6 +39,18 @@ describe("wikiApi 웨이브 2 계약", () => {
     const spy = vi.spyOn(client, "sharedApiFetch").mockResolvedValue(res(200, []));
     await listBlogPosts("2");
     expect(spy.mock.calls[0][0]).toBe("/api/wiki/spaces/2/blog");
+  });
+
+  it("복사 대상 부모 null(스페이스 루트)은 키를 빼지 않고 null로 싣는다 — 빼면 서버가 원본 옆에 만든다", async () => {
+    const page = { id: 7, spaceId: 3, parentId: null, title: "T", content: "", version: 1 };
+    const spy = vi.spyOn(client, "sharedApiFetch").mockImplementation(async () => res(200, page));
+    await copyPage("1", { targetSpaceId: "3", targetParentId: null });
+    await copyPage("1", { targetSpaceId: "3", targetParentId: "9" });
+    await copyPage("1");
+    expect(JSON.parse(spy.mock.calls[0][1]!.body as string)).toMatchObject({ targetSpaceId: 3, targetParentId: null });
+    expect(JSON.parse(spy.mock.calls[0][1]!.body as string)).toHaveProperty("targetParentId", null);
+    expect(JSON.parse(spy.mock.calls[1][1]!.body as string)).toMatchObject({ targetParentId: 9 });
+    expect(JSON.parse(spy.mock.calls[2][1]!.body as string)).not.toHaveProperty("targetParentId");
   });
 
   it("검색은 pageTypes를 줄 때만 싣는다", async () => {

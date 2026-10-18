@@ -130,6 +130,9 @@ describe("초안 가시성 — 나머지 읽기 경로", () => {
     await expect(listAncestors("visibleChild")).rejects.toThrow("이 페이지를 볼 권한이 없습니다");
     expect((await listDescendants("pg1")).map((n) => n.id)).not.toContain("visibleChild");
     expect(await searchPageTitles("sp1", "게시된 자식")).toEqual([]);
+    // 본문 검색도 — 자식 자신은 초안이 아니어도 조상 판정으로 빠져야 한다(Codex P1)
+    expect((await searchContent({ query: "게시된 자식" })).hits.map((h) => h.id)).not.toContain("visibleChild");
+    expect((await searchContent({ query: "게시된 자식", includeDrafts: true })).hits.map((h) => h.id)).not.toContain("visibleChild");
   });
 
   it("그 스페이스의 관리자(직접 또는 팀 부여)는 남의 초안을 본다", async () => {
