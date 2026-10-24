@@ -120,10 +120,12 @@ export function WatchesPage() {
                   {
                     key: "select",
                     header: "선택",
+                    width: "56px",
                     adjustable: false,
                     render: (row) => (
                       <Checkbox
                         label={`${row.hidden ? "볼 수 없는 문서" : (row.title ?? "제목 없음")} 선택`}
+                        labelHidden
                         checked={selectedPages.has(row.pageId)}
                         onCheckedChange={(on) => setSelectedPages((s) => toggle(s, row.pageId, on === true))}
                       />
@@ -154,10 +156,12 @@ export function WatchesPage() {
                   {
                     key: "select",
                     header: "선택",
+                    width: "56px",
                     adjustable: false,
                     render: (row) => (
                       <Checkbox
                         label={`${row.hidden ? "볼 수 없는 스페이스" : (row.name ?? "이름 없음")} 선택`}
+                        labelHidden
                         checked={selectedSpaces.has(row.spaceId)}
                         onCheckedChange={(on) => setSelectedSpaces((s) => toggle(s, row.spaceId, on === true))}
                       />

@@ -82,50 +82,52 @@ export function ArchivePage() {
           description="끝났지만 남겨 두고 싶은 문서를 페이지 메뉴에서 보관하면 여기에 모입니다."
         />
       ) : (
-        <table className="trash-table">
-          <thead>
-            <tr>
-              <th scope="col">이름</th>
-              <th scope="col">보관한 사람</th>
-              <th scope="col">보관한 날</th>
-              <th scope="col">작업</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td>
-                  <Link className="trash-item-name" to={contentPathIn(spaceId ?? "", item)}>
-                    {item.icon ? (
-                      <span aria-hidden="true">{item.icon}</span>
-                    ) : item.type === "folder" ? (
-                      <Folder size={16} aria-hidden="true" />
-                    ) : (
-                      <FileText size={16} aria-hidden="true" />
-                    )}
-                    {item.title}
-                  </Link>
-                  {item.descendantCount > 0 ? (
-                    <span className="trash-item-descendants">하위 {item.descendantCount}개 포함</span>
-                  ) : null}
-                </td>
-                <td>{users.find((u) => u.id === item.deletedBy)?.name ?? displayUserName(item.deletedBy)}</td>
-                <td>{formatAt(item.deletedAt)}</td>
-                <td className="trash-item-actions">
-                  <Button
-                    variant="subtle"
-                    size="small"
-                    disabled={busyId === item.id}
-                    iconBefore={<ArchiveRestore size={14} aria-hidden="true" />}
-                    onClick={() => void handleUnarchive(item)}
-                  >
-                    보관 해제
-                  </Button>
-                </td>
+        <div className="trash-table-scroll">
+          <table className="trash-table">
+            <thead>
+              <tr>
+                <th scope="col">이름</th>
+                <th scope="col">보관한 사람</th>
+                <th scope="col">보관한 날</th>
+                <th scope="col">작업</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <Link className="trash-item-name" to={contentPathIn(spaceId ?? "", item)}>
+                      {item.icon ? (
+                        <span aria-hidden="true">{item.icon}</span>
+                      ) : item.type === "folder" ? (
+                        <Folder size={16} aria-hidden="true" />
+                      ) : (
+                        <FileText size={16} aria-hidden="true" />
+                      )}
+                      {item.title}
+                    </Link>
+                    {item.descendantCount > 0 ? (
+                      <span className="trash-item-descendants">하위 {item.descendantCount}개 포함</span>
+                    ) : null}
+                  </td>
+                  <td>{users.find((u) => u.id === item.deletedBy)?.name ?? displayUserName(item.deletedBy)}</td>
+                  <td>{formatAt(item.deletedAt)}</td>
+                  <td className="trash-item-actions">
+                    <Button
+                      variant="subtle"
+                      size="small"
+                      disabled={busyId === item.id}
+                      iconBefore={<ArchiveRestore size={14} aria-hidden="true" />}
+                      onClick={() => void handleUnarchive(item)}
+                    >
+                      보관 해제
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

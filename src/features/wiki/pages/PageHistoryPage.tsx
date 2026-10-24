@@ -79,8 +79,8 @@ export function PageHistoryPage() {
       adjustable: false,
       render: (version) => (
         <Checkbox
-          className="history-select"
           label={`${versionLabel(version.version)} 선택`}
+          labelHidden
           checked={selected.includes(version.version)}
           onCheckedChange={(checked) => toggleSelect(version.version, checked === true)}
         />

@@ -110,10 +110,14 @@ describe("Task 20 편집↔보기 폭 일치 (CSS 회귀)", () => {
     const editorContent = findRule(".wiki-editor-content");
     expect(pageView).toContain("max-width: 760px");
     expect(pageView).toContain("margin: 0 auto");
-    expect(editBody).toContain("max-width: calc(760px + 2 * var(--chanho-space-400))");
-    expect(editBody).toContain("padding: var(--chanho-space-200) var(--chanho-space-400)");
+    // 좌우 패딩은 본문 여백 변수(--wiki-content-pad-x)를 따른다 — 넓은 화면 값은 space-400 그대로이고,
+    // 좁은 화면에서 여백이 16px로 줄 때 편집 본문만 32px로 남아 칼럼이 어긋나던 것을 막는다(2026-10-24).
+    const PAD = "var(--wiki-content-pad-x, var(--chanho-space-400))";
+    expect(findRule(".wiki-content")).toContain("--wiki-content-pad-x: var(--chanho-space-400)");
+    expect(editBody).toContain(`max-width: calc(760px + 2 * ${PAD})`);
+    expect(editBody).toContain(`padding: var(--chanho-space-200) ${PAD}`);
     expect(editBody).toContain("margin: 0 auto");
-    expect(editorContent).toContain("max-width: calc(760px + 2 * var(--chanho-space-400))");
+    expect(editorContent).toContain(`max-width: calc(760px + 2 * ${PAD})`);
     expect(editBody).not.toContain("880px");
   });
 

@@ -130,61 +130,63 @@ export function TrashPage() {
       ) : items.length === 0 ? (
         <EmptyState title="휴지통이 비어 있습니다" description="삭제한 문서가 여기에 보관됩니다." />
       ) : (
-        <table className="trash-table">
-          <thead>
-            <tr>
-              <th scope="col">이름</th>
-              <th scope="col">삭제한 사람</th>
-              <th scope="col">삭제한 시각</th>
-              <th scope="col">작업</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td>
-                  <span className="trash-item-name">
-                    {item.icon ? (
-                      <span aria-hidden="true">{item.icon}</span>
-                    ) : item.type === "folder" ? (
-                      <Folder size={16} aria-hidden="true" />
-                    ) : (
-                      <FileText size={16} aria-hidden="true" />
-                    )}
-                    {item.title}
-                  </span>
-                  {item.descendantCount > 0 ? (
-                    <span className="trash-item-descendants">
-                      하위 {item.descendantCount}개 포함
-                    </span>
-                  ) : null}
-                </td>
-                <td>{users.find((u) => u.id === item.deletedBy)?.name ?? displayUserName(item.deletedBy)}</td>
-                <td>{formatDeletedAt(item.deletedAt)}</td>
-                <td className="trash-item-actions">
-                  <Button
-                    variant="subtle"
-                    size="small"
-                    disabled={busyId === item.id}
-                    iconBefore={<RotateCcw size={14} aria-hidden="true" />}
-                    onClick={() => void handleRestore(item)}
-                  >
-                    복원
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="small"
-                    disabled={busyId === item.id}
-                    iconBefore={<Trash2 size={14} aria-hidden="true" />}
-                    onClick={() => void handlePurge(item)}
-                  >
-                    영구 삭제
-                  </Button>
-                </td>
+        <div className="trash-table-scroll">
+          <table className="trash-table">
+            <thead>
+              <tr>
+                <th scope="col">이름</th>
+                <th scope="col">삭제한 사람</th>
+                <th scope="col">삭제한 시각</th>
+                <th scope="col">작업</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <span className="trash-item-name">
+                      {item.icon ? (
+                        <span aria-hidden="true">{item.icon}</span>
+                      ) : item.type === "folder" ? (
+                        <Folder size={16} aria-hidden="true" />
+                      ) : (
+                        <FileText size={16} aria-hidden="true" />
+                      )}
+                      {item.title}
+                    </span>
+                    {item.descendantCount > 0 ? (
+                      <span className="trash-item-descendants">
+                        하위 {item.descendantCount}개 포함
+                      </span>
+                    ) : null}
+                  </td>
+                  <td>{users.find((u) => u.id === item.deletedBy)?.name ?? displayUserName(item.deletedBy)}</td>
+                  <td>{formatDeletedAt(item.deletedAt)}</td>
+                  <td className="trash-item-actions">
+                    <Button
+                      variant="subtle"
+                      size="small"
+                      disabled={busyId === item.id}
+                      iconBefore={<RotateCcw size={14} aria-hidden="true" />}
+                      onClick={() => void handleRestore(item)}
+                    >
+                      복원
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="small"
+                      disabled={busyId === item.id}
+                      iconBefore={<Trash2 size={14} aria-hidden="true" />}
+                      onClick={() => void handlePurge(item)}
+                    >
+                      영구 삭제
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

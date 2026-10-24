@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { AnchorHTMLAttributes, HTMLAttributes, ImgHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, HTMLAttributes, ImgHTMLAttributes, InputHTMLAttributes, ReactNode, TableHTMLAttributes } from "react";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkDirective from "remark-directive";
@@ -414,6 +414,13 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTask
     () => ({
       pre: CodeCopyBlock,
       img: MarkdownImage,
+      // 넓은 표는 표만 가로로 스크롤한다 — 감싸지 않으면 본문 칼럼을 밀어 화면 전체가 가로로 넘쳤다
+      // (컨플 렌더러도 표를 스크롤 래퍼로 감싼다).
+      table: ({ node: _node, ...p }: TableHTMLAttributes<HTMLTableElement> & { node?: unknown }) => (
+        <div className="md-table-scroll">
+          <table {...p} />
+        </div>
+      ),
       div: (props: HTMLAttributes<HTMLDivElement> & { node?: unknown }) => (
         <MarkdownDiv {...props} source={source} spaceId={spaceId} depth={depth} />
       ),
