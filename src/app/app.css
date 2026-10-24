@@ -15,15 +15,30 @@
   --wiki-chip-accent-red-subtle-bg: var(--chanho-color-background-danger-subtle); /* wiki-chip-missing */
   --wiki-chip-accent-red-text: var(--chanho-color-text-danger);
 
-  /* 노트(보라) 패널 — DS에 discovery 시맨틱이 없어 Atlassian 값(background/text/border.discovery)을
-   * 여기서만 정의한다. DS에 discovery가 생기면 그 토큰으로 위임한다. */
-  --wiki-discovery-bg: #f8eefe;
-  --wiki-discovery-text: #803fa5;
-  --wiki-discovery-border: #af59e1;
+  /* 패널 — 컨플 편집기(@atlaskit/editor-core 240.1.0 EditorContentContainer CSS)의 값을 그대로 쓴다:
+   * 배경은 background.accent.*-subtlest, 아이콘은 icon.information·discovery·success·warning·danger.
+   * DS에 accent·icon 시맨틱이 없어 여기서만 정의한다(정보·오류 배경은 DS info/danger-subtle과 같은 값이라 위임). */
+  --wiki-panel-info-bg: var(--chanho-color-background-info-subtle); /* #E9F2FE */
+  --wiki-panel-note-bg: #f8eefe; /* accent.purple.subtlest */
+  --wiki-panel-success-bg: #dcfff1; /* accent.green.subtlest */
+  --wiki-panel-warning-bg: #fef7c8; /* accent.yellow.subtlest */
+  --wiki-panel-error-bg: var(--chanho-color-background-danger-subtle); /* #FFECEB */
+  --wiki-panel-info-icon: #357de8;
+  --wiki-panel-note-icon: #af59e1;
+  --wiki-panel-success-icon: #6a9a23;
+  --wiki-panel-warning-icon: #e06c00;
+  --wiki-panel-error-icon: #c9372c;
+
+  /* 표 — 컨플 표는 알파가 아닌 불투명 회색 테두리(accent.gray.subtler)와 헤더 배경(accent.gray.subtlest)이다.
+   * 알파 테두리는 칸 경계가 겹치는 곳마다 진해진다. */
+  --wiki-table-border: #dddee1;
+  --wiki-table-header-bg: #f0f1f2;
 
   /* 코드 블록의 줄 높이 — <pre>와 줄 번호 거터가 반드시 공유해야 하는 값(기획 B1).
+   * 컨플 코드 블록(14px / 1.5rem = 24px). 단위 없는 배수가 아니라 고정 길이인 이유: 배수는 요소마다
+   * 자기 글꼴 크기로 다시 계산돼, 글꼴이 다른 <pre>(본문 16px)와 거터(14px)의 행 높이가 갈라졌다.
    * 테마와 무관한 레이아웃 값이므로 :root에만 둔다(다크 블록에 넣으면 라이트에서 정렬이 깨진다). */
-  --wiki-code-line-height: 1.6;
+  --wiki-code-line-height: 24px;
 
   /* hljs 토큰 색 — Atlassian 현행 코드 블록 토큰(text.code.*, @atlaskit/tokens 20.7.0) */
   --wiki-hljs-keyword: #ae2e24; /* keyword/built_in/tag — code.keywords */
@@ -49,9 +64,17 @@
   --wiki-chip-accent-red-subtle-bg: var(--chanho-color-background-danger-subtle);
   --wiki-chip-accent-red-text: var(--chanho-color-text-danger);
 
-  --wiki-discovery-bg: #35243f;
-  --wiki-discovery-text: #d8a0f7;
-  --wiki-discovery-border: #bf63f3;
+  --wiki-panel-note-bg: #35243f;
+  --wiki-panel-success-bg: #1c3329;
+  --wiki-panel-warning-bg: #332e1b;
+  --wiki-panel-info-icon: #4688ec;
+  --wiki-panel-note-icon: #bf63f3;
+  --wiki-panel-success-icon: #82b536;
+  --wiki-panel-warning-icon: #fbc828;
+  --wiki-panel-error-icon: #f15b50;
+
+  --wiki-table-border: #4b4d51;
+  --wiki-table-header-bg: #303134;
 
   /* 다크 코드 블록 배경은 background-subtle(#18191A) — 아래 값은 모두 그 위 4.5:1 이상 */
   --wiki-hljs-keyword: #fd9891;
@@ -1035,6 +1058,63 @@ body {
   margin-bottom: var(--chanho-space-50);
 }
 
+/* 할 일 목록 — 컨플은 글머리표 없이 체크박스 + 같은 줄 글자(@atlaskit/editor-core: 체크박스 칸 24px,
+ * 항목 사이 4px, 중첩 들여쓰기 24px). 보기는 remark-gfm의 ul.contains-task-list > li.task-list-item > input,
+ * 편집기는 TipTap의 ul[data-type=taskList] > li > label(체크박스) + div(내용)다. */
+.markdown-body ul.contains-task-list,
+.wiki-editor .ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+.markdown-body ul.contains-task-list ul.contains-task-list,
+.wiki-editor .ProseMirror ul[data-type="taskList"] ul[data-type="taskList"] {
+  margin: var(--chanho-space-50) 0 0;
+}
+.markdown-body li.task-list-item {
+  position: relative;
+  padding-left: 24px;
+  margin-bottom: var(--chanho-space-50);
+}
+.markdown-body li.task-list-item > input[type="checkbox"] {
+  position: absolute;
+  left: 0;
+  top: calc((var(--chanho-font-lineHeight-300) - 16px) / 2);
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--chanho-color-background-brand);
+}
+.markdown-body li.task-list-item > p {
+  margin: 0;
+}
+.wiki-editor .ProseMirror ul[data-type="taskList"] > li {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: var(--chanho-space-50);
+}
+.wiki-editor .ProseMirror ul[data-type="taskList"] > li > label {
+  flex: none;
+  display: flex;
+  align-items: center;
+  width: 24px;
+  height: var(--chanho-font-lineHeight-300);
+  user-select: none;
+}
+.wiki-editor .ProseMirror ul[data-type="taskList"] > li > label > input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--chanho-color-background-brand);
+  cursor: pointer;
+}
+.wiki-editor .ProseMirror ul[data-type="taskList"] > li > div {
+  flex: 1;
+  min-width: 0;
+}
+.wiki-editor .ProseMirror ul[data-type="taskList"] > li > div > p {
+  margin: 0;
+}
+
 .markdown-body code,
 .wiki-editor .ProseMirror code {
   font-family: var(--chanho-font-family-mono);
@@ -1048,6 +1128,9 @@ body {
 .wiki-editor .ProseMirror pre {
   margin: 0 0 var(--chanho-space-200);
   padding: var(--chanho-space-200);
+  /* 거터와 같은 글꼴·크기 — 줄 상자 높이가 같아야 번호가 줄에 맞는다 */
+  font-family: var(--chanho-font-family-mono);
+  font-size: var(--chanho-font-size-100);
   border: 1px solid var(--chanho-color-border-default);
   border-radius: var(--chanho-radius-medium);
   background: var(--chanho-color-background-subtle);
@@ -1158,19 +1241,33 @@ body {
   border-collapse: collapse;
 }
 
+/* 컨플 표(@atlaskit/editor-core 실측): 칸 패딩 8px, 위 정렬, 불투명 회색 테두리, 헤더 배경 accent.gray.subtlest.
+ * 편집기 칸은 내용이 <p>로 감싸여 본문 문단 여백(16px)이 칸을 부풀렸다 — 칸 안 문단은 여백 없이 붙인다
+ * (보기 화면과 같은 높이). */
 .markdown-body th,
 .markdown-body td,
 .wiki-editor .ProseMirror th,
 .wiki-editor .ProseMirror td {
-  padding: var(--chanho-space-100) var(--chanho-space-150);
-  border: 1px solid var(--chanho-color-border-default);
+  padding: var(--chanho-space-100);
+  border: 1px solid var(--wiki-table-border);
   text-align: left;
+  vertical-align: top;
+  min-width: 48px;
 }
 
 .markdown-body th,
 .wiki-editor .ProseMirror th {
-  background: var(--chanho-color-background-subtle);
-  font-weight: var(--chanho-font-weight-semibold);
+  background: var(--wiki-table-header-bg);
+  font-weight: var(--chanho-font-weight-bold);
+}
+
+.markdown-body :is(th, td) > p,
+.wiki-editor .ProseMirror :is(th, td) > p {
+  margin: 0;
+}
+.markdown-body :is(th, td) > p + p,
+.wiki-editor .ProseMirror :is(th, td) > p + p {
+  margin-top: var(--chanho-space-100);
 }
 
 /* 표 본문 행 hover — 보기 화면 가독성(에디터는 편집 커서가 있어 제외) */
@@ -1192,18 +1289,24 @@ body {
    저장 문법은 항상 순수 blockquote이며, 이 클래스들은 두 화면 모두 렌더 전용 스타일이다. */
 /* 캡처(기능들.png)는 아이콘 + 색 배경 블록이다 — 보기 화면은 MarkdownDiv가 아이콘을 얹고
    여기서 가로 배치를 잡는다. 에디터는 데코레이션이라 아이콘이 없고 색만 공유한다. */
+/* 컨플 패널(@atlaskit/editor-core 실측): 테두리 없음, 반경 radius.small, 패딩 8px 16px 8px 8px,
+ * 아이콘 칸 24×24 + 오른쪽 12px(전체 폭 편집기), 내용 위아래 2px. 제목 글자는 없다 — 우리 보기 렌더는 접근성을
+ * 위해 "정보" 같은 라벨을 실제 노드로 싣는데(remarkAlerts), 화면에서는 숨기고 스크린리더에만 남긴다. */
 .markdown-body .md-alert {
   display: flex;
-  gap: var(--chanho-space-150);
   align-items: flex-start;
 }
 .markdown-body .md-alert-icon {
   flex: none;
-  margin-top: 2px; /* 첫 줄 텍스트의 광학 중심에 맞춘다 */
+  box-sizing: content-box;
+  /* 16px 글리프를 24px 칸 가운데에 — 첫 줄(28px) 광학 중심에 맞춘다 */
+  padding: calc((var(--chanho-font-lineHeight-300) - 16px) / 2 + 2px) 4px 0;
+  margin-right: var(--chanho-space-100);
 }
 .markdown-body .md-alert-content {
   min-width: 0;
   flex: 1;
+  margin: 2px 0;
 }
 .markdown-body .md-alert-content > :last-child {
   margin-bottom: 0;
@@ -1212,8 +1315,8 @@ body {
 .markdown-body .md-alert,
 .wiki-editor .ProseMirror .md-alert {
   margin: 0 0 var(--chanho-space-200);
-  padding: var(--chanho-space-150) var(--chanho-space-200);
-  border-left: 3px solid var(--chanho-color-border-default);
+  padding: var(--chanho-space-100) var(--chanho-space-200) var(--chanho-space-100) var(--chanho-space-100);
+  border: none;
   border-radius: var(--chanho-radius-small);
   background: var(--chanho-color-background-subtle);
   color: var(--chanho-color-text-default);
@@ -1225,60 +1328,60 @@ body {
 }
 
 .markdown-body .md-alert-label {
-  margin: 0 0 var(--chanho-space-100);
-  font-weight: var(--chanho-font-weight-bold);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .markdown-body .md-alert-note,
 .wiki-editor .ProseMirror .md-alert-note {
-  border-left-color: var(--chanho-color-text-info);
-  background: var(--chanho-color-background-info-subtle);
+  background: var(--wiki-panel-info-bg);
 }
-.markdown-body .md-alert-note .md-alert-label,
-.markdown-body .md-alert-note .md-alert-icon {
-  color: var(--chanho-color-text-info);
+.markdown-body .md-alert-note .md-alert-icon,
+.wiki-editor .ProseMirror .md-alert-note .md-alert-icon-widget {
+  color: var(--wiki-panel-info-icon);
 }
 
 .markdown-body .md-alert-tip,
 .wiki-editor .ProseMirror .md-alert-tip {
-  border-left-color: var(--chanho-color-text-success);
-  background: var(--chanho-color-background-success-subtle);
+  background: var(--wiki-panel-success-bg);
 }
-.markdown-body .md-alert-tip .md-alert-label,
-.markdown-body .md-alert-tip .md-alert-icon {
-  color: var(--chanho-color-text-success);
+.markdown-body .md-alert-tip .md-alert-icon,
+.wiki-editor .ProseMirror .md-alert-tip .md-alert-icon-widget {
+  color: var(--wiki-panel-success-icon);
 }
 
+/* 컨플 노트 패널(보라). DS 0.5.0부터 info가 블루라 정보 패널과 나뉘려면 보라가 필요하다. */
 .markdown-body .md-alert-important,
 .wiki-editor .ProseMirror .md-alert-important {
-  /* 컨플 노트 패널(보라, background.discovery). DS 0.5.0부터 info가 블루라 brand로 두면
-     정보 패널과 같은 색이 된다. */
-  border-left-color: var(--wiki-discovery-border);
-  background: var(--wiki-discovery-bg);
+  background: var(--wiki-panel-note-bg);
 }
-.markdown-body .md-alert-important .md-alert-label,
-.markdown-body .md-alert-important .md-alert-icon {
-  color: var(--wiki-discovery-text);
+.markdown-body .md-alert-important .md-alert-icon,
+.wiki-editor .ProseMirror .md-alert-important .md-alert-icon-widget {
+  color: var(--wiki-panel-note-icon);
 }
 
 .markdown-body .md-alert-warning,
 .wiki-editor .ProseMirror .md-alert-warning {
-  border-left-color: var(--chanho-color-text-warning);
-  background: var(--chanho-color-background-warning-subtle);
+  background: var(--wiki-panel-warning-bg);
 }
-.markdown-body .md-alert-warning .md-alert-label,
-.markdown-body .md-alert-warning .md-alert-icon {
-  color: var(--chanho-color-text-warning);
+.markdown-body .md-alert-warning .md-alert-icon,
+.wiki-editor .ProseMirror .md-alert-warning .md-alert-icon-widget {
+  color: var(--wiki-panel-warning-icon);
 }
 
 .markdown-body .md-alert-caution,
 .wiki-editor .ProseMirror .md-alert-caution {
-  border-left-color: var(--chanho-color-border-danger);
-  background: var(--chanho-color-background-danger-subtle);
+  background: var(--wiki-panel-error-bg);
 }
-.markdown-body .md-alert-caution .md-alert-label,
-.markdown-body .md-alert-caution .md-alert-icon {
-  color: var(--chanho-color-text-danger);
+.markdown-body .md-alert-caution .md-alert-icon,
+.wiki-editor .ProseMirror .md-alert-caution .md-alert-icon-widget {
+  color: var(--wiki-panel-error-icon);
 }
 
 /* 에디터 전용: 마커 텍스트("[!NOTE]" 등)는 문서에 남기되(왕복 안전) 화면에서 숨기고,
@@ -1291,23 +1394,9 @@ body {
 }
 .wiki-editor .ProseMirror .md-alert-icon-widget {
   display: inline-flex;
-  vertical-align: -3px; /* 첫 줄 텍스트의 광학 중심에 맞춘다(뷰의 margin-top 2px 대응) */
-  margin-right: var(--chanho-space-100);
-}
-.wiki-editor .ProseMirror .md-alert-note .md-alert-icon-widget {
-  color: var(--chanho-color-text-info);
-}
-.wiki-editor .ProseMirror .md-alert-tip .md-alert-icon-widget {
-  color: var(--chanho-color-text-success);
-}
-.wiki-editor .ProseMirror .md-alert-important .md-alert-icon-widget {
-  color: var(--wiki-discovery-text);
-}
-.wiki-editor .ProseMirror .md-alert-warning .md-alert-icon-widget {
-  color: var(--chanho-color-text-warning);
-}
-.wiki-editor .ProseMirror .md-alert-caution .md-alert-icon-widget {
-  color: var(--chanho-color-text-danger);
+  vertical-align: -3px; /* 첫 줄 텍스트의 광학 중심에 맞춘다 */
+  /* 보기 화면과 같은 들여쓰기 — 24px 아이콘 칸(16px 글리프 + 좌우 4px) + 8px */
+  margin: 0 calc(var(--chanho-space-100) + 4px) 0 4px;
 }
 
 /* 패널 타입 스위처 — 커서가 패널 안일 때만 데코레이션으로 붙는다 */
@@ -2036,8 +2125,16 @@ body {
 /* ── 토글(details) — 편집 NodeView ───────────────────────────
  * 배경 없이 chevron+제목(레퍼런스: Notion 토글·Confluence expand 공통), 내용은 chevron
  * 폭만큼 들여쓴다. 접힘 상태는 로컬 — DetailsView 참조. */
+/* 컨플 expand(@atlaskit/editor-core): 1px 투명 테두리·radius.small, 펼치면 border 색 테두리,
+ * 제목 14px 보통 굵기 text-subtle, 내용은 왼쪽 24px+4px 들여 위 8px. */
 .details-block {
   margin: var(--chanho-space-100) 0;
+  padding: var(--chanho-space-50) var(--chanho-space-100) var(--chanho-space-50) 0;
+  border: 1px solid transparent;
+  border-radius: var(--chanho-radius-small);
+}
+.details-block--open {
+  border-color: var(--chanho-color-border-default);
 }
 .details-block-header {
   display: flex;
@@ -2072,9 +2169,10 @@ body {
   padding: var(--chanho-space-50) 0;
   border: none;
   background: transparent;
-  color: var(--chanho-color-text-default);
+  color: var(--chanho-color-text-subtle);
   font: inherit;
-  font-weight: var(--chanho-font-weight-semibold);
+  font-size: var(--chanho-font-size-100);
+  font-weight: var(--chanho-font-weight-regular);
 }
 .details-block-summary:focus {
   outline: none; /* 포커스는 아래 밑줄로 표시 — outline만 지우고 끝내지 않는다 */
@@ -2084,21 +2182,49 @@ body {
   color: var(--chanho-color-text-subtlest);
 }
 .details-block-content {
-  margin-left: calc(24px + var(--chanho-space-50));
-  padding-left: var(--chanho-space-100);
-  border-left: 2px solid var(--chanho-color-border-default);
+  margin-left: var(--chanho-space-50);
+  padding: var(--chanho-space-100) 0 0 24px;
 }
 
 /* ── 토글(details) — 보기 렌더(네이티브 details/summary) ───── */
 .markdown-body .md-details {
   margin: var(--chanho-space-100) 0;
+  padding: var(--chanho-space-50) var(--chanho-space-100) var(--chanho-space-50) 0;
+  border: 1px solid transparent;
+  border-radius: var(--chanho-radius-small);
 }
+.markdown-body .md-details[open] {
+  border-color: var(--chanho-color-border-default);
+}
+/* 마커는 편집기와 같은 셰브런 — 접힘 ▶ / 펼침 ▼를 형태(회전)로 구분한다(색에 기대지 않는다) */
 .markdown-body .md-details-summary {
-  display: list-item; /* 기본 disclosure 마커 유지 — 상태를 색이 아니라 형태로 구분 */
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-50);
+  list-style: none;
   padding: var(--chanho-space-50) 0;
-  font-weight: var(--chanho-font-weight-semibold);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-100);
+  font-weight: var(--chanho-font-weight-regular);
   cursor: pointer;
   border-radius: var(--chanho-radius-small);
+}
+.markdown-body .md-details-summary::-webkit-details-marker {
+  display: none;
+}
+.markdown-body .md-details-summary::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin: 0 9px; /* 24px 칸 가운데 */
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--chanho-transition-base);
+}
+.markdown-body .md-details[open] > .md-details-summary::before {
+  transform: rotate(45deg);
 }
 .markdown-body .md-details-summary:hover {
   background: var(--chanho-color-background-neutral);
@@ -2108,7 +2234,13 @@ body {
   outline-offset: 2px;
 }
 .markdown-body .md-details[open] > :not(summary) {
-  margin-left: var(--chanho-space-300);
+  margin-left: calc(24px + var(--chanho-space-50));
+}
+.markdown-body .md-details[open] > summary + * {
+  margin-top: var(--chanho-space-100);
+}
+.markdown-body .md-details > :last-child {
+  margin-bottom: 0;
 }
 
 /* ── 이미지 리사이즈·캡션 (동등성 Must 4) ─────────────────── */
