@@ -54,7 +54,7 @@ export {
   type ReindexJob,
   type ContentSearchErrorKind,
 } from "./model/search";
-export type { StarsSnapshot, StarredPageRow, PersonPageRow, MyTask } from "./model/personal";
+export type { StarsSnapshot, StarredPageRow, PersonPageRow, FeedPageRow, MyTask } from "./model/personal";
 export type {
   User,
   AuditEntry,

@@ -1,7 +1,7 @@
 // 별표·최근 방문·내 작업·리액션(백엔드 어댑터).
 import { sharedApiFetch } from "../apiClient";
-import { type TreeItemDto, mapPageTree, toBackendId } from "../mapping";
-import type { MyTask, PersonPageRow, ReactionSummary, StarredPageRow, StarsSnapshot } from "../types";
+import { type TreeItemDto, mapPageTree, toBackendId, toClientId } from "../mapping";
+import type { FeedPageRow, MyTask, PersonPageRow, ReactionSummary, StarredPageRow, StarsSnapshot } from "../types";
 import { json } from "./http";
 
 interface StarRowDto {
@@ -60,10 +60,11 @@ export async function listMyDrafts(limit = 20): Promise<StarredPageRow[] | null>
 }
 
 /**
- * 사람 프로필의 최근 작업한 문서(F-07) — `GET /api/wiki/users/{userId}/pages?limit=`(제안 계약, 백엔드 미구현).
+ * 사람 프로필의 최근 작업한 문서(F-07) — `GET /api/wiki/users/{userId}/pages?limit=`(wiki-backend 2026-10-24 구현).
  * 행 모양은 `/api/wiki/drafts`와 같고(`{page, spaceId, spaceName}`, page에 `updatedAt`), 그 사람이 만들었거나
- * 마지막으로 고친 문서를 최근 수정순으로, **호출자가 볼 수 있는 것만**(보기 제한·초안 규칙) 준다. 보관·휴지통 제외.
- * 경로가 없는 서버(404)면 null — 화면은 "아직 제공하지 않는다"를 알린다(빈 목록으로 꾸미지 않는다).
+ * 마지막으로 고친 문서를 최근 수정순으로, **호출자가 볼 수 있는 것만**(보기 제한·초안 규칙) 준다. 보관·휴지통·폴더 제외.
+ * 404는 이 경로가 아직 배포되지 않은 서버뿐이다 — null을 주고 화면이 "아직 제공하지 않는다"를 알린다
+ * (배포 순서가 갈리는 동안의 안전판, 빈 목록으로 꾸미지 않는다).
  * 통합 검색의 작성자 필터는 쓸 수 없다: 두 검색 엔진 모두 빈 검색어를 빈 결과로 돌려준다.
  */
 export async function listPersonPages(userId: string, limit = 20): Promise<PersonPageRow[] | null> {
@@ -75,6 +76,43 @@ export async function listPersonPages(userId: string, limit = 20): Promise<Perso
     status: row.page.status ?? "published",
     updatedAt: row.page.updatedAt ?? null,
   }));
+}
+
+/* ── 홈 피드(2026-10-24) ──────────────────────────────────── */
+interface FeedRowDto extends StarRowDto {
+  viewCount?: number | null;
+}
+
+function mapFeedRow(row: FeedRowDto): FeedPageRow {
+  return {
+    ...mapStarRow(row),
+    status: row.page.status ?? "published",
+    updatedAt: row.page.updatedAt ?? null,
+    updatedBy: row.page.updatedBy == null ? null : toClientId(row.page.updatedBy),
+    viewCount: row.viewCount ?? 0,
+  };
+}
+
+async function listFeed(path: string, limit: number): Promise<FeedPageRow[] | null> {
+  const res = await sharedApiFetch(`${path}?limit=${limit}`);
+  if (res.status === 404) return null;
+  return (await json<FeedRowDto[]>(res)).map(mapFeedRow);
+}
+
+/**
+ * 홈 "인기" — `GET /api/wiki/feed/popular?limit=`. 최근 90일 안에 수정된 게시 문서를 누적 조회수 내림차순
+ * (동률은 최근 수정순). 404(아직 배포되지 않은 서버)면 null, 그 밖의 실패는 던진다.
+ */
+export function listPopularFeed(limit = 20): Promise<FeedPageRow[] | null> {
+  return listFeed("/api/wiki/feed/popular", limit);
+}
+
+/**
+ * 홈 "팔로잉" — `GET /api/wiki/feed/following?limit=`. 내가 구독한 스페이스의 문서 + 내가 구독한 문서(하위 아님)
+ * 중 게시 문서, 최근 수정순. 공개 문서 인스턴스는 403이라 화면이 이 탭을 숨긴다. 404면 null.
+ */
+export function listFollowingFeed(limit = 20): Promise<FeedPageRow[] | null> {
+  return listFeed("/api/wiki/feed/following", limit);
 }
 
 /* ── 액션 아이템(W23) ────────────────────────────────────── */

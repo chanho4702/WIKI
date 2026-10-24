@@ -142,6 +142,8 @@ export {
   listRecentPages,
   listMyDrafts,
   listPersonPages,
+  listPopularFeed,
+  listFollowingFeed,
 } from "./mock/personal";
 export {
   listSpaceDeletions,

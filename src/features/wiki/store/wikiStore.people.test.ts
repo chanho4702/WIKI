@@ -41,6 +41,14 @@ describe("listPersonPages(목업)", () => {
     expect(rows?.[0]).toMatchObject({ spaceId: "sp1", spaceName: "개발 위키", status: "published" });
   });
 
+  it("폴더는 문서가 아니라 빼고 준다(서버 계약과 같다)", async () => {
+    const folder = await createPage({ spaceId: "sp1", title: "내 폴더", body: "", type: "folder" });
+    const page = await createPage({ spaceId: "sp1", title: "내 문서", body: "" });
+    const ids = (await listPersonPages("u1"))?.map((r) => r.id);
+    expect(ids).toContain(page.id);
+    expect(ids).not.toContain(folder.id);
+  });
+
   it("보관 문서는 빼고, limit을 지킨다", async () => {
     editData((d) => {
       d.pages.find((p) => p.id === "pg3")!.archivedAt = "2026-10-01T00:00:00Z";

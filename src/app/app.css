@@ -4213,6 +4213,53 @@ body.is-column-reordering {
   flex: none;
 }
 
+/* 피드 전환 필 — 컨플 홈 "Discover what's happening" 실측(높이 32px·완전 둥근 모서리, 선택 = selected 배경·글자).
+ * 고르지 않은 필은 알파 테두리 + 보조 글자(DS default 버튼과 같은 결), hover는 neutral 틴트. */
+.home-feed-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--chanho-space-100);
+}
+.home-feed-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--chanho-space-150);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-full);
+  background: transparent;
+  color: var(--chanho-color-text-subtle);
+  font: inherit;
+  font-size: var(--chanho-font-size-100);
+  font-weight: var(--chanho-font-weight-medium);
+  cursor: pointer;
+  transition: background var(--chanho-transition-fast);
+}
+.home-feed-pill:hover {
+  background: var(--chanho-color-background-neutral);
+}
+.home-feed-pill[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--chanho-color-background-selected);
+  color: var(--chanho-color-text-selected);
+}
+.home-feed-pill[aria-pressed="true"]:hover {
+  background: var(--chanho-color-background-selected-hovered);
+}
+.home-feed-pill:focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
+}
+.home-feed-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--chanho-space-100);
+}
+.home-feed-error > p {
+  margin: 0;
+}
+
 /* 최근 업데이트 피드 — 스페이스 개요의 .space-overview-recent와 같은 결, 스페이스 이름이 앞에 붙는다 */
 .home-recent {
   margin: 0;

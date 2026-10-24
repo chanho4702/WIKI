@@ -136,6 +136,8 @@ export {
   listRecentPages,
   listMyDrafts,
   listPersonPages,
+  listPopularFeed,
+  listFollowingFeed,
   listMyTasks,
   setTaskDone,
   listPageReactions,

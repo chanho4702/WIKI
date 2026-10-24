@@ -1,7 +1,7 @@
 // 별표·최근 방문·내 작업·리액션 목업.
 import { CURRENT_USER_ID } from "../../../../mock/users";
 import { type ParsedTask, parseTasks, toggleTaskLine } from "../../lib/tasks";
-import { type MyTask, type Page, type PersonPageRow, REACTION_EMOJIS, type ReactionSummary, type StarredPageRow, type WikiData } from "../types";
+import { type FeedPageRow, type MyTask, type Page, type PersonPageRow, REACTION_EMOJIS, type ReactionSummary, type StarredPageRow, type WikiData } from "../types";
 import { canSeePage, load, persist, requireWritable } from "./db";
 import { updatePage } from "./pages";
 
@@ -134,14 +134,14 @@ export async function listMyDrafts(limit = 20): Promise<StarredPageRow[] | null>
 }
 
 /**
- * 사람 프로필의 최근 작업한 문서(F-07) — 백엔드 제안 계약과 같은 규칙: 그 사람이 만들었거나 마지막으로 고친
- * 문서, 최근 수정순, 보관 제외, **내가 볼 수 있는 것만**(`canSeePage` — 남의 초안은 작성자·관리자에게만).
+ * 사람 프로필의 최근 작업한 문서(F-07) — 백엔드 계약과 같은 규칙: 그 사람이 만들었거나 마지막으로 고친
+ * 문서, 최근 수정순, 보관·폴더 제외, **내가 볼 수 있는 것만**(`canSeePage` — 남의 초안은 작성자·관리자에게만).
  */
 export async function listPersonPages(userId: string, limit = 20): Promise<PersonPageRow[] | null> {
   const data = load();
   const spaces = new Map(data.spaces.map((s) => [s.id, s]));
   return data.pages
-    .filter((p) => (p.createdBy === userId || p.updatedBy === userId) && !p.archivedAt && canSeePage(data, p))
+    .filter((p) => (p.createdBy === userId || p.updatedBy === userId) && p.type !== "folder" && !p.archivedAt && canSeePage(data, p))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id))
     .slice(0, Math.max(1, Math.min(limit, 50)))
     .map((p) => ({
@@ -154,6 +154,63 @@ export async function listPersonPages(userId: string, limit = 20): Promise<Perso
       status: p.status,
       updatedAt: p.updatedAt || null,
     }));
+}
+
+/* ── 홈 피드(2026-10-24) — 백엔드 `/api/wiki/feed/*`와 같은 규칙 ── */
+
+/** 인기 피드의 기간 창 — 서버와 같은 90일(이 안에 수정된 문서만 순위에 오른다). */
+const POPULAR_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+const FEED_MAX = 50;
+
+/** 피드 공통 후보 — 게시 문서만(초안·보관·폴더 제외), 내가 볼 수 있는 것만. 휴지통은 `data.pages`에 없다. */
+function feedCandidates(data: WikiData): Page[] {
+  return data.pages.filter((p) => p.status !== "draft" && p.type !== "folder" && !p.archivedAt && canSeePage(data, p));
+}
+
+function toFeedRow(data: WikiData, p: Page): FeedPageRow {
+  return {
+    id: p.id,
+    spaceId: p.spaceId,
+    spaceName: data.spaces.find((s) => s.id === p.spaceId)?.name ?? null,
+    title: p.title,
+    icon: p.icon ?? null,
+    type: p.type,
+    status: p.status,
+    updatedAt: p.updatedAt || null,
+    updatedBy: p.updatedBy || null,
+    viewCount: p.views ?? 0,
+  };
+}
+
+/** 최근 수정순, 동률은 id 내림차순(서버 `updatedAt desc, id desc`). */
+function byRecent(a: Page, b: Page): number {
+  return b.updatedAt.localeCompare(a.updatedAt) || b.id.localeCompare(a.id);
+}
+
+export async function listPopularFeed(limit = 20): Promise<FeedPageRow[] | null> {
+  const data = load();
+  const since = new Date(Date.now() - POPULAR_WINDOW_MS).toISOString();
+  return feedCandidates(data)
+    .filter((p) => p.updatedAt >= since)
+    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0) || byRecent(a, b))
+    .slice(0, Math.max(1, Math.min(limit, FEED_MAX)))
+    .map((p) => toFeedRow(data, p));
+}
+
+export async function listFollowingFeed(limit = 20): Promise<FeedPageRow[] | null> {
+  const data = load();
+  const watchedSpaces = new Set(
+    Object.entries(data.spaceWatches ?? {}).filter(([, users]) => users.includes(CURRENT_USER_ID)).map(([id]) => id),
+  );
+  // 문서 구독은 그 문서 자체만 — 하위로 번지지 않는다(서버 page_watch와 같다)
+  const watchedPages = new Set(
+    Object.entries(data.watches ?? {}).filter(([, users]) => users.includes(CURRENT_USER_ID)).map(([id]) => id),
+  );
+  return feedCandidates(data)
+    .filter((p) => watchedSpaces.has(p.spaceId) || watchedPages.has(p.id))
+    .sort(byRecent)
+    .slice(0, Math.max(1, Math.min(limit, FEED_MAX)))
+    .map((p) => toFeedRow(data, p));
 }
 
 export async function listRecentPages(_limit?: number): Promise<null> {

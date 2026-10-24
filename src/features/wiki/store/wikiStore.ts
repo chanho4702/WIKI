@@ -16,6 +16,9 @@ export const searchUsers = impl.searchUsers;
 // 사람 프로필(F-07) — 프로필 화면·멘션/작성자 호버 카드
 export const getPersonProfile = impl.getPersonProfile;
 export const listPersonPages = impl.listPersonPages;
+// 홈 피드(2026-10-24) — 컨플 홈 "인기"·"팔로잉"
+export const listPopularFeed = impl.listPopularFeed;
+export const listFollowingFeed = impl.listFollowingFeed;
 export const orgApiFetch = impl.orgApiFetch;
 export const requestCollaborationTicket = impl.requestCollaborationTicket;
 export const bootstrapCollaborationDocument = impl.bootstrapCollaborationDocument;

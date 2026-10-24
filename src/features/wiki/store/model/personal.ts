@@ -30,6 +30,16 @@ export interface PersonPageRow extends StarredPageRow {
   updatedAt: string | null;
 }
 
+/**
+ * 홈 피드 한 줄(2026-10-24) — 컨플 홈 "인기"·"팔로잉". 스페이스를 가로지르는 한 요청의 결과라
+ * 스페이스 이름을 함께 준다. 게시 문서만 온다(초안·보관·휴지통·폴더 제외, 호출자 가시성 필터).
+ * `updatedBy`를 모르면 null, `viewCount`는 누적 조회수(팔로잉에도 실린다).
+ */
+export interface FeedPageRow extends PersonPageRow {
+  updatedBy: string | null;
+  viewCount: number;
+}
+
 /** 내 작업 한 줄(W23) — 문서를 가로지르므로 스페이스 이름을 함께 준다. */
 export interface MyTask {
   pageId: string;

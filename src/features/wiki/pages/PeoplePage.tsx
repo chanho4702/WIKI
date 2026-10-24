@@ -129,7 +129,8 @@ function PersonPages({ state, name }: { state: PagesState; name: string }) {
   if (state.kind === "loading") return <Spinner label="문서 불러오는 중" />;
   if (state.kind === "error") return <Banner variant="danger">문서 목록을 불러오지 못했습니다: {state.message}</Banner>;
   if (state.kind === "unsupported") {
-    // 없는 기능을 빈 목록으로 꾸미지 않는다 — 서버가 사람별 문서 목록을 아직 주지 않는다
+    // 정상 경로는 위의 ready다(wiki-backend 2026-10-24 구현). 이 분기는 그 경로가 아직 배포되지 않은
+    // 서버(404)에서만 탄다 — 배포 순서가 갈리는 동안 없는 기능을 빈 목록이나 오류로 꾸미지 않는다.
     return <Banner variant="info">이 서버는 아직 사람별 문서 목록을 제공하지 않습니다.</Banner>;
   }
   if (state.rows.length === 0) {

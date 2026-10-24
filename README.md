@@ -161,7 +161,7 @@ src/
 
 | 경로 | 화면 | 비고 |
 |---|---|---|
-| `/home` | `HomePage` | 글로벌 홈 — 이어서 작업(최근 방문)·스페이스 카드(별표 우선)·전체 스페이스 최근 업데이트 |
+| `/home` | `HomePage` | 글로벌 홈 — 이어서 작업(최근 방문)·스페이스 카드(별표 우선)·피드(최근 업데이트/팔로잉/인기 필 토글, `?feed=`로 유지, 공개 문서는 팔로잉 없음) |
 | `/spaces` | `SpaceDirectoryPage` | 모든 스페이스 |
 | `/search?q=<query>&page=<n>` | `SearchPage` | 통합 검색, page는 1부터 |
 | `/spaces/:spaceId` | `SpaceIndexPage` | 스페이스 개요 |
