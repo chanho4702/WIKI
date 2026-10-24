@@ -46,7 +46,6 @@ export function NotificationBell() {
     <div className="notification-bell" ref={containerRef}>
       <Button
         ref={triggerRef}
-        size="small"
         variant="ghost"
         iconOnly
         aria-label={unread > 0 ? `알림 ${unread}개 안 읽음` : "알림"}

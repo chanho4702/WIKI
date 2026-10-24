@@ -97,7 +97,7 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
           {onSidebarToggle ? (
             <Button
               variant="ghost"
-              size="small"
+              iconOnly
               className="wiki-sidebar-toggle"
               aria-label="사이드바 토글"
               aria-expanded={!!sidebarExpanded}
@@ -124,7 +124,7 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
             * 저장되는 테마·단축키는 남긴다 — 공개 문서도 다크 모드로 읽을 수 있어야 한다. */}
           <Dropdown
             trigger={
-              <Button size="small" variant="ghost" iconOnly aria-label="설정" title="설정">
+              <Button variant="ghost" iconOnly aria-label="설정" title="설정">
                 <Settings size={16} aria-hidden="true" />
               </Button>
             }

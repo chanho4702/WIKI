@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@chanho/tokens': npm:@chanho4702/tokens@0.5.0
+  '@chanho/tokens': npm:@chanho4702/tokens@0.5.1
   '@chanho/react': npm:@chanho4702/react@0.12.0
 
 importers:
@@ -14,13 +14,13 @@ importers:
     dependencies:
       '@chanho/org-admin':
         specifier: npm:@chanho4702/org-admin@0.3.0
-        version: '@chanho4702/org-admin@0.3.0(@chanho4702/react@0.12.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.5.0)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)'
+        version: '@chanho4702/org-admin@0.3.0(@chanho4702/react@0.12.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.5.1)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)'
       '@chanho/react':
         specifier: npm:@chanho4702/react@0.12.0
         version: '@chanho4702/react@0.12.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)'
       '@chanho/tokens':
-        specifier: npm:@chanho4702/tokens@0.5.0
-        version: '@chanho4702/tokens@0.5.0'
+        specifier: npm:@chanho4702/tokens@0.5.1
+        version: '@chanho4702/tokens@0.5.1'
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -304,8 +304,8 @@ packages:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@chanho4702/tokens@0.5.0':
-    resolution: {integrity: sha512-oJMVG6K5Gv9xMuQEozdVQthdpqDA5blT7/awrZlxRw7Z5SEy31dyKhwJ1MEhxAhNCdMsucd7eBFGZLzIJzAZ8A==, tarball: https://npm.pkg.github.com/download/@chanho4702/tokens/0.5.0/8de0a9ef2f25ebb4d80ac7960e015b0d17eae526}
+  '@chanho4702/tokens@0.5.1':
+    resolution: {integrity: sha512-EW56W/pKs87oXfYlItc3mqZu52O8QJeCVSRkLFN3CI/3weFagVz+9oyKmnTU5mnhf+OuPnchGwHf/e8He7YXYQ==, tarball: https://npm.pkg.github.com/download/@chanho4702/tokens/0.5.1/dd454938e8d53d2a0a98311f42131200e8bc5df3}
 
   '@chevrotain/types@11.1.2':
     resolution: {integrity: sha512-U+HFai5+zmJCkK86QsaJtoITlboZHBqrVketcO2ROv865xfCMSFpELQoz1GkX5GzME8pTa+3kbKrZHQtI0gdbw==}
@@ -3354,10 +3354,10 @@ snapshots:
 
   '@braintree/sanitize-url@7.1.2': {}
 
-  '@chanho4702/org-admin@0.3.0(@chanho4702/react@0.12.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.5.0)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
+  '@chanho4702/org-admin@0.3.0(@chanho4702/react@0.12.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@chanho4702/tokens@0.5.1)(react-dom@19.2.7(react@19.2.7))(react-router@7.18.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@chanho/react': '@chanho4702/react@0.12.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)'
-      '@chanho/tokens': '@chanho4702/tokens@0.5.0'
+      '@chanho/tokens': '@chanho4702/tokens@0.5.1'
       lucide-react: 1.35.0(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
@@ -3365,7 +3365,7 @@ snapshots:
 
   '@chanho4702/react@0.12.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
-      '@chanho/tokens': '@chanho4702/tokens@0.5.0'
+      '@chanho/tokens': '@chanho4702/tokens@0.5.1'
       radix-ui: 1.6.2(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
@@ -3373,7 +3373,7 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  '@chanho4702/tokens@0.5.0': {}
+  '@chanho4702/tokens@0.5.1': {}
 
   '@chevrotain/types@11.1.2': {}
 
