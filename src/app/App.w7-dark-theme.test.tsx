@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 // node:fs 대신 Vite의 ?raw 쿼리로 CSS 소스를 문자열로 가져온다 — App.w5-width.test.tsx와 동일 패턴.
 import css from "./app.css?raw";
+import tokensCss from "@chanho/tokens/css?raw";
 
 // Task 4(W7): DS(@chanho/tokens)에 존재하지 않는 `--color-*` 폴백 패밀리(비-chanho 접두사)와
 // hljs raw hex를 라이트/다크 변수(--wiki-*)로 승격했는지 — 스냅샷이 아닌 소스 검사로 회귀를 막는다.
@@ -64,5 +65,18 @@ describe("Task 4 다크모드 색상 정비 (CSS 소스 검사)", () => {
 
   it("드래그 핸들 SVG는 다크 테마 전용 override를 가진다", () => {
     expect(css).toMatch(/\[data-theme="dark"\]\s+\.drag-handle\s*\{/);
+  });
+
+  it("app.css가 참조하는 --chanho-* 변수는 전부 DS 토큰에 정의돼 있다", () => {
+    // 없는 토큰은 폴백(옛 hex)이나 무효 선언으로 조용히 떨어진다 — 다크 전환이 안 되거나 hover가 사라진다.
+    // (DS 0.12 반영 때 neutral-subtle·surface-raised·space-050 등 16종이 이렇게 숨어 있었다.)
+    const defined = new Set(tokensCss.match(/--chanho-[A-Za-z0-9-]+(?=\s*:)/g));
+    const used = new Set(css.match(/--chanho-[A-Za-z0-9-]+/g));
+    const missing = [...used].filter((name) => !defined.has(name));
+    expect(missing).toEqual([]);
+  });
+
+  it("DS 토큰 참조에 옛 hex 폴백을 달지 않는다", () => {
+    expect(css).not.toMatch(/var\(--chanho-[A-Za-z0-9-]+,\s*#/);
   });
 });

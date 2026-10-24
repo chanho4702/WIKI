@@ -198,6 +198,8 @@ async function renderHtml(ordered: Page[], title: string, spaceId: string): Prom
       return `<section><h1>${escapeHtml(page.title)}</h1>${html}</section>`;
     }),
   );
+  // 내보낸 파일은 앱 밖에서 열리므로 DS 토큰(CSS 변수)을 쓸 수 없다 — Atlassian 현행 라이트 값을
+  // 불투명 색으로 고정한다(text #292A2E, 테두리 = border 알파를 흰 배경에 얹은 #DDDEE1, 코드 #F8F8F8).
   return `<!doctype html>
 <html lang="ko">
 <head>
@@ -205,13 +207,13 @@ async function renderHtml(ordered: Page[], title: string, spaceId: string): Prom
 <title>${escapeHtml(title)}</title>
 <style>
   body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6;
-         max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #172b4d; }
+         max-width: 820px; margin: 2rem auto; padding: 0 1rem; color: #292a2e; }
   img { max-width: 100%; }
   table { border-collapse: collapse; }
-  th, td { border: 1px solid #dfe1e6; padding: 6px 10px; }
-  pre { background: #f4f5f7; padding: 12px; overflow-x: auto; }
-  code { background: #f4f5f7; padding: 1px 4px; }
-  section + section { border-top: 1px solid #dfe1e6; margin-top: 2.5rem; padding-top: 2.5rem; }
+  th, td { border: 1px solid #dddee1; padding: 6px 10px; }
+  pre { background: #f8f8f8; padding: 12px; overflow-x: auto; }
+  code { background: #f8f8f8; padding: 1px 4px; }
+  section + section { border-top: 1px solid #dddee1; margin-top: 2.5rem; padding-top: 2.5rem; }
 </style>
 </head>
 <body>
