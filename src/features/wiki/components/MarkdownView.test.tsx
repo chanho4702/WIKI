@@ -223,7 +223,7 @@ describe("MarkdownView — 사용자 멘션", () => {
     const chip = container.querySelector(".user-mention");
     expect(chip).toHaveTextContent("@김찬호");
     expect(chip?.getAttribute("data-user-id")).toBe("1");
-    // 클릭 가능한 앵커로 렌더되지 않는다 — 프로필 화면이 생기기 전까지의 계약
+    // 라우터 밖(내보내기의 정적 렌더)에서는 앵커가 아니라 칩이다 — 라우터 안에서는 /people/:id 링크(App.w35-people)
     expect(container.querySelector("a[href^='user:']")).toBeNull();
   });
 

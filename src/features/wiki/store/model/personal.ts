@@ -1,5 +1,5 @@
 // 별표·최근 방문·내 작업 도메인 타입.
-import type { PageType } from "./pages";
+import type { PageStatus, PageType } from "./pages";
 
 /**
  * 서버가 들고 있는 별표 원장(W23).
@@ -19,6 +19,15 @@ export interface StarredPageRow {
   title: string;
   icon: string | null;
   type: PageType;
+}
+
+/**
+ * 사람 프로필의 "최근 작업한 문서" 한 줄(F-07) — 그 사람이 만들었거나 마지막으로 고친 문서.
+ * 호출자 기준 가시성(보기 제한·초안 규칙)을 거른 결과만 온다. `updatedAt`을 모르면 null.
+ */
+export interface PersonPageRow extends StarredPageRow {
+  status: PageStatus;
+  updatedAt: string | null;
 }
 
 /** 내 작업 한 줄(W23) — 문서를 가로지르므로 스페이스 이름을 함께 준다. */

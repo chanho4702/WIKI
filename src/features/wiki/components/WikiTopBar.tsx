@@ -2,7 +2,8 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { Avatar, Badge, Button, Dropdown, Modal, Spinner, TopBar } from "@chanho/react";
-import { Bell, Database, DatabaseBackup, Keyboard, KeyRound, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, Users } from "lucide-react";
+import { Bell, Database, DatabaseBackup, Keyboard, KeyRound, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, UserRound, Users } from "lucide-react";
+import { personPath } from "../lib/people";
 import type { User } from "../store/types";
 import { getCurrentUser, getOrgMe } from "../store/wikiStore";
 import { useTheme } from "../../../app/theme";
@@ -205,7 +206,13 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
                 </button>
               }
               items={[
-                { label: authUser?.name ?? authUser?.email ?? me.name, onSelect: () => {} },
+                // 이름 항목 = 내 프로필(F-07, 컨플루언스 아바타 메뉴의 Profile)
+                {
+                  label: authUser?.name ?? authUser?.email ?? me.name,
+                  description: "내 프로필 보기",
+                  icon: <UserRound size={16} aria-hidden="true" />,
+                  onSelect: () => navigate(personPath(me.id)),
+                },
                 {
                   label: "알림 설정",
                   description: "어떤 알림을 이메일로도 받을지 고릅니다",

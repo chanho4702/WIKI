@@ -7079,3 +7079,198 @@ body.is-column-reordering {
   display: flex;
   gap: var(--chanho-space-100);
 }
+
+/* ── 사람 링크·프로필 카드(F-07) — @멘션·작성자 이름·아바타 → /people/:id ─────── */
+.person-link {
+  position: relative;
+  display: inline;
+}
+
+a.user-mention {
+  text-decoration: none;
+}
+
+a.user-mention:hover,
+a.user-mention:focus-visible {
+  background: var(--chanho-color-background-neutral-hovered);
+  text-decoration: underline;
+}
+
+.person-card {
+  position: absolute;
+  top: calc(100% + var(--chanho-space-50));
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+  min-width: 240px;
+  max-width: 320px;
+  padding: var(--chanho-space-200);
+  background: var(--chanho-color-background-surface-overlay);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  box-shadow: var(--chanho-shadow-overlay);
+  color: var(--chanho-color-text-default);
+  font-size: var(--chanho-font-size-100);
+  font-weight: var(--chanho-font-weight-regular);
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+}
+
+.person-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-150);
+}
+
+.person-card-ident {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--chanho-space-50);
+  min-width: 0;
+}
+
+.person-card-name {
+  font-weight: var(--chanho-font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.person-card-email {
+  color: var(--chanho-color-text-link);
+  overflow-wrap: anywhere;
+}
+
+.person-card-teams,
+.person-card-note {
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+.person-card-profile {
+  align-self: flex-start;
+  color: var(--chanho-color-text-link);
+  font-weight: var(--chanho-font-weight-medium);
+}
+
+.person-card-profile:hover,
+.person-card-email:hover {
+  color: var(--chanho-color-text-link-hovered);
+  text-decoration: underline;
+}
+
+.person-card-email,
+.person-card-profile {
+  text-decoration: none;
+}
+
+/* 바이라인·댓글의 사람 링크 — 글자색은 자리의 색을 따르고 호버에만 밑줄 */
+.page-view-person,
+.inline-comment-author,
+a.page-view-owner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50);
+  color: inherit;
+  text-decoration: none;
+}
+
+.inline-comment-author {
+  gap: var(--chanho-space-100);
+}
+
+.page-view-person:hover,
+.inline-comment-author:hover,
+a.page-view-owner:hover {
+  text-decoration: underline;
+}
+
+.comment-author-link {
+  display: inline-flex;
+  border-radius: var(--chanho-radius-full);
+}
+
+/* ── 사람 프로필 화면(F-07) ─────────────────────────────── */
+.people-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--chanho-space-400) var(--chanho-space-400) var(--chanho-space-600);
+}
+
+.people-header {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-300);
+  padding-bottom: var(--chanho-space-300);
+  margin-bottom: var(--chanho-space-300);
+  border-bottom: 1px solid var(--chanho-color-border-default);
+}
+
+.people-ident {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--chanho-space-100);
+  min-width: 0;
+}
+
+.people-name {
+  margin: 0;
+  font-size: var(--chanho-font-size-500);
+  font-weight: var(--chanho-font-weight-semibold);
+  color: var(--chanho-color-text-default);
+  overflow-wrap: anywhere;
+}
+
+.people-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--chanho-space-50) var(--chanho-space-200);
+  margin: 0;
+  font-size: var(--chanho-font-size-100);
+}
+
+.people-facts dt {
+  color: var(--chanho-color-text-subtle);
+}
+
+.people-facts dd {
+  margin: 0;
+  color: var(--chanho-color-text-default);
+  overflow-wrap: anywhere;
+}
+
+.people-page a {
+  color: var(--chanho-color-text-link);
+  text-decoration: none;
+}
+
+.people-page a:hover {
+  color: var(--chanho-color-text-link-hovered);
+  text-decoration: underline;
+}
+
+.people-section-title {
+  margin: 0 0 var(--chanho-space-200);
+  font-size: var(--chanho-font-size-200);
+  font-weight: var(--chanho-font-weight-semibold);
+  color: var(--chanho-color-text-default);
+}
+
+.people-page-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-100);
+}
+
+@media (max-width: 640px) {
+  .people-page {
+    padding: var(--chanho-space-300) var(--chanho-space-200) var(--chanho-space-500);
+  }
+
+  .people-header {
+    align-items: flex-start;
+  }
+}

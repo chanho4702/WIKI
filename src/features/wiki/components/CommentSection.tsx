@@ -24,6 +24,7 @@ import type { CommentThreadPage } from "../store/types";
 import { byCreatedAsc } from "../lib/commentOrder";
 import { ReactionBar } from "./ReactionBar";
 import { useReadOnly } from "../lib/readOnly";
+import { PersonLink } from "./PersonLink";
 
 export interface CommentSectionProps {
   pageId: string;
@@ -367,7 +368,12 @@ export function CommentSection({ pageId, users }: CommentSectionProps) {
       <Fragment key={comment.id}>
         <CommentBlock
           author={name}
-          avatar={<Avatar name={name} size="small" />}
+          // 작성자 이름 자리는 DS Comment가 문자열로만 받는다 — 프로필 링크(F-07)는 아바타에 건다
+          avatar={
+            <PersonLink userId={comment.authorId} name={name} aria-label={`${name} 프로필`} className="comment-author-link">
+              <Avatar name={name} size="small" />
+            </PersonLink>
+          }
           time={formatCommentTime(comment.createdAt) + (comment.updatedAt ? " (수정됨)" : "")}
           nested={replies === null}
           actions={editing ? undefined : actionsFor(comment, replies)}

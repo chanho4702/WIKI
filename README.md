@@ -172,6 +172,7 @@ src/
 | `/spaces/:spaceId/pages/:pageId/history/:version` | `PageVersionPage` | 이전 버전 보기(`:version`은 버전 번호) |
 | `/spaces/:spaceId/pages/:pageId/history/compare?from=&to=` | `PageCompareVersionsPage` | 두 버전 비교(`from`>`to`면 바꿔서 표시) |
 | `/spaces/:spaceId/folder/:folderId` | `FolderPage` | 폴더 자식 목록 |
+| `/people/:userId` | `PeoplePage` | 사람 프로필(F-07) — 이름·이메일·팀(org-service)·최근 작업한 문서(볼 수 있는 것만). @멘션·작성자 이름·아바타의 호버 카드 "프로필 보기"와 사용자 메뉴의 내 이름이 온다. 공개 문서 인스턴스에는 없다 |
 | `*` | 첫 스페이스로 `Navigate` | 스페이스가 하나도 없으면 `EmptySpaces` |
 
 ### 관리 화면 (`/admin/*`, 전역 관리자 전용 — 서버가 판정)

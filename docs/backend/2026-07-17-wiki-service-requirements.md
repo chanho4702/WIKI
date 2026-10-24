@@ -90,6 +90,8 @@
 | addComment(pageId, body, parentId?) | POST /api/wiki/pages/{pageId}/comments | |
 | updateComment(id, body) | PATCH /api/wiki/comments/{id} | **본인만** |
 | deleteComment(id) | DELETE /api/wiki/comments/{id} | **본인만**, 답글 연쇄 삭제 |
+| getPersonProfile(userId) | GET /api/org/members/{id} (org-service) | **F-07** `MemberDetailResponse` — 이름·이메일·상태·`teams[{teamId,name,kind,role}]`. 로그인한 누구나·상태 무관. 어댑터는 EVERYONE 팀을 빼고 404는 null. 아바타 이미지(`/api/org/members/{id}/avatar`)는 인증 GET이라 `<img>`로 못 싣는다 — 지금은 이니셜 |
+| listPersonPages(userId, limit?) | GET /api/wiki/users/{userId}/pages?limit= | **F-07 제안(미구현)** 그 사람이 만들었거나(createdBy) 마지막으로 고친(updatedBy) 문서, 최근 수정순, limit 기본 20·최대 50, 보관·휴지통 제외, **호출자 기준 가시성**(보기 제한 + 초안 규칙 — 작성자·스페이스 ADMIN·전역 ADMIN, 조상 체인). 행 모양은 `/api/wiki/drafts`와 같다(`{page: TreeItem(+updatedAt), spaceId, spaceName}`). 404(구버전)면 어댑터 null → 화면은 "아직 제공하지 않습니다" 안내. 통합 검색 작성자 필터로는 못 대신한다 — 두 엔진 모두 빈 검색어를 빈 결과로 돌려준다 |
 
 ### 4.1 이관 모듈(W29) — 프론트가 알아야 할 계약 밖 사실
 

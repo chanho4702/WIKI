@@ -1,7 +1,7 @@
 // 별표·최근 방문·내 작업·리액션 목업.
 import { CURRENT_USER_ID } from "../../../../mock/users";
 import { type ParsedTask, parseTasks, toggleTaskLine } from "../../lib/tasks";
-import { type MyTask, type Page, REACTION_EMOJIS, type ReactionSummary, type StarredPageRow, type WikiData } from "../types";
+import { type MyTask, type Page, type PersonPageRow, REACTION_EMOJIS, type ReactionSummary, type StarredPageRow, type WikiData } from "../types";
 import { canSeePage, load, persist, requireWritable } from "./db";
 import { updatePage } from "./pages";
 
@@ -130,6 +130,29 @@ export async function listMyDrafts(limit = 20): Promise<StarredPageRow[] | null>
       title: p.title,
       icon: p.icon ?? null,
       type: p.type,
+    }));
+}
+
+/**
+ * 사람 프로필의 최근 작업한 문서(F-07) — 백엔드 제안 계약과 같은 규칙: 그 사람이 만들었거나 마지막으로 고친
+ * 문서, 최근 수정순, 보관 제외, **내가 볼 수 있는 것만**(`canSeePage` — 남의 초안은 작성자·관리자에게만).
+ */
+export async function listPersonPages(userId: string, limit = 20): Promise<PersonPageRow[] | null> {
+  const data = load();
+  const spaces = new Map(data.spaces.map((s) => [s.id, s]));
+  return data.pages
+    .filter((p) => (p.createdBy === userId || p.updatedBy === userId) && !p.archivedAt && canSeePage(data, p))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id))
+    .slice(0, Math.max(1, Math.min(limit, 50)))
+    .map((p) => ({
+      id: p.id,
+      spaceId: p.spaceId,
+      spaceName: spaces.get(p.spaceId)?.name ?? null,
+      title: p.title,
+      icon: p.icon ?? null,
+      type: p.type,
+      status: p.status,
+      updatedAt: p.updatedAt || null,
     }));
 }
 

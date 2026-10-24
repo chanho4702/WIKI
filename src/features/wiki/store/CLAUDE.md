@@ -82,6 +82,14 @@
   `/api/org/*` 경로 계약으로 답한다. 목업이 백엔드보다 관대하면 화면이 목업에서만 동작하므로,
   없는 것은 없는 대로 준다(팀원 역할 변경 400, 이력 빈 배열, 목록의 `inviteUrl`은 항상 null —
   서버는 토큰 해시만 저장해 링크를 되살릴 수 없고 재발송만 새 링크를 준다).
+- **사람 프로필(F-07)**: `getPersonProfile(userId)`·`listPersonPages(userId, limit?)`.
+  `getPersonProfile`은 org-service `GET /api/org/members/{id}`(상태 무관)이고 없는 사람(404)·숫자가 아닌 id는
+  **null**, 그 밖의 실패는 던진다(장애를 "없는 사람"으로 보이지 않는다). `teams`에서 EVERYONE 팀은 뺀다.
+  이메일·팀은 조직 전원 공개(사용자 결정), 비활성이면 화면이 이메일·팀을 숨기고 "비활성"과 문서만 보인다.
+  `listPersonPages`는 제안 계약 `GET /api/wiki/users/{id}/pages`(백엔드 미구현) — 만들었거나 마지막으로 고친
+  문서, 최근 수정순, 보관 제외, **호출자 기준 가시성**(초안 규칙 그대로 — 목업은 `canSeePage`). 404면 **null**
+  (화면은 "아직 제공하지 않습니다"). 목업 이메일은 `{id}@example.com`, 팀은 시드 `teamMembers`.
+  멘션 저장 문법은 숫자 id만 멘션으로 승격하므로(`user:\d+`, 서버와 같다) 목업 사용자(`u1`…)는 멘션 칩이 되지 않는다.
 - **쪽 목록(2026-10)**: `listVersionPage`(버전 번호 커서, 최신부터)·`listCommentThreads`(스레드 단위,
   최신 스레드부터, kind `page`/`inline`)·`getVersionByNumber`. 전량 함수(`listVersions`·`listComments`)는
   **기존 호출자를 위해 그대로 둔다** — 쪽 함수로 몰래 바꾸면 그 호출자가 잘린 목록을 받는다. 쪽 목록의

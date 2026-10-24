@@ -84,5 +84,7 @@ export function createSeedData(): WikiData {
     pages,
     versions,
     comments,
+    // 시드 팀(mock/org.ts SEED_TEAMS) 소속 — 사람 프로필·호버 카드(F-07)가 목업에서도 "팀"을 보이게
+    teamMembers: { t1: ["u1", "u2"], t2: ["u3"] },
   };
 }

@@ -46,6 +46,7 @@ import { showsLineNumbers, useCodeBlockPrefs } from "../lib/codeBlockPrefs";
 import { CodeLineNumbers } from "./CodeLineNumbers";
 import { TableOfContents } from "./TableOfContents";
 import { useReadOnly } from "../lib/readOnly";
+import { PersonLink } from "./PersonLink";
 
 export interface MarkdownViewProps {
   /** 마크다운 원문 (Page.body 또는 편집 중인 입력값) */
@@ -75,13 +76,16 @@ export interface MarkdownViewProps {
 
 /**
  * 사용자 멘션 칩 — `[@이름](user:id)` 저장 문법(editor/extensions/userMention.ts)의 보기 렌더.
- * 프로필 화면이 아직 없어 링크가 아니라 칩(span)으로 그린다 — 후속: 프로필/필터 연결.
+ * 사람 프로필(`/people/:id`, F-07)로 가는 링크이고 호버·포커스에 프로필 카드를 연다. 라우터 밖(내보내기)·
+ * 읽기 전용 인스턴스에서는 PersonLink가 칩(span)으로 남긴다.
  */
 function MentionChip({ userId, children }: { userId: string; children?: unknown }) {
+  const text = Array.isArray(children) && children.length === 1 ? children[0] : children;
+  const label = typeof text === "string" ? text.replace(/^@/, "") : null;
   return (
-    <span className="user-mention" data-user-id={userId}>
+    <PersonLink userId={userId} name={label} className="user-mention" data-user-id={userId}>
       {children as never}
-    </span>
+    </PersonLink>
   );
 }
 

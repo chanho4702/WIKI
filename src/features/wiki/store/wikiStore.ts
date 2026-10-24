@@ -13,6 +13,9 @@ export const getCurrentUser = impl.getCurrentUser;
 // 조직(U4) — 전역 관리자 판정·사용자 검색·공용 관리 화면(`@chanho/org-admin`)의 인증 fetch
 export const getOrgMe = impl.getOrgMe;
 export const searchUsers = impl.searchUsers;
+// 사람 프로필(F-07) — 프로필 화면·멘션/작성자 호버 카드
+export const getPersonProfile = impl.getPersonProfile;
+export const listPersonPages = impl.listPersonPages;
 export const orgApiFetch = impl.orgApiFetch;
 export const requestCollaborationTicket = impl.requestCollaborationTicket;
 export const bootstrapCollaborationDocument = impl.bootstrapCollaborationDocument;

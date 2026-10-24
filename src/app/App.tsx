@@ -33,6 +33,7 @@ const TrashPage = lazy(() => import("../features/wiki/pages/TrashPage").then((m)
 const ArchivePage = lazy(() => import("../features/wiki/pages/ArchivePage").then((m) => ({ default: m.ArchivePage })));
 const LabelsPage = lazy(() => import("../features/wiki/pages/LabelsPage").then((m) => ({ default: m.LabelsPage })));
 const BlogPage = lazy(() => import("../features/wiki/pages/BlogPage").then((m) => ({ default: m.BlogPage })));
+const PeoplePage = lazy(() => import("../features/wiki/pages/PeoplePage").then((m) => ({ default: m.PeoplePage })));
 const SpaceSettingsPage = lazy(() => import("../features/wiki/pages/SpaceSettingsPage").then((m) => ({ default: m.SpaceSettingsPage })));
 
 /**
@@ -145,6 +146,8 @@ export function App() {
             <Route path="/notifications" element={<NotificationsPage />} />
             {/* 구독 목록(F-06) — 무엇을 구독했는지 보고 한꺼번에 해제 */}
             <Route path="/settings/watches" element={<WatchesPage />} />
+            {/* 사람 프로필(F-07) — @멘션·작성자 이름·아바타가 온다. 공개 문서에는 "누가"가 없어 라우트째 없다 */}
+            <Route path="/people/:userId" element={<PeoplePage />} />
             {/* 검색 색인 관리 — 전역 관리자 전용. 아니면 화면이 스스로 "권한 없음"을 보여준다 */}
             <Route path="/admin/search" element={<SearchAdminPage />} />
             {/* 사용자·팀 관리(U4) — 공용 패키지 `@chanho/org-admin`을 마운트한다(설계 §6).

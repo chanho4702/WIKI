@@ -1,7 +1,7 @@
 // 별표·최근 방문·내 작업·리액션(백엔드 어댑터).
 import { sharedApiFetch } from "../apiClient";
 import { type TreeItemDto, mapPageTree, toBackendId } from "../mapping";
-import type { MyTask, ReactionSummary, StarredPageRow, StarsSnapshot } from "../types";
+import type { MyTask, PersonPageRow, ReactionSummary, StarredPageRow, StarsSnapshot } from "../types";
 import { json } from "./http";
 
 interface StarRowDto {
@@ -57,6 +57,24 @@ export async function listMyDrafts(limit = 20): Promise<StarredPageRow[] | null>
   const res = await sharedApiFetch(`/api/wiki/drafts?limit=${limit}`);
   if (res.status === 404) return null;
   return (await json<StarRowDto[]>(res)).map(mapStarRow);
+}
+
+/**
+ * 사람 프로필의 최근 작업한 문서(F-07) — `GET /api/wiki/users/{userId}/pages?limit=`(제안 계약, 백엔드 미구현).
+ * 행 모양은 `/api/wiki/drafts`와 같고(`{page, spaceId, spaceName}`, page에 `updatedAt`), 그 사람이 만들었거나
+ * 마지막으로 고친 문서를 최근 수정순으로, **호출자가 볼 수 있는 것만**(보기 제한·초안 규칙) 준다. 보관·휴지통 제외.
+ * 경로가 없는 서버(404)면 null — 화면은 "아직 제공하지 않는다"를 알린다(빈 목록으로 꾸미지 않는다).
+ * 통합 검색의 작성자 필터는 쓸 수 없다: 두 검색 엔진 모두 빈 검색어를 빈 결과로 돌려준다.
+ */
+export async function listPersonPages(userId: string, limit = 20): Promise<PersonPageRow[] | null> {
+  if (!/^\d+$/.test(userId)) return [];
+  const res = await sharedApiFetch(`/api/wiki/users/${toBackendId(userId)}/pages?limit=${limit}`);
+  if (res.status === 404) return null;
+  return (await json<StarRowDto[]>(res)).map((row) => ({
+    ...mapStarRow(row),
+    status: row.page.status ?? "published",
+    updatedAt: row.page.updatedAt ?? null,
+  }));
 }
 
 /* ── 액션 아이템(W23) ────────────────────────────────────── */

@@ -46,6 +46,7 @@ import { PageOwnerDialog } from "../components/PageOwnerDialog";
 import { PageVerifyDialog } from "../components/PageVerifyDialog";
 import { editedSinceVerification, verificationState } from "../lib/verification";
 import { useReadOnly } from "../lib/readOnly";
+import { PersonLink } from "../components/PersonLink";
 
 /** "2026-12-03" → "2026-12-03"(그대로). 무효 값은 빈 문자열 — 배지에 "Invalid Date"가 뜨지 않게. */
 function formatVerifiedUntil(date: string | null | undefined): string {
@@ -642,18 +643,19 @@ export function PageViewPage() {
                 이관됨 · {importedAuthor}
               </span>
             ) : editorName ? (
-              <>
-                <Avatar name={editorName} color="auto" size="small" />
+              // 마지막 편집자 → 사람 프로필(F-07). 아바타와 이름이 한 링크다(컨플루언스 바이라인과 같다)
+              <PersonLink userId={page.updatedBy} name={editorName} className="page-view-person">
+                <Avatar name={editorName} color="auto" size="small" aria-hidden="true" />
                 <span>{editorName}</span>
-              </>
+              </PersonLink>
             ) : null}
             {updatedLabel ? <span>{updatedLabel} 수정</span> : null}
             {views !== null ? <span>조회 {views}회</span> : null}
             {ownerName ? (
-              <span className="page-view-owner">
-                <Avatar name={ownerName} color="auto" size="small" />
+              <PersonLink userId={page.ownerId} name={ownerName} className="page-view-owner">
+                <Avatar name={ownerName} color="auto" size="small" aria-hidden="true" />
                 소유자 {ownerName}
-              </span>
+              </PersonLink>
             ) : null}
             {/* 초안은 작성자(와 관리자)만 본다 — 게시 전이라는 것과 누구에게 보이는지를 함께 알린다 */}
             {page.status === "draft" ? <DraftBadge createdBy={page.createdBy} className="page-view-badge" /> : null}

@@ -10,6 +10,7 @@ export {
   getCurrentUser,
   getOrgMe,
   searchUsers,
+  getPersonProfile,
   orgApiFetch,
   listTeams,
   createTeam,
@@ -140,6 +141,7 @@ export {
   setSpaceStar,
   listRecentPages,
   listMyDrafts,
+  listPersonPages,
 } from "./mock/personal";
 export {
   listSpaceDeletions,

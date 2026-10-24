@@ -118,6 +118,20 @@ export interface OrgMockInvitation {
   grants: { scope: "GLOBAL" | "SPACE" | "PROJECT"; resourceId: string | null; role: "VIEWER" | "EDITOR" | "ADMIN" }[];
 }
 
+/**
+ * 사람 프로필(F-07) — `GET /api/org/members/{id}`(org-service `MemberDetailResponse`)의 위키 쪽 모양.
+ * 이메일·팀은 조직 전원에게 공개한다(사용자 결정). 비활성 구성원이면 화면이 이메일·팀을 빼고
+ * "비활성"과 문서 목록만 보인다(F-07 AC). `teams`에는 활성 구성원 전원이 자동으로 속하는 EVERYONE
+ * 팀을 넣지 않는다 — 누구에게나 똑같이 붙어 소속을 알려 주지 못한다.
+ */
+export interface PersonProfile {
+  id: string;
+  name: string;
+  email: string | null;
+  status: OrgMemberStatus;
+  teams: Team[];
+}
+
 /** 팀원 한 줄(W23). 이름은 서버가 함께 준다 — 디렉터리를 다시 뒤지지 않는다. */
 export interface TeamMember {
   memberId: string;

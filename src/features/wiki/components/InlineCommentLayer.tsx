@@ -7,6 +7,7 @@ import { addComment, listCommentThreads, setCommentResolved } from "../store/wik
 import { anchorFromSelection, applyHighlights, clearHighlights } from "../lib/inlineAnchors";
 import { formatCommentTime } from "./CommentSection";
 import { useReadOnly } from "../lib/readOnly";
+import { PersonLink } from "./PersonLink";
 
 /**
  * 인라인 댓글(W23) — 컨플루언스식 본문 하이라이트 대화.
@@ -283,8 +284,10 @@ export function InlineCommentLayer({
   const renderMessage = (comment: Comment, nested: boolean) => (
     <li key={comment.id} className={nested ? "inline-comment-message--reply" : undefined}>
       <div className="inline-comment-message-head">
-        <Avatar name={nameOf(comment)} color="auto" size="small" />
-        <strong>{nameOf(comment)}</strong>
+        <PersonLink userId={comment.authorId} name={nameOf(comment)} className="inline-comment-author">
+          <Avatar name={nameOf(comment)} color="auto" size="small" aria-hidden="true" />
+          <strong>{nameOf(comment)}</strong>
+        </PersonLink>
         <span>{formatCommentTime(comment.createdAt)}</span>
       </div>
       <p className="inline-comment-body">{comment.body}</p>

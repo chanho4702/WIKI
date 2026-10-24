@@ -1,7 +1,7 @@
 // 조직(org-service) 목업 — 사용자·나·사용자 검색·팀·org 관리 화면용 fetch.
 import { CURRENT_USER_ID } from "../../../../mock/users";
 import { createOrgMockFetch } from "../orgMockApi";
-import type { OrgMe, Team, TeamMember, User } from "../types";
+import type { OrgMe, PersonProfile, Team, TeamMember, User } from "../types";
 import { clone, load, nextId, persist } from "./db";
 
 export async function listUsers(): Promise<User[]> {
@@ -34,6 +34,26 @@ export async function getOrgMe(): Promise<OrgMe> {
     email: `${CURRENT_USER_ID}@example.com`,
     status: self?.status ?? "ACTIVE",
     globalRoles: self?.globalRoles ?? ["ADMIN"],
+  };
+}
+
+/**
+ * 사람 프로필(F-07) — 백엔드는 `GET /api/org/members/{id}`. 목업 이메일은 getOrgMe와 같은 규칙,
+ * 상태는 `org.memberStatus` override(기본 ACTIVE), 팀은 시드 팀 + 만든 팀 중 그 사람이 속한 것.
+ */
+export async function getPersonProfile(userId: string): Promise<PersonProfile | null> {
+  const data = load();
+  const user = data.users.find((u) => u.id === userId);
+  if (!user) return null;
+  const teams = [...SEED_TEAMS, ...(data.teams ?? [])]
+    .filter((t) => (data.teamMembers?.[t.id] ?? []).includes(userId))
+    .map((t) => ({ ...t }));
+  return {
+    id: user.id,
+    name: user.name,
+    email: `${user.id}@example.com`,
+    status: data.org?.memberStatus?.[userId] ?? "ACTIVE",
+    teams,
   };
 }
 

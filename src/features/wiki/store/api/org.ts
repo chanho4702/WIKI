@@ -1,7 +1,7 @@
 // 조직(org-service) — 사용자 디렉터리·나·사용자 검색·팀(백엔드 어댑터).
 import { sharedApiFetch } from "../apiClient";
 import { toBackendId } from "../mapping";
-import type { OrgMe, OrgMemberStatus, Team, TeamMember, User } from "../types";
+import type { OrgMe, OrgMemberStatus, PersonProfile, Team, TeamMember, User } from "../types";
 import { json } from "./http";
 
 export async function getCurrentUser(): Promise<User> {
@@ -94,6 +94,35 @@ export async function searchUsers(q: string): Promise<User[]> {
     await sharedApiFetch(`/api/org/members?q=${encodeURIComponent(q.trim())}`),
   );
   return rows.map((m) => ({ id: String(m.id), name: m.displayName }));
+}
+
+interface MemberDetailDto {
+  id: number | string;
+  displayName?: string | null;
+  email?: string | null;
+  status?: string;
+  teams?: Array<{ teamId: number | string; name: string; kind?: string; role?: string }> | null;
+}
+
+/**
+ * 사람 프로필(F-07) — `GET /api/org/members/{id}`(로그인한 누구나 조회, 상태 무관). 없는 사람(404)이나
+ * 숫자가 아닌 id(서버 id는 Long)는 null이다. 그 밖의 실패는 던진다 — 장애를 "없는 사람"으로 보이면 안 된다.
+ * EVERYONE 팀(활성 구성원 전원 자동 소속)은 소속 정보가 아니라 뺀다.
+ */
+export async function getPersonProfile(userId: string): Promise<PersonProfile | null> {
+  if (!/^\d+$/.test(userId)) return null;
+  const res = await sharedApiFetch(`/api/org/members/${toBackendId(userId)}`);
+  if (res.status === 404) return null;
+  const m = await json<MemberDetailDto>(res);
+  return {
+    id: String(m.id),
+    name: m.displayName || m.email || `사용자 #${m.id}`,
+    email: m.email ?? null,
+    status: (m.status as OrgMemberStatus | undefined) ?? "ACTIVE",
+    teams: (m.teams ?? [])
+      .filter((t) => t.kind !== "EVERYONE")
+      .map((t) => ({ id: String(t.teamId), name: t.name })),
+  };
 }
 
 /**
