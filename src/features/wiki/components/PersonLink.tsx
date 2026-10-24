@@ -77,6 +77,15 @@ function PersonHoverLink({ userId, name, children, className, ...rest }: PersonL
   }, []);
   useDismissablePopover({ containerRef, triggerRef, open, onClose: close });
 
+  // 같은 자리의 링크가 다른 사람으로 바뀌면(문서 이동 등으로 인스턴스가 재사용될 때) 이전 사람의 카드를 버린다.
+  // 진행 중이던 요청은 아래 효과의 정리 함수가 끊고, 다음에 열 때 새 사람으로 다시 묻는다.
+  const [cardFor, setCardFor] = useState(userId);
+  if (cardFor !== userId) {
+    setCardFor(userId);
+    setCard(null);
+    setOpen(false);
+  }
+
   // 카드는 처음 열릴 때 한 번만 묻는다. 실패하면 다음에 열 때 다시 묻는다(장애가 풀리면 바로 보이게).
   useEffect(() => {
     if (!open || (card !== null && card.kind !== "error")) return;
