@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { allPagesForTest, renderApp } from "./testUtils";
+import { chooseOption } from "./selectTestUtils";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
 import type { WikiData } from "../features/wiki/store/types";
@@ -406,12 +407,39 @@ describe("위치 지정해 만들기", () => {
       within(dialog).getByLabelText("폴더 이름 (비우면 기본 이름)"),
       "자료실",
     );
-    await user.selectOptions(await within(dialog).findByLabelText("상위 위치"), "pg1");
+    await chooseOption(user, await within(dialog).findByRole("combobox", { name: "상위 위치" }), "시작하기");
     await user.click(within(dialog).getByRole("button", { name: "만들기" }));
 
     const created = (await allPagesForTest("sp1")).find((p) => p.title === "자료실")!;
     expect(created.type).toBe("folder");
     expect(created.parentId).toBe("pg1");
+  });
+
+  it("상위 위치를 고른 뒤 검색어를 바꿔 후보에서 빠져도 고른 위치가 유지된다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1/pages/pg1");
+    await screen.findByRole("navigation", { name: "페이지 트리" });
+
+    await user.click(screen.getByRole("button", { name: "만들기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "위치 지정해 만들기…" }));
+    const dialog = await screen.findByRole("dialog", { name: "새 콘텐츠 만들기" });
+    await user.type(within(dialog).getByLabelText("제목 (비우면 초안 기본명)"), "검색 뒤에도");
+    const parent = await within(dialog).findByRole("combobox", { name: "상위 위치" });
+    await chooseOption(user, parent, "시작하기");
+
+    await user.type(within(dialog).getByLabelText("상위 위치 검색"), "배포");
+    // 검색 결과(하위 문서 "배포 가이드")가 들어온 뒤에도 고른 "시작하기"는 목록과 트리거에 남는다
+    await user.click(within(dialog).getByRole("combobox", { name: "상위 위치" }));
+    expect(await screen.findByRole("option", { name: "배포 가이드" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "시작하기" })).toHaveAttribute("aria-selected", "true");
+    await user.keyboard("{Escape}");
+    expect(within(dialog).getByRole("combobox", { name: "상위 위치" })).toHaveTextContent("시작하기");
+    await user.click(within(dialog).getByRole("button", { name: "만들기" }));
+
+    await waitFor(async () => {
+      const created = (await allPagesForTest("sp1")).find((p) => p.title === "검색 뒤에도");
+      expect(created?.parentId).toBe("pg1");
+    });
   });
 
   it("홈(스페이스 밖) 헤더에서도 페이지를 스페이스 골라 만들 수 있다", async () => {
@@ -427,7 +455,7 @@ describe("위치 지정해 만들기", () => {
       within(dialog).getByLabelText("제목 (비우면 초안 기본명)"),
       "홈에서 만든 문서",
     );
-    await within(dialog).findByLabelText("상위 위치");
+    await within(dialog).findByRole("combobox", { name: "상위 위치" });
     await user.click(within(dialog).getByRole("button", { name: "만들기" }));
 
     const created = (await allPagesForTest("sp1")).find((p) => p.title === "홈에서 만든 문서")!;

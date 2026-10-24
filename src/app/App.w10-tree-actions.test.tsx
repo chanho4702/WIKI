@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { allPagesForTest, renderApp } from "./testUtils";
+import { chooseOption, optionNames } from "./selectTestUtils";
 import { __resetForTest, createSpace, getPage } from "../features/wiki/store/wikiStore";
 
 beforeEach(() => {
@@ -46,7 +47,7 @@ describe("W10 트리 복제·이동", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "페이지 이동" });
     // 대상 위치 후보는 서버에서 온다(2026-08-29) — 목록이 채워질 때까지 기다린다.
-    await user.selectOptions(await within(dialog).findByLabelText("대상 위치"), target.id);
+    await chooseOption(user, await within(dialog).findByRole("combobox", { name: "대상 위치" }), target.title);
     await user.click(within(dialog).getByRole("button", { name: "이동" }));
 
     // 스토어에 새 부모가 반영된다 (트리 갱신은 onMoved 리로드가 담당)
@@ -69,7 +70,7 @@ describe("W10 트리 복제·이동", () => {
     const dialog = await screen.findByRole("dialog", { name: "페이지 이동" });
 
     // 대상 스페이스를 sp2로 바꾸고, 하위는 현재 위치에 남기기(promote)
-    await user.selectOptions(within(dialog).getByLabelText("대상 스페이스"), target2.id);
+    await chooseOption(user, within(dialog).getByRole("combobox", { name: "대상 스페이스" }), target2.name);
     await user.click(
       await within(dialog).findByRole("radio", {
         name: "하위 항목은 현재 위치에 남기기 (한 단계 위로)",
@@ -97,8 +98,8 @@ describe("W10 트리 복제·이동", () => {
     await user.click(await screen.findByRole("menuitem", { name: "이동…" }));
 
     const select = await within(await screen.findByRole("dialog", { name: "페이지 이동" }))
-      .findByLabelText("대상 위치");
-    const options = within(select as HTMLElement).getAllByRole("option").map((o) => o.textContent?.trim());
+      .findByRole("combobox", { name: "대상 위치" });
+    const options = await optionNames(user, select);
     expect(options).toContain("(맨 위)");
     expect(options).not.toContain("시작하기");
     for (const title of childTitles) expect(options).not.toContain(title);

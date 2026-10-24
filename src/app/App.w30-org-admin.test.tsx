@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, seedOrgState } from "./testUtils";
 import { __resetForTest, listTeamMembers, listTeams } from "../features/wiki/store/wikiStore";
@@ -142,13 +142,22 @@ describe("U4 스페이스 권한 대상 검색", () => {
     renderApp("/spaces/sp1/settings/permissions");
     await screen.findByRole("heading", { level: 1, name: "권한" });
 
-    const target = screen.getByLabelText("대상");
+    // "선택하세요"는 DS Select의 자리표시자라 옵션이 아니다 — 후보만 센다
+    await user.click(screen.getByRole("combobox", { name: "대상" }));
     await screen.findByRole("option", { name: "최다인" }); // 목록이 다 붙은 뒤에 센다
-    expect(within(target).getAllByRole("option")).toHaveLength(5); // "선택하세요" + 4명
+    expect(within(screen.getByRole("listbox")).getAllByRole("option")).toHaveLength(4);
+    await user.keyboard("{Escape}");
 
     await user.type(screen.getByLabelText("대상 검색"), "이서");
-    await screen.findByRole("option", { name: "이서연" });
-    expect(within(target).getAllByRole("option")).toHaveLength(2);
+    await user.click(screen.getByRole("combobox", { name: "대상" }));
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("listbox"))
+          .getAllByRole("option")
+          .map((o) => o.textContent),
+      ).toEqual(["이서연"]),
+    );
+    await user.keyboard("{Escape}");
 
     expect(screen.getByRole("link", { name: /초대하기/ })).toHaveAttribute(
       "href",

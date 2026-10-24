@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Banner, ConfirmDialog, Lozenge, Skeleton, SkeletonText, useToast } from "@chanho/react";
+import { Banner, ConfirmDialog, Lozenge, MultiSelect, Skeleton, SkeletonText, useToast } from "@chanho/react";
 import { X } from "lucide-react";
 import type {
   PageRestrictions,
@@ -18,6 +18,13 @@ export interface RestrictionsDialogProps {
   /** 저장 성공 후 최신 제한 상태 통지 — 자물쇠 아이콘 상태 갱신용. */
   onSaved?: (restrictions: PageRestrictions) => void;
 }
+
+/** MultiSelect 값 — 사용자와 팀의 id가 겹칠 수 있어 종류를 앞에 붙인다. */
+const principalKey = (p: RestrictionPrincipal) => `${p.type}:${p.id}`;
+const parsePrincipalKey = (key: string): RestrictionPrincipal => {
+  const at = key.indexOf(":");
+  return { type: key.slice(0, at) as RestrictionPrincipal["type"], id: key.slice(at + 1) };
+};
 
 /**
  * 페이지 제한 자물쇠 다이얼로그(W18 설계 §7, 컨플루언스 참조).
@@ -77,6 +84,26 @@ export function RestrictionsDialog({ open, onOpenChange, pageId, users, onSaved 
       ? (teams.find((t) => t.id === p.id)?.name ?? `팀 #${p.id}`)
       : (nameUsers.find((u) => u.id === p.id)?.name ?? `사용자 #${p.id}`);
 
+  // 고르는 목록 — 사용자 묶음 뒤에 팀 묶음(컨플 제한 다이얼로그의 "사용자·그룹" 순서)
+  const principalOptions = [
+    ...pickableUsers.map((u) => ({ value: principalKey({ type: "user", id: u.id }), label: u.name, group: "사용자" })),
+    ...teams.map((t) => ({ value: principalKey({ type: "team", id: t.id }), label: t.name, group: "팀" })),
+  ];
+  const optionKeys = new Set(principalOptions.map((o) => o.value));
+
+  /**
+   * MultiSelect가 준 값으로 목록을 갱신한다. 이미 있던 주체는 순서를 지키고 새로 고른 것만 뒤에 붙인다.
+   * 선택지에 없는 주체(디렉터리에서 사라진 사람, 장애로 못 불러온 목록)는 MultiSelect가 모르는 값이라
+   * 결과에서 빠지지만, 고른 적이 없는 것을 조용히 지우면 안 되므로 그대로 남긴다(목록의 ✕로만 지운다).
+   */
+  const mergePicked = (list: RestrictionPrincipal[], values: string[]): RestrictionPrincipal[] => {
+    const picked = new Set(values);
+    const kept = list.filter((p) => !optionKeys.has(principalKey(p)) || picked.has(principalKey(p)));
+    const keptKeys = new Set(kept.map(principalKey));
+    const added = values.filter((v) => !keptKeys.has(v)).map(parsePrincipalKey);
+    return [...kept, ...added];
+  };
+
   const handleSave = async () => {
     if (directoryError !== null) {
       // 누가 누구인지 확인할 수 없는 상태에서 제한을 전량 교체하면 잘못된 주체로 저장될 수 있다
@@ -130,37 +157,16 @@ export function RestrictionsDialog({ open, onOpenChange, pageId, users, onSaved 
           ))}
         </ul>
       )}
-      <select
-        className="page-tree-move-select"
-        aria-label={`${label} 주체 추가`}
-        value=""
-        onChange={(e) => {
-          const [type, id] = e.target.value.split(":");
-          if (!id) return;
-          const principal: RestrictionPrincipal = { type: type as RestrictionPrincipal["type"], id };
-          if (!list.some((x) => x.type === principal.type && x.id === principal.id)) {
-            setList([...list, principal]);
-          }
-        }}
-      >
-        <option value="">사용자·팀 추가…</option>
-        <optgroup label="사용자">
-          {pickableUsers.map((u) => (
-            <option key={u.id} value={`user:${u.id}`}>
-              {u.name}
-            </option>
-          ))}
-        </optgroup>
-        {teams.length > 0 && (
-          <optgroup label="팀">
-            {teams.map((t) => (
-              <option key={t.id} value={`team:${t.id}`}>
-                {t.name}
-              </option>
-            ))}
-          </optgroup>
-        )}
-      </select>
+      <MultiSelect
+        label={`${label} 주체`}
+        className="restriction-picker"
+        options={principalOptions}
+        value={list.map(principalKey)}
+        onValueChange={(values) => setList(mergePicked(list, values))}
+        placeholder="사용자·팀 추가…"
+        searchPlaceholder="이름으로 찾기"
+        maxChips={3}
+      />
     </section>
   );
 

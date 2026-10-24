@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { ConfirmDialog, Radio, RadioGroup, Skeleton, TextField, useToast } from "@chanho/react";
+import { ConfirmDialog, Radio, RadioGroup, Select, Skeleton, TextField, useToast } from "@chanho/react";
 import type { PageNode, PageType, Space } from "../store/types";
 import { createPage, listChildren, searchPageTitles } from "../store/wikiStore";
 import { contentPathIn } from "../lib/contentPath";
 import { BLOG_TITLE, DRAFT_TITLE, FOLDER_TITLE } from "../lib/useCreateContent";
 import { SkeletonRegion } from "./WikiSkeleton";
+
+/** "(맨 위)" — DS Select는 빈 문자열을 미선택으로 다루므로 최상위를 뜻하는 값을 따로 둔다. */
+const TOP = "__top__";
 
 export interface CreateContentDialogProps {
   open: boolean;
@@ -38,6 +41,8 @@ export function CreateContentDialog({
   const [type, setType] = useState<PageType>(defaultType);
   const [spaceId, setSpaceId] = useState<string>(defaultSpaceId ?? spaces[0]?.id ?? "");
   const [parentId, setParentId] = useState<string | null>(null);
+  /** 고른 상위 위치의 제목 — 검색어를 바꿔 후보에서 빠져도 선택값이 트리거에 그대로 보이게 한다. */
+  const [parentTitle, setParentTitle] = useState("");
   const [title, setTitle] = useState("");
   // 대상 스페이스의 부모 후보 — 스페이스를 바꾸면 다시 불러온다(이동 다이얼로그와 같은 패턴)
   /**
@@ -54,6 +59,7 @@ export function CreateContentDialog({
     setType(defaultType);
     setSpaceId(defaultSpaceId ?? spaces[0]?.id ?? "");
     setParentId(null);
+    setParentTitle("");
     setParentQuery("");
     setTitle("");
   }, [open, defaultType, defaultSpaceId, spaces]);
@@ -77,6 +83,15 @@ export function CreateContentDialog({
       clearTimeout(timer);
     };
   }, [open, spaceId, parentQuery]);
+
+  /** 후보 + "(맨 위)". 검색으로 후보가 바뀌어도 이미 고른 위치는 목록에 남긴다. */
+  const parentOptions = (list: PageNode[]) => {
+    const options = [{ value: TOP, label: "(맨 위)" }, ...list.map((c) => ({ value: c.id, label: c.title }))];
+    if (parentId !== null && !list.some((c) => c.id === parentId)) {
+      options.splice(1, 0, { value: parentId, label: parentTitle || "선택한 위치" });
+    }
+    return options;
+  };
 
   const handleConfirm = async () => {
     if (!spaceId || creating) return;
@@ -135,21 +150,18 @@ export function CreateContentDialog({
           onChange={(e) => setTitle(e.target.value)}
         />
         {spaces.length > 1 ? (
-          <select
-            className="page-tree-move-select"
-            aria-label="대상 스페이스"
+          <Select
+            label="대상 스페이스"
+            options={spaces.map((s) => ({ value: s.id, label: s.name }))}
             value={spaceId}
-            onChange={(e) => {
-              setSpaceId(e.target.value);
+            onValueChange={(next) => {
+              setSpaceId(next);
               setParentId(null);
+              setParentTitle("");
             }}
-          >
-            {spaces.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+            searchable={spaces.length > 7}
+            searchPlaceholder="스페이스 이름으로 찾기"
+          />
         ) : null}
         {/* 블로그 글은 상위 위치가 없다 — 고를 수 없는 것을 보여 주면 "왜 안 먹지"가 된다 */}
         {type === "blog" ? (
@@ -168,19 +180,22 @@ export function CreateContentDialog({
             <Skeleton height={36} radius="medium" />
           </SkeletonRegion>
         ) : (
-          <select
-            className="page-tree-move-select"
-            aria-label="상위 위치"
-            value={parentId ?? ""}
-            onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)}
-          >
-            <option value="">(맨 위)</option>
-            {candidates.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.title}
-              </option>
-            ))}
-          </select>
+          <Select
+            label="상위 위치"
+            options={parentOptions(candidates)}
+            value={parentId ?? TOP}
+            onValueChange={(next) => {
+              if (next === TOP) {
+                setParentId(null);
+                setParentTitle("");
+                return;
+              }
+              setParentId(next);
+              setParentTitle(candidates.find((c) => c.id === next)?.title ?? parentTitle);
+            }}
+            searchable
+            searchPlaceholder="불러온 후보에서 찾기"
+          />
         )}
       </div>
     </ConfirmDialog>

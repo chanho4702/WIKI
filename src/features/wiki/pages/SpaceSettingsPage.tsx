@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router";
-import { Button, ConfirmDialog, EmptyState, TextField, useToast } from "@chanho/react";
+import { Button, ConfirmDialog, EmptyState, Select, TextField, useToast } from "@chanho/react";
 import { LayoutTemplate, ScrollText, Settings, Trash2, UserPlus, Users } from "lucide-react";
 import { SettingsHeader, SettingsItem } from "../components/SettingsItem";
 import type { SpaceGrant, Team, User } from "../store/types";
@@ -282,6 +282,7 @@ export function SpaceSettingsPage() {
                     <div className="space-settings-grant-add">
                       <TextField
                         label="대상 검색"
+                        size="compact"
                         placeholder="이름으로 좁히기"
                         value={term}
                         onChange={(e) => {
@@ -289,42 +290,44 @@ export function SpaceSettingsPage() {
                           setSubjectId("");
                         }}
                       />
-                      <select
-                        aria-label="대상 종류"
+                      <Select
+                        label="대상 종류"
+                        size="compact"
+                        className="space-settings-grant-narrow"
+                        options={[
+                          { value: "user", label: "사용자" },
+                          { value: "team", label: "팀" },
+                        ]}
                         value={subjectType}
-                        onChange={(e) => {
-                          setSubjectType(e.target.value as "user" | "team");
+                        onValueChange={(next) => {
+                          setSubjectType(next as "user" | "team");
                           setSubjectId("");
                         }}
-                      >
-                        <option value="user">사용자</option>
-                        <option value="team">팀</option>
-                      </select>
-                      <select
-                        aria-label="대상"
+                      />
+                      {/* 좁히기는 왼쪽 "대상 검색"(서버 검색)이 한다 — 여기서 또 검색 입력을 띄우면 두 검색이 엇갈린다 */}
+                      <Select
+                        label="대상"
+                        size="compact"
+                        className="space-settings-grant-subject"
+                        options={candidates.map((c) => ({ value: c.id, label: c.name }))}
                         value={subjectId}
-                        onChange={(e) => setSubjectId(e.target.value)}
-                      >
-                        <option value="">선택하세요</option>
-                        {candidates.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        aria-label="역할"
+                        onValueChange={setSubjectId}
+                        placeholder="선택하세요"
+                        noOptionsMessage="일치하는 대상이 없습니다"
+                      />
+                      <Select
+                        label="역할"
+                        size="compact"
+                        className="space-settings-grant-narrow"
+                        options={(["viewer", "commenter", "editor", "admin"] as const).map((r) => ({
+                          value: r,
+                          label: ROLE_LABEL[r],
+                        }))}
                         value={role}
-                        onChange={(e) => setRole(e.target.value as SpaceGrant["role"])}
-                      >
-                        {(["viewer", "commenter", "editor", "admin"] as const).map((r) => (
-                          <option key={r} value={r}>
-                            {ROLE_LABEL[r]}
-                          </option>
-                        ))}
-                      </select>
+                        onValueChange={(next) => setRole(next as SpaceGrant["role"])}
+                      />
+                      {/* 기본 크기(32px) — 라벨 아래 compact 입력 줄과 높이를 맞춘다 */}
                       <Button
-                        size="small"
                         onClick={() => void handleGrant()}
                         disabled={!subjectId || granting}
                       >

@@ -40,8 +40,10 @@ describe("W-18 디렉터리 장애 전파", () => {
     await user.click(await screen.findByRole("button", { name: "페이지 제한" }));
     const dialog = await screen.findByRole("dialog", { name: "페이지 제한" });
 
-    const picker = await within(dialog).findByRole("combobox", { name: "보기 제한 주체 추가" });
-    expect(within(picker).getByRole("group", { name: "팀" })).toBeInTheDocument();
+    await user.click(await within(dialog).findByRole("combobox", { name: "보기 제한 주체" }));
+    const list = await screen.findByRole("listbox", { name: "보기 제한 주체" });
+    expect(within(list).getByRole("group", { name: "사용자" })).toBeInTheDocument();
+    expect(within(list).getByRole("group", { name: "팀" })).toBeInTheDocument();
     expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
   });
 });

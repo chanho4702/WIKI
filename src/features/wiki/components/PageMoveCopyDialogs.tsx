@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Banner, Checkbox, ConfirmDialog, Radio, RadioGroup, Skeleton, useToast } from "@chanho/react";
+import { Banner, Checkbox, ConfirmDialog, Radio, RadioGroup, Select, Skeleton, useToast } from "@chanho/react";
 import { MoveImpactError } from "../store/types";
 import type { PageNode, Space } from "../store/types";
 import { copyPage, listChildren, listDescendants, listSpaces, movePage, searchPageTitles } from "../store/wikiStore";
@@ -56,6 +56,13 @@ export interface CopyPageDialogProps {
 
 /** 대상 위치 선택의 "원본 옆" 센티널 — 서버에 대상을 보내지 않는다(예전 동작 그대로). */
 const BESIDE_SOURCE = "__beside__";
+
+/** "(맨 위)" — DS Select는 빈 문자열을 미선택으로 다루므로 최상위를 뜻하는 값을 따로 둔다. */
+const TOP = "__top__";
+
+/** 스페이스 선택지 — 원래 스페이스에는 "(현재)"를 붙인다. */
+const spaceSelectOptions = (spaces: Space[], currentId: string) =>
+  spaces.map((s) => ({ value: s.id, label: s.id === currentId ? `${s.name} (현재)` : s.name }));
 
 /**
  * 복제는 옵션이 있어 한 번 물어본다 — 하위까지 복사하는지, 어디에 둘지(F-03, 컨플 Copy page의 대상 선택).
@@ -165,37 +172,30 @@ export function CopyPageDialog({ page, spaceId, spaces, onClose, onCopied }: Cop
       <div className="page-tree-copy-form">
         {error !== null ? <Banner variant="danger">복제하지 못했습니다: {error}</Banner> : null}
         {spaceOptions.length > 1 ? (
-          <select
-            className="page-tree-move-select"
-            aria-label="복사할 스페이스"
+          <Select
+            label="복사할 스페이스"
+            options={spaceSelectOptions(spaceOptions, spaceId)}
             value={targetSpaceId}
-            onChange={(e) => changeSpace(e.target.value)}
-          >
-            {spaceOptions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-                {s.id === spaceId ? " (현재)" : ""}
-              </option>
-            ))}
-          </select>
+            onValueChange={changeSpace}
+            searchable={spaceOptions.length > 7}
+            searchPlaceholder="스페이스 이름으로 찾기"
+          />
         ) : null}
         {candidates === null ? (
           <SkeletonRegion label="대상 위치를 불러오는 중…"><Skeleton height={36} radius="medium" /></SkeletonRegion>
         ) : (
-          <select
-            className="page-tree-move-select"
-            aria-label="복사할 위치"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          >
-            {targetSpaceId === spaceId ? <option value={BESIDE_SOURCE}>(원본 옆)</option> : null}
-            <option value="">(맨 위)</option>
-            {candidates.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.title}
-              </option>
-            ))}
-          </select>
+          <Select
+            label="복사할 위치"
+            options={[
+              ...(targetSpaceId === spaceId ? [{ value: BESIDE_SOURCE, label: "(원본 옆)" }] : []),
+              { value: TOP, label: "(맨 위)" },
+              ...candidates.map((c) => ({ value: c.id, label: c.title })),
+            ]}
+            value={location === "" ? TOP : location}
+            onValueChange={(next) => setLocation(next === TOP ? "" : next)}
+            searchable
+            searchPlaceholder="문서 제목으로 찾기"
+          />
         )}
         {page && page.childCount > 0 ? (
           <Checkbox
@@ -356,36 +356,31 @@ export function MovePageDialog({ page, spaceId, spaces, excludeIds, onClose, onM
       {page ? (
         <div className="page-tree-move-form">
           {spaceOptions.length > 1 ? (
-            <select
-              className="page-tree-move-select"
-              aria-label="대상 스페이스"
+            <Select
+              label="대상 스페이스"
+              options={spaceSelectOptions(spaceOptions, spaceId)}
               value={targetSpaceId}
-              onChange={(e) => changeSpace(e.target.value)}
-            >
-              {spaceOptions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {s.id === spaceId ? " (현재)" : ""}
-                </option>
-              ))}
-            </select>
+              onValueChange={changeSpace}
+              searchable={spaceOptions.length > 7}
+              searchPlaceholder="스페이스 이름으로 찾기"
+            />
           ) : null}
           {candidates === null ? (
             <SkeletonRegion label="대상 위치를 불러오는 중…"><Skeleton height={36} radius="medium" /></SkeletonRegion>
           ) : (
-            <select
-              className="page-tree-move-select"
-              aria-label="대상 위치"
-              value={parentId ?? ""}
-              onChange={(e) => setParentId(e.target.value === "" ? null : e.target.value)}
-            >
-              <option value="">(맨 위)</option>
-              {options(page).map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.title}
-                </option>
-              ))}
-            </select>
+            <Select
+              label="대상 위치"
+              options={[
+                { value: TOP, label: "(맨 위)" },
+                ...options(page).map((c) => ({ value: c.id, label: c.title })),
+              ]}
+              value={parentId ?? TOP}
+              onValueChange={(next) => setParentId(next === TOP ? null : next)}
+              // 지금 부모는 최상위 후보에 없을 수 있다(하위 문서) — 그대로 두면 제자리라 "(현재 위치)"로 보인다
+              placeholder="(현재 위치)"
+              searchable
+              searchPlaceholder="문서 제목으로 찾기"
+            />
           )}
           {/* 자식 유무는 서버가 준 childCount로 판단한다 — 지연 트리에서는 아직 안 펼친
             * 가지의 자식이 로드돼 있지 않아, 로드된 목록으로 세면 선택지가 통째로 사라진다. */}

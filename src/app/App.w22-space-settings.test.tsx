@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
+import { chooseOption } from "./selectTestUtils";
 import { __resetForTest, listSpaceGrants, listSpaces } from "../features/wiki/store/wikiStore";
 import { createSeedData } from "../mock/seed";
 
@@ -44,8 +45,8 @@ describe("W22 스페이스 설정", () => {
     await user.click(screen.getByRole("link", { name: "권한" }));
     expect(await screen.findByRole("heading", { name: "지정된 권한이 없습니다" })).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText("대상"), "u2");
-    await user.selectOptions(screen.getByLabelText("역할"), "editor");
+    await chooseOption(user, screen.getByRole("combobox", { name: "대상" }), "이서연");
+    await chooseOption(user, screen.getByRole("combobox", { name: "역할" }), "편집");
     await user.click(screen.getByRole("button", { name: "추가" }));
 
     const row = await screen.findByRole("row", { name: /편집/ });
@@ -64,8 +65,8 @@ describe("W22 스페이스 설정", () => {
     renderApp("/spaces/sp1/settings/permissions");
     await screen.findByRole("heading", { level: 1, name: "권한" });
 
-    await user.selectOptions(await screen.findByLabelText("대상"), "u2");
-    await user.selectOptions(screen.getByLabelText("역할"), "commenter");
+    await chooseOption(user, await screen.findByRole("combobox", { name: "대상" }), "이서연");
+    await chooseOption(user, screen.getByRole("combobox", { name: "역할" }), "댓글");
     await user.click(screen.getByRole("button", { name: "추가" }));
 
     const row = await screen.findByRole("row", { name: /댓글/ });
@@ -79,11 +80,11 @@ describe("W22 스페이스 설정", () => {
     await screen.findByRole("heading", { level: 1, name: "일반" });
     await user.click(screen.getByRole("link", { name: "권한" }));
 
-    await user.selectOptions(await screen.findByLabelText("대상"), "u2");
+    await chooseOption(user, await screen.findByRole("combobox", { name: "대상" }), "이서연");
     await user.click(screen.getByRole("button", { name: "추가" }));
     await screen.findByRole("row", { name: /보기/ });
 
-    await user.selectOptions(screen.getByLabelText("대상"), "u2");
+    await chooseOption(user, screen.getByRole("combobox", { name: "대상" }), "이서연");
     await user.click(screen.getByRole("button", { name: "추가" }));
 
     expect(await screen.findByText("이미 권한이 있는 대상입니다")).toBeInTheDocument();

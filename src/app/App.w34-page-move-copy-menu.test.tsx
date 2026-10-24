@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
+import { chooseOption, optionNames } from "./selectTestUtils";
 import * as store from "../features/wiki/store/wikiStore";
 import { getPage as mockGetPage } from "../features/wiki/store/wikiMock";
 import { __resetForTest, archivePage, copyPage, createPage, createSpace, getPage, listChildren } from "../features/wiki/store/wikiStore";
@@ -31,8 +32,10 @@ describe("F-02 문서 ⋯ 메뉴의 이동·복제", () => {
     const dialog = await screen.findByRole("dialog", { name: "페이지 이동" });
     const target = await within(dialog).findByRole("combobox", { name: "대상 위치" });
     // 자기 자신은 대상 후보에 없다
-    expect(within(target).queryByRole("option", { name: "팀 규칙" })).not.toBeInTheDocument();
-    await user.selectOptions(target, "pg1");
+    const names = await optionNames(user, target);
+    expect(names).toContain("시작하기");
+    expect(names).not.toContain("팀 규칙");
+    await chooseOption(user, target, "시작하기");
     await user.click(within(dialog).getByRole("button", { name: "이동" }));
 
     await waitFor(async () => expect((await getPage("pg2"))!.parentId).toBe("pg1"));
@@ -100,12 +103,13 @@ describe("F-03 복사 대상 선택", () => {
     await user.click(await screen.findByRole("button", { name: "더 보기" }));
     await user.click(await screen.findByRole("menuitem", { name: "복제" }));
     const dialog = await screen.findByRole("dialog", { name: "페이지 복제" });
-    await user.selectOptions(await within(dialog).findByRole("combobox", { name: "복사할 스페이스" }), ops.id);
+    await chooseOption(user, await within(dialog).findByRole("combobox", { name: "복사할 스페이스" }), "운영 위키");
     const location = await within(dialog).findByRole("combobox", { name: "복사할 위치" });
-    await within(location).findByRole("option", { name: "운영 문서 X" });
+    const names = await optionNames(user, location);
+    expect(names).toContain("운영 문서 X");
     // 다른 스페이스에는 "원본 옆"이 없다
-    expect(within(location).queryByRole("option", { name: "(원본 옆)" })).not.toBeInTheDocument();
-    await user.selectOptions(location, x.id);
+    expect(names).not.toContain("(원본 옆)");
+    await chooseOption(user, location, "운영 문서 X");
     await user.click(within(dialog).getByRole("button", { name: "복제" }));
 
     await waitFor(async () => {
