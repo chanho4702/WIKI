@@ -215,6 +215,8 @@ export function SpaceDirectoryPage({ spaces }: SpaceDirectoryPageProps) {
             <Select
               className="space-directory-label-filter"
               label="라벨"
+              searchable
+              searchPlaceholder="라벨 찾기"
               value={labelFilter === "" ? LABEL_ANY : labelFilter}
               options={[
                 { value: LABEL_ANY, label: "모든 라벨" },

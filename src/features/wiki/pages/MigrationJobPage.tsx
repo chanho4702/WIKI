@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { Banner, Button, EmptyState, Lozenge, Spinner, Table, useToast } from "@chanho/react";
+import { Banner, Button, EmptyState, Lozenge, Table, useToast } from "@chanho/react";
 import { Ban, ArrowLeft, DatabaseBackup, Link2, Play, Search } from "lucide-react";
 import { SettingsHeader } from "../components/SettingsItem";
 import type { MigrationJob, MigrationReport, Space } from "../store/types";
@@ -23,6 +23,7 @@ import {
   severityRank,
   stageLabel,
 } from "../lib/migrationLabels";
+import { SettingsSkeleton } from "../components/WikiSkeleton";
 
 /**
  * 마이그레이션 상세(`/admin/migrations/:jobId`, M1).
@@ -110,9 +111,7 @@ export function MigrationJobPage() {
 
   if (job === null) {
     return (
-      <div className="space-settings" role="status">
-        <Spinner size="large" label="마이그레이션 불러오는 중" />
-      </div>
+      <SettingsSkeleton label="마이그레이션 불러오는 중" lines={6} />
     );
   }
 

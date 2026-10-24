@@ -52,8 +52,9 @@ describe("F-04 내 항목 — 최근", () => {
     await user.click(within(panel).getByRole("link", { name: "전체 보기" }));
 
     await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent("/my/recent"));
+    // 표는 로딩 중에도 같은 자리에 먼저 그려진다(행만 스켈레톤) — 행은 기다려서 찾는다
     const table = await screen.findByRole("table", { name: "최근 방문 문서" });
-    expect(within(table).getByRole("link", { name: "시작하기" })).toBeInTheDocument();
+    expect(await within(table).findByRole("link", { name: "시작하기" })).toBeInTheDocument();
   });
 });
 
@@ -64,7 +65,7 @@ describe("F-04 내 항목 — 내 초안", () => {
     renderApp("/my/drafts");
 
     const table = await screen.findByRole("table", { name: "내 초안" });
-    expect(within(table).getByRole("link", { name: "쓰다 만 문서" })).toBeInTheDocument();
+    expect(await within(table).findByRole("link", { name: "쓰다 만 문서" })).toBeInTheDocument();
     expect(within(table).queryByRole("link", { name: "시작하기" })).not.toBeInTheDocument();
 
     await user.click(within(table).getByRole("button", { name: "쓰다 만 문서 이어서 편집" }));

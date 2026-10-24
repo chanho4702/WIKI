@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Banner, Button, EmptyState, Spinner, useToast } from "@chanho/react";
+import { Banner, Button, EmptyState, useToast } from "@chanho/react";
 import { RefreshCw, Database, SearchX } from "lucide-react";
 import { SettingsHeader } from "../components/SettingsItem";
 import type { ReindexJob, SearchIndexStatus } from "../store/types";
 import { getReindexJob, getSearchIndexStatus, startReindex } from "../store/wikiStore";
 import { usePlatformFeatures } from "../lib/usePlatformFeatures";
+import { SettingsSkeleton } from "../components/WikiSkeleton";
 
 /**
  * 검색 색인 관리(W23) — 전역 관리자 전용.
@@ -88,9 +89,7 @@ export function SearchAdminPage() {
 
   if (features === null) {
     return (
-      <div className="space-settings" role="status">
-        <Spinner size="large" label="설치 옵션 확인 중" />
-      </div>
+      <SettingsSkeleton label="설치 옵션 확인 중" />
     );
   }
 
@@ -108,9 +107,7 @@ export function SearchAdminPage() {
 
   if (status === null) {
     return (
-      <div className="space-settings" role="status">
-        <Spinner size="large" label="색인 현황 불러오는 중" />
-      </div>
+      <SettingsSkeleton label="색인 현황 불러오는 중" />
     );
   }
 

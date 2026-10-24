@@ -75,7 +75,7 @@ export function PageOwnerDialog({
       loading={saving}
       onConfirm={() => void save()}
     >
-      <Select label="소유자" options={options} value={value} onValueChange={setValue} />
+      <Select label="소유자" options={options} value={value} onValueChange={setValue} searchable searchPlaceholder="이름으로 찾기" />
     </ConfirmDialog>
   );
 }

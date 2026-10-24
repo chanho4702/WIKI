@@ -7,6 +7,7 @@ import { listArchive, listUsers, unarchivePage } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { displayUserName } from "../lib/userName";
 import { contentPathIn } from "../lib/contentPath";
+import { TableSkeleton } from "../components/WikiSkeleton";
 
 function formatAt(iso: string): string {
   const date = new Date(iso);
@@ -75,7 +76,12 @@ export function ArchivePage() {
           primaryAction={{ label: "다시 시도", onClick: () => void reload() }}
         />
       ) : items === null ? (
-        <span role="status">보관함 로딩 중</span>
+        <TableSkeleton
+          label="보관함 로딩 중"
+          wrapClassName="trash-table-scroll"
+          className="trash-table"
+          headers={["이름", "보관한 사람", "보관한 날", "작업"]}
+        />
       ) : items.length === 0 ? (
         <EmptyState
           title="보관한 문서가 없습니다"

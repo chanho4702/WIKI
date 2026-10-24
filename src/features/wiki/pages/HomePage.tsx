@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { Avatar, Button, EmptyState } from "@chanho/react";
+import { Avatar, Button, EmptyState, Skeleton, SkeletonAvatar } from "@chanho/react";
 import { FileText, Folder, History, Star } from "lucide-react";
 import type { FeedPageRow, PageNode, Space, User } from "../store/types";
 import {
@@ -20,6 +20,7 @@ import { contentPathIn } from "../lib/contentPath";
 import { usePersonName } from "../lib/userName";
 import { useReadOnly } from "../lib/readOnly";
 import { TruncatedText, overflowTitleProps } from "../components/TruncatedText";
+import { SkeletonLine, SkeletonRegion } from "../components/WikiSkeleton";
 
 /** 홈 "최근 업데이트" 피드 길이 — 스페이스 개요(8)와 같은 기준, 전체 스페이스를 합친 뒤 자른다. */
 const RECENT_LIMIT = 8;
@@ -76,19 +77,51 @@ interface ResumeItem {
  */
 function ResumeSkeleton() {
   return (
-    <>
-      <span className="wiki-visually-hidden" role="status">
-        불러오는 중
-      </span>
-      <ul className="home-resume-grid" aria-hidden="true">
-        {[0, 1, 2].map((i) => (
-          <li key={i} className="home-resume-card-skeleton">
-            <span className="wiki-skeleton wiki-skeleton-line" style={{ width: "70%" }} />
-            <span className="wiki-skeleton wiki-skeleton-line" style={{ width: "45%" }} />
-          </li>
-        ))}
-      </ul>
-    </>
+    <SkeletonRegion label="불러오는 중" as="ul" className="home-resume-grid">
+      {[0, 1, 2].map((i) => (
+        <li key={i} className="home-resume-card-skeleton">
+          {/* 카드 안 순서 그대로 — 아이콘(18px) · 제목 줄 · 메타 줄 */}
+          <Skeleton width={18} height={18} />
+          <SkeletonLine className="home-resume-title" width="70%" />
+          <SkeletonLine className="home-resume-meta" width="45%" />
+        </li>
+      ))}
+    </SkeletonRegion>
+  );
+}
+
+/** 스페이스 카드 자리 — .home-space-card(아바타 32px + 이름·키 두 줄)와 같은 칸. */
+function SpaceCardsSkeleton() {
+  return (
+    <SkeletonRegion label="스페이스 불러오는 중" as="ul" className="home-space-grid">
+      {[0, 1, 2, 3].map((i) => (
+        <li key={i} className="home-space-card">
+          <SkeletonAvatar />
+          <span className="home-space-card-text wiki-skeleton-grow">
+            <SkeletonLine className="home-space-card-name" width="70%" />
+            <SkeletonLine className="home-space-card-key" width="30%" />
+          </span>
+        </li>
+      ))}
+    </SkeletonRegion>
+  );
+}
+
+/** 피드 행 자리 — .home-recent-item(아이콘 16px · 제목/메타 두 줄 · 오른쪽 시각)과 같은 행. */
+function FeedSkeleton({ label }: { label: string }) {
+  return (
+    <SkeletonRegion label={label} as="ul" className="home-recent">
+      {["56%", "44%", "62%", "38%", "50%"].map((width, i) => (
+        <li key={i} className="home-recent-item">
+          <Skeleton width={16} height={16} className="home-recent-icon" />
+          <span className="home-recent-text wiki-skeleton-grow">
+            <SkeletonLine className="home-recent-link" width={width} />
+            <SkeletonLine className="home-recent-meta" width="28%" />
+          </span>
+          <SkeletonLine className="home-recent-time" width={48} />
+        </li>
+      ))}
+    </SkeletonRegion>
   );
 }
 
@@ -103,6 +136,8 @@ export function HomePage() {
   const navigate = useNavigate();
   const [resume, setResume] = useState<ResumeItem[] | null>(null);
   const [spaces, setSpaces] = useState<Space[]>([]);
+  // 스페이스 섹션은 스페이스가 있을 때만 보인다 — 받기 전에는 카드 자리를 잡아 둬야 아래 피드가 밀리지 않는다
+  const [spacesLoaded, setSpacesLoaded] = useState(false);
   const [recent, setRecent] = useState<RecentItem[] | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   /**
@@ -125,7 +160,10 @@ export function HomePage() {
     void (async () => {
       try {
         const spaces = await listSpaces();
-        if (active) setSpaces(spaces);
+        if (active) {
+          setSpaces(spaces);
+          setSpacesLoaded(true);
+        }
         const spaceById = new Map(spaces.map((s) => [s.id, s]));
         const visits = getRecentVisits(RESUME_LIMIT);
         const visitedAt = new Map(visits.map((v) => [v.id, v.at]));
@@ -295,7 +333,7 @@ export function HomePage() {
 
       {/* 스페이스 진입점 — 홈이 방문 기록만 보여주면 처음 온 사용자는 빈 화면에서 시작할 곳이 없다.
         * 디렉토리(/spaces)의 요약판으로, 별표한 것이 앞에 온다. */}
-      {spaces.length > 0 ? (
+      {!spacesLoaded || spaces.length > 0 ? (
         <section className="home-section" aria-label="스페이스">
           <div className="home-section-head">
             <h2 className="home-section-title">스페이스</h2>
@@ -303,6 +341,9 @@ export function HomePage() {
               모든 스페이스 보기
             </Link>
           </div>
+          {!spacesLoaded ? (
+            <SpaceCardsSkeleton />
+          ) : (
           <ul className="home-space-grid">
             {orderedSpaces.map((space) => (
               <li key={space.id}>
@@ -330,13 +371,16 @@ export function HomePage() {
               </li>
             ))}
           </ul>
+          )}
         </section>
       ) : null}
 
       {/* 전체 스페이스를 합친 최근 업데이트 — 스페이스 개요의 같은 목록에 스페이스 이름만 더 붙는다.
         * 위의 필 토글로 팔로잉·인기 피드와 바꿔 본다(컨플 홈 "Discover what's happening"). */}
-      <section className="home-section" aria-label="최근 업데이트">
-        <h2 className="home-section-title">최근 업데이트</h2>
+      {/* 섹션 제목은 "새 소식" — 첫 피드 필이 "최근 업데이트"라 같은 말이 두 번 보였다(컨플 홈도 섹션은
+        * "Discover what's happening", 첫 탭이 "Recent updates"로 다르다) */}
+      <section className="home-section" aria-label="새 소식">
+        <h2 className="home-section-title">새 소식</h2>
         <div className="home-feed-toggle" role="group" aria-label="피드 보기">
           {feedOptions.map((option) => (
             <button
@@ -358,9 +402,7 @@ export function HomePage() {
             onRetry={() => setFeedAttempt((attempt) => attempt + 1)}
           />
         ) : recent === null ? (
-          <span className="wiki-visually-hidden" role="status">
-            최근 업데이트 불러오는 중
-          </span>
+          <FeedSkeleton label="최근 업데이트 불러오는 중" />
         ) : recent.length === 0 ? (
           <p className="home-recent-meta">아직 업데이트된 문서가 없습니다.</p>
         ) : (
@@ -412,11 +454,7 @@ function FeedList({
   onRetry: () => void;
 }) {
   if (state.kind === "loading") {
-    return (
-      <span className="wiki-visually-hidden" role="status">
-        피드 불러오는 중
-      </span>
-    );
+    return <FeedSkeleton label="피드 불러오는 중" />;
   }
   if (state.kind === "error") {
     return (

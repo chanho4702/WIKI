@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router";
-import { Banner, Button, EmptyState, PageHeader, Spinner, Table, Tabs } from "@chanho/react";
+import { Banner, Button, EmptyState, PageHeader, Table, Tabs } from "@chanho/react";
 import { Clock, FilePen, Star } from "lucide-react";
 import type { Space, StarredPageRow } from "../store/types";
 import { getPage, listMyDrafts, listPagesByIds, listRecentPages } from "../store/wikiStore";
@@ -86,14 +86,16 @@ function RecentTab({ spaces }: { spaces: Map<string, Space> }) {
   }, [spaces]);
 
   if (error !== null) return <Banner variant="danger">최근 방문을 불러오지 못했습니다: {error}</Banner>;
-  if (rows === null) return <Spinner label="최근 방문 불러오는 중" />;
-  if (rows.length === 0) {
+  if (rows !== null && rows.length === 0) {
     return <EmptyState media={<Clock size={32} aria-hidden="true" />} title="최근에 본 문서가 없습니다" />;
   }
+  // 로딩 중에도 같은 표를 그린다 — 머리글은 그대로, 행 자리만 DS 스켈레톤(열 폭이 로드 전후로 같다)
   return (
     <Table<Row>
       aria-label="최근 방문 문서"
-      rows={rows}
+      loading={rows === null}
+      loadingLabel="최근 방문 불러오는 중"
+      rows={rows ?? []}
       columns={[
         { key: "title", header: "제목", render: (row) => <TitleLink row={row} /> },
         { key: "spaceName", header: "스페이스", render: (row) => row.spaceName ?? "" },
@@ -205,8 +207,7 @@ function StarredTab({ spaces }: { spaces: Map<string, Space> }) {
 function DraftsTab({ rows, error }: { rows: Row[] | null; error: string | null }) {
   const navigate = useNavigate();
   if (error !== null) return <Banner variant="danger">내 초안을 불러오지 못했습니다: {error}</Banner>;
-  if (rows === null) return <Spinner label="내 초안 불러오는 중" />;
-  if (rows.length === 0) {
+  if (rows !== null && rows.length === 0) {
     return (
       <EmptyState
         media={<FilePen size={32} aria-hidden="true" />}
@@ -218,7 +219,9 @@ function DraftsTab({ rows, error }: { rows: Row[] | null; error: string | null }
   return (
     <Table<Row>
       aria-label="내 초안"
-      rows={rows}
+      loading={rows === null}
+      loadingLabel="내 초안 불러오는 중"
+      rows={rows ?? []}
       columns={[
         { key: "title", header: "제목", render: (row) => <TitleLink row={row} /> },
         { key: "spaceName", header: "스페이스", render: (row) => row.spaceName ?? "" },

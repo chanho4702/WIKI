@@ -7,6 +7,7 @@ import { emptyTrash, listTrash, listUsers, purgePage, restorePage } from "../sto
 import type { WikiOutletContext } from "../components/wikiContext";
 import { displayUserName } from "../lib/userName";
 import { contentPathIn } from "../lib/contentPath";
+import { TableSkeleton } from "../components/WikiSkeleton";
 
 /** "2026년 8월 28일 21:04" — 휴지통은 "언제 버렸는지"가 판단 근거라 시각까지 보여준다. */
 function formatDeletedAt(iso: string): string {
@@ -126,7 +127,12 @@ export function TrashPage() {
           primaryAction={{ label: "다시 시도", onClick: () => void reload() }}
         />
       ) : items === null ? (
-        <span role="status">휴지통 로딩 중</span>
+        <TableSkeleton
+          label="휴지통 로딩 중"
+          wrapClassName="trash-table-scroll"
+          className="trash-table"
+          headers={["이름", "삭제한 사람", "삭제한 시각", "작업"]}
+        />
       ) : items.length === 0 ? (
         <EmptyState title="휴지통이 비어 있습니다" description="삭제한 문서가 여기에 보관됩니다." />
       ) : (

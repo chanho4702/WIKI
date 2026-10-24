@@ -47,6 +47,7 @@ import { PageVerifyDialog } from "../components/PageVerifyDialog";
 import { editedSinceVerification, verificationState } from "../lib/verification";
 import { useReadOnly } from "../lib/readOnly";
 import { PersonLink } from "../components/PersonLink";
+import { PageSkeleton } from "../components/WikiSkeleton";
 
 /** "2026-12-03" → "2026-12-03"(그대로). 무효 값은 빈 문자열 — 배지에 "Invalid Date"가 뜨지 않게. */
 function formatVerifiedUntil(date: string | null | undefined): string {
@@ -72,18 +73,7 @@ function formatDate(iso: string): string {
 function PageViewSkeleton() {
   return (
     <div className="page-view">
-      <span className="wiki-visually-hidden" role="status">
-        페이지 로딩 중
-      </span>
-      <div className="page-view-skeleton" aria-hidden="true">
-        <span className="wiki-skeleton page-view-skeleton-title" />
-        <span className="wiki-skeleton wiki-skeleton-line" style={{ width: "180px" }} />
-        <div className="page-view-skeleton-body">
-          {["92%", "100%", "86%", "97%", "54%"].map((width, i) => (
-            <span key={i} className="wiki-skeleton wiki-skeleton-line" style={{ width }} />
-          ))}
-        </div>
-      </div>
+      <PageSkeleton label="페이지 로딩 중" breadcrumb meta />
     </div>
   );
 }

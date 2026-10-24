@@ -16,6 +16,10 @@ pnpm build
 
 lint 스크립트는 없다 — `pnpm typecheck` + `pnpm test`가 게이트다.
 
+목업 dev(`VITE_API_PROXY= pnpm dev`)에서 로딩 스켈레톤을 보려면 주소에 `?mockDelay=1500`(ms)을 붙인다 — 그 탭 동안
+목업 응답이 그만큼 늦게 온다(`store/mock/devDelay.ts`, `?mockDelay=0`이면 끔). 테스트·프로덕션에서는 켜지지 않는다.
+로딩 자리는 스피너가 아니라 `components/WikiSkeleton.tsx`(DS Skeleton 기반)로 그린다.
+
 ## 아키텍처 불변 조건 (위반 금지)
 
 1. **모든 도메인 데이터 접근은 `src/features/wiki/store/wikiStore.ts`의 async 함수 경유.**

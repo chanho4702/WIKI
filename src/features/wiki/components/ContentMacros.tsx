@@ -4,6 +4,8 @@ import type { PageNode } from "../store/types";
 import { listPagesWithLabel, listRecentlyUpdated } from "../store/wikiStore";
 import { contentPathIn } from "../lib/contentPath";
 import { relativeTime } from "../lib/relativeTime";
+import { SkeletonText } from "@chanho/react";
+import { SkeletonRegion } from "./WikiSkeleton";
 
 /**
  * 콘텐츠 매크로 보기 렌더(W27-3) — 지시자를 자리표시 div로 바꾸는 쪽은 `lib/remarkContentMacros.ts`.
@@ -74,7 +76,13 @@ export function PagesByLabel({ label, spaceId }: { label: string; spaceId: strin
     };
   }, [spaceId, label]);
 
-  if (state.kind === "loading") return <div className="md-pages-by-label" role="status">문서 목록 불러오는 중…</div>;
+  if (state.kind === "loading") {
+    return (
+      <SkeletonRegion label="문서 목록 불러오는 중…" className="md-pages-by-label">
+        <SkeletonText lines={3} width="50%" />
+      </SkeletonRegion>
+    );
+  }
   if (state.kind === "error") return <div className="md-pages-by-label is-broken">라벨별 문서 목록: {state.message}</div>;
   if (state.items.length === 0) {
     return <div className="md-pages-by-label is-empty">“{label}” 라벨이 붙은 문서가 없습니다</div>;
@@ -118,7 +126,13 @@ export function RecentlyUpdated({ spaceId, limit }: { spaceId: string; limit: nu
     };
   }, [spaceId, limit]);
 
-  if (state.kind === "loading") return <div className="md-recently-updated" role="status">최근 업데이트 불러오는 중…</div>;
+  if (state.kind === "loading") {
+    return (
+      <SkeletonRegion label="최근 업데이트 불러오는 중…" className="md-recently-updated">
+        <SkeletonText lines={3} width="50%" />
+      </SkeletonRegion>
+    );
+  }
   if (state.kind === "error") return <div className="md-recently-updated is-broken">최근 업데이트: {state.message}</div>;
   if (state.items.length === 0) {
     return <div className="md-recently-updated is-empty">최근 업데이트된 문서가 없습니다</div>;

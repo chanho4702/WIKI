@@ -62,17 +62,19 @@ describe("W9 홈 대시보드(/home)", () => {
       "href",
       "/spaces",
     );
-    await user.click(within(section).getByRole("button", { name: "개발 위키 (DEV)" }));
+    // 섹션은 스페이스를 받기 전에도 카드 자리(스켈레톤)와 함께 먼저 그려진다 — 카드는 기다려서 찾는다
+    await user.click(await within(section).findByRole("button", { name: "개발 위키 (DEV)" }));
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces/sp1");
     });
   });
 
-  it("최근 업데이트 섹션이 전체 스페이스의 문서를 최신순으로 보여주고 스페이스 이름을 함께 단다", async () => {
+  it("새 소식 섹션(기본 피드 최근 업데이트)이 전체 스페이스의 문서를 최신순으로 보여주고 스페이스 이름을 함께 단다", async () => {
     localStorage.setItem("wiki.v1", JSON.stringify(createSeedData()));
     renderApp("/home");
 
-    const section = await screen.findByRole("region", { name: "최근 업데이트" });
+    const section = await screen.findByRole("region", { name: "새 소식" });
+    expect(within(section).getByRole("heading", { level: 2, name: "새 소식" })).toBeInTheDocument();
     const links = await within(section).findAllByRole("link");
     // 시드에서 updatedAt이 가장 늦은 문서(시작하기)가 맨 앞
     expect(links[0]).toHaveTextContent("시작하기");

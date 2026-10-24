@@ -29,8 +29,9 @@ function seed(edit?: (data: WikiData) => void) {
   localStorage.setItem("wiki.v1", JSON.stringify(data));
 }
 
+// 섹션 이름은 "새 소식", 첫 피드 필이 "최근 업데이트"다(같은 말이 두 번 보이던 것을 나눴다)
 async function feedSection() {
-  return screen.findByRole("region", { name: "최근 업데이트" });
+  return screen.findByRole("region", { name: "새 소식" });
 }
 
 beforeEach(() => {

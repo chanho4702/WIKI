@@ -3,6 +3,7 @@ import { EmptyState } from "@chanho/react";
 import type { AuditEntry, User } from "../store/types";
 import { listAudit, listGrantAudit, listUsers } from "../store/wikiStore";
 import { displayUserName } from "../lib/userName";
+import { TableSkeleton } from "./WikiSkeleton";
 
 /**
  * 스페이스 감사 로그(W23) — 스페이스 설정의 한 섹션.
@@ -85,7 +86,7 @@ export function AuditSettings({ spaceId }: { spaceId: string }) {
   }
 
   if (entries === null) {
-    return <span role="status">감사 로그 로딩 중</span>;
+    return <TableSkeleton label="감사 로그 로딩 중" className="audit-table" headers={["시각", "한 일", "대상", "사용자"]} />;
   }
 
   if (entries.length === 0) {

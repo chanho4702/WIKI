@@ -109,7 +109,9 @@ describe("W7-T7 스페이스 디렉토리 페이지(/spaces)", () => {
     // '모든 스페이스 보기'는 홈·디렉토리 컨텍스트 사이드바에만 있다(스페이스 안에서는 노출 안 함).
     renderApp("/home");
 
-    await user.click(await screen.findByRole("link", { name: "모든 스페이스 보기" }));
+    // 홈 본문의 스페이스 섹션에도 같은 이름의 링크가 있다(로딩 중에도 섹션 머리가 먼저 보인다) — 사이드바 것을 누른다
+    const sidebar = await screen.findByRole("complementary");
+    await user.click(await within(sidebar).findByRole("link", { name: "모든 스페이스 보기" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("/spaces");

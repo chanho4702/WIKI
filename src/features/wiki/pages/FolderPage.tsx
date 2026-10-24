@@ -10,6 +10,7 @@ import { contentPathIn } from "../lib/contentPath";
 import { useCreateContent } from "../lib/useCreateContent";
 import { usePersonName } from "../lib/userName";
 import { useReadOnly } from "../lib/readOnly";
+import { PageSkeleton } from "../components/WikiSkeleton";
 
 /** "2026년 7월 10일" — PageViewPage/SpaceIndexPage와 같은 규칙(빈 값·무효 날짜는 빈 문자열). */
 function formatDate(iso: string): string {
@@ -77,17 +78,7 @@ export function FolderPage() {
   if (folder === undefined) {
     return (
       <div className="folder-page">
-        <span className="wiki-visually-hidden" role="status">
-          폴더 로딩 중
-        </span>
-        <div className="page-view-skeleton" aria-hidden="true">
-          <span className="wiki-skeleton page-view-skeleton-title" />
-          <div className="page-view-skeleton-body">
-            {["60%", "72%", "45%"].map((width, i) => (
-              <span key={i} className="wiki-skeleton wiki-skeleton-line" style={{ width }} />
-            ))}
-          </div>
-        </div>
+        <PageSkeleton label="폴더 로딩 중" paragraphs={[3]} />
       </div>
     );
   }

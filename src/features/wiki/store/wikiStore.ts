@@ -4,8 +4,14 @@
 import * as mock from "./wikiMock";
 import * as api from "./wikiApi";
 import { USE_BACKEND } from "./apiClient";
+import { readMockDelay, withMockDelay } from "./mock/devDelay";
 
-const impl = USE_BACKEND ? api : mock;
+// 개발 서버에서만 `?mockDelay=ms`로 목업 응답을 늦춘다(로딩 스켈레톤 확인용, mock/devDelay.ts)
+const impl = USE_BACKEND
+  ? api
+  : import.meta.env.DEV && import.meta.env.MODE !== "test"
+    ? withMockDelay(mock, readMockDelay())
+    : mock;
 
 export const listUsers = impl.listUsers;
 export const listSelectableUsers = impl.listSelectableUsers;

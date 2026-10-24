@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { OrgAdminApp } from "@chanho/org-admin";
-import { EmptyState, Spinner } from "@chanho/react";
+import { EmptyState } from "@chanho/react";
 import type { OrgMe } from "../store/types";
 import { getOrgMe, listSpaces, orgApiFetch } from "../store/wikiStore";
+import { SettingsSkeleton } from "../components/WikiSkeleton";
 
 /**
  * 사용자·팀 관리(`/admin/org/*`, U4) — 화면 자체는 공용 패키지 `@chanho/org-admin`이 그린다.
@@ -60,9 +61,7 @@ export function OrgAdminPage() {
 
   if (me === null) {
     return (
-      <div className="app-loading">
-        <Spinner size="large" label="불러오는 중" />
-      </div>
+      <SettingsSkeleton label="불러오는 중" lines={6} />
     );
   }
 

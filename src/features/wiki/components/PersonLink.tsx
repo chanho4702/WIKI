@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HTMLAttributes, ReactNode } from "react";
 import { Link, useInRouterContext } from "react-router";
-import { Avatar, Lozenge, Spinner } from "@chanho/react";
+import { Avatar, Lozenge } from "@chanho/react";
 import type { PersonProfile } from "../store/types";
 import { getPersonProfile } from "../store/wikiStore";
 import { useReadOnly } from "../lib/readOnly";
 import { useDismissablePopover } from "../lib/useDismissablePopover";
 import { isActiveMember, personPath } from "../lib/people";
+import { PersonCardSkeleton } from "./WikiSkeleton";
 
 /** 호버로 여는 카드의 지연 — 포인터가 스쳐 지나갈 때마다 카드가 튀어나오지 않게(컨플루언스 프로필 카드와 같은 결). */
 const OPEN_DELAY_MS = 350;
@@ -132,7 +133,7 @@ function PersonHoverLink({ userId, name, children, className, ...rest }: PersonL
         // 카드는 문단(<p>) 안에서도 열리므로 블록 요소 대신 span으로 짓는다(div는 p 안에 둘 수 없다)
         <span className="person-card" role="dialog" aria-label={`${displayName} 프로필 카드`}>
           {card === null || card.kind === "loading" ? (
-            <Spinner size="small" label="프로필 불러오는 중" />
+            <PersonCardSkeleton label="프로필 불러오는 중" />
           ) : card.kind === "error" ? (
             <span className="person-card-note">프로필을 불러오지 못했습니다</span>
           ) : card.kind === "missing" ? (

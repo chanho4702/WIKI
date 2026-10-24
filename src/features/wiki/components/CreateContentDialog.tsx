@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { ConfirmDialog, Radio, RadioGroup, TextField, useToast } from "@chanho/react";
+import { ConfirmDialog, Radio, RadioGroup, Skeleton, TextField, useToast } from "@chanho/react";
 import type { PageNode, PageType, Space } from "../store/types";
 import { createPage, listChildren, searchPageTitles } from "../store/wikiStore";
 import { contentPathIn } from "../lib/contentPath";
 import { BLOG_TITLE, DRAFT_TITLE, FOLDER_TITLE } from "../lib/useCreateContent";
+import { SkeletonRegion } from "./WikiSkeleton";
 
 export interface CreateContentDialogProps {
   open: boolean;
@@ -163,9 +164,9 @@ export function CreateContentDialog({
         />
         ) : null}
         {type === "blog" ? null : candidates === null ? (
-          <p className="page-tree-move-loading" role="status">
-            상위 위치를 불러오는 중…
-          </p>
+          <SkeletonRegion label="상위 위치를 불러오는 중…">
+            <Skeleton height={36} radius="medium" />
+          </SkeletonRegion>
         ) : (
           <select
             className="page-tree-move-select"

@@ -1,15 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import {
-  Banner,
-  Button,
-  EmptyState,
-  Lozenge,
-  PageHeader,
-  Select,
-  Spinner,
-  TextField,
-} from "@chanho/react";
+import { Banner, Button, EmptyState, Lozenge, PageHeader, Select, Skeleton, TextField } from "@chanho/react";
 import { FileText, Folder, Layers, Newspaper, Paperclip, SearchX } from "lucide-react";
 import { listPagePaths, listSpaces, listUsers, searchContent, suggestLabels } from "../store/wikiStore";
 import { useReadOnly } from "../lib/readOnly";
@@ -25,6 +16,7 @@ import {
   type User,
 } from "../store/types";
 import { SearchHighlights } from "../components/SearchHighlights";
+import { SkeletonLine, SkeletonRegion } from "../components/WikiSkeleton";
 
 const PAGE_SIZE = 20;
 
@@ -293,7 +285,10 @@ export function SearchPage() {
         <div className="search-filters">
           <Select
             className="search-filter"
+            size="compact"
             label="스페이스"
+            searchable
+            searchPlaceholder="스페이스 찾기"
             value={spaceId === "" ? ANY : spaceId}
             options={[
               { value: ANY, label: "모든 스페이스" },
@@ -307,6 +302,7 @@ export function SearchPage() {
           />
           <Select
             className="search-filter"
+            size="compact"
             label="종류"
             value={docType ?? ANY}
             options={blogFilterSupported ? [...BASE_TYPE_OPTIONS, BLOG_TYPE_OPTION] : BASE_TYPE_OPTIONS}
@@ -316,7 +312,10 @@ export function SearchPage() {
           {readOnly ? null : (
             <Select
               className="search-filter"
+              size="compact"
               label="작성자"
+              searchable
+              searchPlaceholder="이름으로 찾기"
               value={authorId === "" ? AUTHOR_ANY : authorId}
               options={[
                 { value: AUTHOR_ANY, label: "전체" },
@@ -329,6 +328,7 @@ export function SearchPage() {
           )}
           <TextField
             className="search-filter"
+            size="compact"
             label="수정일 시작"
             type="date"
             value={updatedAfter}
@@ -336,6 +336,7 @@ export function SearchPage() {
           />
           <TextField
             className="search-filter"
+            size="compact"
             label="수정일 끝"
             type="date"
             value={updatedBefore}
@@ -350,6 +351,7 @@ export function SearchPage() {
           >
             <TextField
               id="search-filter-labels"
+              size="compact"
               label="라벨"
               type="text"
               list="search-filter-label-options"
@@ -368,14 +370,15 @@ export function SearchPage() {
           </form>
           <Select
             className="search-filter"
+            size="compact"
             label="정렬"
             value={sort}
             options={SORT_OPTIONS}
             onValueChange={(next: string) => setFilter("sort", next)}
           />
           {filtered ? (
+            // 필터 칸이 compact(32px)라 버튼도 기본 32px — 한 줄 바닥선이 맞는다
             <Button
-              size="small"
               variant="subtle"
               onClick={() => {
                 const next = new URLSearchParams(params);
@@ -398,10 +401,28 @@ export function SearchPage() {
       ) : null}
 
       {loading ? (
-        <div className="search-page-state" role="status">
-          <Spinner size="large" label={`‘${query}’ 검색 중`} />
-          <span>검색 중…</span>
-        </div>
+        // 결과 목록과 같은 행(아이콘 + 제목·경로·발췌)으로 자리를 잡는다 — 요약 줄도 같은 자리
+        <SkeletonRegion label={`‘${query}’ 검색 중`} className="search-results-skeleton">
+          <SkeletonLine className="search-result-summary" width={160} />
+          <ol className="search-result-list">
+            {["52%", "64%", "46%", "58%"].map((width, i) => (
+              <li key={i} className="search-result-item">
+                <span className="search-result-link">
+                  <span className="search-result-icon">
+                    <Skeleton width={18} height={18} />
+                  </span>
+                  <span className="search-result-copy">
+                    <SkeletonLine className="search-result-skeleton-title" width={width} />
+                    <SkeletonLine className="search-result-path" width="30%" />
+                    <span className="search-result-highlights">
+                      <SkeletonLine width="92%" />
+                    </span>
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </SkeletonRegion>
       ) : null}
 
       {!loading && error ? (

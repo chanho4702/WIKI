@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { TruncatedText } from "./TruncatedText";
+import { ListSkeleton } from "./WikiSkeleton";
 
 export interface NavListFlyoutItem {
   key: string;
@@ -51,9 +52,7 @@ export function NavListFlyout({
   return (
     <div className="space-flyout nav-list-flyout" role="dialog" aria-label={label}>
       {loading ? (
-        <p className="starred-flyout-empty" role="status">
-          불러오는 중
-        </p>
+        <ListSkeleton label="불러오는 중" rows={4} media="icon" lines={1} className="space-flyout-list" />
       ) : shown.length === 0 ? (
         <p className="starred-flyout-empty">{emptyText}</p>
       ) : (

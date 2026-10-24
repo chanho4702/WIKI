@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Banner, Checkbox, ConfirmDialog, Radio, RadioGroup, useToast } from "@chanho/react";
+import { Banner, Checkbox, ConfirmDialog, Radio, RadioGroup, Skeleton, useToast } from "@chanho/react";
 import { MoveImpactError } from "../store/types";
 import type { PageNode, Space } from "../store/types";
 import { copyPage, listChildren, listDescendants, listSpaces, movePage, searchPageTitles } from "../store/wikiStore";
+import { SkeletonRegion } from "./WikiSkeleton";
 
 /**
  * 문서 이동·복제 대화상자 — 트리 행 메뉴와 문서 보기의 "⋯" 메뉴(F-02)가 같은 것을 연다.
@@ -179,7 +180,7 @@ export function CopyPageDialog({ page, spaceId, spaces, onClose, onCopied }: Cop
           </select>
         ) : null}
         {candidates === null ? (
-          <p className="page-tree-move-loading" role="status">대상 위치를 불러오는 중…</p>
+          <SkeletonRegion label="대상 위치를 불러오는 중…"><Skeleton height={36} radius="medium" /></SkeletonRegion>
         ) : (
           <select
             className="page-tree-move-select"
@@ -370,7 +371,7 @@ export function MovePageDialog({ page, spaceId, spaces, excludeIds, onClose, onM
             </select>
           ) : null}
           {candidates === null ? (
-            <p className="page-tree-move-loading" role="status">대상 위치를 불러오는 중…</p>
+            <SkeletonRegion label="대상 위치를 불러오는 중…"><Skeleton height={36} radius="medium" /></SkeletonRegion>
           ) : (
             <select
               className="page-tree-move-select"

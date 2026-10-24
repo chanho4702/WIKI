@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
-import { Avatar, Banner, Button, EmptyState, Lozenge, Spinner, Table } from "@chanho/react";
+import { Avatar, Banner, Button, EmptyState, Lozenge, Skeleton, SkeletonAvatar, Table } from "@chanho/react";
+import { SkeletonRegion } from "../components/WikiSkeleton";
 import { FileText, UserX } from "lucide-react";
 import type { PersonPageRow, PersonProfile } from "../store/types";
 import { getPersonProfile, listPersonPages } from "../store/wikiStore";
@@ -63,7 +64,14 @@ export function PeoplePage() {
   if (profile.kind === "loading") {
     return (
       <div className="people-page">
-        <Spinner size="large" label="프로필 불러오는 중" />
+        <SkeletonRegion label="프로필 불러오는 중" className="people-header">
+          <SkeletonAvatar size="large" />
+          <div className="people-ident wiki-skeleton-lines">
+            <Skeleton width={180} height={28} />
+            <Skeleton variant="text" width={240} />
+            <Skeleton variant="text" width={160} />
+          </div>
+        </SkeletonRegion>
       </div>
     );
   }
@@ -126,14 +134,13 @@ export function PeoplePage() {
 }
 
 function PersonPages({ state, name }: { state: PagesState; name: string }) {
-  if (state.kind === "loading") return <Spinner label="문서 불러오는 중" />;
   if (state.kind === "error") return <Banner variant="danger">문서 목록을 불러오지 못했습니다: {state.message}</Banner>;
   if (state.kind === "unsupported") {
     // 정상 경로는 위의 ready다(wiki-backend 2026-10-24 구현). 이 분기는 그 경로가 아직 배포되지 않은
     // 서버(404)에서만 탄다 — 배포 순서가 갈리는 동안 없는 기능을 빈 목록이나 오류로 꾸미지 않는다.
     return <Banner variant="info">이 서버는 아직 사람별 문서 목록을 제공하지 않습니다.</Banner>;
   }
-  if (state.rows.length === 0) {
+  if (state.kind === "ready" && state.rows.length === 0) {
     return (
       <EmptyState
         media={<FileText size={32} aria-hidden="true" />}
@@ -145,7 +152,9 @@ function PersonPages({ state, name }: { state: PagesState; name: string }) {
   return (
     <Table<PersonPageRow>
       aria-label={`${name} 님이 최근 작업한 문서`}
-      rows={state.rows}
+      loading={state.kind === "loading"}
+      loadingLabel="문서 불러오는 중"
+      rows={state.kind === "ready" ? state.rows : []}
       columns={[
         {
           key: "title",

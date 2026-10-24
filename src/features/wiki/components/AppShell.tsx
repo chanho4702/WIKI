@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router";
-import { Button, Spinner } from "@chanho/react";
+import { Button } from "@chanho/react";
 import { FolderPlus, MapPin, Plus } from "lucide-react";
 import type { PageType, Space } from "../store/types";
 import { GlobalSidebar } from "./GlobalSidebar";
@@ -16,6 +16,7 @@ import { useSpaceTree } from "../lib/useSpaceTree";
 import { CreateContentMenu } from "./CreateContentMenu";
 import { CreateContentDialog } from "./CreateContentDialog";
 import { useReadOnly } from "../lib/readOnly";
+import { PageSkeleton } from "./WikiSkeleton";
 
 export interface AppShellProps {
   spaces: Space[];
@@ -234,7 +235,7 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
         {/* tabIndex={-1}: 스킵 링크(#wiki-main)의 앵커 점프가 포커스까지 옮기려면 대상이
           * 포커스 가능해야 한다. -1이라 Tab 순서에는 들어가지 않는다. */}
         <main className="wiki-content" id="wiki-main" ref={mainRef} tabIndex={-1} hidden={compactLayout && sidebarExpanded}>
-          <Suspense fallback={<div className="app-loading"><Spinner size="large" label="화면 불러오는 중" /></div>}>
+          <Suspense fallback={<div className="page-view"><PageSkeleton label="화면 불러오는 중" /></div>}>
             <Outlet context={outletContext} />
           </Suspense>
         </main>

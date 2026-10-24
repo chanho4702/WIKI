@@ -4,6 +4,8 @@ import type { Page } from "../store/types";
 import { getPage, listPagesWithLabel } from "../store/wikiStore";
 import { extractProperties, plainValue, type PageProperty } from "../lib/properties";
 import { contentPathIn } from "../lib/contentPath";
+import { SkeletonText } from "@chanho/react";
+import { SkeletonRegion } from "./WikiSkeleton";
 
 /** 한 보고서가 모으는 문서 상한 — 그보다 많으면 표가 아니라 검색이 맞다. */
 export const REPORT_LIMIT = 50;
@@ -44,7 +46,13 @@ export function PropertiesReport({ label, spaceId }: { label: string; spaceId: s
     return () => { cancelled = true; };
   }, [spaceId, label]);
 
-  if (state.kind === "loading") return <div className="md-properties-report" role="status">속성 보고서 만드는 중…</div>;
+  if (state.kind === "loading") {
+    return (
+      <SkeletonRegion label="속성 보고서 만드는 중…" className="md-properties-report">
+        <SkeletonText lines={4} />
+      </SkeletonRegion>
+    );
+  }
   if (state.kind === "error") return <div className="md-properties-report is-broken">속성 보고서: {state.message}</div>;
   if (state.rows.length === 0) {
     return (

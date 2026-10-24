@@ -8,7 +8,6 @@ import {
   Radio,
   RadioGroup,
   Select,
-  Spinner,
   Table,
   TextField,
   useToast,
@@ -28,6 +27,7 @@ import {
   probeConfluenceDc,
 } from "../store/wikiStore";
 import { jobStatusAppearance, jobStatusLabel, modeLabel } from "../lib/migrationLabels";
+import { SettingsSkeleton } from "../components/WikiSkeleton";
 
 /**
  * 컨플루언스 DC 마이그레이션(`/admin/migrations`, M1) — 전역 관리자 전용.
@@ -114,9 +114,7 @@ export function MigrationsAdminPage() {
 
   if (jobs === null) {
     return (
-      <div className="space-settings" role="status">
-        <Spinner size="large" label="마이그레이션 목록 불러오는 중" />
-      </div>
+      <SettingsSkeleton label="마이그레이션 목록 불러오는 중" lines={6} />
     );
   }
 
@@ -199,6 +197,8 @@ export function MigrationsAdminPage() {
 
           <Select
             label="대상 스페이스"
+            searchable
+            searchPlaceholder="스페이스 이름·키로 찾기"
             value={targetSpaceId}
             options={[
               { value: NO_SPACE, label: "스페이스를 고르세요" },

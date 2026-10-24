@@ -12,6 +12,7 @@ import { CreateContentMenu } from "../components/CreateContentMenu";
 import { SpaceWatchButton } from "../components/WatchButton";
 import { TruncatedText } from "../components/TruncatedText";
 import { useReadOnly } from "../lib/readOnly";
+import { PageSkeleton } from "../components/WikiSkeleton";
 
 /** 최근 업데이트 목록에 보여줄 최대 개수 — 캡처(특정 스페이스 페이지.png)의 5건 + "더 보기" 없이 고정. */
 const RECENT_LIMIT = 8;
@@ -118,17 +119,7 @@ export function SpaceIndexPage() {
   if (roots === null) {
     return (
       <div className="space-overview">
-        <span className="wiki-visually-hidden" role="status">
-          스페이스 로딩 중
-        </span>
-        <div className="page-view-skeleton" aria-hidden="true">
-          <span className="wiki-skeleton page-view-skeleton-title" />
-          <div className="page-view-skeleton-body">
-            {["70%", "55%", "62%", "48%"].map((width, i) => (
-              <span key={i} className="wiki-skeleton wiki-skeleton-line" style={{ width }} />
-            ))}
-          </div>
-        </div>
+        <PageSkeleton label="스페이스 로딩 중" paragraphs={[4]} />
       </div>
     );
   }

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, ConfirmDialog, EmptyState, TextArea, TextField, useToast } from "@chanho/react";
+import { Button, ConfirmDialog, EmptyState, Skeleton, TextArea, TextField, useToast } from "@chanho/react";
 import { Copy, LayoutTemplate, Pencil, Trash2 } from "lucide-react";
 import type { PageTemplate } from "../store/types";
 import { createTemplate, deleteTemplate, listTemplates, updateTemplate } from "../store/wikiStore";
 import { BUILTIN_TEMPLATES } from "../lib/builtinTemplates";
+import { SkeletonLine, SkeletonRegion } from "./WikiSkeleton";
 
 /**
  * 스페이스 설정의 템플릿 탭(W23).
@@ -199,7 +200,17 @@ export function TemplateSettings({ spaceId }: { spaceId: string }) {
       )}
 
       {templates === null ? (
-        <span role="status">템플릿 로딩 중</span>
+        <SkeletonRegion label="템플릿 로딩 중" as="ul" className="template-list">
+          {["36%", "48%", "30%"].map((width, i) => (
+            <li key={i} className="template-list-item">
+              <div className="template-list-copy wiki-skeleton-grow">
+                <SkeletonLine width={width} />
+                <SkeletonLine width="60%" />
+              </div>
+              <Skeleton width={120} height={32} radius="medium" />
+            </li>
+          ))}
+        </SkeletonRegion>
       ) : templates.length === 0 ? (
         <EmptyState
           title="템플릿이 없습니다"

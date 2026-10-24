@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Banner, Radio, RadioGroup, Switch, useToast } from "@chanho/react";
+import { Banner, Radio, RadioGroup, SkeletonText, Switch, useToast } from "@chanho/react";
 import { AtSign, Bell, Clock, FilePlus, FileText, Mail, MessageSquare, Share2 } from "lucide-react";
 import { SettingsHeader, SettingsItem } from "../components/SettingsItem";
 import type { NotificationPrefs, NotificationPrefsPatch } from "../store/types";
 import { getNotificationPrefs, updateNotificationPrefs } from "../store/wikiStore";
+import { SkeletonRegion } from "../components/WikiSkeleton";
 
 const TYPE_ROWS: Array<{
   key: "mentioned" | "pageUpdated" | "pagePublished" | "comment" | "shared";
@@ -99,9 +100,11 @@ export function NotificationSettingsPage() {
   }
   if (!prefs) {
     return (
-      <div className="space-settings" role="status">
+      <div className="space-settings">
         {header}
-        <p className="space-settings-desc">불러오는 중…</p>
+        <SkeletonRegion label="불러오는 중…" className="space-settings-form">
+          <SkeletonText lines={6} />
+        </SkeletonRegion>
       </div>
     );
   }

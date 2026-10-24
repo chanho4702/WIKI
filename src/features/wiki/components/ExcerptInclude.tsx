@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { getPage, lookupPagesByTitle } from "../store/wikiStore";
 import { extractExcerpt } from "../lib/excerpt";
 import { contentPathIn } from "../lib/contentPath";
+import { SkeletonText } from "@chanho/react";
+import { SkeletonRegion } from "./WikiSkeleton";
 
 /**
  * `::excerpt-include[제목]` 렌더(W23) — 같은 스페이스에서 제목으로 문서를 찾아 그 문서의
@@ -60,7 +62,11 @@ export function ExcerptInclude({
   }, [spaceId, title]);
 
   if (state.kind === "loading") {
-    return <div className="md-excerpt-include" role="status">발췌 불러오는 중…</div>;
+    return (
+      <SkeletonRegion label="발췌 불러오는 중…" className="md-excerpt-include">
+        <SkeletonText lines={2} />
+      </SkeletonRegion>
+    );
   }
   if (state.kind === "missing") {
     return (

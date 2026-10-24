@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { Avatar, Badge, Button, Dropdown, Modal, Spinner, TopBar } from "@chanho/react";
+import { Avatar, Badge, Button, Dropdown, Modal, TopBar } from "@chanho/react";
 import { Bell, Database, DatabaseBackup, Keyboard, KeyRound, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, UserRound, Users } from "lucide-react";
 import { personPath } from "../lib/people";
 import type { User } from "../store/types";
@@ -12,6 +12,7 @@ import { GlobalSearchField } from "./GlobalSearchField";
 import { NotificationBell } from "./NotificationBell";
 import { useReadOnly } from "../lib/readOnly";
 import { usePlatformFeatures } from "../lib/usePlatformFeatures";
+import { SkeletonLines } from "./WikiSkeleton";
 
 // 도움말은 편집기 명령 목록을 참조한다. 닫힌 모달까지 미리 불러오면 읽기 화면에도
 // TipTap이 포함되므로, 실제로 도움말을 열 때만 같은 단일 원천을 가져온다.
@@ -191,7 +192,7 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
           {shortcutHelpOpen ? (
             <Suspense fallback={
               <Modal open onOpenChange={setShortcutHelpOpen} title="단축키 도움말">
-                <Spinner label="도움말 불러오는 중" />
+                <SkeletonLines label="도움말 불러오는 중" widths={["55%", "70%", "48%", "62%", "40%"]} />
               </Modal>
             }>
               <ShortcutHelpModal open onOpenChange={setShortcutHelpOpen} />

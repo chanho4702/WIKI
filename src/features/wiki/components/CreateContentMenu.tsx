@@ -5,6 +5,7 @@ import { FileText, Folder, LayoutTemplate, Newspaper } from "lucide-react";
 import type { PageTemplate, PageType } from "../store/types";
 import { listTemplates } from "../store/wikiStore";
 import { builtinTemplatesFor } from "../lib/builtinTemplates";
+import { ListSkeleton } from "./WikiSkeleton";
 
 export interface CreateContentMenuProps {
   /** 드롭다운을 여는 요소 — 진입점마다 다르다(헤더는 라벨 버튼, 트리·사이드바는 아이콘 버튼).
@@ -138,7 +139,7 @@ export function CreateContentMenu({
         <div className="template-picker-group">
           <p className="template-picker-group-title">스페이스 템플릿</p>
           {templates === null ? (
-            <p role="status">불러오는 중</p>
+            <ListSkeleton label="불러오는 중" rows={3} media="none" className="template-picker-list" />
           ) : templates.length === 0 ? (
             <EmptyState
               title="템플릿이 없습니다"

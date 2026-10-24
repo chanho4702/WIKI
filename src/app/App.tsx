@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import type { ComponentType } from "react";
 import { Navigate, Route, Routes, useParams } from "react-router";
-import { Button, Spinner } from "@chanho/react";
+import { Button } from "@chanho/react";
 import type { Space } from "../features/wiki/store/types";
 import { listSpaces } from "../features/wiki/store/wikiStore";
 import { AppShell } from "../features/wiki/components/AppShell";
@@ -10,6 +10,7 @@ import { SpaceIndexPage } from "../features/wiki/pages/SpaceIndexPage";
 import { SpaceDirectoryPage } from "../features/wiki/pages/SpaceDirectoryPage";
 import { HomePage } from "../features/wiki/pages/HomePage";
 import { useReadOnly } from "../features/wiki/lib/readOnly";
+import { EditorSkeleton, ShellSkeleton } from "../features/wiki/components/WikiSkeleton";
 
 // 첫 진입에 필요한 개요·홈·디렉토리만 먼저 받는다. 본문 렌더러와 관리 화면은 해당 경로에서
 // 로드하고, AppShell의 Suspense가 본문만 대체해 탐색 메뉴와 사이드바 상태를 유지한다.
@@ -68,9 +69,7 @@ function RedirectToSpace({ fallbackSpaceId }: { fallbackSpaceId: string }) {
 /** 편집 화면 청크를 받는 동안의 자리표시 — 보기 화면의 스켈레톤과 같은 톤. */
 function EditorFallback() {
   return (
-    <div className="app-loading">
-      <Spinner size="large" label="편집기 불러오는 중" />
-    </div>
+    <EditorSkeleton label="편집기 불러오는 중" />
   );
 }
 
@@ -114,9 +113,7 @@ export function App() {
 
   if (spaces === null) {
     return (
-      <div className="app-loading">
-        <Spinner size="large" label="불러오는 중" />
-      </div>
+      <ShellSkeleton label="불러오는 중" />
     );
   }
 

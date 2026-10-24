@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router";
-import { EmptyState } from "@chanho/react";
+import { EmptyState, Skeleton } from "@chanho/react";
 import { FileText, Folder, Tag } from "lucide-react";
 import type { LabelCount, Page } from "../store/types";
 import { listPagesWithLabel, listSpaceLabels } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { contentPathIn } from "../lib/contentPath";
+import { ListSkeleton, SkeletonRegion } from "../components/WikiSkeleton";
 
 /**
  * 라벨 탐색 (`/spaces/:spaceId/labels`, `/spaces/:spaceId/labels/:name`).
@@ -38,7 +39,13 @@ export function LabelsPage() {
       </header>
 
       {labels === null ? (
-        <span role="status">라벨 로딩 중</span>
+        <SkeletonRegion label="라벨 로딩 중" as="ul" className="labels-cloud">
+          {[72, 96, 64, 88, 56, 80].map((width, i) => (
+            <li key={i}>
+              <Skeleton width={width} height={20} radius="full" />
+            </li>
+          ))}
+        </SkeletonRegion>
       ) : labels.length === 0 ? (
         <EmptyState
           title="아직 라벨이 없습니다"
@@ -66,7 +73,7 @@ export function LabelsPage() {
         <section aria-label={`${name} 라벨이 붙은 문서`}>
           <h2 className="labels-page-subtitle">{name}</h2>
           {pages === null ? (
-            <span role="status">문서 로딩 중</span>
+            <ListSkeleton label="문서 로딩 중" rows={4} media="icon" lines={1} className="labels-results" />
           ) : pages.length === 0 ? (
             <EmptyState title="이 라벨이 붙은 문서가 없습니다" />
           ) : (

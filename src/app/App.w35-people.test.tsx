@@ -43,8 +43,9 @@ describe("F-07 사람 프로필 화면", () => {
     expect(screen.getByText("플랫폼팀")).toBeInTheDocument();
 
     const table = await screen.findByRole("table", { name: "이서연 님이 최근 작업한 문서" });
-    // u2가 만들었거나(pg3·pg5) 마지막으로 고친(pg1) 문서 — u3의 문서(pg4)는 없다
-    expect(within(table).getByRole("link", { name: "시작하기" })).toHaveAttribute("href", "/spaces/sp1/pages/pg1");
+    // u2가 만들었거나(pg3·pg5) 마지막으로 고친(pg1) 문서 — u3의 문서(pg4)는 없다.
+    // 표는 로딩 중에도 같은 자리에 먼저 그려진다(행만 스켈레톤) — 첫 행은 기다려서 찾는다
+    expect(await within(table).findByRole("link", { name: "시작하기" })).toHaveAttribute("href", "/spaces/sp1/pages/pg1");
     expect(within(table).getByRole("link", { name: "개발 환경 설정" })).toBeInTheDocument();
     expect(within(table).getByRole("link", { name: "로컬 DB 설정" })).toBeInTheDocument();
     expect(within(table).queryByRole("link", { name: "배포 가이드" })).not.toBeInTheDocument();

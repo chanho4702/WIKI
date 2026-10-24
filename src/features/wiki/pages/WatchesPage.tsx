@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Banner, Button, Checkbox, EmptyState, Spinner, Table, useToast } from "@chanho/react";
+import { Banner, Button, Checkbox, EmptyState, Table, useToast } from "@chanho/react";
 import { Eye } from "lucide-react";
 import { SettingsHeader } from "../components/SettingsItem";
 import type { WatchedPage, WatchedSpace, WatchList } from "../store/types";
@@ -85,7 +85,20 @@ export function WatchesPage() {
     return (
       <div className="watches-page">
         {header}
-        <Spinner label="구독 목록 불러오는 중" />
+        {/* 문서 표와 같은 머리글로 행 자리만 잡는다(DS Table loading). 이름을 실제 표("구독한 문서")와 달리
+          * 두는 이유: 로드 후 표는 다른 자리(섹션 안)에 새로 그려져, 같은 이름이면 로딩 표를 먼저 잡은 쪽이
+          * 사라진 요소를 들고 있게 된다. */}
+        <Table<PageRow>
+          aria-label="구독 목록"
+          loading
+          loadingLabel="구독 목록 불러오는 중"
+          rows={[]}
+          columns={[
+            { key: "select", header: "선택", width: "56px", adjustable: false },
+            { key: "title", header: "문서" },
+            { key: "spaceName", header: "스페이스" },
+          ]}
+        />
       </div>
     );
   }

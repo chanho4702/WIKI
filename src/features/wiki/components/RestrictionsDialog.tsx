@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Banner, ConfirmDialog, Lozenge, useToast } from "@chanho/react";
+import { Banner, ConfirmDialog, Lozenge, Skeleton, SkeletonText, useToast } from "@chanho/react";
 import { X } from "lucide-react";
 import type {
   PageRestrictions,
@@ -8,6 +8,7 @@ import type {
   User,
 } from "../store/types";
 import { getPageRestrictions, listSelectableUsers, listTeams, setPageRestrictions } from "../store/wikiStore";
+import { SkeletonRegion } from "./WikiSkeleton";
 
 export interface RestrictionsDialogProps {
   open: boolean;
@@ -174,7 +175,16 @@ export function RestrictionsDialog({ open, onOpenChange, pageId, users, onSaved 
       onConfirm={() => void handleSave()}
     >
       {loaded === null ? (
-        <p role="status">제한 정보를 불러오는 중…</p>
+        // 보기·편집 두 섹션(제목 · 설명 · 주체 입력) 자리
+        <SkeletonRegion label="제한 정보를 불러오는 중…" className="restriction-dialog">
+          {[0, 1].map((i) => (
+            <div key={i} className="wiki-skeleton-lines">
+              <Skeleton variant="text" width={96} />
+              <SkeletonText lines={2} />
+              <Skeleton height={36} radius="medium" />
+            </div>
+          ))}
+        </SkeletonRegion>
       ) : (
         <div className="restriction-dialog">
           {directoryError !== null ? (

@@ -19,7 +19,7 @@ import { DRAFT_TITLE } from "../lib/useCreateContent";
 import { EditConflictPanel, type EditConflictVariant } from "../components/EditConflictPanel";
 import { DraftBadge } from "../components/DraftBadge";
 import { PageConflictError, type Page, type User } from "../store/types";
-import { SkeletonLines } from "../components/WikiSkeleton";
+import { EditorSkeleton } from "../components/WikiSkeleton";
 import { TruncatedText } from "../components/TruncatedText";
 import { CollaborationStatus } from "../editor/components/CollaborationStatus";
 import {
@@ -255,11 +255,7 @@ export function PageEditPage() {
   }
   if (initialBody === null) {
     return (
-      <div className="page-edit">
-        <div className="page-edit-body">
-          <SkeletonLines label="페이지 로딩 중" widths={["40%", "100%", "92%", "97%", "60%"]} />
-        </div>
-      </div>
+      <EditorSkeleton label="페이지 로딩 중" />
     );
   }
   if (isEdit && pageId && pageSpaceId !== null && pageSpaceId !== spaceId) {
@@ -561,6 +557,7 @@ export function PageEditPage() {
           {isEdit && !isDraft ? (
             <TextField
               className="edit-chrome-change-note"
+              size="compact"
               label="변경 요약 (선택)"
               value={changeNote}
               onChange={(e) => setChangeNote(e.target.value)}

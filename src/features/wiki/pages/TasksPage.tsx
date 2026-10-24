@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { EmptyState, PageHeader } from "@chanho/react";
+import { EmptyState, PageHeader, Skeleton } from "@chanho/react";
 import { ListChecks } from "lucide-react";
 import type { MyTask } from "../store/types";
 import { listMyTasks, setTaskDone } from "../store/wikiStore";
 import { useToast } from "@chanho/react";
+import { SkeletonLine, SkeletonRegion } from "../components/WikiSkeleton";
 
 /**
  * 내 작업(`/tasks`, W23) — 담당자가 나인 체크박스 항목을 문서를 가로질러 모은다.
@@ -90,7 +91,15 @@ export function TasksPage() {
       </p>
 
       {open === null ? (
-        <span role="status">작업 불러오는 중</span>
+        <SkeletonRegion label="작업 불러오는 중" as="ul" className="task-list">
+          {["48%", "62%", "40%", "55%"].map((width, i) => (
+            <li key={i} className="task-item">
+              <Skeleton width={16} height={16} />
+              <SkeletonLine className="task-text wiki-skeleton-grow" width={width} />
+              <SkeletonLine className="task-source" width={120} />
+            </li>
+          ))}
+        </SkeletonRegion>
       ) : open.length === 0 ? (
         <EmptyState
           media={<ListChecks size={32} aria-hidden="true" />}

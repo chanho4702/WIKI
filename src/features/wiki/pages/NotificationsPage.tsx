@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { Banner, Button, EmptyState, PageHeader, Select, Spinner } from "@chanho/react";
+import { Banner, Button, EmptyState, PageHeader, Select, Skeleton } from "@chanho/react";
+import { SkeletonLine, SkeletonRegion } from "../components/WikiSkeleton";
 import { Bell, Layers } from "lucide-react";
 import type { Notification, NotificationType, User } from "../store/types";
 import { listNotifications, listUsers, markNotificationsRead } from "../store/wikiStore";
@@ -151,7 +152,20 @@ export function NotificationsPage() {
         </Banner>
       ) : null}
       {items === null ? (
-        error === null ? <Spinner label="알림 불러오는 중" /> : null
+        error === null ? (
+          <SkeletonRegion label="알림 불러오는 중" as="ul" className="notification-list notifications-page-list">
+            {["58%", "44%", "66%", "50%", "38%"].map((width, i) => (
+              <li key={i} className="notification-item">
+                <Skeleton width={16} height={16} className="notification-item-icon" />
+                <span className="notification-item-body">
+                  <SkeletonLine className="notification-item-title" width={width} />
+                  <SkeletonLine className="notification-item-text" width="36%" />
+                </span>
+                <SkeletonLine className="notification-item-time" width={40} />
+              </li>
+            ))}
+          </SkeletonRegion>
+        ) : null
       ) : items.length === 0 && !nextBefore ? (
         <EmptyState
           media={<Bell size={32} aria-hidden="true" />}

@@ -1,7 +1,9 @@
 :root {
   /* W6: .edit-chrome 실측 높이와 동기화 — .top-toolbar의 sticky top 오프셋이 이 값을 참조해
    * 같은 스크롤 컨테이너(.wiki-content) 안에서 두 sticky 바가 겹치지 않게 한다. */
-  --edit-chrome-height: 56px; /* 버튼·변경 요약 입력(38px) + 위아래 8px + 아래 테두리 — 실측 55px를 올림 */
+  /* 크롬 행 높이 — 버튼과 변경 요약 입력이 같은 32px(DS 0.14 TextField compact)이고 위아래 8px + 아래 테두리.
+   * 실측 55px 시절 값(입력 38px)을 그대로 두어 아래 sticky 툴바 오프셋이 흔들리지 않게 한다(최소 높이). */
+  --edit-chrome-height: 56px;
 
   /* W7 T4: @chanho/tokens(DS)에 대응 토큰이 없는 색 — 라이트 값은 기존에 쓰이던 raw hex 폴백을
    * 그대로 보존해 시각 회귀가 없다. 다크 값은 아래 [data-theme="dark"]에서 재정의한다
@@ -100,11 +102,11 @@ body {
  * 덮어야 하므로 전역 셀렉터 + !important가 필요하다. 0이 아니라 0.01ms인 이유: transitionend에
  * 의존하는 코드가 콜백을 못 받아 멈추는 것을 막기 위해서다.
  *
- * animation은 일부러 전역에서 건드리지 않는다 — 이 앱에서 keyframe 애니메이션은 전부 "진행
- * 중"을 알리는 표시(DS Spinner·Button 로딩 스피너, 아래 스켈레톤 펄스)뿐이고, 이걸 멈추면
- * 로딩이 정지·중단된 것처럼 보여 정보가 사라진다(2.3.3이 대상으로 하는 "장식적" 동작이 아니다).
- * 대신 각 표시를 개별적으로 감속한다 — DS Spinner/Button은 자체 규칙(0.8s → 1.6s)이 있고,
- * 스켈레톤은 아래에서 늦춘다. */
+ * animation은 일부러 전역에서 건드리지 않는다 — 이 앱에서 keyframe 애니메이션은 "진행 중"을
+ * 알리는 표시(DS Spinner·Button 로딩 스피너, DS Skeleton 쉬머)뿐이고, 처리는 각 DS 컴포넌트가
+ * 정한다: 스피너는 멈추면 로딩이 중단된 것처럼 보여 감속(0.8s → 1.6s)하고, 스켈레톤 쉬머는
+ * Atlassian과 같이 멈춘다(회색 자리는 그대로 남아 "불러오는 중"이라는 정보가 사라지지 않는다).
+ * 여기서 전역으로 덮으면 그 구분이 !important에 눌려 사라진다. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -3690,16 +3692,6 @@ body {
   gap: var(--chanho-space-300);
 }
 
-.search-page-state {
-  min-height: 240px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--chanho-space-150);
-  color: var(--chanho-color-text-subtle);
-}
-
 .search-result-summary {
   display: flex;
   align-items: baseline;
@@ -4614,34 +4606,53 @@ body.is-column-reordering {
 }
 
 /* ── 스켈레톤 로딩 ──────────────────────────────────────────
- * 첫 로드에서 Spinner만 띄우면 화면이 비어 있다가 콘텐츠가 통째로 나타나 레이아웃이 튄다.
+ * 첫 로드에서 스피너만 띄우면 화면이 비어 있다가 콘텐츠가 통째로 나타나 레이아웃이 튄다.
  * 실제 콘텐츠와 같은 자리·크기의 회색 블록을 먼저 그려 위치를 예약한다(CLS 방지).
- * shimmer 애니메이션은 상단 prefers-reduced-motion 전역 규칙이 함께 무력화한다. */
-.wiki-skeleton {
-  /* span에 붙여도 height가 먹게 한다 — 현재 사용처는 모두 flex 자식이라 자동 블록화되지만,
-   * 클래스만 재사용했을 때 높이가 0으로 무너지는 것을 막는다. */
-  display: block;
-  border-radius: var(--chanho-radius-small);
-  background: var(--chanho-color-background-neutral);
-  animation: wiki-skeleton-pulse 1.4s ease-in-out infinite;
+ * 블록의 색·쉬머·"동작 줄이기"에서 정지는 DS Skeleton이 담당한다(Atlassian @atlaskit/skeleton과 같은 처리) —
+ * 여기서는 블록을 놓는 배치만 정한다. `.wiki-skeleton`은 장식 영역(aria-hidden)의 훅 클래스다. */
+.wiki-skeleton-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
 }
 
-/* "동작 줄이기"에서도 펄스를 멈추지는 않는다 — 멈추면 로딩이 중단된 것처럼 보인다. 이동 없는
- * 불투명도 변화라 감속만으로 충분하다(DS Spinner의 0.8s → 1.6s와 같은 처리). */
-@media (prefers-reduced-motion: reduce) {
-  .wiki-skeleton {
-    animation-duration: 2.8s;
-  }
+/* 트리 행 — .page-tree-row(펼침 칸 24px) + 링크 행(min-height 32px, 좌우 8px, 아이콘 간격 6px)과 같은 치수 */
+.wiki-skeleton-tree {
+  display: flex;
+  flex-direction: column;
+}
+.wiki-skeleton-tree-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-75);
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 0 var(--chanho-space-100);
 }
 
-@keyframes wiki-skeleton-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
-  }
+.wiki-skeleton-comments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+.wiki-skeleton-comment {
+  display: flex;
+  gap: var(--chanho-space-100);
+  align-items: flex-start;
+}
+
+.wiki-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+}
+/* DS 목록 행은 좌우 20px 안쪽 여백(메뉴 기준)이다 — 본문 목록은 글이 화면 선에서 시작하므로 줄인다 */
+.wiki-skeleton-list > * {
+  padding-inline: var(--chanho-space-100);
 }
 
 /* 홈 "다시 시작" 카드 자리표시 — .home-resume-card와 같은 테두리/패딩/그리드 셀을 유지해야
@@ -4657,56 +4668,37 @@ body.is-column-reordering {
   background: var(--chanho-color-background-surface);
 }
 
-.wiki-skeleton-circle {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border-radius: 50%;
-}
-.wiki-skeleton-lines {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--chanho-space-100);
-}
-.wiki-skeleton-tree {
-  display: flex;
-  flex-direction: column;
-  gap: var(--chanho-space-100);
-  padding: var(--chanho-space-100) 0;
-}
-.wiki-skeleton-comments {
-  display: flex;
-  flex-direction: column;
-  gap: var(--chanho-space-200);
-}
-.wiki-skeleton-comment {
-  display: flex;
-  gap: var(--chanho-space-100);
-  align-items: flex-start;
-}
-.wiki-skeleton-line {
-  height: 12px;
-}
-
-/* 페이지 보기 자리표시 — 제목 1줄 + 메타 1줄 + 본문 여러 줄. 마지막 줄은 짧게 해서
- * 문단의 끝처럼 보이게 한다(실제 텍스트 리듬 모사). */
+/* 페이지 보기 자리표시 — (브레드크럼) + 제목 1줄 + (메타 1줄) + 본문 문단. */
 .page-view-skeleton {
   display: flex;
   flex-direction: column;
   gap: var(--chanho-space-200);
 }
-
 .page-view-skeleton-title {
   height: 28px;
-  width: min(60%, 380px);
 }
-
 .page-view-skeleton-body {
   display: flex;
   flex-direction: column;
-  gap: var(--chanho-space-150);
-  margin-top: var(--chanho-space-200);
+  gap: var(--chanho-space-200);
+  margin-top: var(--chanho-space-100);
+}
+
+.wiki-skeleton-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-300);
+}
+.wiki-skeleton-settings-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-100);
+}
+
+.wiki-skeleton-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--chanho-space-100) 0;
 }
 
 /* 삭제 다이얼로그의 자식 처리 선택(기획 P2) — 설명과 버튼 사이에 놓인다.
@@ -7629,4 +7621,39 @@ a.page-view-owner:hover {
   .top-toolbar {
     padding-inline: var(--chanho-space-200);
   }
+}
+
+/* 편집 화면 자리표시(EditorSkeleton) — 크롬은 .edit-chrome 그대로, 버튼 묶음만 오른쪽으로 민다 */
+.wiki-skeleton-editor-actions {
+  display: flex;
+  gap: var(--chanho-space-100);
+  margin-inline-start: auto;
+}
+.wiki-skeleton-editor-title {
+  margin-top: var(--chanho-space-200); /* .page-edit-title-row와 같은 윗 여백 */
+}
+
+/* SkeletonLine — 실제 글줄 클래스의 행간 그대로 한 줄 높이를 차지한다 */
+.wiki-skeleton-textline {
+  display: flex;
+  align-items: center;
+  min-height: 1lh;
+}
+
+/* 검색 결과 자리표시 — 요약 줄과 결과 목록 사이는 .search-page의 gap(24px)과 같게 */
+.search-results-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-300);
+}
+.search-result-skeleton-title {
+  font-size: var(--chanho-font-size-200);
+}
+.wiki-skeleton-textline--fill {
+  align-self: stretch;
+  min-width: 0;
+}
+.wiki-skeleton-grow {
+  flex: 1;
+  min-width: 0;
 }

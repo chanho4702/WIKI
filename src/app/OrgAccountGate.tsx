@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { PendingApprovalGate } from "@chanho/org-admin";
-import { Button, Spinner } from "@chanho/react";
+import { Button } from "@chanho/react";
 import { Ban } from "lucide-react";
 import type { OrgMe } from "../features/wiki/store/types";
 import { AUTH_GATE_ENABLED } from "../features/wiki/store/apiClient";
 import { useReadOnly } from "../features/wiki/lib/readOnly";
 import { getOrgMe } from "../features/wiki/store/wikiStore";
 import { useAuth } from "../auth/AuthGate";
+import { ShellSkeleton } from "../features/wiki/components/WikiSkeleton";
 
 export interface OrgAccountGateProps {
   /** 게이트를 켤지. 생략하면 로그인 게이트와 같은 조건(로그인이 없으면 계정 상태도 없다). */
@@ -108,9 +109,7 @@ function AccountStatusGate({ children }: { children: ReactNode }) {
 
   if (me === null) {
     return (
-      <div className="app-loading">
-        <Spinner size="large" label="계정 상태 확인 중" />
-      </div>
+      <ShellSkeleton label="계정 상태 확인 중" />
     );
   }
 

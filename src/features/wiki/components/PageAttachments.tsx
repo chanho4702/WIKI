@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, useToast } from "@chanho/react";
+import { Button, SkeletonText, useToast } from "@chanho/react";
 import { Download, History, Paperclip, RotateCcw, Trash2 } from "lucide-react";
 import type { Attachment, AttachmentVersion } from "../store/types";
 import {
@@ -14,6 +14,7 @@ import {
   uploadAttachment,
 } from "../store/wikiStore";
 import { useReadOnly } from "../lib/readOnly";
+import { SkeletonRegion } from "./WikiSkeleton";
 
 /** 1.2 MB처럼 사람이 읽는 크기. */
 function formatSize(bytes: number): string {
@@ -193,9 +194,9 @@ export function PageAttachments({ pageId, body }: { pageId: string; body: string
 
               {openHistory === attachment.id ? (
                 versions === null ? (
-                  <span className="page-attachments-versions" role="status">
-                    이력 불러오는 중
-                  </span>
+                  <SkeletonRegion label="이력 불러오는 중" as="span" className="page-attachments-versions">
+                    <SkeletonText lines={2} width="60%" />
+                  </SkeletonRegion>
                 ) : versions.length === 0 ? (
                   <span className="page-attachments-versions">지난 버전이 없습니다.</span>
                 ) : (

@@ -20,6 +20,7 @@ import { TemplateSettings } from "../components/TemplateSettings";
 import { SpaceExportPanel } from "../components/SpaceExportPanel";
 import { SpaceLabelsEditor } from "../components/SpaceLabelsEditor";
 import { displayUserName } from "../lib/userName";
+import { TableSkeleton } from "../components/WikiSkeleton";
 
 /** 설정 섹션 — 사이드바 항목과 URL 조각이 같은 목록에서 나온다. */
 export const SETTINGS_SECTIONS = ["general", "permissions", "templates", "audit", "danger"] as const;
@@ -349,7 +350,12 @@ export function SpaceSettingsPage() {
                       </Link>
                     </p>
                     {grants === null ? (
-                      <span role="status">권한 로딩 중</span>
+                      <TableSkeleton
+                        label="권한 로딩 중"
+                        className="space-settings-grants"
+                        headers={["대상", "종류", "역할", "작업"]}
+                        rows={3}
+                      />
                     ) : grants.length === 0 ? (
                       <EmptyState
                         title="지정된 권한이 없습니다"

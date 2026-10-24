@@ -160,17 +160,17 @@ describe("W10 전역 CSS 계약 (소스 검사)", () => {
     expect(body).toContain("transition-duration: 0.01ms !important");
   });
 
-  it("reduced-motion이 진행 표시 애니메이션을 정지시키지 않는다 — 감속만 한다", () => {
-    // 전역 셀렉터로 animation-duration을 죽이면 DS Spinner(role=status)와 Button 로딩
-    // 스피너까지 !important로 덮여 멈춘다 — 로딩이 중단된 것처럼 보이는 회귀를 막는다.
+  it("reduced-motion이 진행 표시 애니메이션을 전역으로 덮지 않는다 — 처리는 각 DS 컴포넌트 몫", () => {
+    // 전역 셀렉터로 animation을 죽이면 DS Spinner(role=status)와 Button 로딩 스피너까지 !important로
+    // 덮여 멈춘다 — 로딩이 중단된 것처럼 보이는 회귀를 막는다.
     const globalBlock = /@media \(prefers-reduced-motion: reduce\)\s*\{\s*\*,[\s\S]*?\n\}/.exec(css);
     expect(globalBlock).not.toBeNull();
-    expect(globalBlock![0]).not.toContain("animation-duration");
+    expect(globalBlock![0]).not.toContain("animation");
 
-    // 스켈레톤 펄스는 정지가 아니라 감속으로 처리한다.
-    expect(css).toMatch(
-      /@media \(prefers-reduced-motion: reduce\) \{\s*\.wiki-skeleton \{\s*animation-duration: [\d.]+s;/,
-    );
+    // 스켈레톤은 DS Skeleton 하나로 그린다(2026-10-24, DS 0.13.0) — 앱이 펄스를 따로 두면 색·주기·동작 줄이기
+    // 처리(DS: Atlassian과 같이 쉬머만 멈추고 회색 자리는 남긴다)가 두 벌로 갈린다.
+    expect(css).not.toMatch(/@keyframes\s+wiki-skeleton/);
+    expect(css).not.toMatch(/\.wiki-skeleton\s*\{[^}]*animation/);
   });
 
   it("color-scheme을 테마별로 선언해 네이티브 위젯(스크롤바·select)이 함께 어두워진다", () => {

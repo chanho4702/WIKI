@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Spinner } from "@chanho/react";
+import {  } from "@chanho/react";
 import type { AppUser, AuthClient } from "./types";
 import { rememberReturnTo } from "./returnTo";
 import { AUTH_GATE_ENABLED, sharedAuthClient } from "../features/wiki/store/apiClient";
+import { ShellSkeleton } from "../features/wiki/components/WikiSkeleton";
 
 interface AuthContextValue {
   user: AppUser | null;
@@ -74,9 +75,7 @@ export function AuthGate({
 
   if (status === "checking") {
     return (
-      <div className="app-loading">
-        <Spinner size="large" label="로그인 확인 중" />
-      </div>
+      <ShellSkeleton label="로그인 확인 중" />
     );
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
