@@ -1326,9 +1326,9 @@ git commit -m "feat: 사이드바 페이지 검색 — 조상 체인 유지 필�
 Create `README.md` (repo 루트 `C:\MSA_TEMPLATE\wiki-front\README.md`):
 
 ````markdown
-# WIKI Front — 컨플루언스 클론
+# WIKI Front — 위키
 
-Chanho Design System(@chanho/react·tokens)의 소비 2호 프로젝트. ALM Front(지라 클론)와 동일한 철학의 독립 프론트 앱이며, 향후 MSA의 한 서비스로 게이트웨이 뒤에 배치된다.
+Chanho Design System(@chanho/react·tokens)의 소비 2호 프로젝트. ALM Front(이슈 트래커)와 동일한 철학의 독립 프론트 앱이며, 향후 MSA의 한 서비스로 게이트웨이 뒤에 배치된다.
 
 ## MVP 범위 (완료)
 
