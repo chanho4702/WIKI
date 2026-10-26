@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import GithubSlugger from "github-slugger";
 import { WIKI_LINK_SOURCE } from "../lib/wikiLinks";
 
@@ -6,6 +6,40 @@ export interface TocHeading {
   level: 1 | 2 | 3;
   slug: string;
   text: string;
+}
+
+/**
+ * 헤딩 이동은 앱의 실제 스크롤 컨테이너인 `.wiki-content` 안에서만 수행한다.
+ * `Element.scrollIntoView()`는 스크롤 가능한 모든 조상을 움직일 수 있어, 중첩 스크롤 구조에서는
+ * 글로벌 셸까지 위로 밀어 올린다. 컨테이너 기준 좌표를 직접 계산하면 헤더·사이드바는 그대로 남는다.
+ */
+export function scrollToWikiHeading(slug: string): boolean {
+  const target = document.getElementById(slug);
+  const scroller = target?.closest<HTMLElement>(".wiki-content");
+  if (!target || !scroller) return false;
+
+  const paddingTop = Number.parseFloat(window.getComputedStyle(scroller).paddingTop) || 0;
+  const top =
+    scroller.scrollTop
+    + target.getBoundingClientRect().top
+    - scroller.getBoundingClientRect().top
+    - paddingTop;
+  scroller.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+  return true;
+}
+
+function handleTocClick(event: MouseEvent<HTMLAnchorElement>, slug: string) {
+  // 새 탭·새 창 열기 등 링크의 표준 보조 동작은 브라우저에 맡긴다.
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (!scrollToWikiHeading(slug)) return;
+
+  event.preventDefault();
+  const nextHash = `#${encodeURIComponent(slug)}`;
+  if (window.location.hash !== nextHash) {
+    // BrowserRouter가 history.state에 넣은 key/index는 보존한다. null로 덮으면 이후 뒤로 가기와
+    // 라우트 이탈 가드가 현재 항목의 위치를 계산하지 못한다.
+    window.history.pushState(window.history.state, "", nextHash);
+  }
 }
 
 /** 코드 펜스(``` 또는 ~~~) 시작 마커 — 앞 최대 3칸 들여쓰기까지 CommonMark와 동일하게 허용 */
@@ -143,6 +177,7 @@ export function TableOfContents({ markdown, variant = "aside" }: TableOfContents
           <li key={h.slug} className={`page-toc-level-${h.level}`}>
             <a
               href={`#${h.slug}`}
+              onClick={(event) => handleTocClick(event, h.slug)}
               className={!inline && h.slug === activeSlug ? "page-toc-active" : undefined}
               aria-current={!inline && h.slug === activeSlug ? "true" : undefined}
             >

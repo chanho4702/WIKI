@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { extractHeadings, TableOfContents } from "./TableOfContents";
 import { MarkdownView } from "./MarkdownView";
@@ -120,5 +120,27 @@ describe("TableOfContents", () => {
     );
     const heading = container.querySelector("h1");
     expect(heading).toHaveAttribute("id", "안내-시작하기-참고");
+  });
+
+  it("목차 클릭은 상위 문서가 아니라 .wiki-content만 스크롤한다", () => {
+    const { container } = render(
+      <main className="wiki-content" style={{ paddingTop: 24 }}>
+        <TableOfContents markdown={"# 회의록\n\n## 참석자\n\n## 안건"} variant="inline" />
+        <h2 id="참석자">참석자</h2>
+      </main>,
+    );
+    const main = container.querySelector<HTMLElement>(".wiki-content")!;
+    const heading = container.querySelector<HTMLElement>("#참석자")!;
+    Object.defineProperty(main, "scrollTop", { value: 120, writable: true });
+    main.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+    heading.getBoundingClientRect = () => ({ top: 400 } as DOMRect);
+    const scrollTo = vi.fn();
+    main.scrollTo = scrollTo;
+
+    fireEvent.click(screen.getByRole("link", { name: "참석자" }));
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 396, behavior: "auto" });
+    expect(decodeURIComponent(window.location.hash.slice(1))).toBe("참석자");
+    window.history.replaceState(null, "", window.location.pathname);
   });
 });

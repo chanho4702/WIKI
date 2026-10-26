@@ -25,7 +25,7 @@ import {
 } from "../store/wikiStore";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
-import { TableOfContents } from "../components/TableOfContents";
+import { scrollToWikiHeading, TableOfContents } from "../components/TableOfContents";
 import { ChildPages } from "../components/ChildPages";
 import { DeleteContentDialog } from "../components/DeleteContentDialog";
 import { CommentSection } from "../components/CommentSection";
@@ -191,8 +191,7 @@ export function PageViewPage() {
   useEffect(() => {
     if (!hash || !page) return;
     const id = decodeURIComponent(hash.slice(1));
-    const target = document.getElementById(id);
-    target?.scrollIntoView({ block: "start" });
+    scrollToWikiHeading(id);
   }, [hash, page]);
   const [deleting, setDeleting] = useState(false);
 
