@@ -1,3 +1,4 @@
+import { Select } from "@chanho/react";
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { Copy, WrapText, ListOrdered } from "lucide-react";
 import { CodeLineNumbers } from "../../components/CodeLineNumbers";
@@ -16,7 +17,8 @@ import { CODE_LANGUAGES } from "../../lib/codeLanguages";
 export function CodeBlockView({ node, updateAttributes }: NodeViewProps) {
   const language = (node.attrs.language as string | null) ?? "plaintext";
   // 기존 문서에 목록에 없는 언어값이 저장돼 있을 수 있다 — 옵션에 동적으로 추가해 값이 사라지지 않게 한다
-  const options = CODE_LANGUAGES.includes(language) ? CODE_LANGUAGES : [language, ...CODE_LANGUAGES];
+  const languages = CODE_LANGUAGES.includes(language) ? CODE_LANGUAGES : [language, ...CODE_LANGUAGES];
+  const options = languages.map((lang) => ({ value: lang, label: lang }));
   const { prefs, toggle } = useCodeBlockPrefs();
   const numbered = showsLineNumbers(prefs);
 
@@ -37,19 +39,17 @@ export function CodeBlockView({ node, updateAttributes }: NodeViewProps) {
         </pre>
       </div>
       <div className="code-block-toolbar" contentEditable={false}>
-        <select
-          aria-label="코드 언어"
+        {/* 언어가 40종 가까이라 검색을 붙인다. 라벨은 스크린리더용(CSS에서 감춤) */}
+        <Select
+          className="code-block-language"
+          size="compact"
+          label="코드 언어"
+          searchable
+          searchPlaceholder="언어 찾기"
           value={language}
-          onChange={(e) =>
-            updateAttributes({ language: e.target.value === "plaintext" ? null : e.target.value })
-          }
-        >
-          {options.map((lang) => (
-            <option key={lang} value={lang}>
-              {lang}
-            </option>
-          ))}
-        </select>
+          options={options}
+          onValueChange={(next: string) => updateAttributes({ language: next === "plaintext" ? null : next })}
+        />
         <button
           type="button"
           aria-label="줄바꿈"

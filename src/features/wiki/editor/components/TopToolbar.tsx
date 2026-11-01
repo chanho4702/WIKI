@@ -1,5 +1,6 @@
 import { useEffect, useReducer, type ReactNode } from "react";
 import type { Editor } from "@tiptap/core";
+import { Select, type SelectOption } from "@chanho/react";
 import {
   Undo2,
   Redo2,
@@ -16,6 +17,10 @@ import {
   Table,
   Link,
   Image,
+  Pilcrow,
+  Heading1,
+  Heading2,
+  Heading3,
 } from "lucide-react";
 import { SLASH_ITEMS } from "../extensions/slashMenu";
 import { promptSetLink } from "../lib/linkCommand";
@@ -27,12 +32,22 @@ import { TextColorControl } from "./ColorPalette";
 /** 슬래시 메뉴 이미지 항목의 run을 그대로 재사용 — URL 프롬프트/삽입 로직을 이중 정의하지 않는다 */
 const insertImage = SLASH_ITEMS.find((i) => i.id === "image")!.run;
 
-const BLOCK_OPTIONS = [
-  { value: "paragraph", label: "본문" },
-  { value: "h1", label: "제목 1" },
-  { value: "h2", label: "제목 2" },
-  { value: "h3", label: "제목 3" },
-] as const;
+/** 블록 타입 — 값은 아이콘+텍스트(목록·트리거 양쪽에 같은 아이콘) */
+const BLOCK_OPTIONS: SelectOption[] = [
+  { value: "paragraph", label: "본문", icon: <Pilcrow size={16} /> },
+  { value: "h1", label: "제목 1", icon: <Heading1 size={16} /> },
+  { value: "h2", label: "제목 2", icon: <Heading2 size={16} /> },
+  { value: "h3", label: "제목 3", icon: <Heading3 size={16} /> },
+];
+
+/**
+ * DS Select(Radix)는 목록이 닫힐 때 다음 태스크(setTimeout 0)에서 포커스를 트리거로 돌려준다.
+ * 블록 타입을 바꾼 뒤에는 바로 이어 쓸 수 있게 편집기로 돌아가야 하므로, 그 복귀가 끝난 다음
+ * 태스크에서 편집기에 포커스를 준다(바깥 setTimeout이 Radix 것보다 먼저 예약되므로 안쪽이 뒤에 돈다).
+ */
+function afterSelectCloses(fn: () => void) {
+  setTimeout(() => setTimeout(fn, 0), 0);
+}
 
 export interface TopToolbarProps {
   editor: Editor;
@@ -79,6 +94,9 @@ export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange, o
     const chain = editor.chain().focus();
     if (value === "paragraph") chain.setParagraph().run();
     else chain.setHeading({ level: Number(value.slice(1)) as 1 | 2 | 3 }).run();
+    afterSelectCloses(() => {
+      if (!editor.isDestroyed) editor.commands.focus();
+    });
   };
 
   // 아이콘 버튼 — 접근 가능한 이름은 aria-label(한국어)로 고정하고, 렌더되는 lucide 아이콘은
@@ -108,11 +126,15 @@ export function TopToolbar({ editor, emojiPickerOpen, onEmojiPickerOpenChange, o
       {btn("실행 취소", <Undo2 size={16} aria-hidden />, () => editor.chain().focus().undo().run(), false, !editor.can().undo())}
       {btn("다시 실행", <Redo2 size={16} aria-hidden />, () => editor.chain().focus().redo().run(), false, !editor.can().redo())}
       <span className="top-toolbar-divider" />
-      <select aria-label="블록 타입" value={blockValue} onChange={(e) => setBlock(e.target.value)}>
-        {BLOCK_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      {/* 라벨은 스크린리더용 — 컨플 툴바처럼 화면에는 트리거만 보인다(CSS에서 감춤) */}
+      <Select
+        className="top-toolbar-block-select"
+        size="compact"
+        label="블록 타입"
+        value={blockValue}
+        options={BLOCK_OPTIONS}
+        onValueChange={setBlock}
+      />
       <span className="top-toolbar-divider" />
       {btn("굵게", <Bold size={16} aria-hidden />, () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}
       {btn("기울임", <Italic size={16} aria-hidden />, () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"))}

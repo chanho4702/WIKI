@@ -5,6 +5,7 @@ import { Editor } from "@tiptap/core";
 import { buildBaseExtensions } from "../extensions/base";
 import { parseMarkdown, serializeMarkdown } from "../markdown";
 import { TopToolbar } from "./TopToolbar";
+import { chooseOption } from "../../../../app/selectTestUtils";
 
 describe("TopToolbar", () => {
   it("블록 타입 셀렉트로 문단을 제목1로 바꾼다", async () => {
@@ -12,8 +13,11 @@ describe("TopToolbar", () => {
     const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
     editor.commands.selectAll();
     render(<TopToolbar editor={editor} />);
-    await user.selectOptions(screen.getByLabelText("블록 타입"), "h1");
+    const block = screen.getByRole("combobox", { name: "블록 타입" });
+    expect(block).toHaveTextContent("본문");
+    await chooseOption(user, block, "제목 1");
     expect(serializeMarkdown(editor.getJSON()).trim()).toBe("# 본문");
+    expect(block).toHaveTextContent("제목 1");
     editor.destroy();
   });
 

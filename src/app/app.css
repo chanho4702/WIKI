@@ -51,7 +51,7 @@
 
   /* 브라우저 네이티브 UI(스크롤바, select 드롭다운 목록, 체크박스 기본형, autofill 배경)에
    * 테마를 알린다. 이게 없으면 다크 테마에서 앱 표면만 어두워지고 네이티브 위젯은 흰색으로
-   * 남아 명도가 튄다 — .top-toolbar select와 .wiki-content 스크롤바가 실제 사례. */
+   * 남아 명도가 튄다 — 예전 툴바 생 select와 .wiki-content 스크롤바가 실제 사례. */
   color-scheme: light;
 }
 
@@ -238,7 +238,6 @@ body {
 .page-toc a:focus-visible,
 .child-pages a:focus-visible,
 .top-toolbar button:focus-visible,
-.top-toolbar select:focus-visible,
 .wiki-upload-task-actions button:focus-visible,
 .bubble-toolbar button:focus-visible,
 .insert-menu-trigger:focus-visible,
@@ -2986,12 +2985,26 @@ body {
   background: var(--wiki-chip-accent-blue-subtle-bg);
   color: var(--wiki-chip-accent-blue-text);
 }
-.top-toolbar select {
-  border: 1px solid var(--chanho-color-border-default);
-  border-radius: var(--chanho-radius-small);
-  padding: 2px 4px;
-  background: transparent;
-  color: var(--chanho-color-text-default);
+/* 블록 타입 — DS Select(compact). 툴바 안에서는 라벨을 화면에서 감추고(접근 이름은 남는다)
+ * 필드 기본 최소 폭(180px)을 풀어 옵션 폭만큼만 차지한다. */
+.top-toolbar-block-select,
+.code-block-language {
+  min-width: 0;
+}
+.top-toolbar-block-select > label,
+.code-block-language > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.top-toolbar-block-select {
+  width: 120px;
 }
 .top-toolbar-divider {
   width: 1px;
@@ -3289,20 +3302,56 @@ body {
   position: relative;
 }
 /* 툴바는 블록 아래 — 예전엔 우상단 절대 배치라 코드 첫 줄을 가렸다(기획 P4, 캡처 기능들.png).
- * hover/focus에서만 드러나 평소엔 코드에 집중하게 한다. */
+ * hover/focus에서만 드러나 평소엔 코드에 집중하게 한다.
+ * 문서 흐름에서 빼 블록 아래에 띄운다(컨플 코드 블록의 떠 있는 툴바) — 흐름 안에 두면 숨겨져
+ * 있어도 툴바 높이만큼 빈 줄이 남아 편집기에서만 코드 블록 아래 여백이 보기보다 두 배 넘게 컸다.
+ * 숨김은 opacity + pointer-events라 키보드로는 그대로 닿는다(포커스가 오면 드러난다). */
 .code-block-toolbar {
+  position: absolute;
+  /* pre의 아래 여백(space-200) 안쪽으로 올려 블록 바로 밑에 붙인다 */
+  top: calc(100% - var(--chanho-space-200) + var(--chanho-space-50));
+  right: 0;
+  z-index: 2;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 4px;
-  margin-top: calc(var(--chanho-space-200) * -1 + 2px);
-  margin-bottom: var(--chanho-space-200);
+  gap: var(--chanho-space-50);
+  padding: var(--chanho-space-50);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-surface);
+  box-shadow: var(--chanho-shadow-overlay);
   opacity: 0;
+  pointer-events: none;
   transition: opacity var(--chanho-motion-duration-base) var(--chanho-motion-easing-standard);
 }
 .code-block-view:hover .code-block-toolbar,
-.code-block-view:focus-within .code-block-toolbar {
+.code-block-view:focus-within .code-block-toolbar,
+.code-block-toolbar:has([aria-expanded="true"]) {
   opacity: 1;
+  pointer-events: auto;
+}
+.code-block-language {
+  width: 140px;
+}
+.code-block-toolbar button:not([role="combobox"]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--chanho-radius-small);
+  background: none;
+  color: var(--chanho-color-text-subtle);
+  cursor: pointer;
+  transition: background var(--chanho-motion-duration-fast) var(--chanho-motion-easing-standard);
+}
+.code-block-toolbar button:not([role="combobox"]):hover {
+  background: var(--chanho-color-background-neutral-hovered);
+}
+.code-block-toolbar button:not([role="combobox"]):focus-visible {
+  outline: none;
+  box-shadow: var(--chanho-focus-ring);
 }
 .code-block-toolbar button[aria-pressed="true"] {
   color: var(--chanho-color-text-brand);
