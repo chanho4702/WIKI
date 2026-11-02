@@ -85,6 +85,9 @@ describe("스켈레톤 로딩 — 셸·문서", () => {
 
 describe("스켈레톤 로딩 — 목록·카드", () => {
   it("홈 새 소식 피드는 실제 피드 행(.home-recent-item)과 같은 틀로 자리를 잡는다", async () => {
+    // 홈 최근 업데이트는 교차 스페이스 피드(listRecentFeed) 한 요청을 먼저 쓰고, 옛 서버(404)에서만 스페이스별
+    // 요청(listRecentlyUpdated)으로 되돌아간다 — 실제로 나가는 요청을 붙잡아야 스켈레톤이 보인다.
+    vi.spyOn(store, "listRecentFeed").mockReturnValue(pending());
     vi.spyOn(store, "listRecentlyUpdated").mockReturnValue(pending());
     renderApp("/home");
 
@@ -94,6 +97,16 @@ describe("스켈레톤 로딩 — 목록·카드", () => {
     const list = section.querySelector("ul.home-recent.wiki-skeleton")!;
     expect(list).toHaveAttribute("aria-hidden", "true");
     expect(list.querySelectorAll(":scope > li.home-recent-item").length).toBe(5);
+  });
+
+  it("홈 새 소식 피드 스켈레톤은 옛 서버 폴백(스페이스별 요청) 중에도 같은 자리를 잡는다", async () => {
+    vi.spyOn(store, "listRecentFeed").mockResolvedValue(null);
+    vi.spyOn(store, "listRecentlyUpdated").mockReturnValue(pending());
+    renderApp("/home");
+
+    const section = await screen.findByRole("region", { name: "새 소식" });
+    expect(await within(section).findByText("최근 업데이트 불러오는 중")).toHaveAttribute("role", "status");
+    expect(section.querySelectorAll("ul.home-recent.wiki-skeleton > li.home-recent-item").length).toBe(5);
   });
 
   it("홈 스페이스 카드는 받기 전에도 섹션과 카드 자리를 둔다(아래 피드가 밀리지 않게)", async () => {
