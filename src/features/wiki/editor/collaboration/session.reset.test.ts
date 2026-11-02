@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   COLLABORATION_RESET_CLOSE_CODE,
   COLLABORATION_RESET_REASON,
+  COLLABORATION_TOO_LARGE_CLOSE_CODE,
+  COLLABORATION_TOO_LARGE_REASON,
   createCollaborationSession,
   createTicketTokenProvider,
   type CollaborationConnectionStatus,
@@ -182,6 +184,71 @@ describe("공동 초안 리셋 — 재연결 티켓(draftEpoch가 정본)", () =
       onReset: () => {},
     });
     expect(session.connectionStatus()).not.toBe("stale");
+    session.destroy();
+  });
+});
+
+describe("저장 한도 초과 — close 4413(43번 높음-4)", () => {
+  it("4413으로 닫히면 재연결하지 않고 too-large 이유로 멈춘다", async () => {
+    const { session, statuses, onReset } = openSession();
+    await vi.advanceTimersByTimeAsync(0);
+    const socket = FakeWebSocket.instances[0];
+    socket.dispatch("open", {});
+    socket.dispatch("message", frame([MESSAGE_PING]));
+    await vi.advanceTimersByTimeAsync(0);
+
+    // 서버 순서: 문서 CLOSE(1000+reason) → 소켓 4413. 문서 CLOSE에서 이미 멈춘다.
+    socket.dispatch("message", frame(
+      varString("page:7"),
+      varUint(MESSAGE_CLOSE),
+      varString(COLLABORATION_TOO_LARGE_REASON),
+    ));
+    socket.dispatch("close", { code: COLLABORATION_TOO_LARGE_CLOSE_CODE, reason: COLLABORATION_TOO_LARGE_REASON });
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(onReset).toHaveBeenCalledTimes(1);
+    expect(onReset).toHaveBeenCalledWith(COLLABORATION_TOO_LARGE_REASON, "too-large");
+    expect(statuses.at(-1)).toBe("stale");
+    // 큰 Y.Doc을 다시 올리지 않도록 새 소켓을 열지 않는다.
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    session.destroy();
+  });
+});
+
+describe("권한 재확인 — close 4401(43번 높음-1)", () => {
+  it("4401로 닫히면 새 티켓으로 다시 붙고, 티켓 발급이 거부되면 서버 문구로 알린다", async () => {
+    const onError = vi.fn();
+    const issueTicket = vi.fn(async (): Promise<CollaborationTicket> => {
+      throw new Error("이 페이지를 편집할 권한이 없습니다");
+    });
+    const statuses: CollaborationConnectionStatus[] = [];
+    const onReset = vi.fn();
+    const session = createCollaborationSession({
+      pageId: "7",
+      user: { id: "u1", name: "김찬호" } as never,
+      initialTicket: ticket({ pageVersion: 3 }),
+      issueTicket,
+      onStatus: (status) => statuses.push(status),
+      onParticipants: () => {},
+      onError,
+      onReset,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    const first = FakeWebSocket.instances[0];
+    first.dispatch("open", {});
+    await vi.advanceTimersByTimeAsync(0);
+
+    first.dispatch("close", { code: 4401, reason: "공동 편집 권한을 다시 확인합니다" });
+    await vi.advanceTimersByTimeAsync(5_000);
+    // 리셋이 아니라 일반 재연결이다 — 새 소켓을 연다.
+    expect(onReset).not.toHaveBeenCalled();
+    expect(FakeWebSocket.instances.length).toBeGreaterThan(1);
+    FakeWebSocket.instances.at(-1)!.dispatch("open", {});
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(issueTicket).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith("이 페이지를 편집할 권한이 없습니다");
+    expect(statuses.at(-1)).toBe("error");
     session.destroy();
   });
 });

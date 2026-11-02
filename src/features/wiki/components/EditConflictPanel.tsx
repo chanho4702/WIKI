@@ -14,6 +14,11 @@ interface EditConflictPanelProps {
   localBody: string;
   comparisonOpen: boolean;
   variant?: EditConflictVariant;
+  /**
+   * `collaboration-reset`의 이유. too-large면 공동 문서가 서버 저장 한도를 넘어 마지막 저장 이후 편집이
+   * 서버에 남지 않았다(43번 높음-4) — 복구 갈래(복사·비교·다시 시작)는 리셋과 같고 안내만 다르다.
+   */
+  resetCause?: "reset" | "too-large";
   onToggleComparison: () => void;
   onCopyLocal: () => void;
   onCopyServer: () => void;
@@ -31,6 +36,7 @@ export function EditConflictPanel({
   localBody,
   comparisonOpen,
   variant = "save",
+  resetCause = "reset",
   onToggleComparison,
   onCopyLocal,
   onCopyServer,
@@ -38,6 +44,7 @@ export function EditConflictPanel({
   onContinueMerge,
 }: EditConflictPanelProps) {
   const reset = variant === "collaboration-reset";
+  const tooLarge = reset && resetCause === "too-large";
   const restartLabel = serverPage
     ? `서버 v${serverPage.version} 기준으로 공동 편집 다시 시작`
     : "최신 버전 기준으로 공동 편집 다시 시작";
@@ -46,14 +53,18 @@ export function EditConflictPanel({
       <div className="edit-conflict-summary">
         <div>
           <h2 id="edit-conflict-title">
-            {reset
-              ? "공동 초안이 다른 경로의 저장으로 새로 시작되었습니다"
-              : "다른 사용자의 변경사항이 먼저 저장됐습니다"}
+            {tooLarge
+              ? "문서가 공동 편집 저장 한도를 넘었습니다"
+              : reset
+                ? "공동 초안이 다른 경로의 저장으로 새로 시작되었습니다"
+                : "다른 사용자의 변경사항이 먼저 저장됐습니다"}
           </h2>
           <p>
-            {reset
-              ? "내 편집은 사라지지 않았습니다. 새 공동 문서에는 자동으로 합쳐지지 않으니, 서버 최신본과 비교해 필요한 부분을 복사한 뒤 다시 시작하세요."
-              : "내 편집은 사라지지 않았습니다. 서버본을 비교한 뒤 복구 방법을 선택하세요."}
+            {tooLarge
+              ? "마지막 저장 이후의 공동 편집은 서버에 저장되지 않았습니다. 내 변경을 복사해 두고, 큰 내용(붙여 넣은 표·긴 코드 등)을 줄여 다시 시작하세요."
+              : reset
+                ? "내 편집은 사라지지 않았습니다. 새 공동 문서에는 자동으로 합쳐지지 않으니, 서버 최신본과 비교해 필요한 부분을 복사한 뒤 다시 시작하세요."
+                : "내 편집은 사라지지 않았습니다. 서버본을 비교한 뒤 복구 방법을 선택하세요."}
           </p>
         </div>
         {serverPage ? <span className="edit-conflict-version">서버 v{serverPage.version}</span> : null}

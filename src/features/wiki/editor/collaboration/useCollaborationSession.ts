@@ -11,6 +11,7 @@ import type {
   CollaborationConnectionStatus,
   CollaborationParticipant,
   CollaborationSession,
+  CollaborationStaleCause,
 } from "./session";
 
 export const COLLABORATION_ENABLED =
@@ -54,6 +55,8 @@ export interface CollaborationSessionState {
   generation: number | null;
   /** 리셋으로 편집기를 잃었을 때 되살린 이 탭의 편집 사본. restart 전까지 유지한다. */
   localCopy: CollaborationLocalCopy | null;
+  /** status "stale"의 이유 — 다른 경로 저장으로 리셋(reset)인지, 저장 한도 초과(too-large)인지. 그 밖엔 null. */
+  staleCause: CollaborationStaleCause | null;
   retry: () => void;
   /**
    * 공동 초안 리셋(status "stale") 뒤 새 세션을 시작한다. 이 탭의 옛 Y.Doc은 새 초안에 절대 합치지 않는다 —
@@ -96,6 +99,7 @@ export function useCollaborationSession({
   const [draftBase, setDraftBase] = useState<number | null>(null);
   const [generation, setGeneration] = useState<number | null>(null);
   const [localCopy, setLocalCopy] = useState<CollaborationLocalCopy | null>(null);
+  const [staleCause, setStaleCause] = useState<CollaborationStaleCause | null>(null);
   const [ready, setReady] = useState(false);
   const sessionRef = useRef<CollaborationSession | null>(null);
   const bindingRef = useRef<CollaborationBinding | null>(null);
@@ -150,6 +154,7 @@ export function useCollaborationSession({
       setDraftBase(null);
       setGeneration(null);
       setLocalCopy(null);
+      setStaleCause(null);
       setReady(false);
       bindingRef.current = null;
       recoveryStateRef.current = null;
@@ -176,8 +181,9 @@ export function useCollaborationSession({
     let liveSession: CollaborationSession | null = null;
     setStatus("connecting");
 
-    const enterReset = (message: string) => {
+    const enterReset = (message: string, cause: CollaborationStaleCause = "reset") => {
       staleRef.current = true;
+      setStaleCause(cause);
       // 옛 기준의 Y.Doc 스냅샷은 새 초안에 합치면 내용이 중복된다 — 다시 쓰지 않는다. 다만 편집기로 볼 수 없는
       // 편집(옛 세션이 닫혔거나, 새 세션이 첫 synced 전)은 사용자가 옮길 수 있게 읽을 수 있는 사본으로 남긴다.
       // 활성 세션의 문서가 있으면 그것(스냅샷을 이어 받은 뒤의 최신)을, 없으면 유지한 스냅샷을 쓴다.
@@ -334,6 +340,7 @@ export function useCollaborationSession({
     staleRef.current = false;
     authRetryBudgetRef.current = 1;
     setLocalCopy(null);
+    setStaleCause(null);
     setRetryKey((key) => key + 1);
   }, []);
 
@@ -345,6 +352,7 @@ export function useCollaborationSession({
     basePageVersion: draftBase,
     generation,
     localCopy,
+    staleCause: status === "stale" ? staleCause : null,
     retry,
     restart,
   };

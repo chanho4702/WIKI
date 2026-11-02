@@ -31,6 +31,15 @@ export const COLLABORATION_RESET_CLOSE_CODE = 4409;
  * 전이를 시작하지 않기 위해서다. 정본 판정은 여전히 4409다.
  */
 export const COLLABORATION_RESET_REASON = "공동 초안이 다른 경로의 저장으로 새로 시작되었습니다";
+/**
+ * 공동 문서가 서버 저장 한도(MAX_DOCUMENT_BYTES)를 넘어 더는 저장되지 않는다(43번 높음-4). 리셋처럼 재연결하지
+ * 않는다 — 다시 붙으면 이 탭의 큰 Y.Doc을 또 올려 같은 실패를 반복한다. 문서 CLOSE(1000+reason) → 소켓 4413 순서다.
+ */
+export const COLLABORATION_TOO_LARGE_CLOSE_CODE = 4413;
+export const COLLABORATION_TOO_LARGE_REASON = "문서가 공동 편집 저장 한도를 넘어 저장되지 않았습니다";
+
+/** 세션이 멈춘(stale) 이유 — 다른 경로 저장으로 초안 리셋, 또는 저장 한도 초과. */
+export type CollaborationStaleCause = "reset" | "too-large";
 
 export interface CollaborationParticipant {
   clientId: number;
@@ -48,8 +57,11 @@ export interface CollaborationSessionCallbacks {
   onStatus: (status: CollaborationConnectionStatus) => void;
   onParticipants: (participants: CollaborationParticipant[]) => void;
   onError: (message: string) => void;
-  /** 공동 초안 리셋 감지(close 4409, 재연결 티켓 pageVersion 불일치). 재연결은 이미 멈춘 상태다. */
-  onReset: (message: string) => void;
+  /**
+   * 공동 초안 리셋 감지(close 4409, 재연결 티켓 pageVersion 불일치) 또는 저장 한도 초과(close 4413, cause
+   * "too-large"). 재연결은 이미 멈춘 상태다.
+   */
+  onReset: (message: string, cause?: CollaborationStaleCause) => void;
   /** 인증 거부. true를 돌려주면 호출자가 재시도를 맡은 것으로 보고 오류 상태로 바꾸지 않는다. */
   onAuthenticationFailed?: () => boolean;
 }
@@ -204,10 +216,24 @@ export function createTicketTokenProvider(
   issueTicket: (pageId: string) => Promise<CollaborationTicket>,
   onReset?: (error: CollaborationDraftResetError) => void,
   draftEpoch: number | undefined = initialTicket.draftEpoch,
+  onIssueFailed?: (message: string | null) => void,
 ): () => Promise<string> {
   let nextTicket: CollaborationTicket | null = initialTicket;
   return async () => {
-    const ticket = nextTicket ?? await issueTicket(pageId);
+    let ticket: CollaborationTicket;
+    if (nextTicket) {
+      ticket = nextTicket;
+    } else {
+      // 서버가 권한 재확인(close 4401)·주기 재인증으로 끊으면 재연결마다 새 티켓을 받는다. 거기서 권한이 없다고
+      // 답하면(편집 권한 회수·휴지통·이동) 그 서버 문구를 인증 실패 안내로 쓴다(43번 높음-1).
+      try {
+        ticket = await issueTicket(pageId);
+        onIssueFailed?.(null);
+      } catch (error) {
+        onIssueFailed?.(error instanceof Error && error.message ? error.message : null);
+        throw error;
+      }
+    }
     nextTicket = null;
     assertTicket(ticket, pageId);
     try {
@@ -255,12 +281,14 @@ export function createCollaborationSession(
   // 리셋이 감지된 세션은 다시 연결하지 않는다. 로컬 Y.Doc은 사용자가 편집을 옮길 때까지 에디터에 남긴다.
   let reset = false;
   let provider: HocuspocusProvider | null = null;
+  // 마지막 재연결 티켓 발급 실패 문구(권한 회수 등). 인증 실패 안내에 쓴다.
+  let ticketFailure: string | null = null;
 
   const disconnectedStatus = (): CollaborationConnectionStatus => {
     if (!navigator.onLine) return "offline";
     return hasSynced ? "reconnecting" : "connecting";
   };
-  const stopForReset = (message: string) => {
+  const stopForReset = (message: string, cause: CollaborationStaleCause = "reset") => {
     if (destroyed || reset) return;
     reset = true;
     // 소켓 내부 onClose(재연결 예약)보다 먼저 shouldConnect를 내려야 재연결이 예약되지 않는다.
@@ -270,7 +298,8 @@ export function createCollaborationSession(
       socket.disconnect();
     }
     onStatus("stale");
-    onReset(message);
+    if (cause === "reset") onReset(message);
+    else onReset(message, cause);
   };
   const nextToken = createTicketTokenProvider(
     initialTicket,
@@ -278,6 +307,9 @@ export function createCollaborationSession(
     issueTicket,
     (error) => stopForReset(error.message),
     draftEpoch,
+    (message) => {
+      ticketFailure = message;
+    },
   );
 
   try {
@@ -295,6 +327,12 @@ export function createCollaborationSession(
       // provider가 소켓을 직접 만들면 이 콜백이 소켓 내부 onClose(재연결 예약)보다 먼저 등록된다.
       onClose: ({ event }) => {
         const reason = typeof event?.reason === "string" ? event.reason.trim() : "";
+        const tooLargeClose = event?.code === COLLABORATION_TOO_LARGE_CLOSE_CODE
+          || (event?.code === 1000 && reason === COLLABORATION_TOO_LARGE_REASON);
+        if (tooLargeClose) {
+          stopForReset(reason || COLLABORATION_TOO_LARGE_REASON, "too-large");
+          return;
+        }
         const resetClose = event?.code === COLLABORATION_RESET_CLOSE_CODE
           || (event?.code === 1000 && reason === COLLABORATION_RESET_REASON);
         if (!resetClose) return;
@@ -314,7 +352,7 @@ export function createCollaborationSession(
         if (destroyed || reset) return;
         if (onAuthenticationFailed?.()) return;
         onStatus("error");
-        onError("공동 편집 인증에 실패했습니다. 다시 연결해 주세요.");
+        onError(ticketFailure ?? "공동 편집 인증에 실패했습니다. 다시 연결해 주세요.");
       },
       onAwarenessChange: ({ states }) => {
         if (!destroyed) onParticipants(participantsFromAwareness(states));

@@ -602,6 +602,7 @@ export function PageEditPage() {
           localBody={conflict.localBody}
           comparisonOpen={conflictComparisonOpen}
           variant={conflict.variant}
+          resetCause={collaboration.staleCause ?? "reset"}
           onToggleComparison={() => setConflictComparisonOpen((open) => !open)}
           onCopyLocal={() => {
             // 리셋 뒤에도 편집기는 이 탭의 로컬 문서로 계속 열려 있다 — 복사는 지금 내용 기준이다.
@@ -634,7 +635,9 @@ export function PageEditPage() {
           <div>
             <strong>
               {collaboration.status === "stale"
-                ? "공동 초안이 새로 시작되었습니다"
+                ? collaboration.staleCause === "too-large"
+                  ? "문서가 공동 편집 저장 한도를 넘었습니다"
+                  : "공동 초안이 새로 시작되었습니다"
                 : collaboration.status === "error"
                   ? "공동 편집 연결을 복구해 주세요"
                   : collaboration.status === "offline"
