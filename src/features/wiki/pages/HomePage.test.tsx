@@ -71,7 +71,32 @@ describe("홈 요청 팬아웃(W-13)", () => {
     expect(getPage).not.toHaveBeenCalled();
   });
 
-  it("스페이스별 최근 업데이트는 동시에 4개까지만 묻는다", async () => {
+  it("교차 스페이스 최근 피드가 있으면 스페이스마다 묻지 않고 한 요청으로 그린다", async () => {
+    const perSpace = vi.spyOn(store, "listRecentlyUpdated");
+    const feed = vi.spyOn(store, "listRecentFeed").mockResolvedValue([{
+      id: "pgX",
+      spaceId: "sp1",
+      spaceName: "엔지니어링",
+      title: "교차 스페이스 최근 문서",
+      icon: null,
+      type: "page",
+      status: "published",
+      updatedAt: new Date().toISOString(),
+      updatedBy: null,
+      viewCount: 0,
+    }]);
+    renderHome();
+
+    expect(await screen.findByRole("link", { name: "교차 스페이스 최근 문서" })).toHaveAttribute(
+      "href",
+      "/spaces/sp1/pages/pgX",
+    );
+    expect(feed).toHaveBeenCalledWith(8);
+    expect(perSpace).not.toHaveBeenCalled();
+  });
+
+  it("옛 서버(교차 피드 404)면 스페이스별로 되돌아가되 동시에 4개까지만 묻는다", async () => {
+    vi.spyOn(store, "listRecentFeed").mockResolvedValue(null);
     const seed = createSeedData();
     const many = Array.from({ length: 12 }, (_, i) => ({ ...seed.spaces[0], id: `bulk${i}`, key: `B${i}`, name: `스페이스 ${i}` }));
     localStorage.setItem("wiki.v1", JSON.stringify({ ...seed, spaces: [...seed.spaces, ...many] }));

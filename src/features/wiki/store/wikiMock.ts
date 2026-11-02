@@ -143,6 +143,7 @@ export {
   listMyDrafts,
   listPersonPages,
   listPopularFeed,
+  listRecentFeed,
   listFollowingFeed,
 } from "./mock/personal";
 export {

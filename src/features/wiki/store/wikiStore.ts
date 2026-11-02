@@ -24,6 +24,7 @@ export const getPersonProfile = impl.getPersonProfile;
 export const listPersonPages = impl.listPersonPages;
 // 홈 피드(2026-10-24) — 컨플 홈 "인기"·"팔로잉"
 export const listPopularFeed = impl.listPopularFeed;
+export const listRecentFeed = impl.listRecentFeed;
 export const listFollowingFeed = impl.listFollowingFeed;
 export const orgApiFetch = impl.orgApiFetch;
 export const requestCollaborationTicket = impl.requestCollaborationTicket;

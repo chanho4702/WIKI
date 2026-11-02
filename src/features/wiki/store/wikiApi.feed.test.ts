@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as client from "./apiClient";
-import { listFollowingFeed, listPopularFeed } from "./wikiApi";
+import { listFollowingFeed, listPopularFeed, listRecentFeed } from "./wikiApi";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -33,10 +33,19 @@ describe("wikiApi 홈 피드", () => {
     expect(spy).toHaveBeenCalledWith("/api/wiki/feed/following?limit=20");
   });
 
+  it("최근 업데이트(교차 스페이스)는 자기 경로를 부르고 초안 상태를 그대로 싣는다", async () => {
+    const spy = vi.spyOn(client, "sharedApiFetch").mockResolvedValue(res(200, [
+      { page: { id: 9, parentId: null, title: "내 초안", type: "page", status: "draft", updatedAt: "2026-10-31T01:00:00Z" }, spaceId: 3, spaceName: "개발", viewCount: 0 },
+    ]));
+    expect(await listRecentFeed(8)).toEqual([expect.objectContaining({ id: "9", status: "draft", spaceId: "3" })]);
+    expect(spy).toHaveBeenCalledWith("/api/wiki/feed/recent?limit=8");
+  });
+
   it("경로가 아직 없는 서버(404)면 null", async () => {
     vi.spyOn(client, "sharedApiFetch").mockResolvedValue(res(404, { error: "찾을 수 없습니다" }));
     expect(await listPopularFeed()).toBeNull();
     expect(await listFollowingFeed()).toBeNull();
+    expect(await listRecentFeed()).toBeNull();
   });
 
   it("그 밖의 실패는 삼키지 않는다", async () => {

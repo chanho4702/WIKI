@@ -197,6 +197,16 @@ export async function listPopularFeed(limit = 20): Promise<FeedPageRow[] | null>
     .map((p) => toFeedRow(data, p));
 }
 
+/** 스페이스 개요 최근 업데이트(mock/tree listRecentlyUpdated)와 같은 범위 — 초안·폴더 포함, 보관 제외. */
+export async function listRecentFeed(limit = 20): Promise<FeedPageRow[] | null> {
+  const data = load();
+  return data.pages
+    .filter((p) => !p.archivedAt && canSeePage(data, p))
+    .sort(byRecent)
+    .slice(0, Math.max(1, Math.min(limit, FEED_MAX)))
+    .map((p) => toFeedRow(data, p));
+}
+
 export async function listFollowingFeed(limit = 20): Promise<FeedPageRow[] | null> {
   const data = load();
   const watchedSpaces = new Set(

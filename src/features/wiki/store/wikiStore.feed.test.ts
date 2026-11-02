@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { __resetForTest, createPage, getPage, listFollowingFeed, listPopularFeed } from "./wikiStore";
+import { __resetForTest, createPage, getPage, listFollowingFeed, listPopularFeed, listRecentFeed } from "./wikiStore";
 import type { WikiData } from "./types";
 
 /* 홈 피드(2026-10-24) — 목업 계약(백엔드 `/api/wiki/feed/*`와 같은 규칙) */
@@ -51,6 +51,21 @@ describe("listPopularFeed(목업)", () => {
     expect(ids).not.toContain(draft.id);
     expect(ids).not.toContain(folder.id);
     expect(ids).not.toContain("pg1");
+  });
+});
+
+describe("listRecentFeed(목업)", () => {
+  it("스페이스 개요 최근 업데이트와 같은 범위 — 내 초안·폴더 포함, 보관 제외, 최근 수정순", async () => {
+    const draft = await createPage({ spaceId: "sp1", title: "내 초안", body: "", status: "draft" });
+    const folder = await createPage({ spaceId: "sp1", title: "폴더", body: "", type: "folder" });
+    editData((d) => {
+      d.pages.find((p) => p.id === "pg1")!.archivedAt = daysAgo(0);
+    });
+    const ids = (await listRecentFeed(50))?.map((r) => r.id) ?? [];
+    expect(ids).toContain(draft.id);
+    expect(ids).toContain(folder.id);
+    expect(ids).not.toContain("pg1");
+    expect(await listRecentFeed(1)).toHaveLength(1);
   });
 });
 

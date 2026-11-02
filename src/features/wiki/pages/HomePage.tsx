@@ -7,6 +7,7 @@ import {
   getPage,
   listFollowingFeed,
   listPopularFeed,
+  listRecentFeed,
   listRecentPages,
   listRecentlyUpdated,
   listSpaces,
@@ -27,8 +28,9 @@ const RECENT_LIMIT = 8;
 /** 스페이스마다 이만큼만 읽어 합친다 — 상위 RECENT_LIMIT만 남기므로 그 이상은 낭비다. */
 const RECENT_PER_SPACE = RECENT_LIMIT;
 /**
- * 스페이스별 "최근 업데이트" 요청을 한 번에 띄우는 수(W-13). 스페이스를 가로지르는 최근 목록 API가 없어
- * 스페이스마다 묻는데, 스페이스가 많은 설치에서 홈 진입이 요청 수백 개를 동시에 띄워 rate-limit에 걸렸다.
+ * 스페이스별 "최근 업데이트" 요청을 한 번에 띄우는 수(W-13). 지금은 스페이스를 가로지르는 한 요청
+ * (`listRecentFeed`)을 먼저 쓰고, 그 API가 없는 옛 서버(404)·실패에서만 스페이스마다 묻는다 — 스페이스가 많은
+ * 설치에서 홈 진입이 요청 수백 개를 동시에 띄워 rate-limit에 걸렸던 경로다.
  */
 const RECENT_CONCURRENCY = 4;
 /** "이어서 작업" 카드 수 */
@@ -105,6 +107,30 @@ function SpaceCardsSkeleton() {
       ))}
     </SkeletonRegion>
   );
+}
+
+/**
+ * 교차 스페이스 피드 한 줄을 스페이스 개요와 같은 행 모양으로. 스페이스 목록에 없는 id(목록을 아직 다 못 읽음)는
+ * 행이 실은 이름으로 채운다.
+ */
+function feedRowToRecent(row: FeedPageRow, spaceById: Map<string, Space>): RecentItem {
+  const space = spaceById.get(row.spaceId)
+    ?? ({ id: row.spaceId, name: row.spaceName ?? `스페이스 #${row.spaceId}` } as Space);
+  return {
+    space,
+    page: {
+      id: row.id,
+      parentId: null,
+      title: row.title,
+      type: row.type,
+      status: row.status,
+      position: 0,
+      icon: row.icon,
+      ...(row.updatedBy ? { updatedBy: row.updatedBy } : {}),
+      ...(row.updatedAt ? { updatedAt: row.updatedAt } : {}),
+      childCount: 0,
+    },
+  };
 }
 
 /** 피드 행 자리 — .home-recent-item(아이콘 16px · 제목/메타 두 줄 · 오른쪽 시각)과 같은 행. */
@@ -202,12 +228,19 @@ export function HomePage() {
     };
   }, [loadAttempt, readOnly]);
 
-  // "최근 업데이트" — 스페이스별 최근 목록을 합쳐 시각 내림차순 상위 N. 한 스페이스가 실패해도
-  // 나머지는 보여준다.
+  // "최근 업데이트" — 스페이스를 가로지르는 한 요청. 옛 서버(404)거나 실패하면 스페이스별 최근 목록을 합쳐
+  // 시각 내림차순 상위 N으로 되돌아간다(한 스페이스가 실패해도 나머지는 보여준다).
   useEffect(() => {
     if (spaces.length === 0) return;
     let active = true;
     void (async () => {
+      const rows = await listRecentFeed(RECENT_LIMIT).catch(() => null);
+      if (!active) return;
+      if (rows !== null) {
+        const spaceById = new Map(spaces.map((space) => [space.id, space]));
+        setRecent(rows.map((row) => feedRowToRecent(row, spaceById)));
+        return;
+      }
       const perSpace = await mapLimit(spaces, RECENT_CONCURRENCY, (space) =>
         listRecentlyUpdated(space.id, RECENT_PER_SPACE)
           .then((pages) => pages.map((page) => ({ page, space })))

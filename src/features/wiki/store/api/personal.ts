@@ -108,6 +108,15 @@ export function listPopularFeed(limit = 20): Promise<FeedPageRow[] | null> {
 }
 
 /**
+ * 홈 "최근 업데이트" — `GET /api/wiki/feed/recent?limit=`. 스페이스를 가로지르는 최근 수정순 한 요청으로,
+ * 스페이스 개요의 "최근 업데이트"와 같은 범위다(보관 제외, 폴더 포함, 초안은 볼 수 있는 사람에게만).
+ * 404(아직 배포되지 않은 서버)면 null — 화면이 스페이스별 요청으로 되돌아간다. 그 밖의 실패는 던진다.
+ */
+export function listRecentFeed(limit = 20): Promise<FeedPageRow[] | null> {
+  return listFeed("/api/wiki/feed/recent", limit);
+}
+
+/**
  * 홈 "팔로잉" — `GET /api/wiki/feed/following?limit=`. 내가 구독한 스페이스의 문서 + 내가 구독한 문서(하위 아님)
  * 중 게시 문서, 최근 수정순. 공개 문서 인스턴스는 403이라 화면이 이 탭을 숨긴다. 404면 null.
  */
