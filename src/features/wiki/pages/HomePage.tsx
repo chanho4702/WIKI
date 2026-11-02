@@ -165,6 +165,9 @@ export function HomePage() {
   // 스페이스 섹션은 스페이스가 있을 때만 보인다 — 받기 전에는 카드 자리를 잡아 둬야 아래 피드가 밀리지 않는다
   const [spacesLoaded, setSpacesLoaded] = useState(false);
   const [recent, setRecent] = useState<RecentItem[] | null>(null);
+  /** 최근 업데이트를 못 읽었을 때의 사유 — 빈 목록("아직 업데이트된 문서가 없습니다")으로 삼키지 않는다. */
+  const [recentError, setRecentError] = useState<string | null>(null);
+  const [recentAttempt, setRecentAttempt] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
   /**
    * 홈 로드 실패 — 계정이 정지·비활성되면 서버가 모든 호출을 403 + 한국어 사유로 막는다(U4).
@@ -228,13 +231,21 @@ export function HomePage() {
     };
   }, [loadAttempt, readOnly]);
 
-  // "최근 업데이트" — 스페이스를 가로지르는 한 요청. 옛 서버(404)거나 실패하면 스페이스별 최근 목록을 합쳐
-  // 시각 내림차순 상위 N으로 되돌아간다(한 스페이스가 실패해도 나머지는 보여준다).
+  // "최근 업데이트" — 스페이스를 가로지르는 한 요청. 그 경로가 없는 옛 서버(404 → null)에서만 스페이스별 최근
+  // 목록을 합쳐 시각 내림차순 상위 N으로 되돌아간다(한 스페이스가 실패해도 나머지는 보여준다). 401/403/5xx는
+  // 오류 상태로 보이고, 폴백에서도 모든 스페이스가 실패하면 오류다 — 빈 피드로 삼키지 않는다.
   useEffect(() => {
     if (spaces.length === 0) return;
     let active = true;
+    setRecentError(null);
     void (async () => {
-      const rows = await listRecentFeed(RECENT_LIMIT).catch(() => null);
+      let rows: FeedPageRow[] | null;
+      try {
+        rows = await listRecentFeed(RECENT_LIMIT);
+      } catch (e: unknown) {
+        if (active) setRecentError(e instanceof Error ? e.message : "최근 업데이트를 불러오지 못했습니다");
+        return;
+      }
       if (!active) return;
       if (rows !== null) {
         const spaceById = new Map(spaces.map((space) => [space.id, space]));
@@ -243,12 +254,17 @@ export function HomePage() {
       }
       const perSpace = await mapLimit(spaces, RECENT_CONCURRENCY, (space) =>
         listRecentlyUpdated(space.id, RECENT_PER_SPACE)
-          .then((pages) => pages.map((page) => ({ page, space })))
-          .catch(() => [] as RecentItem[]),
+          .then((pages) => ({ ok: true as const, items: pages.map((page) => ({ page, space })) }))
+          .catch((e: unknown) => ({ ok: false as const, message: e instanceof Error ? e.message : null })),
       );
       if (!active) return;
+      const failures = perSpace.flatMap((result) => (result.ok ? [] : [result.message]));
+      if (failures.length === perSpace.length) {
+        setRecentError(failures.find((message) => message) ?? "최근 업데이트를 불러오지 못했습니다");
+        return;
+      }
       const merged = perSpace
-        .flat()
+        .flatMap((result) => (result.ok ? result.items : []))
         .sort((a, b) => (b.page.updatedAt ?? "").localeCompare(a.page.updatedAt ?? ""))
         .slice(0, RECENT_LIMIT);
       setRecent(merged);
@@ -256,7 +272,7 @@ export function HomePage() {
     return () => {
       active = false;
     };
-  }, [spaces]);
+  }, [spaces, recentAttempt]);
 
   // 팔로잉·인기 — 스페이스를 가로지르는 한 요청이다(최근 업데이트처럼 스페이스마다 묻지 않는다).
   // 실패는 삼키지 않는다: 빈 목록으로 보이면 "구독한 것이 없다"는 거짓 안내가 된다.
@@ -434,6 +450,19 @@ export function HomePage() {
             nameOf={(id) => personName(id, users)}
             onRetry={() => setFeedAttempt((attempt) => attempt + 1)}
           />
+        ) : recentError !== null ? (
+          <div className="home-feed-error" role="alert">
+            <p className="home-recent-meta">최근 업데이트를 불러오지 못했습니다: {recentError}</p>
+            <Button
+              variant="subtle"
+              onClick={() => {
+                setRecent(null);
+                setRecentAttempt((attempt) => attempt + 1);
+              }}
+            >
+              다시 시도
+            </Button>
+          </div>
         ) : recent === null ? (
           <FeedSkeleton label="최근 업데이트 불러오는 중" />
         ) : recent.length === 0 ? (

@@ -95,6 +95,30 @@ describe("홈 요청 팬아웃(W-13)", () => {
     expect(perSpace).not.toHaveBeenCalled();
   });
 
+  it("교차 피드가 401/403/5xx로 실패하면 스페이스별로 삼키지 않고 오류와 다시 시도를 보인다", async () => {
+    const perSpace = vi.spyOn(store, "listRecentlyUpdated");
+    const feed = vi.spyOn(store, "listRecentFeed").mockRejectedValueOnce(new Error("권한 서비스를 사용할 수 없습니다"));
+    renderHome();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("최근 업데이트를 불러오지 못했습니다: 권한 서비스를 사용할 수 없습니다");
+    expect(screen.queryByText("아직 업데이트된 문서가 없습니다.")).not.toBeInTheDocument();
+    expect(perSpace).not.toHaveBeenCalled();
+
+    feed.mockResolvedValueOnce([]);
+    await userEvent.setup().click(screen.getByRole("button", { name: "다시 시도" }));
+    expect(await screen.findByText("아직 업데이트된 문서가 없습니다.")).toBeInTheDocument();
+  });
+
+  it("폴백에서 모든 스페이스가 실패하면 빈 피드가 아니라 오류다", async () => {
+    vi.spyOn(store, "listRecentFeed").mockResolvedValue(null);
+    vi.spyOn(store, "listRecentlyUpdated").mockRejectedValue(new Error("정지된 계정입니다"));
+    renderHome();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("최근 업데이트를 불러오지 못했습니다: 정지된 계정입니다");
+    expect(screen.queryByText("아직 업데이트된 문서가 없습니다.")).not.toBeInTheDocument();
+  });
+
   it("옛 서버(교차 피드 404)면 스페이스별로 되돌아가되 동시에 4개까지만 묻는다", async () => {
     vi.spyOn(store, "listRecentFeed").mockResolvedValue(null);
     const seed = createSeedData();
