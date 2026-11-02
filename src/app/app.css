@@ -3300,22 +3300,36 @@ body {
 /* W5: 코드 블록 NodeView — 언어 셀렉트 + 복사 버튼 */
 .code-block-view {
   position: relative;
+  /* 툴바 = compact 셀렉트(32px) + 위아래 안쪽 여백 */
+  --code-block-toolbar-height: calc(32px + 2 * var(--chanho-space-50));
+}
+/* 툴바가 보이는 동안만 그 높이만큼 아래 공간을 잡는다 — 떠 있는 툴바가 다음 블록을 덮지 않게(Codex P2).
+ * 평소에는 공간을 잡지 않아 편집기 코드 블록 아래 여백이 보기 화면과 같다. 공간 = 툴바 높이 + 위 간격(space-50)
+ * + 다음 블록과의 간격(space-50) − pre가 이미 가진 아래 여백(space-200). */
+.code-block-view:hover,
+.code-block-view:focus-within,
+.code-block-view:has(.code-block-toolbar [aria-expanded="true"]) {
+  padding-bottom: calc(var(--code-block-toolbar-height) + 2 * var(--chanho-space-50) - var(--chanho-space-200));
 }
 /* 툴바는 블록 아래 — 예전엔 우상단 절대 배치라 코드 첫 줄을 가렸다(기획 P4, 캡처 기능들.png).
  * hover/focus에서만 드러나 평소엔 코드에 집중하게 한다.
  * 문서 흐름에서 빼 블록 아래에 띄운다(컨플 코드 블록의 떠 있는 툴바) — 흐름 안에 두면 숨겨져
  * 있어도 툴바 높이만큼 빈 줄이 남아 편집기에서만 코드 블록 아래 여백이 보기보다 두 배 넘게 컸다.
+ * 보이는 동안의 자리는 위 .code-block-view 패딩이 잡는다(다음 블록을 덮지 않는다).
  * 숨김은 opacity + pointer-events라 키보드로는 그대로 닿는다(포커스가 오면 드러난다). */
 .code-block-toolbar {
   position: absolute;
-  /* pre의 아래 여백(space-200) 안쪽으로 올려 블록 바로 밑에 붙인다 */
-  top: calc(100% - var(--chanho-space-200) + var(--chanho-space-50));
+  /* 보이는 동안 .code-block-view가 잡는 아래 자리의 바닥에 붙인다 — pre 바로 밑(space-50 간격)에 온다.
+   * 자리 높이로 계산하므로 top(100%)이 아니라 bottom 기준이어야 패딩만큼 밀려 내려가지 않는다. */
+  bottom: var(--chanho-space-50);
   right: 0;
   z-index: 2;
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: var(--chanho-space-50);
+  box-sizing: border-box;
+  height: var(--code-block-toolbar-height);
   padding: var(--chanho-space-50);
   border-radius: var(--chanho-radius-medium);
   background: var(--chanho-color-background-surface);
