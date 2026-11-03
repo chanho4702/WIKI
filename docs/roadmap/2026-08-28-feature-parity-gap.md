@@ -2,8 +2,8 @@
 
 > 기준: Confluence(Cloud/Data Center 공통 기능 표면)
 > 대조 대상: `wiki-front`(commit `cca5b19`), `wiki-backend`(대조 시점 Flyway V1~V12 → 구현 후 V15), `collaboration-service`
-> 선행 문서: [Notion·Confluence DC 갭 분석(2026-08-16)](2026-08-16-notion-confluence-gap-analysis.md),
-> [에디터 동등성(2026-08-23)](2026-08-23-editor-notion-confluence-parity.md)
+> 선행 문서: [Notion·Confluence DC 갭 분석(2026-08-16)](2026-08-16-wiki-requirements-gap-analysis.md),
+> [에디터 동등성(2026-08-23)](2026-08-23-editor-parity-gap.md)
 >
 > 앞 두 문서는 **Notion을 함께 놓고 본 아키텍처 백로그**다. 이 문서는 거기서 한 번 더 좁혀서
 > **"컨플루언스를 쓰던 사람이 우리 위키에 와서 없다고 느낄 기능"**만 제품 기능 단위로 재정리했다.

@@ -1,7 +1,7 @@
 # 이관 엔진 분리 — migration-service + 위키 import API (2026-09-05, A안)
 
 사용자 결정: "노션·컨플 마이그레이션은 **따로 모듈로 제공**해서 만들 거임, 위키에 있으면 안 됨" → A(별도 서비스 + 위키 import API), 사용자 작업 뒤 착수.
-현재 M1~M3 엔진(`wiki-backend/migration/**`, 설계 `2026-09-05-confluence-dc-migration-design.md`)을 새 서비스로 옮기고, 위키에는 "이관 데이터를 원본
+현재 M1~M3 엔진(`wiki-backend/migration/**`, 설계 `2026-09-05-onprem-wiki-migration-design.md`)을 새 서비스로 옮기고, 위키에는 "이관 데이터를 원본
 그대로 받아 넣는" 내부 API만 남긴다.
 
 ## 0. 실측 — 엔진이 위키 내부에 기대는 것 (공개 REST로는 안 되는 것)

@@ -1,6 +1,6 @@
 # 컨플루언스 DC 마이그레이션 모듈 — M1 설계 (2026-09-05)
 
-기획: `docs/roadmap/2026-09-05-confluence-dc-migration-module.md`(S1~S6, M-01~M-08, P1~P9). 전제: `docs/backend/2026-08-16-w14-content-collaboration-architecture.md`
+기획: `docs/roadmap/2026-09-05-onprem-wiki-migration-module.md`(S1~S6, M-01~M-08, P1~P9). 전제: `docs/backend/2026-08-16-w14-content-collaboration-architecture.md`
 ADR-W14-04(IR 계약)·ADR-W14-07(import-only, 단계별 체크포인트, 미매핑 제한 fail-closed). **G5(DC 지원 버전) 게이트는 2026-09-05 사용자
 지시("설치형 마이그레이션 모듈이 목표")로 열린 것으로 본다** — P1 기본값(7.19 LTS~9.x, PAT) 적용, ⚠️ 실기 DC 실측 전까지 "보장" 문구는 쓰지 않는다.
 

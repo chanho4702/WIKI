@@ -4,12 +4,12 @@
 이 문서는 **무엇을·왜·얼마나 중요한지**까지다. 아키텍처·API·핸들러 설계는 다음 단계
 (`docs/superpowers/specs/`)에서 정한다. 기존 결정과 충돌하지 않도록 아래 문서를 전제로 한다:
 `docs/backend/2026-08-16-w14-content-collaboration-architecture.md`(ADR-W14-04 IR 계약, ADR-W14-07 import-only·재실행 가능 잡, §5 IR 호환 규칙, §6 게이트 G1~G5),
-`docs/roadmap/2026-08-16-notion-confluence-gap-analysis.md` §4.7·§6·§7.
+`docs/roadmap/2026-08-16-wiki-requirements-gap-analysis.md` §4.7·§6·§7.
 
 ## 1. 문제 정의
 
 **문제.** 설치형 컨플루언스(Server는 2024-02 지원 종료, DC는 라이선스 갱신 부담)에서 빠져나오려는 팀이
-우리 위키로 옮길 길이 없다. 위키 자체는 컨플루언스 파리티가 끝났지만(`2026-08-28-confluence-feature-parity.md`),
+우리 위키로 옮길 길이 없다. 위키 자체는 컨플루언스 파리티가 끝났지만(`2026-08-28-feature-parity-gap.md`),
 **데이터가 못 넘어오면 파리티는 쓸모가 없다**. 온프렘 단일테넌트 제품이라는 포지셔닝(`deployment-model` 결정)에서
 "기존 컨플 DC를 대체한다"가 가장 현실적인 도입 시나리오이기도 하다.
 

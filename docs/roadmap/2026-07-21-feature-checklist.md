@@ -2,7 +2,7 @@
 
 > 이 문서는 2026-07-21에 작성된 요구사항 원본으로 보존한다. 실제 구현 상태, 결함 우선순위,
 > Notion·Confluence Data Center 동등성 및 마이그레이션 요구사항의 정본은
-> [2026-08-16 갭 분석](2026-08-16-notion-confluence-gap-analysis.md)에서 관리한다.
+> [2026-08-16 갭 분석](2026-08-16-wiki-requirements-gap-analysis.md)에서 관리한다.
 > 기존 `docs/roadmap/2026-07-17-platform-roadmap.md`(전역 결정·저장 포맷 플래그)와 함께 본다.
 >
 > **상태 표기 규약**

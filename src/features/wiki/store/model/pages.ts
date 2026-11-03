@@ -276,5 +276,5 @@ export interface TrashEntry {
 }
 
 // ── 마이그레이션(M1, 컨플루언스 DC) ────────────────────────────
-// 설계: docs/superpowers/specs/2026-09-05-confluence-dc-migration-design.md §1.3·§2.
+// 설계: docs/superpowers/specs/2026-09-05-onprem-wiki-migration-design.md §1.3·§2.
 // 열거값 문자열은 백엔드 enum 이름 그대로다(MigrationJobStatus 등) — 화면에서만 한국어로 옮긴다.

@@ -2,7 +2,7 @@
 
 > 상태: 구현 백로그 정본(에디터 영역 상세)
 > 범위: `wiki-front` 에디터·보기 렌더, 저장 포맷 영향, 백엔드 계약 파급
-> 상위 문서: [Notion·Confluence DC 갭 분석](2026-08-16-notion-confluence-gap-analysis.md) §4.2 —
+> 상위 문서: [Notion·Confluence DC 갭 분석](2026-08-16-wiki-requirements-gap-analysis.md) §4.2 —
 > 이 문서가 §4.2의 에디터 행들을 상세 전개한다.
 > 선행 실측: [편집기 요소 심화 (2026-08-03)](2026-08-03-editor-elements-depth.md) §0 — 이 문서의
 > "현재" 열은 그 실측 + 이후 커밋(이미지 업로드 레일·공동 편집)을 반영해 갱신했다.

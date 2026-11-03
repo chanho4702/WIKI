@@ -7,7 +7,7 @@ const roundtrip = (md: string) => normalize(serializeMarkdown(parseMarkdown(md))
 
 /**
  * 토글 저장 포맷(`:::details[제목]`) 계약 — 왕복이 깨지면 저장할 때마다 문서가 망가진다.
- * 문법 결정 근거: docs/roadmap/2026-08-23-editor-notion-confluence-parity.md §5 (A안).
+ * 문법 결정 근거: docs/roadmap/2026-08-23-editor-parity-gap.md §5 (A안).
  */
 describe("토글 — 마크다운 왕복", () => {
   it("제목 있는 토글이 문자 단위로 보존된다", () => {

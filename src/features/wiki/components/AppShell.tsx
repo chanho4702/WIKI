@@ -25,7 +25,7 @@ export interface AppShellProps {
 }
 
 /**
- * 컨플루언스 글로벌 셸 (설계 §2 — `2026-07-22-confluence-shell-design.md`). 모든 라우트를 감싸
+ * 컨플루언스 글로벌 셸 (설계 §2 — `2026-07-22-global-shell-design.md`). 모든 라우트를 감싸
  * 헤더(WikiTopBar, 사이드바 토글 상시)·좌측 GlobalSidebar(접힘 가능)·본문 Outlet을 하나의 셸로
  * 통일한다. 이전엔 스페이스 라우트만 WikiLayout 사이드바를 가져 홈·디렉토리에서 토글이 사라지고
  * 사이드바 구성이 달라졌던 문제를 해소한다.
