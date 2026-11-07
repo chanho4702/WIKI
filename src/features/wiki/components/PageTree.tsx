@@ -135,6 +135,13 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renaming, setRenaming] = useState(false);
+  /**
+   * ⋯ 메뉴에서 "이름 바꾸기"를 고른 행 — 입력은 메뉴가 트리거로 포커스를 되돌린 **뒤**에 연다.
+   * 메뉴(Radix)는 닫힘 애니메이션이 끝나 언마운트될 때 트리거에 포커스를 돌려준다. 그보다 먼저 입력을
+   * 마운트하면(이전의 setTimeout 0) 그 포커스 복원이 입력을 blur시켜 바로 닫혀 버린다 — 타이머와 복원의
+   * 순서는 부하·애니메이션에 따라 바뀌어 간헐적이었다. 그래서 복원(트리거 focus)을 신호로 삼는다.
+   */
+  const pendingRenameRef = useRef<PageNode | null>(null);
   const { starred: starredPageIds, toggle: toggleStar } = useStarredPages();
   // 드래그 직후 발화하는 클릭 억제 — 억제하지 않으면 드롭할 때 행의 NavLink 클릭이 살아나
   // 그 페이지로 이동해 버려 "구조만 바꿨는데 화면 전체가 리로딩"되는 것처럼 보인다.
@@ -368,6 +375,13 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
                       type="button"
                       className="page-tree-add"
                       aria-label={`${page.title} 더보기`}
+                      onFocus={() => {
+                        const pending = pendingRenameRef.current;
+                        if (!pending || pending.id !== page.id) return;
+                        pendingRenameRef.current = null;
+                        setRenameValue(pending.title);
+                        setRenameId(pending.id);
+                      }}
                     >
                       <MoreHorizontal size={14} aria-hidden="true" />
                     </button>
@@ -377,12 +391,8 @@ export function PageTree({ spaceId, pages, expanded, onToggle, spaces, onMoved, 
                       label: "이름 바꾸기",
                       icon: <Pencil size={16} aria-hidden="true" />,
                       onSelect: () => {
-                        // 드롭다운이 닫히며 트리거로 포커스를 되돌린 "뒤"에 입력을 마운트해야
-                        // 한다 — 같은 틱에 마운트하면 포커스 복원이 입력을 blur시켜 즉시 닫힌다.
-                        window.setTimeout(() => {
-                          setRenameValue(page.title);
-                          setRenameId(page.id);
-                        }, 0);
+                        // 입력은 트리거 onFocus(메뉴의 포커스 복원)에서 연다 — pendingRenameRef 주석 참고
+                        pendingRenameRef.current = page;
                       },
                     },
                     {

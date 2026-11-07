@@ -117,6 +117,8 @@ describe("트리 인라인 이름 바꾸기·별표", () => {
     await user.click(await screen.findByRole("menuitem", { name: "이름 바꾸기" }));
 
     const input = await within(tree).findByRole("textbox", { name: "시작하기 이름 바꾸기" });
+    // 메뉴가 닫히며 트리거로 포커스를 되돌린 뒤에 열리므로 입력이 포커스를 쥐고 있다(복원에 빼앗기지 않음)
+    expect(input).toHaveFocus();
     await user.clear(input);
     await user.type(input, "온보딩 가이드{Enter}");
 
