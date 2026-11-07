@@ -4,7 +4,7 @@
 - 상태: **단계적 구현 중** — G2 import prototype 범위는 구현 중이며 운영 storage·권한·DC 버전 보장은
   아래 결정 게이트를 계속 적용
 - 적용 범위: `wiki-front`, `wiki-backend`, 후속 collaboration service, `infra`
-- 상위 요구사항: [Notion·Confluence DC 갭 분석](../roadmap/2026-08-16-wiki-requirements-gap-analysis.md)
+- 상위 요구사항: [위키 요구사항 갭 분석](../roadmap/2026-08-16-wiki-requirements-gap-analysis.md)
 
 ## 1. 목적
 

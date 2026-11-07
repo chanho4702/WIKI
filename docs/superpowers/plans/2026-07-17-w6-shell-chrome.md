@@ -1,4 +1,4 @@
-# W6: 컨플루언스 크롬 정합 구현 계획
+# W6: 편집 화면 크롬 정합 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

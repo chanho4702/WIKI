@@ -1,4 +1,4 @@
-# 컨플루언스 DC 마이그레이션 모듈 — M1 설계 (2026-09-05)
+# 설치형 위키 이관 모듈 — M1 설계 (2026-09-05)
 
 기획: `docs/roadmap/2026-09-05-onprem-wiki-migration-module.md`(S1~S6, M-01~M-08, P1~P9). 전제: `docs/backend/2026-08-16-w14-content-collaboration-architecture.md`
 ADR-W14-04(IR 계약)·ADR-W14-07(import-only, 단계별 체크포인트, 미매핑 제한 fail-closed). **G5(DC 지원 버전) 게이트는 2026-09-05 사용자

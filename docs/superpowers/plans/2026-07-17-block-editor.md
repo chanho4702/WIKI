@@ -1,4 +1,4 @@
-# 블록 에디터 구현 계획 (노션풍 WYSIWYG, 마크다운 저장)
+# 블록 에디터 구현 계획 (WYSIWYG, 마크다운 저장)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

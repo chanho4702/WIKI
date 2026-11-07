@@ -1,4 +1,4 @@
-# 협업 문서 플랫폼 로드맵 (Notion + Confluence 지향)
+# 협업 문서 플랫폼 로드맵
 
 2026-07-17 기준. 사용자가 정의한 26개 기능 영역을 단계·분담·의존관계로 재정리한 문서다.
 백엔드 계약 상세는 [wiki-service 요구사항](../backend/2026-07-17-wiki-service-requirements.md) 참조.
