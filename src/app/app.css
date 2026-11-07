@@ -7757,3 +7757,47 @@ a.page-view-owner:hover {
 .table-toolbar {
   --wiki-popover-from-y: 4px;
 }
+
+/* ── Markdown 가져오기 ───────────────────────────────────── */
+.markdown-import-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-200);
+}
+
+.markdown-import-pick {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-150);
+  flex-wrap: wrap;
+}
+
+.markdown-import-hint {
+  font-size: var(--chanho-font-size-75);
+  color: var(--chanho-color-text-subtle);
+}
+
+.markdown-import-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--chanho-space-50);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.markdown-import-files li {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-75);
+  font-size: var(--chanho-font-size-100);
+  color: var(--chanho-color-text-default);
+}
+
+.markdown-import-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--chanho-space-100);
+}

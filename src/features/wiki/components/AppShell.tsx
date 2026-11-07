@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router";
 import { Button } from "@chanho/react";
-import { FolderPlus, MapPin, Plus } from "lucide-react";
+import { FileUp, FolderPlus, MapPin, Plus } from "lucide-react";
 import type { PageType, Space } from "../store/types";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { syncStarsFromServer } from "../lib/starSync";
@@ -15,6 +15,7 @@ import { useCreateContent } from "../lib/useCreateContent";
 import { useSpaceTree } from "../lib/useSpaceTree";
 import { CreateContentMenu } from "./CreateContentMenu";
 import { CreateContentDialog } from "./CreateContentDialog";
+import { MarkdownImportDialog } from "./MarkdownImportDialog";
 import { useReadOnly } from "../lib/readOnly";
 import { PageSkeleton } from "./WikiSkeleton";
 
@@ -83,6 +84,8 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
    */
   const tree = useSpaceTree(currentId);
   const [spaceModalOpen, setSpaceModalOpen] = useState(false);
+  // Markdown 가져오기(스페이스 최상위) — 문서 아래로 가져오기는 문서 "…" 메뉴가 맡는다
+  const [importOpen, setImportOpen] = useState(false);
 
   // 별표는 서버가 원장이다 — 앱이 뜰 때 한 번 맞춘다(W23). 실패해도 브라우저 사본으로 계속 돈다.
   // 읽기 전용 인스턴스는 사용자 개념이 없어 별표 원장도 없다 — 요청 자체를 보내지 않는다.
@@ -159,6 +162,11 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
           label: "위치 지정해 만들기…",
           icon: <MapPin size={16} aria-hidden="true" />,
           onSelect: () => setCreateDialogType("page"),
+        },
+        {
+          label: "Markdown 가져오기…",
+          icon: <FileUp size={16} aria-hidden="true" />,
+          onSelect: () => setImportOpen(true),
         },
         {
           label: "새 스페이스",
@@ -252,6 +260,18 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
             defaultType={createDialogType ?? "page"}
             reloadPages={reloadPages}
           />
+          {space ? (
+            <MarkdownImportDialog
+              open={importOpen}
+              onOpenChange={setImportOpen}
+              spaceId={space.id}
+              parent={null}
+              onImported={async (created) => {
+                await reloadPages();
+                if (created[0]) navigate(`/spaces/${space.id}/pages/${created[0].id}`);
+              }}
+            />
+          ) : null}
           {/* 스페이스 생성 모달 — 헤더 "만들기"와 스페이스 플라이아웃이 공유하는 단일 인스턴스 */}
           <SpaceCreateModal
             showTrigger={false}

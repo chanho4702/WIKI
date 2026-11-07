@@ -1,11 +1,19 @@
 // 문서 CRUD·이동·복사·게시·삭제·메타(아이콘·소유자·검증)·블로그 목업.
 import { CURRENT_USER_ID } from "../../../../mock/users";
+import {
+  MARKDOWN_IMPORT_MAX_BYTES,
+  MARKDOWN_IMPORT_MAX_FILES,
+  isMarkdownFileName,
+  parseMarkdownFile,
+  relativeImageWarning,
+} from "../../lib/markdownImport";
 import { defaultVerifiedUntil } from "../../lib/verification";
 import {
   type BlogPost,
   type BlogPostPage,
   type CopyPageOptions,
   type DeletePageOptions,
+  type MarkdownImportResult,
   MoveImpactError,
   type Page,
   PageConflictError,
@@ -310,6 +318,68 @@ export async function deletePage(id: string, options?: DeletePageOptions): Promi
 /** PDF는 서버 렌더러(W26)가 만든다 — 목업에는 없다. 다이얼로그가 목업에서는 인쇄 버튼을 대신 보여준다. */
 export async function downloadPagePdf(): Promise<void> {
   throw new Error("PDF 내보내기는 백엔드 연결에서만 동작합니다 — 브라우저 인쇄를 쓰세요");
+}
+
+/** Word는 서버 렌더러(Apache POI)가 만든다 — 목업에는 없다. 화면은 목업에서 Word 메뉴를 숨긴다. */
+export async function downloadPageDocx(): Promise<void> {
+  throw new Error("Word 내보내기는 백엔드 연결에서만 동작합니다");
+}
+
+async function readBytes(file: File): Promise<ArrayBuffer> {
+  if (typeof file.arrayBuffer === "function") return file.arrayBuffer();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error ?? new Error("파일을 읽지 못했습니다"));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
+ * Markdown 가져오기 — 서버(MarkdownImportService)와 같은 검사·제목 규칙(`lib/markdownImport`). 전부 검사한 뒤에
+ * 만든다: 하나라도 거부되면 아무것도 만들지 않는다.
+ */
+export async function importMarkdownFiles(
+  spaceId: string,
+  parentId: string | null,
+  files: File[],
+  options: { draft?: boolean } = {},
+): Promise<MarkdownImportResult> {
+  if (files.length === 0) throw new Error("가져올 Markdown 파일을 선택하세요");
+  if (files.length > MARKDOWN_IMPORT_MAX_FILES) {
+    throw new Error(`한 번에 ${MARKDOWN_IMPORT_MAX_FILES}개까지 가져올 수 있습니다`);
+  }
+  const parsed = [];
+  for (const file of files) {
+    const name = file.name || "이름 없는 파일";
+    if (!isMarkdownFileName(name)) {
+      throw new Error(`Markdown 파일(.md, .markdown)만 가져올 수 있습니다: ${name}`);
+    }
+    if (file.size > MARKDOWN_IMPORT_MAX_BYTES) throw new Error(`파일 하나는 1MB까지 가져올 수 있습니다: ${name}`);
+    let text: string;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(await readBytes(file));
+    } catch {
+      throw new Error(`UTF-8 텍스트 파일이 아닙니다: ${name}`);
+    }
+    if (text.includes("\u0000")) throw new Error(`텍스트 파일이 아닙니다: ${name}`);
+    parsed.push({ name, ...parseMarkdownFile(name, text) });
+  }
+  const pages: Page[] = [];
+  const warnings: MarkdownImportResult["warnings"] = [];
+  for (const p of parsed) {
+    pages.push(
+      await createPage({
+        spaceId,
+        parentId,
+        title: p.title,
+        body: p.body,
+        status: options.draft ? "draft" : "published",
+      }),
+    );
+    if (p.relativeImages > 0) warnings.push({ file: p.name, message: relativeImageWarning(p.relativeImages) });
+  }
+  return { pages, warnings };
 }
 
 /** 블로그(W24) — 최신 작성순. 발췌는 백엔드 BlogPostView.excerptOf와 같은 규칙(기호 걷어내고 200자). */

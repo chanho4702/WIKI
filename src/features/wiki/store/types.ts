@@ -24,6 +24,7 @@ export {
   type PageNode,
   type LabelCount,
   type TrashEntry,
+  type MarkdownImportResult,
 } from "./model/pages";
 export type { Space, SpaceGrant } from "./model/spaces";
 export {

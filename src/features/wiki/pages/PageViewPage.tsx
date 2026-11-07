@@ -7,7 +7,7 @@ import { CopyPageDialog, MovePageDialog } from "../components/PageMoveCopyDialog
 import type { BreadcrumbItem } from "@chanho/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { applyOverflowTitle } from "../components/TruncatedText";
-import { Archive, BadgeCheck, Copy, Download, FolderInput, History, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock, UserCog } from "lucide-react";
+import { Archive, BadgeCheck, Copy, Download, FileText, FileUp, FolderInput, History, LayoutTemplate, Maximize2, Minimize2, MoreHorizontal, Share2, Trash2, Star, Lock, UserCog } from "lucide-react";
 import type { DeletePageOptions, Page, PageNode, PageRestrictions, User } from "../store/types";
 import {
   deletePage,
@@ -22,7 +22,10 @@ import {
   unarchivePage,
   setTaskDone,
   unverifyPage,
+  downloadPageDocx,
 } from "../store/wikiStore";
+import { USE_BACKEND } from "../store/apiClient";
+import { MarkdownImportDialog } from "../components/MarkdownImportDialog";
 import type { WikiOutletContext } from "../components/wikiContext";
 import { MarkdownView } from "../components/MarkdownView";
 import { scrollToWikiHeading, TableOfContents } from "../components/TableOfContents";
@@ -108,6 +111,17 @@ export function PageViewPage() {
   const [moveOpen, setMoveOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+
+  /** Word 내보내기 — 이 문서 하나. 하위 포함은 내보내기 대화상자에서 고른다. */
+  const handleWordExport = async () => {
+    if (!page) return;
+    try {
+      await downloadPageDocx(page.id, false, page.title);
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : String(e), appearance: "danger" });
+    }
+  };
 
   /** 검증 해제(W27-5) — 되돌리기 쉬운 조작이라 확인 없이 바로 지운다. */
   const handleUnverify = async () => {
@@ -477,6 +491,16 @@ export function PageViewPage() {
                   icon: <Download size={16} aria-hidden="true" />,
                   onSelect: () => setExportOpen(true),
                 },
+                // Word는 서버 렌더러가 만든다 — 목업(서버 없음)에서는 메뉴를 두지 않는다
+                ...(USE_BACKEND
+                  ? [
+                      {
+                        label: "Word로 내보내기",
+                        icon: <FileText size={16} aria-hidden="true" />,
+                        onSelect: () => void handleWordExport(),
+                      },
+                    ]
+                  : []),
                 // 나머지는 전부 쓰기다 — 읽기 전용에서는 "…"에 내보내기 하나만 남는다
                 ...(readOnly
                   ? []
@@ -501,6 +525,12 @@ export function PageViewPage() {
                               label: "복제",
                               icon: <Copy size={16} aria-hidden="true" />,
                               onSelect: () => setCopyOpen(true),
+                            },
+                            {
+                              // 이 문서 아래에 .md 파일마다 하위 문서를 만든다
+                              label: "Markdown 가져오기…",
+                              icon: <FileUp size={16} aria-hidden="true" />,
+                              onSelect: () => setImportOpen(true),
                             },
                           ]),
                       {
@@ -570,6 +600,16 @@ export function PageViewPage() {
             spaceId={page.spaceId}
             onClose={() => setCopyOpen(false)}
             onCopied={() => reloadPages()}
+          />
+          <MarkdownImportDialog
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            spaceId={page.spaceId}
+            parent={{ id: page.id, title: page.title }}
+            onImported={async (created) => {
+              await reloadPages();
+              if (created[0]) navigate(`/spaces/${page.spaceId}/pages/${created[0].id}`);
+            }}
           />
           <PageVerifyDialog
             open={verifyOpen}

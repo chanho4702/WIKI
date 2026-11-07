@@ -39,6 +39,8 @@ export {
   createPage,
   updatePage,
   downloadPagePdf,
+  downloadPageDocx,
+  importMarkdownFiles,
   listBlogPosts,
   listBlogPostPage,
   setPageIcon,

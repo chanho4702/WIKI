@@ -40,6 +40,8 @@ export {
   copyPage,
   deletePage,
   downloadPagePdf,
+  downloadPageDocx,
+  importMarkdownFiles,
   listBlogPosts,
   listBlogPostPage,
   movePage,

@@ -9,7 +9,7 @@ import {
   toFileName,
 } from "../lib/exportContent";
 import { USE_BACKEND } from "../store/apiClient";
-import { downloadPagePdf } from "../store/wikiStore";
+import { downloadPageDocx, downloadPagePdf } from "../store/wikiStore";
 
 /**
  * 내보내기(W21-3). Markdown은 저장 형식 그대로라 무손실이고, HTML은 받는 사람이 그냥 열 수
@@ -49,10 +49,11 @@ export function ExportDialog({
     };
   }, [open, page, includeChildren]);
 
-  const runPdf = async () => {
+  const runServer = async (format: "pdf" | "docx") => {
     setBusy(true);
     try {
-      await downloadPagePdf(page.id, includeChildren, page.title);
+      if (format === "pdf") await downloadPagePdf(page.id, includeChildren, page.title);
+      else await downloadPageDocx(page.id, includeChildren, page.title);
       onOpenChange(false);
     } catch (e) {
       toast({ title: e instanceof Error ? e.message : String(e), appearance: "danger" });
@@ -100,9 +101,15 @@ export function ExportDialog({
             HTML
           </Button>
           {USE_BACKEND ? (
-            <Button variant="subtle" disabled={busy} onClick={() => void runPdf()}>
-              PDF
-            </Button>
+            <>
+              <Button variant="subtle" disabled={busy} onClick={() => void runServer("pdf")}>
+                PDF
+              </Button>
+              {/* Word(.docx)도 서버 렌더(Apache POI) — 제목 스타일·표·코드·첨부 이미지가 Word 구조로 들어간다 */}
+              <Button variant="subtle" disabled={busy} onClick={() => void runServer("docx")}>
+                Word
+              </Button>
+            </>
           ) : (
             <Button variant="subtle" disabled={busy} onClick={() => window.print()}>
               인쇄 (PDF로 저장)

@@ -6,6 +6,7 @@ import {
   type BlogPostPage,
   type CopyPageOptions,
   type DeletePageOptions,
+  type MarkdownImportResult,
   MoveImpactError,
   type Page,
   PageConflictError,
@@ -126,6 +127,55 @@ export async function downloadPagePdf(pageId: string, includeChildren: boolean, 
   anchor.download = `${(title.trim() || "문서").replace(/[\\/:*?"<>|]/g, "_")}.pdf`;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * 페이지 Word(.docx) 내보내기 — PDF와 같은 범위·권한(초안 가시성 포함). 서버가 flexmark AST를 Apache POI로
+ * 옮기고 위키 첨부 이미지를 심는다. Mermaid·수식은 원본 코드 블록으로 남는다.
+ */
+export async function downloadPageDocx(pageId: string, includeChildren: boolean, title: string): Promise<void> {
+  const res = await sharedApiFetch(
+    `/api/wiki/pages/${toBackendId(pageId)}/export.docx?includeChildren=${includeChildren}`,
+  );
+  if (!res.ok) {
+    let message = "Word 문서를 만들지 못했습니다";
+    try {
+      message = extractError(res.status, await res.json());
+    } catch {
+      // 본문이 JSON이 아니면 기본 문구
+    }
+    throw new Error(message);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${(title.trim() || "문서").replace(/[\\/:*?"<>|]/g, "_")}.docx`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Markdown 파일 가져오기 — 파일마다 새 문서(부모 아래, 형제 맨 뒤). 하나라도 거부되면 서버가 아무것도 만들지
+ * 않는다(400 + 파일 이름이 든 오류 문구).
+ */
+export async function importMarkdownFiles(
+  spaceId: string,
+  parentId: string | null,
+  files: File[],
+  options: { draft?: boolean } = {},
+): Promise<MarkdownImportResult> {
+  const form = new FormData();
+  for (const file of files) form.append("files", file);
+  const params = new URLSearchParams();
+  if (parentId) params.set("parentId", String(toBackendId(parentId)));
+  if (options.draft) params.set("status", "draft");
+  const query = params.toString();
+  const res = await sharedApiFetch(
+    `/api/wiki/spaces/${toBackendId(spaceId)}/import/markdown${query ? `?${query}` : ""}`,
+    { method: "POST", body: form },
+  );
+  const body = (await json(res)) as { pages: Parameters<typeof mapPage>[0][]; warnings?: MarkdownImportResult["warnings"] };
+  return { pages: body.pages.map((p) => mapPage(p)), warnings: body.warnings ?? [] };
 }
 
 interface BlogPostDto {
