@@ -6132,6 +6132,12 @@ body.is-column-reordering {
   align-self: flex-start;
 }
 
+/* 설정 저장은 같은 제품군의 ALM과 동일하게 내용 폭으로 줄이고 폼 끝에 둔다. */
+.space-settings-form > .settings-save-action {
+  width: auto;
+  align-self: flex-end;
+}
+
 /* 대상 검색·대상 종류·대상·역할·추가가 한 줄 — 필드마다 라벨이 위에 있어 아래 끝(입력 줄)에 맞춘다.
  * 좁은 화면에서는 접힌다. */
 .space-settings-grant-add {
@@ -6301,6 +6307,7 @@ body.is-column-reordering {
 
 .template-form-actions {
   display: flex;
+  justify-content: flex-end;
   gap: var(--chanho-space-100);
 }
 

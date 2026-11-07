@@ -261,7 +261,11 @@ export function SpaceSettingsPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
-                <Button onClick={() => void handleSave()} disabled={!name.trim() || saving}>
+                <Button
+                  className="settings-save-action"
+                  onClick={() => void handleSave()}
+                  disabled={!name.trim() || saving}
+                >
                   저장
                 </Button>
               </div>

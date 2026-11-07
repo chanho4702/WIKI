@@ -185,11 +185,11 @@ export function TemplateSettings({ spaceId }: { spaceId: string }) {
             onChange={(e) => setContent(e.target.value)}
           />
           <div className="template-form-actions">
-            <Button type="submit" disabled={!name.trim() || saving}>
-              저장
-            </Button>
             <Button type="button" variant="subtle" onClick={() => setEditing(null)}>
               취소
+            </Button>
+            <Button type="submit" disabled={!name.trim() || saving}>
+              저장
             </Button>
           </div>
         </form>
