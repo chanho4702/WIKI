@@ -3,6 +3,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp } from "./testUtils";
 import { __resetForTest } from "../features/wiki/store/wikiStore";
+import appCss from "./app.css?raw";
 // 라우트 청크의 첫 로딩 시간 대신 탐색 전환·포커스 동작을 검증한다(testUtils의 에디터와 같은 방식).
 import "../features/wiki/pages/PageViewPage";
 
@@ -33,6 +34,13 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("좁은 화면의 글로벌 탐색", () => {
+  it("넓은 화면의 전역 검색이 중앙 슬롯의 남는 폭을 사용한다", () => {
+    // jsdom은 실제 flex 폭을 계산하지 않으므로 DS direct-child 규칙을 이기는 앱 규칙을 소스로 검증한다.
+    expect(appCss).toMatch(
+      /@media \(min-width: 701px\)[\s\S]*?\.wiki-layout > header > div:has\(> \.wiki-global-search\) > \.wiki-global-search\s*\{[\s\S]*?flex:\s*1 1 20rem;/,
+    );
+  });
+
   it("본문으로 시작하고 모바일 토글 후에도 데스크톱의 펼침·너비 설정을 유지한다", async () => {
     const resize = mockCompactViewport();
     localStorage.setItem("wiki.ui.sidebar.width", "340");

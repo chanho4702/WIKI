@@ -283,6 +283,16 @@ body {
   margin-inline: var(--chanho-space-25);
 }
 
+/* TopBar의 searchTrailing은 기본적으로 내용 너비만 차지한다. 전역 검색 폼과 만들기 버튼을 함께
+ * 넣으면 검색 폼의 flex 선언이 DS의 direct-child 규칙에 져서, 넓은 화면에서도 placeholder가
+ * 잘리는 250px 안팎으로 수축한다. 데스크톱에서는 검색이 중앙 슬롯의 남은 폭을 맡게 한다. */
+@media (min-width: 701px) {
+  .wiki-layout > header > div:has(> .wiki-global-search) > .wiki-global-search {
+    flex: 1 1 20rem;
+    width: 100%;
+  }
+}
+
 /* 앱 로컬 커스텀 컨트롤(생 button/a)의 포커스 링을 DS 컴포넌트와 같은 토큰으로 통일한다.
  * 이것이 없으면 브라우저 기본 outline이 떠서 DS 버튼과 링 모양·색이 달라진다. */
 .global-nav-item:focus-visible,
