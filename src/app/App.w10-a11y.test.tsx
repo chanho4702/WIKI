@@ -222,5 +222,10 @@ describe("W10 전역 CSS 계약 (소스 검사)", () => {
     expect(sidebar).not.toBeNull();
     expect(content![1]).toContain("overscroll-behavior-y: contain");
     expect(sidebar![1]).toContain("overscroll-behavior-y: contain");
+
+    // 보기·편집이 같은 폭과 제목 크기를 참조해야 전환할 때 줄바꿈과 위계가 흔들리지 않는다.
+    expect(css).toContain("--wiki-document-width: 760px");
+    expect(css).toMatch(/\.page-view \{[^}]*max-width: var\(--wiki-document-width\)/);
+    expect(css).toMatch(/\.page-edit-title \{[^}]*font-size: var\(--wiki-document-title-size\)/);
   });
 });

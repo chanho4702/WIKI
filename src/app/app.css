@@ -1,4 +1,11 @@
 :root {
+  /* 문서 화면의 공통 리듬 — 보기/편집이 같은 폭·제목·본문 크기를 공유한다. */
+  --wiki-document-width: 760px;
+  --wiki-document-gutter: var(--chanho-space-400);
+  --wiki-document-title-size: var(--chanho-font-size-500);
+  --wiki-document-title-line-height: 1.25;
+  --wiki-document-body-size: var(--chanho-font-size-200);
+
   /* W6: .edit-chrome 실측 높이와 동기화 — .top-toolbar의 sticky top 오프셋이 이 값을 참조해
    * 같은 스크롤 컨테이너(.wiki-content) 안에서 두 sticky 바가 겹치지 않게 한다. */
   /* 크롬 행 높이 — 버튼과 변경 요약 입력이 같은 32px(DS 0.14 TextField compact)이고 위아래 8px + 아래 테두리.
@@ -899,7 +906,8 @@ body {
  * 흡수되고, 이 .page-view 규칙은 --full 모디파이어만 남기고 제거될 예정.
  */
 .page-view {
-  max-width: 760px;
+  width: 100%;
+  max-width: var(--wiki-document-width);
   margin: 0 auto;
 }
 
@@ -921,6 +929,9 @@ body {
 
 .page-view-header > div > h1 {
   flex-basis: min(100%, 20ch);
+  margin-block: 0;
+  font-size: var(--wiki-document-title-size);
+  line-height: var(--wiki-document-title-line-height);
   overflow-wrap: anywhere;
   word-break: keep-all;
 }
@@ -934,6 +945,7 @@ body {
 .page-view-meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--chanho-space-100);
   margin-bottom: var(--chanho-space-300);
   color: var(--chanho-color-text-subtle);
@@ -953,7 +965,7 @@ body {
 @media (min-width: 1440px) {
   .page-view:not(.page-view--full):has(> .page-toc:not(.page-toc--inline)) {
     display: grid;
-    grid-template-columns: minmax(0, 760px) 240px;
+    grid-template-columns: minmax(0, var(--wiki-document-width)) 240px;
     column-gap: var(--chanho-space-400);
     justify-content: center;
     max-width: none;
@@ -1050,7 +1062,7 @@ body {
 
 .markdown-body,
 .wiki-editor .ProseMirror {
-  font-size: var(--chanho-font-size-200);
+  font-size: var(--wiki-document-body-size);
   line-height: var(--chanho-font-lineHeight-300);
   color: var(--chanho-color-text-default);
 }
@@ -1576,7 +1588,7 @@ body {
   width: 100%;
   /* 보기 화면(.page-view 760px, 패딩 없음)과 같은 본문 폭 — 좌우 패딩을 바깥에 더해야
    * 편집 진입 시 본문이 64px 좁아지며 줄바꿈이 튀지 않는다 */
-  max-width: calc(760px + 2 * var(--wiki-content-pad-x, var(--chanho-space-400)));
+  max-width: calc(var(--wiki-document-width) + 2 * var(--wiki-content-pad-x, var(--wiki-document-gutter)));
   margin: 0 auto;
   padding: var(--chanho-space-200) var(--wiki-content-pad-x, var(--chanho-space-400)) var(--chanho-space-300);
   box-sizing: border-box;
@@ -1621,7 +1633,8 @@ body {
   border: none;
   outline: none;
   width: 100%;
-  font-size: 2rem;
+  font-size: var(--wiki-document-title-size);
+  line-height: var(--wiki-document-title-line-height);
   font-weight: var(--chanho-font-weight-bold);
   padding: var(--chanho-space-100) 0;
   background: transparent;
@@ -4948,10 +4961,42 @@ body.is-column-reordering {
 /* 에디터 콘텐츠 칼럼 — 툴바(전체 너비) 아래의 제목+본문 가운데 칼럼(.page-edit-body와 같은 규격) */
 .wiki-editor-content {
   width: 100%;
-  max-width: calc(760px + 2 * var(--wiki-content-pad-x, var(--chanho-space-400))); /* .page-edit-body와 같은 이유 */
+  max-width: calc(var(--wiki-document-width) + 2 * var(--wiki-content-pad-x, var(--wiki-document-gutter))); /* .page-edit-body와 같은 이유 */
   margin: 0 auto;
   padding: var(--chanho-space-200) var(--wiki-content-pad-x, var(--chanho-space-400)) var(--chanho-space-300);
   box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --wiki-document-gutter: var(--chanho-space-200);
+    --wiki-document-title-size: var(--chanho-font-size-400);
+  }
+
+  .page-view-header {
+    margin-bottom: var(--chanho-space-150);
+  }
+
+  .page-view-header > div:has(> h1) {
+    gap: var(--chanho-space-100);
+  }
+
+  .page-view-header > div:has(> h1) > div {
+    width: 100%;
+  }
+
+  .page-view-meta {
+    margin-bottom: var(--chanho-space-200);
+  }
+
+  .page-edit-body,
+  .wiki-editor-content {
+    padding-inline: var(--wiki-document-gutter);
+  }
+
+  .page-edit-title-row {
+    margin-top: var(--chanho-space-100);
+  }
 }
 
 /* 위치 지정 만들기 다이얼로그 — 이동 다이얼로그(.page-tree-move-form)와 같은 결 */
