@@ -4,6 +4,7 @@ import {
   MARKDOWN_IMPORT_MAX_BYTES,
   MARKDOWN_IMPORT_MAX_FILES,
   isMarkdownFileName,
+  isZipFileName,
   parseMarkdownFile,
   relativeImageWarning,
 } from "../../lib/markdownImport";
@@ -346,6 +347,8 @@ export async function importMarkdownFiles(
   options: { draft?: boolean } = {},
 ): Promise<MarkdownImportResult> {
   if (files.length === 0) throw new Error("가져올 Markdown 파일을 선택하세요");
+  // zip(폴더 트리·첨부·링크 재작성)은 서버가 푼다 — 목업에는 압축 해제기가 없다(화면도 목업에서는 zip을 받지 않는다)
+  if (files.some((f) => isZipFileName(f.name))) throw new Error("zip 가져오기는 백엔드 연결에서만 동작합니다");
   if (files.length > MARKDOWN_IMPORT_MAX_FILES) {
     throw new Error(`한 번에 ${MARKDOWN_IMPORT_MAX_FILES}개까지 가져올 수 있습니다`);
   }

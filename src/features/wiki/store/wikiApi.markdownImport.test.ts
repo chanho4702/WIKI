@@ -27,6 +27,24 @@ describe("wikiApi Markdown 가져오기 · Word 내보내기", () => {
     expect(result.warnings[0].file).toBe("a.md");
   });
 
+  it("zip도 같은 경로·같은 files 파트로 보낸다(서버가 트리로 푼다)", async () => {
+    const spy = vi.spyOn(client, "sharedApiFetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ pages: [], warnings: [{ file: "zip", message: "어느 문서도 가리키지 않은 파일 1개는 가져오지 않았습니다." }] }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const { importMarkdownFiles } = await import("./wikiApi");
+    const zip = new File(["PK"], "docs.zip", { type: "application/zip" });
+
+    const result = await importMarkdownFiles("5", null, [zip]);
+
+    const [path, init] = spy.mock.calls[0];
+    expect(path).toBe("/api/wiki/spaces/5/import/markdown");
+    expect(((init?.body as FormData).get("files") as File).name).toBe("docs.zip");
+    expect(result.warnings[0].file).toBe("zip");
+  });
+
   it("거부되면 서버 오류 문구를 그대로 던진다", async () => {
     vi.spyOn(client, "sharedApiFetch").mockResolvedValueOnce(
       new Response(JSON.stringify({ error: "Markdown 파일(.md, .markdown)만 가져올 수 있습니다: x.png" }), {

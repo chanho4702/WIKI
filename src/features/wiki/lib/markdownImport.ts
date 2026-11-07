@@ -72,3 +72,28 @@ function countRelativeImages(body: string): number {
 export function relativeImageWarning(count: number): string {
   return `상대 경로 이미지 ${count}개는 가져오지 못했습니다. 문서에 이미지를 직접 첨부하세요.`;
 }
+
+/** zip 가져오기(폴더 트리·첨부·문서 링크)는 서버만 한다 — 목업 모드에서는 받지 않는다. */
+export const MARKDOWN_IMPORT_ACCEPT_WITH_ZIP = `${MARKDOWN_IMPORT_ACCEPT},.zip,application/zip`;
+
+export function isZipFileName(name: string): boolean {
+  return /\.zip$/i.test(name);
+}
+
+/**
+ * 고른 파일 묶음 검사 — 서버와 같은 규칙. .md 여러 개(최대 20) 또는 zip 하나(다른 파일 없이).
+ * 문제가 없으면 null, 있으면 사용자에게 그대로 보일 문구.
+ */
+export function validateImportSelection(names: string[], allowZip: boolean): string | null {
+  if (names.length === 0) return null;
+  const zips = names.filter(isZipFileName);
+  if (allowZip && zips.length > 0) {
+    return names.length === 1 ? null : "zip 파일은 한 번에 하나만, 다른 파일 없이 가져올 수 있습니다";
+  }
+  const rejected = names.filter((n) => !isMarkdownFileName(n));
+  if (rejected.length > 0) {
+    return `${allowZip ? "Markdown 파일(.md, .markdown) 또는 zip" : "Markdown 파일(.md, .markdown)"}만 가져올 수 있습니다: ${rejected.join(", ")}`;
+  }
+  if (names.length > MARKDOWN_IMPORT_MAX_FILES) return `한 번에 ${MARKDOWN_IMPORT_MAX_FILES}개까지 가져올 수 있습니다`;
+  return null;
+}

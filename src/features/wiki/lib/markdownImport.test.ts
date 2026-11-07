@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isMarkdownFileName, parseMarkdownFile } from "./markdownImport";
+import { isMarkdownFileName, parseMarkdownFile, validateImportSelection } from "./markdownImport";
 
 // 백엔드 MarkdownImportService.parse와 같은 규칙이어야 목업/백엔드 모드의 제목이 갈리지 않는다.
 describe("parseMarkdownFile", () => {
@@ -36,5 +36,28 @@ describe("parseMarkdownFile", () => {
     expect(isMarkdownFileName("A.MD")).toBe(true);
     expect(isMarkdownFileName("a.markdown")).toBe(true);
     expect(isMarkdownFileName("a.txt")).toBe(false);
+  });
+});
+
+describe("validateImportSelection", () => {
+  it("백엔드 모드는 .md 여러 개 또는 zip 하나를 받는다", () => {
+    expect(validateImportSelection(["a.md", "b.markdown"], true)).toBeNull();
+    expect(validateImportSelection(["docs.zip"], true)).toBeNull();
+    expect(validateImportSelection(["docs.zip", "a.md"], true)).toBe(
+      "zip 파일은 한 번에 하나만, 다른 파일 없이 가져올 수 있습니다",
+    );
+    expect(validateImportSelection(["a.png"], true)).toBe(
+      "Markdown 파일(.md, .markdown) 또는 zip만 가져올 수 있습니다: a.png",
+    );
+  });
+
+  it("목업 모드는 zip을 받지 않는다", () => {
+    expect(validateImportSelection(["docs.zip"], false)).toBe(
+      "Markdown 파일(.md, .markdown)만 가져올 수 있습니다: docs.zip",
+    );
+    expect(validateImportSelection(Array.from({ length: 21 }, (_, i) => `${i}.md`), false)).toBe(
+      "한 번에 20개까지 가져올 수 있습니다",
+    );
+    expect(validateImportSelection([], false)).toBeNull();
   });
 });

@@ -96,6 +96,26 @@ describe("Markdown 가져오기", () => {
   });
 });
 
+describe("zip 가져오기(목업)", () => {
+  it("zip은 서버가 풀기 때문에 목업 모드 대화상자는 zip을 받지 않는다", async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    renderApp("/spaces/sp1/pages/pg2");
+    await screen.findByRole("heading", { level: 1, name: "팀 규칙" });
+
+    await user.click(screen.getByRole("button", { name: "더 보기" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Markdown 가져오기…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Markdown 가져오기" });
+    expect(dialog).toHaveTextContent("상대 경로 이미지는 가져오지 않습니다");
+    await user.upload(
+      within(dialog).getByLabelText("가져올 Markdown 파일 선택"),
+      new File(["PK"], "docs.zip", { type: "application/zip" }),
+    );
+
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Markdown 파일(.md, .markdown)만 가져올 수 있습니다: docs.zip");
+    expect(within(dialog).getByRole("button", { name: "가져오기" })).toBeDisabled();
+  });
+});
+
 describe("Word 내보내기", () => {
   it("목업 모드에는 Word 메뉴가 없다(서버 렌더)", async () => {
     const user = userEvent.setup();

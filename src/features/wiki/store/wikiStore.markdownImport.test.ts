@@ -38,6 +38,9 @@ describe("importMarkdownFiles (목업)", () => {
       "UTF-8 텍스트 파일이 아닙니다: bad.md",
     );
     await expect(importMarkdownFiles("sp1", null, [])).rejects.toThrow("가져올 Markdown 파일을 선택하세요");
+    await expect(
+      importMarkdownFiles("sp1", null, [new File(["PK"], "docs.zip", { type: "application/zip" })]),
+    ).rejects.toThrow("zip 가져오기는 백엔드 연결에서만 동작합니다");
     expect((await listChildren("sp1", null)).length).toBe(before);
   });
 });
