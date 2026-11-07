@@ -5022,7 +5022,24 @@ body.is-column-reordering {
   }
 
   .page-view-meta {
+    align-items: flex-start;
+    gap: var(--chanho-space-75) var(--chanho-space-100);
     margin-bottom: var(--chanho-space-200);
+  }
+
+  /* 데스크톱에서는 소유자 앞 세로선이 긴 메타 행을 가르지만, 모바일 줄바꿈 뒤에는
+   * 문장 첫머리에 뜬 선처럼 보인다. 작은 화면에서는 항목 간격만으로 구분한다. */
+  .page-view-owner {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .page-view-badge {
+    margin-left: 0;
+  }
+
+  .page-toc {
+    padding-inline: var(--chanho-space-200);
   }
 
   .page-edit-body,
