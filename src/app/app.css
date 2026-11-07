@@ -200,7 +200,23 @@ body {
   flex: 1;
   min-width: 0;
   max-width: 520px;
-  gap: var(--chanho-space-50);
+  height: 34px;
+  padding-left: var(--chanho-space-100);
+  border: 1px solid var(--chanho-color-border-input);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-input);
+  transition: border-color var(--chanho-motion-duration-fast), box-shadow var(--chanho-motion-duration-fast);
+}
+
+.wiki-global-search:focus-within {
+  border-color: var(--chanho-color-border-focused);
+  box-shadow: inset 0 0 0 1px var(--chanho-color-border-focused);
+}
+
+.wiki-global-search-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--chanho-color-text-subtle);
 }
 
 .wiki-global-search-field {
@@ -225,8 +241,46 @@ body {
   width: 100%;
   box-sizing: border-box;
   height: 32px;
-  border-radius: var(--chanho-radius-full);
+  padding-inline: var(--chanho-space-75);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   font-size: var(--chanho-font-size-75);
+}
+
+.wiki-global-search-field input:hover,
+.wiki-global-search-field input:focus-visible {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.wiki-global-search-scope,
+.wiki-global-search-key {
+  flex: none;
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-50);
+  white-space: nowrap;
+}
+
+.wiki-global-search-scope {
+  padding-right: var(--chanho-space-75);
+}
+
+.wiki-global-search-key {
+  min-width: 34px;
+  padding: 2px var(--chanho-space-50);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-small);
+  background: var(--chanho-color-background-surface);
+  font-family: var(--chanho-font-family-sans);
+  text-align: center;
+}
+
+.wiki-global-search-submit {
+  flex: none;
+  margin-inline: var(--chanho-space-25);
 }
 
 /* 앱 로컬 커스텀 컨트롤(생 button/a)의 포커스 링을 DS 컴포넌트와 같은 토큰으로 통일한다.
@@ -515,9 +569,16 @@ body {
     flex: 0 0 32px;
     width: 32px;
     max-width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    background: transparent;
   }
 
-  .wiki-global-search-field {
+  .wiki-global-search-field,
+  .wiki-global-search-icon,
+  .wiki-global-search-scope,
+  .wiki-global-search-key {
     display: none;
   }
 
@@ -525,6 +586,7 @@ body {
     width: 32px;
     height: 32px;
     padding: 0;
+    margin: 0;
   }
 
   .wiki-layout > header button,
@@ -7844,6 +7906,34 @@ a.page-view-owner:hover {
 
   .top-toolbar > * {
     flex: none;
+  }
+}
+
+@media (max-width: 700px) {
+  /* 작업명은 첫 줄을 온전히 쓰고 기한·출처는 체크박스 아래 보조 줄로 내린다.
+   * 데스크톱 한 줄 행을 그대로 줄이면 제목이 두세 글자만 남는다. */
+  .task-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    row-gap: var(--chanho-space-50);
+  }
+
+  .task-text {
+    flex-basis: calc(100% - 32px);
+  }
+
+  .task-due {
+    margin-left: 28px;
+  }
+
+  .task-source {
+    flex: 1 1 120px;
+    max-width: 100%;
+    margin-left: 28px;
+  }
+
+  .task-due + .task-source {
+    margin-left: 0;
   }
 }
 

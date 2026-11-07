@@ -9,6 +9,7 @@ export function GlobalSearchField() {
   const { pathname, search } = useLocation();
   const query = new URLSearchParams(search).get("q") ?? "";
   const [draft, setDraft] = useState(query);
+  const inSpace = /^\/spaces\/([^/]+)/.exec(pathname);
 
   useEffect(() => {
     setDraft(query);
@@ -22,7 +23,6 @@ export function GlobalSearchField() {
     // 스페이스 안에서 검색하면 그 스페이스로 좁혀 시작한다(F-01, 컨플 검색과 같다). 검색 화면에서 다시
     // 검색하면 이미 고른 스페이스·종류를 유지한다 — 검색어만 바꿨는데 필터가 풀리면 다시 골라야 한다.
     const current = new URLSearchParams(search);
-    const inSpace = /^\/spaces\/([^/]+)/.exec(pathname);
     if (pathname === "/search") {
       for (const key of ["space", "type"]) {
         const value = current.get(key);
@@ -37,15 +37,21 @@ export function GlobalSearchField() {
 
   return (
     <form className="wiki-global-search" role="search" onSubmit={handleSubmit}>
+      <span className="wiki-global-search-icon" aria-hidden="true">
+        <Search size={15} />
+      </span>
       <TextField
         className="wiki-global-search-field"
         label="전역 검색"
         type="search"
         value={draft}
-        placeholder="페이지, 폴더, 첨부파일 검색"
+        placeholder="문서, 폴더, 첨부파일 검색"
         onChange={(event) => setDraft(event.target.value)}
       />
+      {inSpace ? <span className="wiki-global-search-scope">현재 스페이스</span> : null}
+      <kbd className="wiki-global-search-key">Enter</kbd>
       <Button
+        className="wiki-global-search-submit"
         type="submit"
         variant="ghost"
         size="small"

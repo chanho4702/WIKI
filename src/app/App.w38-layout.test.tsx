@@ -94,6 +94,12 @@ describe("일관성", () => {
     expect(source.lastIndexOf("padding-inline: 0;")).toBeGreaterThan(source.indexOf(".people-page {"));
   });
 
+  it("모바일 작업 행은 제목을 첫 줄에 확보하고 기한·출처를 보조 줄로 내린다", () => {
+    expect(ruleBody(".task-item", "@media (max-width: 700px)")).toContain("flex-wrap: wrap");
+    expect(ruleBody(".task-text", "@media (max-width: 700px)")).toContain("flex-basis: calc(100% - 32px)");
+    expect(ruleBody(".task-source", "@media (max-width: 700px)")).toContain("max-width: 100%");
+  });
+
   it("편집기 목록 항목 안 문단은 여백이 없다(보기보다 항목 간격이 12px씩 벌어졌다)", () => {
     expect(ruleBody(".wiki-editor .ProseMirror li > p")).toContain("margin: 0");
   });
