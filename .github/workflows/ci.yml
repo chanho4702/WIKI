@@ -31,7 +31,9 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm test
-          pnpm build
+          # 공동 편집은 빌드 시점 상수다(useCollaborationSession.ts). 팀 위키 산출물만 켠다 — 서버(collaboration-service 2노드·게이트웨이 WS)는 이미 떠 있다.
+          # 공개 문서(docs) 빌드는 읽기 전용이라 아래 단계에서 켜지 않는다.
+          VITE_WIKI_COLLABORATION_ENABLED=true pnpm build
 
       # 같은 코드에서 두 번째 산출물 — 공개 문서 인스턴스(/docs/, 읽기 전용, /api/docs 접두사).
       # 변수는 .env.docs가 준다(비밀값 없음). 팀 위키 dist는 위 빌드 그대로다.
