@@ -1,10 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SLASH_ITEMS, SlashMenu, filterInsertMenuItems, filterSlashItems, isInsideOpenWikiLink } from "./slashMenu";
 import type { SlashItem } from "./slashMenu";
 import { parseMarkdown, serializeMarkdown } from "../markdown";
 import { Editor } from "@tiptap/core";
 import { buildBaseExtensions } from "./base";
 import { SUPPORTED_COLUMN_COUNTS } from "./columns";
+import { MOCK_FEATURES_KEY, __resetPlatformFeaturesForTest, getPlatformFeatures } from "../../store/platformApi";
 
 describe("슬래시 메뉴", () => {
   it("전체 항목 — 화이트리스트 블록과 일치", () => {
@@ -17,6 +18,8 @@ describe("슬래시 메뉴", () => {
       "status", "properties", "propertiesReport", "excerpt", "excerptInclude",
       // 수식·Mermaid·콘텐츠 매크로(W27-2·W27-3)
       "math", "mermaid", "pagesByLabel", "recentlyUpdated",
+      // 위키↔ALM 스마트 링크(W3) — 설치 옵션 products.alm일 때만 필터를 통과한다(아래 describe)
+      "almIssue",
       "columns1", "columns2", "columns3", "columns4", "columns5",
       "imageUpload", "image", "emoji",
     ]);
@@ -207,5 +210,77 @@ describe("슬래시 메뉴", () => {
       expect(editor.isActive("heading", { level: 1 })).toBe(true);
       editor.destroy();
     });
+  });
+});
+
+/**
+ * "ALM 이슈"(W3, 설계 2026-11-08 §4.4) — ALM이 설치된 곳에서만 보이고, 키를 받아
+ * `[KEY](/alm/browse/KEY)` 링크를 넣는다. 형식이 틀리면 넣지 않고 안내한다.
+ */
+describe("슬래시 메뉴 — ALM 이슈", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __resetPlatformFeaturesForTest();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    __resetPlatformFeaturesForTest();
+  });
+
+  it("설치 옵션을 받기 전에는 숨긴다(모르면 꺼짐)", () => {
+    expect(filterSlashItems("ALM").map((i) => i.id)).toEqual([]);
+  });
+
+  it("products.alm이면 슬래시 메뉴·요소 브라우저 양쪽에 보인다", async () => {
+    await getPlatformFeatures(); // 목업 기본값 — 전 제품 설치
+
+    expect(filterSlashItems("ALM").map((i) => i.id)).toEqual(["almIssue"]);
+    expect(filterInsertMenuItems("이슈").map((i) => i.id)).toContain("almIssue");
+  });
+
+  it("ALM이 꺼진 설치(PLATFORM_PRODUCTS=wiki,board)에서는 숨긴다", async () => {
+    localStorage.setItem(
+      MOCK_FEATURES_KEY,
+      JSON.stringify({ search: { mode: "lite" }, products: { wiki: true, alm: false, board: true, agent: false } }),
+    );
+    await getPlatformFeatures();
+
+    expect(filterSlashItems("ALM").map((i) => i.id)).toEqual([]);
+    expect(filterInsertMenuItems("이슈").map((i) => i.id)).not.toContain("almIssue");
+  });
+
+  it("키를 받아 정규 주소 링크를 넣는다 — 소문자도 대문자로", () => {
+    vi.spyOn(window, "prompt").mockReturnValue(" plat-12 ");
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("관련:") });
+    editor.commands.setTextSelection(editor.state.doc.content.size);
+
+    SLASH_ITEMS.find((i) => i.id === "almIssue")!.run(editor);
+
+    expect(serializeMarkdown(editor.getJSON()).trim()).toBe("관련:[PLAT-12](/alm/browse/PLAT-12)");
+    editor.destroy();
+  });
+
+  it("형식이 틀린 키는 넣지 않고 안내한다", () => {
+    vi.spyOn(window, "prompt").mockReturnValue("PLAT12");
+    const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+
+    SLASH_ITEMS.find((i) => i.id === "almIssue")!.run(editor);
+
+    expect(serializeMarkdown(editor.getJSON()).trim()).toBe("본문");
+    expect(alert).toHaveBeenCalledWith(expect.stringContaining("이슈 키 형식이 아닙니다"));
+    editor.destroy();
+  });
+
+  it("입력을 취소하면 아무것도 하지 않는다", () => {
+    vi.spyOn(window, "prompt").mockReturnValue(null);
+    const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const editor = new Editor({ extensions: buildBaseExtensions(), content: parseMarkdown("본문") });
+
+    SLASH_ITEMS.find((i) => i.id === "almIssue")!.run(editor);
+
+    expect(serializeMarkdown(editor.getJSON()).trim()).toBe("본문");
+    expect(alert).not.toHaveBeenCalled();
+    editor.destroy();
   });
 });

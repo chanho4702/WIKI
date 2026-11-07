@@ -27,6 +27,8 @@ export const listPopularFeed = impl.listPopularFeed;
 export const listRecentFeed = impl.listRecentFeed;
 export const listFollowingFeed = impl.listFollowingFeed;
 export const orgApiFetch = impl.orgApiFetch;
+// 위키↔ALM 스마트 링크(W3) — 보기 화면이 본문의 ALM 이슈 링크를 키·제목·상태로 올려 그린다
+export const fetchAlmIssueCards = impl.fetchAlmIssueCards;
 export const requestCollaborationTicket = impl.requestCollaborationTicket;
 export const bootstrapCollaborationDocument = impl.bootstrapCollaborationDocument;
 export const listSpaces = impl.listSpaces;

@@ -5325,6 +5325,50 @@ body.is-column-reordering {
   outline: 2px solid var(--chanho-color-border-brand);
 }
 
+/* 위키↔ALM 스마트 링크(W3) — 본문의 ALM 이슈 링크를 `[타입 아이콘] KEY 제목 [상태 배지]`로 그린다.
+ * 인라인이라 줄 높이를 늘리지 않는다(아바타 없음). 포커스 링은 일반 링크와 같다(따로 정하지 않는다). */
+.markdown-body a.alm-smart-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chanho-space-50);
+  max-width: 100%;
+  padding: 0 var(--chanho-space-50);
+  border-radius: var(--chanho-radius-small);
+  color: var(--chanho-color-text-link);
+  text-decoration: none;
+  vertical-align: bottom;
+}
+.markdown-body a.alm-smart-link:hover {
+  background: var(--chanho-color-background-neutral);
+}
+.markdown-body a.alm-smart-link:hover .alm-smart-link__title {
+  text-decoration: underline;
+}
+.alm-smart-link__icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--chanho-color-text-subtle);
+}
+.alm-smart-link__key {
+  flex: none;
+  font-weight: var(--chanho-font-weight-semibold);
+}
+.alm-smart-link__key.is-resolved {
+  text-decoration: line-through;
+}
+/* 너무 긴 요약은 말줄임 — 길이 토큰이 없어 글자 폭(ch)으로 잡는다(임시값, 설계 §5) */
+.alm-smart-link__title {
+  min-width: 0;
+  max-width: 40ch;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--chanho-color-text-default);
+}
+.markdown-body a.alm-smart-link > :last-child {
+  flex: none;
+}
+
 /* URL 붙여넣기 형식 전환 메뉴 — 삽입 지점 아래에 잠깐 뜨는 선택지 */
 .paste-link-menu {
   position: fixed;

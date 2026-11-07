@@ -19,6 +19,8 @@ export {
   addTeamMember,
   removeTeamMember,
 } from "./mock/org";
+// ALM 이슈 카드(W3 스마트 링크) — 게이트웨이 경유 alm-backend, 위키 백엔드는 거치지 않는다
+export { fetchAlmIssueCards } from "./mock/alm";
 export {
   listSpaces,
   setSpaceLabels,

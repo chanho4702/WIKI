@@ -1,5 +1,8 @@
 // 백엔드(wiki-backend) DTO ↔ 프론트 도메인 타입 순수 변환. 부수효과 없음.
 import type {
+  AlmIssueCard,
+  AlmRegistryValue,
+  AlmStatusKind,
   Comment,
   MigrationDeadLetter,
   MigrationIssueSummary,
@@ -399,5 +402,55 @@ export function mapMigrationReport(dto: MigrationReportDto): MigrationReport {
     itemsByStage: dto.itemsByStage ?? {},
     issues: (dto.issues ?? []).map((i) => ({ ...i, sampleSourcePath: i.sampleSourcePath ?? null })),
     deadLetters: (dto.deadLetters ?? []).map(mapMigrationDeadLetter),
+  };
+}
+
+// ── ALM 이슈 카드(W3 스마트 링크) ──────────────────────────────────────────────
+// 다른 제품(alm-backend)의 응답이라 모양을 믿지 않는다 — 키·제목이 없는 항목은 버리고(그 링크는
+// 일반 링크로 남는다), 나머지 필드는 하나씩 좁힌다. 이름 하나가 비었다고 카드를 버리지 않는다.
+
+function str(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function idOf(value: unknown): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return str(value);
+}
+
+function mapAlmRegistryValue(raw: unknown): AlmRegistryValue | null {
+  const r = raw as Record<string, unknown> | null | undefined;
+  const id = str(r?.id);
+  if (!id) return null;
+  return { id, name: str(r?.name) ?? id, icon: str(r?.icon), color: str(r?.color) };
+}
+
+const ALM_STATUS_KINDS: readonly string[] = ["new", "active", "complete"];
+
+export function mapAlmIssueCard(raw: unknown): AlmIssueCard | null {
+  const dto = raw as Record<string, unknown> | null | undefined;
+  const key = str(dto?.key)?.toUpperCase() ?? null;
+  const title = str(dto?.title);
+  const type = mapAlmRegistryValue(dto?.type);
+  const status = mapAlmRegistryValue(dto?.status);
+  if (!key || !title || !type || !status) return null;
+  const kindRaw = (dto?.status as { kind?: unknown } | null)?.kind;
+  const kind = typeof kindRaw === "string" && ALM_STATUS_KINDS.includes(kindRaw) ? (kindRaw as AlmStatusKind) : null;
+  const assigneeRaw = dto?.assignee as Record<string, unknown> | null | undefined;
+  const assigneeId = idOf(assigneeRaw?.id);
+  const due = str(dto?.dueDate);
+  return {
+    key,
+    projectId: idOf(dto?.projectId) ?? "",
+    projectKey: str(dto?.projectKey) ?? key.slice(0, key.lastIndexOf("-")),
+    title,
+    type,
+    status: { ...status, kind },
+    priority: mapAlmRegistryValue(dto?.priority),
+    assignee: assigneeId ? { id: assigneeId, displayName: str(assigneeRaw?.displayName) } : null,
+    // 날짜만 쓴다 — 시각이 붙어 와도 잘라 낸다(브라우저 타임존에 따라 하루 흔들리지 않게).
+    dueDate: due && /^\d{4}-\d{2}-\d{2}/.test(due) ? due.slice(0, 10) : null,
+    resolved: dto?.resolved === true || kind === "complete",
+    url: str(dto?.url) ?? `/alm/browse/${key}`,
   };
 }

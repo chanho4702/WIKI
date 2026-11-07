@@ -47,6 +47,10 @@ import { CodeLineNumbers } from "./CodeLineNumbers";
 import { TableOfContents } from "./TableOfContents";
 import { useReadOnly } from "../lib/readOnly";
 import { PersonLink } from "./PersonLink";
+import { almIssueLink, collectAlmIssueKeys } from "../lib/almIssueLink";
+import { useAlmIssueCards } from "../lib/useAlmIssueCards";
+import { almTypeIcon } from "../lib/almTypeIcons";
+import type { AlmIssueCard } from "../store/types";
 
 export interface MarkdownViewProps {
   /** 마크다운 원문 (Page.body 또는 편집 중인 입력값) */
@@ -98,6 +102,67 @@ function DateChip({ iso }: { iso: string }) {
   );
 }
 
+/**
+ * 본문의 ALM 이슈 카드(키 → 카드) — MarkdownView가 본문 단위로 한 번 조회해 내려준다.
+ * 링크 렌더러가 각자 조회하면 링크 수만큼 요청이 나간다(요청 폭포).
+ */
+const AlmCardsContext = createContext<ReadonlyMap<string, AlmIssueCard>>(new Map());
+
+/**
+ * 위키↔ALM 스마트 링크(W3, 설계 2026-11-08 §5) — `[타입 아이콘] KEY 제목 [상태 배지]`.
+ * Confluence의 Jira 인라인 스마트 링크와 같은 모양이고 완료 이슈는 키에 취소선이다.
+ * 스크린리더는 `aria-label`로 "KEY 제목, 상태"를 한 번에 읽는다(내용 조각을 따로 읽히지 않게).
+ */
+function AlmSmartLink({ card, href }: { card: AlmIssueCard; href: string }) {
+  const Icon = almTypeIcon(card.type.icon);
+  const summary = [
+    card.assignee?.displayName ? `담당자: ${card.assignee.displayName}` : null,
+    card.dueDate ? `기한: ${card.dueDate}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  // 서버가 준 주소는 같은 오리진의 ALM 경로일 때만 쓴다 — 아니면 작성자가 넣은 원래 주소로 간다.
+  const target = card.url.startsWith("/alm/") ? card.url : href;
+  return (
+    <a
+      className="alm-smart-link"
+      href={target}
+      data-kind={card.status.kind ?? undefined}
+      aria-label={`${card.key} ${card.title}, ${card.status.name}`}
+      title={summary || undefined}
+    >
+      {Icon ? (
+        <span className="alm-smart-link__icon" aria-hidden="true">
+          <Icon size={16} />
+        </span>
+      ) : null}
+      <span className={card.resolved ? "alm-smart-link__key is-resolved" : "alm-smart-link__key"}>{card.key}</span>
+      <span className="alm-smart-link__title">{card.title}</span>
+      <Lozenge appearance={statusAppearance(card.status.color)}>{card.status.name}</Lozenge>
+    </a>
+  );
+}
+
+/**
+ * ALM 이슈 링크면 스마트 링크(카드가 있을 때) 또는 **일반 앵커**를 돌려준다. 아니면 null.
+ * 상대 경로(`/alm/browse/KEY`)여도 라우터 Link로 그리면 안 된다 — basename(`/wiki`)이 붙어
+ * 위키 안의 없는 경로로 간다. ALM은 다른 앱이라 전체 페이지 이동이 맞다.
+ */
+function useAlmAnchor(href: string, children: ReactNode, rest: AnchorHTMLAttributes<HTMLAnchorElement>) {
+  const cards = useContext(AlmCardsContext);
+  const hit = almIssueLink(href);
+  if (!hit) return null;
+  // 링크 미리보기 카드(`::bookmark`)는 작성자가 고른 블록 모양이다 — 인라인 스마트 링크로 바꾸지 않는다.
+  const isBookmark = rest.className?.split(/\s+/).includes("bookmark-card") ?? false;
+  const card = isBookmark ? undefined : cards.get(hit.key);
+  if (card) return <AlmSmartLink card={card} href={href} />;
+  return (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
+}
+
 /** wikiMode 밖에서 쓰는 최소 a 렌더 — 멘션만 칩으로 바꾸고 나머지는 표준 앵커. */
 function MentionOnlyAnchor({
   href = "",
@@ -105,10 +170,12 @@ function MentionOnlyAnchor({
   node: _node,
   ...rest
 }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) {
+  const alm = useAlmAnchor(href, children, rest);
   const mentionId = mentionUserIdFromHref(href);
   if (mentionId) return <MentionChip userId={mentionId}>{children}</MentionChip>;
   const dateIso = dateFromHref(href);
   if (dateIso) return <DateChip iso={dateIso} />;
+  if (alm) return alm;
   return (
     <a href={href} {...rest}>
       {children}
@@ -124,10 +191,12 @@ function WikiAnchor({
   ...rest
 }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) {
   const readOnly = useReadOnly();
+  const alm = useAlmAnchor(href, children, rest);
   const mentionId = mentionUserIdFromHref(href);
   if (mentionId) return <MentionChip userId={mentionId}>{children}</MentionChip>;
   const dateIso = dateFromHref(href);
   if (dateIso) return <DateChip iso={dateIso} />;
+  if (alm) return alm;
   if (href.startsWith("/")) {
     // pathname이 생성 화면일 때만 부재 링크로 표시 — 본문 중간의 우연한 substring 매치 방지
     const missing = href.split("?")[0].endsWith("/pages/new");
@@ -408,6 +477,8 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTask
   // 편집기가 이스케이프한 발췌 지시자(`\:\:\:excerpt`)를 되돌린다 — 파서가 그 형태를 못 읽는다.
   const normalized = normalizeDirectiveEscapes(markdown);
   const source = wikiMode ? resolveWikiLinks(normalized, targets, spaceId) : normalized;
+  // ALM 이슈 키는 본문 전체에서 한 번 모아 한 번에 조회한다 — 링크 렌더러는 결과만 읽는다.
+  const almCards = useAlmIssueCards(collectAlmIssueKeys(source));
 
   // 목차는 본문 전체를 봐야 만들 수 있다 — div 렌더러가 source를 알아야 해서 여기서 닫는다.
   const components = useMemo(
@@ -463,22 +534,24 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTask
   );
 
   return (
-    <div className="markdown-body">
-      {/* remarkDirective가 `:::`·`::` 문법을 노드로 만들고 remarkColumns/remarkToc가 그걸 div로
-        * 매핑한다 — 순서가 뒤바뀌면 매핑할 노드가 아직 없다. */}
-      <ReactMarkdown
-        // 기본 urlTransform은 http(s)·mailto 등만 허용해 `user:` 멘션 href를 지운다 — 이 스킴만 통과
-        urlTransform={(url) => (mentionUserIdFromHref(url) || dateFromHref(url) ? url : defaultUrlTransform(url))}
-        // 수식은 `$$`만 — 홑 `$`를 수식 구분자로 두면 "가격은 $5 에서 $10"처럼 흔한 문장이 통째로
-        // 수식이 된다(W27-2 실측). 인라인은 한 줄 `$$…$$`, 블록은 세 줄.
-        remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }], remarkDisplayMath, remarkDirective, remarkTextColors, remarkBookmark, remarkDetails, remarkExcerpt, remarkStatus, remarkColumns, remarkAlerts, remarkToc, remarkContentMacros]}
-        // rehypeMermaid·rehypeKatex는 rehypeHighlight **앞**이다 — 하이라이터가 토큰 span으로
-        // 쪼개고 나면 원문을 되모을 수 없고, mermaid/math는 hljs에 등록된 언어도 아니다.
-        rehypePlugins={[rehypeSlug, rehypeTableSpans, rehypeMermaid, rehypeKatex, [rehypeHighlight, { detect: false }]]}
-        components={components}
-      >
-        {source}
-      </ReactMarkdown>
-    </div>
+    <AlmCardsContext.Provider value={almCards}>
+      <div className="markdown-body">
+        {/* remarkDirective가 `:::`·`::` 문법을 노드로 만들고 remarkColumns/remarkToc가 그걸 div로
+          * 매핑한다 — 순서가 뒤바뀌면 매핑할 노드가 아직 없다. */}
+        <ReactMarkdown
+          // 기본 urlTransform은 http(s)·mailto 등만 허용해 `user:` 멘션 href를 지운다 — 이 스킴만 통과
+          urlTransform={(url) => (mentionUserIdFromHref(url) || dateFromHref(url) ? url : defaultUrlTransform(url))}
+          // 수식은 `$$`만 — 홑 `$`를 수식 구분자로 두면 "가격은 $5 에서 $10"처럼 흔한 문장이 통째로
+          // 수식이 된다(W27-2 실측). 인라인은 한 줄 `$$…$$`, 블록은 세 줄.
+          remarkPlugins={[remarkGfm, [remarkMath, { singleDollarTextMath: false }], remarkDisplayMath, remarkDirective, remarkTextColors, remarkBookmark, remarkDetails, remarkExcerpt, remarkStatus, remarkColumns, remarkAlerts, remarkToc, remarkContentMacros]}
+          // rehypeMermaid·rehypeKatex는 rehypeHighlight **앞**이다 — 하이라이터가 토큰 span으로
+          // 쪼개고 나면 원문을 되모을 수 없고, mermaid/math는 hljs에 등록된 언어도 아니다.
+          rehypePlugins={[rehypeSlug, rehypeTableSpans, rehypeMermaid, rehypeKatex, [rehypeHighlight, { detect: false }]]}
+          components={components}
+        >
+          {source}
+        </ReactMarkdown>
+      </div>
+    </AlmCardsContext.Provider>
   );
 }

@@ -28,8 +28,11 @@ import {
   Workflow,
   Tags,
   History,
+  Ticket,
 } from "lucide-react";
 import { WIKI_LINK_OPEN_SOURCE } from "../../lib/wikiLinks";
+import { almIssueHref, normalizeAlmIssueKey } from "../../lib/almIssueLink";
+import { getPlatformFeatures, peekPlatformFeatures } from "../../store/platformApi";
 import { COLUMN_LAYOUT_ICONS } from "../components/ColumnLayoutIcon";
 import type { SuggestionIcon } from "../components/SuggestionPopup";
 import { SUPPORTED_COLUMN_COUNTS } from "./columns";
@@ -61,7 +64,39 @@ export interface SlashItem {
    * 등록된 오픈 콜백을 호출한다 — run은 그 경우 아무 것도 하지 않는 no-op으로 둔다.
    */
   action?: "openEmoji" | "uploadImage";
+  /**
+   * 다른 제품이 설치돼 있어야 의미가 있는 항목(W3 "ALM 이슈"). 설치 옵션(`products`)을 아직 모르거나
+   * 그 제품이 꺼져 있으면 슬래시 메뉴·요소 브라우저에서 숨긴다 — 넣어 봐야 일반 링크로만 보인다.
+   */
+  requires?: "alm";
   run: (editor: Editor) => void;
+}
+
+/** 설치 옵션 조건을 만족하는 항목인가 — 필터는 동기라 이미 받아 둔 값(peek)만 본다. 모르면 숨긴다. */
+export function isSlashItemAvailable(item: SlashItem): boolean {
+  if (!item.requires) return true;
+  return peekPlatformFeatures()?.products[item.requires] === true;
+}
+
+/**
+ * "ALM 이슈" — 키를 받아 `[KEY](/alm/browse/KEY)` 링크를 넣는다(설계 §4.4). 입력은 "이미지 (URL)"
+ * 항목과 같은 방식(prompt)이다. 저장은 평범한 마크다운 링크라 ALM이 없는 곳에서도 링크로 남는다.
+ */
+function insertAlmIssueLink(editor: Editor): void {
+  const raw = window.prompt("ALM 이슈 키를 입력하세요 (예: PLAT-12)");
+  if (raw === null || !raw.trim()) return;
+  const key = normalizeAlmIssueKey(raw);
+  if (!key) {
+    window.alert("이슈 키 형식이 아닙니다. 프로젝트 키와 번호를 하이픈으로 이어 입력하세요 (예: PLAT-12).");
+    return;
+  }
+  editor
+    .chain()
+    .focus()
+    .insertContent({ type: "text", text: key, marks: [{ type: "link", attrs: { href: almIssueHref(key) } }] })
+    .unsetMark("link")
+    .insertContent(" ")
+    .run();
 }
 
 /**
@@ -369,6 +404,14 @@ export const SLASH_ITEMS: SlashItem[] = [
         .insertContent({ type: "paragraph", content: [{ type: "text", text: "::recently-updated{limit=5}" }] })
         .run(),
   },
+  {
+    id: "almIssue",
+    label: "ALM 이슈",
+    description: "이슈 키로 상태가 보이는 이슈 링크를 넣습니다",
+    icon: Ticket,
+    requires: "alm",
+    run: insertAlmIssueLink,
+  },
   // 열 레이아웃 — 저장 포맷은 `:::` 확장 문법(extensions/columns.ts).
   // 항목명·설명은 레퍼런스(`레이아웃.png`)의 "열 N개 레이아웃 / N개의 동일한 열 삽입"을 그대로 쓴다.
   // 열 수별로 항목을 나누는 것도 레퍼런스와 같다 — 하나의 항목에서 개수를 되묻지 않는다.
@@ -404,7 +447,7 @@ export const SLASH_ITEMS: SlashItem[] = [
 
 export function filterSlashItems(query: string): SlashItem[] {
   const q = query.toLowerCase();
-  return SLASH_ITEMS.filter((i) => i.label.toLowerCase().includes(q));
+  return SLASH_ITEMS.filter((i) => isSlashItemAvailable(i) && i.label.toLowerCase().includes(q));
 }
 
 /**
@@ -416,7 +459,7 @@ export function filterSlashItems(query: string): SlashItem[] {
 export function filterInsertMenuItems(query: string): SlashItem[] {
   const q = query.toLowerCase();
   return SLASH_ITEMS.filter(
-    (i) => i.label.toLowerCase().includes(q) || i.description.toLowerCase().includes(q),
+    (i) => isSlashItemAvailable(i) && (i.label.toLowerCase().includes(q) || i.description.toLowerCase().includes(q)),
   );
 }
 
@@ -455,6 +498,8 @@ export const SlashMenu = Extension.create<SlashMenuOptions>({
 
   addProseMirrorPlugins() {
     const { onStateChange, onOpenEmoji, onUploadImage } = this.options;
+    // 설치 옵션을 미리 데운다 — 항목 필터는 동기라 "/"를 누르기 전에 받아 둬야 조건부 항목이 보인다.
+    void getPlatformFeatures().catch(() => {});
     let items: SlashItem[] = [];
     let highlight = 0;
     let clientRect: (() => DOMRect | null) | null = null;

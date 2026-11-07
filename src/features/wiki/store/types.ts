@@ -109,3 +109,4 @@ export type {
   MigrationJobRecord,
 } from "./model/migrations";
 export type { WikiData } from "./model/mockData";
+export type { AlmIssueCard, AlmRegistryValue, AlmStatusKind } from "./model/alm";

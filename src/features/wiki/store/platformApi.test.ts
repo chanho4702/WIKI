@@ -6,6 +6,7 @@ import {
   fetchPlatformFeatures,
   getPlatformFeatures,
   normalizeFeatures,
+  peekPlatformFeatures,
 } from "./platformApi";
 
 /**
@@ -62,12 +63,46 @@ describe("normalizeFeatures", () => {
   });
 });
 
+/**
+ * 설치 제품(W3, 설계 2026-11-08 §4.2) — **모르면 없다.** 반대로 접히면 ALM이 없는 설치에서
+ * 위키가 죽은 카드 조회를 쏘고 죽은 슬래시 메뉴("ALM 이슈")를 띄운다.
+ */
+describe("normalizeFeatures — products", () => {
+  const NONE = { wiki: false, alm: false, board: false, agent: false };
+
+  it("products가 없는 응답(구버전 게이트웨이)은 전부 꺼짐이다", () => {
+    expect(normalizeFeatures({ search: { mode: "opensearch" } }).products).toEqual(NONE);
+  });
+
+  it("모양이 다른 응답·JSON이 아닌 값도 전부 꺼짐이다", () => {
+    expect(normalizeFeatures(null).products).toEqual(NONE);
+    expect(normalizeFeatures("nope").products).toEqual(NONE);
+    expect(normalizeFeatures({ products: "wiki,alm" }).products).toEqual(NONE);
+  });
+
+  it("서버가 준 값을 그대로 읽는다 — PLATFORM_PRODUCTS=wiki,board", () => {
+    expect(
+      normalizeFeatures({ products: { wiki: true, alm: false, board: true, agent: false } }).products,
+    ).toEqual({ wiki: true, alm: false, board: true, agent: false });
+  });
+
+  it("true만 켜짐이다 — 문자열·숫자·빠진 키는 꺼짐", () => {
+    expect(normalizeFeatures({ products: { wiki: "true", alm: 1, board: true } }).products).toEqual({
+      wiki: false,
+      alm: false,
+      board: true,
+      agent: false,
+    });
+  });
+});
+
 describe("fetchPlatformFeatures (백엔드 모드)", () => {
   it("정상 응답을 그대로 읽는다", async () => {
     const spy = mockResponse(200, { search: { mode: "opensearch", unified: true, reindex: true } });
 
     await expect(fetchPlatformFeatures()).resolves.toEqual({
       search: { mode: "opensearch", unified: true, reindex: true },
+      products: { wiki: false, alm: false, board: false, agent: false },
     });
     expect(spy).toHaveBeenCalledWith("/api/platform/features");
   });
@@ -81,13 +116,22 @@ describe("fetchPlatformFeatures (백엔드 모드)", () => {
 
     await expect(fetchPlatformFeatures()).resolves.toMatchObject({
       search: { mode: "lite", reindex: false },
+      products: { alm: false },
     });
   });
 
   it("네트워크 실패도 라이트로 접는다", async () => {
     vi.spyOn(client, "sharedApiFetch").mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
-    await expect(fetchPlatformFeatures()).resolves.toMatchObject({ search: { mode: "lite" } });
+    await expect(fetchPlatformFeatures()).resolves.toMatchObject({ search: { mode: "lite" }, products: { alm: false } });
+  });
+
+  it("products 블록을 읽는다", async () => {
+    mockResponse(200, { search: { mode: "lite" }, products: { wiki: true, alm: true, board: true, agent: true } });
+
+    await expect(fetchPlatformFeatures()).resolves.toMatchObject({
+      products: { wiki: true, alm: true, board: true, agent: true },
+    });
   });
 
   it("JSON이 아닌 200(로그인 HTML 등)도 라이트로 접는다", async () => {
@@ -101,6 +145,7 @@ describe("getPlatformFeatures (목업 모드)", () => {
   it("기본값은 opensearch — 목업/dev는 현재 화면 그대로다", async () => {
     await expect(getPlatformFeatures()).resolves.toEqual({
       search: { mode: "opensearch", unified: true, reindex: true },
+      products: { wiki: true, alm: true, board: true, agent: true },
     });
   });
 
@@ -109,6 +154,7 @@ describe("getPlatformFeatures (목업 모드)", () => {
 
     await expect(getPlatformFeatures()).resolves.toEqual({
       search: { mode: "lite", unified: false, reindex: false },
+      products: { wiki: false, alm: false, board: false, agent: false },
     });
   });
 
@@ -127,5 +173,15 @@ describe("getPlatformFeatures (목업 모드)", () => {
 
     __resetPlatformFeaturesForTest();
     await expect(getPlatformFeatures()).resolves.toMatchObject({ search: { mode: "lite" } });
+  });
+
+  it("peekPlatformFeatures는 받기 전엔 null, 받은 뒤엔 같은 값을 동기로 준다", async () => {
+    expect(peekPlatformFeatures()).toBeNull();
+
+    const value = await getPlatformFeatures();
+
+    expect(peekPlatformFeatures()).toEqual(value);
+    __resetPlatformFeaturesForTest();
+    expect(peekPlatformFeatures()).toBeNull();
   });
 });

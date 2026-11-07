@@ -20,9 +20,26 @@ export interface SearchFeatures {
   reindex: boolean;
 }
 
+/**
+ * 설치된 제품(게이트웨이 `platform.products` / `PLATFORM_PRODUCTS`, 설계 2026-11-08 §4.2).
+ * 제품 간 연결(위키↔ALM 스마트 링크 등)은 이 값을 보고 켠다 — 상대 제품이 없는 설치에서 죽은
+ * 요청·죽은 메뉴를 만들지 않기 위해서다(제품 단독 판매 전제).
+ */
+export interface ProductFeatures {
+  wiki: boolean;
+  alm: boolean;
+  board: boolean;
+  agent: boolean;
+}
+
 export interface PlatformFeatures {
   search: SearchFeatures;
+  products: ProductFeatures;
 }
+
+/** **모르면 없다** — 구버전 게이트웨이(`products` 없음)·실패에서 상대 제품을 부르지 않는다. */
+const NO_PRODUCTS: ProductFeatures = Object.freeze({ wiki: false, alm: false, board: false, agent: false });
+const ALL_PRODUCTS: ProductFeatures = Object.freeze({ wiki: true, alm: true, board: true, agent: true });
 
 /**
  * **모르면 라이트다.** 404(구버전 게이트웨이)·401·네트워크 실패·공개 문서 인스턴스가 모두 여기로
@@ -30,6 +47,7 @@ export interface PlatformFeatures {
  */
 export const LITE_FEATURES: PlatformFeatures = Object.freeze({
   search: Object.freeze({ mode: "lite", unified: false, reindex: false }),
+  products: NO_PRODUCTS,
 }) as PlatformFeatures;
 
 /**
@@ -38,6 +56,7 @@ export const LITE_FEATURES: PlatformFeatures = Object.freeze({
  */
 export const MOCK_FEATURES: PlatformFeatures = Object.freeze({
   search: Object.freeze({ mode: "opensearch", unified: true, reindex: true }),
+  products: ALL_PRODUCTS,
 }) as PlatformFeatures;
 
 /** 목업 모드 전용 주입 통로(테스트·수동 확인). 백엔드 모드는 이 키를 읽지 않는다. */
@@ -58,7 +77,17 @@ export function normalizeFeatures(raw: unknown): PlatformFeatures {
   const search = (raw as { search?: Record<string, unknown> } | null | undefined)?.search;
   const mode = parseMode(search?.mode);
   const flag = (value: unknown) => (typeof value === "boolean" ? value : mode !== "lite");
-  return { search: { mode, unified: flag(search?.unified), reindex: flag(search?.reindex) } };
+  return {
+    search: { mode, unified: flag(search?.unified), reindex: flag(search?.reindex) },
+    products: normalizeProducts((raw as { products?: unknown } | null | undefined)?.products),
+  };
+}
+
+/** 제품 플래그는 `true`만 켜짐이다 — 없음·문자열·숫자는 전부 꺼짐(검색의 "모르면 라이트"와 같은 방향). */
+function normalizeProducts(raw: unknown): ProductFeatures {
+  if (!raw || typeof raw !== "object") return { ...NO_PRODUCTS };
+  const p = raw as Record<string, unknown>;
+  return { wiki: p.wiki === true, alm: p.alm === true, board: p.board === true, agent: p.agent === true };
 }
 
 /**
@@ -85,6 +114,7 @@ function mockPlatformFeatures(): PlatformFeatures {
 }
 
 let cached: Promise<PlatformFeatures> | null = null;
+let resolved: PlatformFeatures | null = null;
 
 /**
  * 설치 옵션 조회 — **세션 1회**만 실제로 묻는다(상단바·검색 화면·색인 관리가 같은 답을 본다).
@@ -94,11 +124,28 @@ export function getPlatformFeatures(): Promise<PlatformFeatures> {
   // 공개 문서 인스턴스는 nginx가 자기 백엔드로 직접 프록시해 게이트웨이를 거치지 않는다 —
   // 물어봐야 401/404 잡음만 남고 답은 어차피 라이트다(그 인스턴스에는 관리 메뉴가 없다).
   if (READ_ONLY) return Promise.resolve(LITE_FEATURES);
-  cached ??= USE_BACKEND ? fetchPlatformFeatures() : Promise.resolve(mockPlatformFeatures());
+  if (!cached) {
+    const pending = USE_BACKEND ? fetchPlatformFeatures() : Promise.resolve(mockPlatformFeatures());
+    cached = pending;
+    void pending.then((value) => {
+      if (cached === pending) resolved = value;
+    });
+  }
   return cached;
+}
+
+/**
+ * 이미 받아 둔 설치 옵션을 **동기로** 본다(아직이면 null) — 동기 API(슬래시 메뉴 항목 필터)용.
+ * 호출부는 null을 "모름 = 능력 꺼짐"으로 읽는다. 조회를 시작하지 않으니 먼저 `getPlatformFeatures()`로
+ * 데워 둔다.
+ */
+export function peekPlatformFeatures(): PlatformFeatures | null {
+  if (READ_ONLY) return LITE_FEATURES;
+  return resolved;
 }
 
 /** 테스트 전용 — 세션 캐시를 비운다(주입한 값이 다음 조회에 반영되도록). */
 export function __resetPlatformFeaturesForTest(): void {
   cached = null;
+  resolved = null;
 }

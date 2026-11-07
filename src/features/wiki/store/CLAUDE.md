@@ -64,6 +64,10 @@
   dry-run이면 `targetPageId`가 비어 페이지를 만들지 않았음을 드러낸다. **진행은 시간이 아니라
   폴링 횟수로 움직이고, `getMigrationReport`는 진행을 당기지 않는다** — 한 폴링에서 잡과 보고서를
   같이 읽는 화면이 서로 다른 시점을 보면 안 된다. 취소·완료 뒤에는 조회해도 더 나아가지 않는다.
+- **ALM 이슈 카드(W3 스마트 링크)**: `fetchAlmIssueCards(keys)`는 게이트웨이 경유 `GET /api/alm/issues/cards?keys=`를
+  **사용자 토큰으로** 부른다(위키 백엔드를 거치지 않는다 — 위키→ALM 서버 의존 금지). 없는 키·권한 없는 키는 응답에서
+  조용히 빠지고, 50개를 넘으면 어댑터가 나눠 묻는다. 실패는 **던진다** — 삼키는 것은 화면 훅
+  (`lib/useAlmIssueCards`, 60초 캐시·`products.alm` 확인)의 정책이다. 목업은 고정 카드 3개(`ALM-1`·`ALM-2`·`WIKI-7`).
 - **조직(U4, org-service)**: `getOrgMe`·`searchUsers`·`orgApiFetch`.
   `getOrgMe()`는 `GET /api/org/me`이고 **전역 관리자 판정의 단일 근거**다 — `globalRoles`에
   `"ADMIN"`이 있으면 관리자다. 관리자 전용 엔드포인트를 찔러 성공 여부로 판단하지 않는다:
