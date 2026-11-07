@@ -243,8 +243,8 @@ export function ShellSkeleton({ label }: { label: string }) {
         {collapsed || compact ? null : (
           <aside className="wiki-sidebar wiki-skeleton-sidebar" style={{ width }} aria-hidden="true">
             <div className="wiki-skeleton wiki-skeleton-sidebar-nav">
-              {/* 전역 내비 7항목(추천·최근·별표·스페이스·내 스페이스·내 작업·앱)과 같은 줄 수 */}
-              {["36%", "30%", "44%", "40%", "50%", "38%", "24%"].map((width, i) => (
+              {/* 전역 내비 6항목(홈·최근·별표·스페이스·내 스페이스·내 작업)과 같은 줄 수 */}
+              {["36%", "30%", "44%", "40%", "50%", "38%"].map((width, i) => (
                 <SkeletonListItem key={i} media="icon" width={width} />
               ))}
             </div>

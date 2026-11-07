@@ -301,7 +301,7 @@ body {
  * 컨텍스트 섹션 위에 고정된다(스크롤은 아래 .wiki-sidebar-body가 전담). 설계 §1.2. */
 .global-nav {
   flex-shrink: 0;
-  padding: var(--chanho-space-150) var(--chanho-space-200);
+  padding: var(--chanho-space-150);
   border-bottom: 1px solid var(--chanho-color-border-default);
 }
 
@@ -314,17 +314,19 @@ body {
   gap: var(--chanho-space-25);
 }
 
-/* 네비 항목 — NavLink(추천/스페이스)와 자리표시 button(최근/별표/앱) 공용 */
+/* 네비 항목 — NavLink(홈/스페이스)와 플라이아웃 button(최근/별표) 공용 */
 .global-nav-item {
+  position: relative;
   width: 100%;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: var(--chanho-space-150);
+  gap: var(--chanho-space-100);
+  min-height: 36px;
   text-align: left;
   border: none;
   background: none;
-  padding: var(--chanho-space-100) var(--chanho-space-100);
+  padding: var(--chanho-space-75) var(--chanho-space-100);
   border-radius: var(--chanho-radius-small);
   cursor: pointer;
   color: var(--chanho-color-text-default);
@@ -345,9 +347,18 @@ body {
 }
 
 .global-nav-item--active {
-  background: var(--chanho-color-background-selected);
+  background: var(--chanho-color-background-neutral-hovered);
   color: var(--chanho-color-text-selected);
   font-weight: var(--chanho-font-weight-semibold);
+}
+
+.global-nav-item--active::before {
+  content: "";
+  position: absolute;
+  inset: 6px auto 6px 0;
+  width: 2px;
+  border-radius: var(--chanho-radius-full);
+  background: var(--chanho-color-border-selected);
 }
 
 .global-nav-icon {
@@ -378,6 +389,7 @@ body {
   align-items: flex-end;
   gap: var(--chanho-space-100);
   padding: var(--chanho-space-300) var(--chanho-space-200) var(--chanho-space-150);
+  border-top: 1px solid var(--chanho-color-border-default);
 }
 
 .wiki-sidebar-header > *:first-child {
@@ -477,31 +489,46 @@ body {
 
 @media (max-width: 700px) {
   .wiki-layout > header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    height: auto;
+    display: flex;
+    align-items: center;
+    height: 48px;
     flex-shrink: 0;
-    gap: var(--chanho-space-100) var(--chanho-space-200);
-    padding: var(--chanho-space-100) var(--chanho-space-200);
+    gap: var(--chanho-space-100);
+    padding: var(--chanho-space-50) var(--chanho-space-150);
   }
 
   .wiki-layout > header > div:has(.wiki-brand) {
-    grid-column: 1;
-    grid-row: 1;
+    flex: none;
   }
 
   .wiki-layout > header > div:has(.wiki-global-search) {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    min-width: 0;
+    margin-left: auto;
   }
 
   .wiki-layout > header > div:last-child {
-    grid-column: 2;
-    grid-row: 1;
+    flex: none;
   }
 
   .wiki-global-search {
-    max-width: none;
+    width: 32px;
+    max-width: 32px;
+  }
+
+  .wiki-global-search-field {
+    display: none;
+  }
+
+  .wiki-global-search button {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+  }
+
+  .wiki-layout > header button,
+  .wiki-user-menu-trigger {
+    min-width: 32px;
+    min-height: 32px;
   }
 
   .wiki-content {
@@ -519,6 +546,11 @@ body {
     flex: none;
     overflow: visible;
     padding-bottom: var(--chanho-space-200);
+  }
+
+  .wiki-body--mobile-navigation .global-nav-item,
+  .wiki-body--mobile-navigation .wiki-sidebar-footer-link {
+    min-height: 44px;
   }
 
   .wiki-body--mobile-navigation .space-switcher {
@@ -573,7 +605,7 @@ body {
 .wiki-sidebar-section-title {
   margin: 0;
   font-size: var(--chanho-font-size-75);
-  font-weight: var(--chanho-font-weight-bold);
+  font-weight: var(--chanho-font-weight-semibold);
   color: var(--chanho-color-text-subtle);
 }
 

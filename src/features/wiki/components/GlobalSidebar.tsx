@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 import { Avatar, Dropdown, EmptyState, TextField, useToast } from "@chanho/react";
-import { Archive, ChevronRight, Clock, ListChecks, UserRound, Compass, FileText, Folder, Grid3x3, House, MoreHorizontal, Newspaper, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
+import { Archive, ChevronRight, Clock, ListChecks, UserRound, Compass, FileText, Folder, House, MoreHorizontal, Newspaper, Plus, Settings, Star, Tag, Trash2 } from "lucide-react";
 import type { PageNode, Space } from "../store/types";
 import type { SpaceTree } from "../lib/useSpaceTree";
 import { ensurePersonalSpace, listPagesByIds, listRecentPages, searchPageTitles } from "../store/wikiStore";
@@ -40,7 +40,7 @@ export interface GlobalSidebarProps {
 
 /**
  * 컨플루언스 글로벌 셸의 좌측 사이드바 (설계 §1.2 — `2026-07-22-global-shell-design.md`).
- * 3단 구조: (1) 글로벌 네비(추천/최근/별표 표시/스페이스/앱, 모든 화면 공통) ·
+ * 3단 구조: (1) 글로벌 네비(홈/최근/별표 표시/스페이스, 모든 화면 공통) ·
  * (2) 컨텍스트 섹션(스페이스 안이면 스페이스 헤더 + "콘텐츠"(페이지 트리+검색)만 — 순수 스페이스
  * 스코프. 홈·디렉토리면 별표 스페이스 목록 + "모든 스페이스 보기").
  * AppShell이 접힘 상태에 따라 이 컴포넌트를 마운트/언마운트한다(접히면 aside 자체가 사라지는 기존
@@ -49,8 +49,7 @@ export interface GlobalSidebarProps {
  * 별표 스페이스 목록/디렉토리 링크는 컨플루언스처럼 홈·디렉토리 컨텍스트에만 둔다 — 스페이스
  * 사이드바에 노출하면 스코프가 섞인다(디자인 재검토 §B Important "별표 오노출").
  *
- * 최근/별표/앱 항목의 플라이아웃과 스페이스 개요 페이지는 후속(설계 §3 4~5단계) — 이번 패스에서는
- * 추천·스페이스만 실제 라우트로 이동하고 최근·별표·앱은 자리표시 항목이다.
+ * 최근/별표 항목은 플라이아웃으로, 홈·스페이스는 실제 라우트로 이동한다.
  */
 /** 이모지가 있으면 그것을, 없으면 타입 아이콘을 — 트리와 같은 규칙이다. */
 function iconFor(icon: string | null | undefined, type: "page" | "folder" | "blog") {
@@ -275,7 +274,7 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
   // 알아서, 그 기준으로 지우면 다른 스페이스의 별표가 날아간다(스페이스 별표 prune과 다른 점).
   // 죽은 페이지 별표는 페이지 삭제 경로(PageViewPage)에서 개별 제거한다.
 
-  // 글로벌 네비 항목의 활성 클래스 — NavLink(추천/스페이스)만 실제 라우트라 활성 하이라이트가 붙는다.
+  // 실제 라우트인 홈·스페이스에 현재 위치를 표시한다.
   const navClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? "global-nav-item global-nav-item--active" : "global-nav-item";
 
@@ -287,10 +286,9 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
           <li>
             <NavLink to="/home" end className={navClass}>
               <House className="global-nav-icon" size={16} aria-hidden="true" />
-              <span>추천</span>
+              <span>홈</span>
             </NavLink>
           </li>
-          {/* 앱은 플라이아웃 후속(설계 §3 4단계) — 이번 패스는 자리표시 항목 */}
           <li ref={recentContainerRef} className="global-nav-star-anchor">
             <button
               ref={recentTriggerRef}
@@ -406,12 +404,6 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
               </li>
             </>
           )}
-          <li>
-            <button type="button" className="global-nav-item" disabled>
-              <Grid3x3 className="global-nav-icon" size={16} aria-hidden="true" />
-              <span>앱</span>
-            </button>
-          </li>
         </ul>
       </nav>
 
@@ -652,8 +644,6 @@ export function GlobalSidebar({ spaces, space, tree, reloadPages, onCreateSpace,
         </div>
       )}
 
-      {/* 푸터의 Jira 크로스앱 링크는 제거했다(2026-08-23 피드백) — 위키 셸에서 타 앱 이동은
-       * 글로벌 네비 "앱" 항목이 담당할 예정이라 중복 진입점을 두지 않는다. */}
       <SidebarResizer width={displayWidth} onDrag={setDisplayWidth} onCommit={handleResizeCommit} />
     </aside>
   );

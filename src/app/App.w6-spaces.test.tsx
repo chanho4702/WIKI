@@ -88,7 +88,7 @@ describe("W6 스페이스 플라이아웃", () => {
   // SpaceFlyout에서 별표를 눌러도 다른 컴포넌트(사이드바 별표 섹션)가 리마운트 전까지 갱신되지
   // 않았다. 모듈 스코프 스토어(useSyncExternalStore)로 바꾼 뒤에는 즉시 공유돼야 한다. 스페이스 안
   // 사이드바엔 이제 별표 섹션이 없으므로(순수 스페이스 스코프), 플라이아웃에서 별표한 뒤 리로드 없이
-  // "추천"(홈)으로 이동해 홈 컨텍스트 사이드바 별표 섹션에 즉시 반영되는지로 같은 의도를 검증한다.
+  // 홈으로 이동해 홈 컨텍스트 사이드바 별표 섹션에 즉시 반영되는지로 같은 의도를 검증한다.
   it("플라이아웃에서 별표하면 리로드 없이 홈 컨텍스트 사이드바 별표 섹션에 즉시 반영된다", async () => {
     const user = userEvent.setup();
     renderApp();
@@ -100,7 +100,7 @@ describe("W6 스페이스 플라이아웃", () => {
     await user.click(within(opsItem).getByRole("button", { name: "별표" }));
 
     // 같은 앱 인스턴스에서 홈으로 이동(리마운트/리로드 없음) — 모듈 스토어라 별표가 유지·공유된다.
-    await user.click(screen.getByRole("link", { name: "추천" }));
+    await user.click(screen.getByRole("link", { name: "홈" }));
     const sidebarSection = await screen.findByRole("region", { name: "별표 표시된 스페이스" });
     expect(within(sidebarSection).getByRole("button", { name: "운영 위키 (OPS)" })).toBeInTheDocument();
   });
