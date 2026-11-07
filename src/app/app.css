@@ -502,6 +502,7 @@ body {
   }
 
   .wiki-layout > header > div:has(.wiki-global-search) {
+    flex: 0 0 auto;
     min-width: 0;
     margin-left: auto;
   }
@@ -511,6 +512,7 @@ body {
   }
 
   .wiki-global-search {
+    flex: 0 0 32px;
     width: 32px;
     max-width: 32px;
   }
@@ -568,6 +570,17 @@ body {
   }
 
   .wiki-body--mobile-navigation .sidebar-resizer {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .wiki-create-trigger {
+    width: 32px;
+    padding-inline: 0;
+  }
+
+  .wiki-create-trigger > span:last-child {
     display: none;
   }
 }
@@ -3908,15 +3921,6 @@ body {
 }
 
 @media (max-width: 700px) {
-  .wiki-global-search {
-    max-width: none;
-  }
-
-  .wiki-global-search button {
-    display: none;
-  }
-
-
   .search-result-link {
     padding-inline: 0;
   }
@@ -4385,7 +4389,7 @@ body.is-column-reordering {
 /* ── 홈 대시보드 (/home) ─────────────────────────────────── */
 /* 글로벌 셸(AppShell)의 .wiki-content 안에 렌더되므로 별도 화면 래퍼가 없다(설계 §2). */
 .home-content {
-  max-width: 1120px;
+  max-width: 960px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;

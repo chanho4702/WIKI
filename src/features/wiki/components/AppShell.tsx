@@ -150,7 +150,7 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
   const createControl = readOnly ? undefined : space ? (
     <CreateContentMenu
       trigger={
-        <Button iconBefore={<Plus size={16} aria-hidden="true" />}>
+        <Button className="wiki-create-trigger" iconBefore={<Plus size={16} aria-hidden="true" />}>
           만들기
         </Button>
       }
@@ -180,7 +180,7 @@ export function AppShell({ spaces, onSpacesChanged }: AppShellProps) {
     // 위치 지정 다이얼로그로 연다(타입 미리 선택). 전에는 새 스페이스만 가능했다.
     <CreateContentMenu
       trigger={
-        <Button iconBefore={<Plus size={16} aria-hidden="true" />}>
+        <Button className="wiki-create-trigger" iconBefore={<Plus size={16} aria-hidden="true" />}>
           만들기
         </Button>
       }
