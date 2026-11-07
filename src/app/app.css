@@ -7818,7 +7818,15 @@ a.page-view-owner:hover {
  * 24px 여백 때문에 마지막 "+" 하나만 셋째 줄로 밀렸다 — 본문과 같은 16px 선에 맞춘다. */
 @media (max-width: 760px) {
   .top-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
     padding-inline: var(--chanho-space-200);
+  }
+
+  .top-toolbar > * {
+    flex: none;
   }
 }
 
