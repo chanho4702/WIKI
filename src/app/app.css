@@ -401,6 +401,8 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
   display: flex;
   flex-direction: column;
   gap: var(--chanho-space-200);
@@ -451,6 +453,8 @@ body {
   flex: 1;
   min-width: 0;
   overflow-y: auto; /* .wiki-layout이 뷰포트 고정 높이가 됨에 따라 본문 스크롤을 여기서 전담 */
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
   /* 본문 여백은 변수로 둔다 — 편집 크롬처럼 이 여백을 음수 마진·sticky 오프셋으로 상쇄하는 자식이
    * 같은 값을 읽어야 좁은 화면(여백이 줄어듦)에서도 가로로 넘치지 않는다. */
   --wiki-content-pad-y: var(--chanho-space-300);
@@ -4336,7 +4340,7 @@ body.is-column-reordering {
 /* ── 홈 대시보드 (/home) ─────────────────────────────────── */
 /* 글로벌 셸(AppShell)의 .wiki-content 안에 렌더되므로 별도 화면 래퍼가 없다(설계 §2). */
 .home-content {
-  max-width: 1040px;
+  max-width: 1120px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
@@ -4344,6 +4348,58 @@ body.is-column-reordering {
   display: flex;
   flex-direction: column;
   gap: var(--chanho-space-500);
+  container-type: inline-size;
+}
+.home-resume-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--chanho-space-200);
+  min-height: 88px;
+  padding: var(--chanho-space-200) var(--chanho-space-250);
+  border: 1px solid var(--chanho-color-border-default);
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-subtle);
+}
+.home-resume-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: var(--chanho-radius-medium);
+  background: var(--chanho-color-background-neutral);
+  color: var(--chanho-color-text-subtle);
+}
+.home-resume-empty h3,
+.home-resume-empty p {
+  margin: 0;
+}
+.home-resume-empty h3 {
+  font-size: var(--chanho-font-size-100);
+  font-weight: var(--chanho-font-weight-semibold);
+}
+.home-resume-empty p {
+  margin-top: var(--chanho-space-50);
+  color: var(--chanho-color-text-subtle);
+  font-size: var(--chanho-font-size-75);
+}
+
+@container (max-width: 520px) {
+  .home-resume-empty {
+    align-items: flex-start;
+    padding: var(--chanho-space-150);
+  }
+
+  .home-recent-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .home-recent-time {
+    width: 100%;
+    margin-left: 28px;
+  }
 }
 .home-section {
   display: flex;

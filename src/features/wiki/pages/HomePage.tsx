@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { Avatar, Button, EmptyState, Skeleton, SkeletonAvatar } from "@chanho/react";
+import { Avatar, Button, Skeleton, SkeletonAvatar } from "@chanho/react";
 import { FileText, Folder, History, Star } from "lucide-react";
 import type { FeedPageRow, PageNode, Space, User } from "../store/types";
 import {
@@ -352,11 +352,15 @@ export function HomePage() {
         {resume === null ? (
           <ResumeSkeleton />
         ) : resume.length === 0 ? (
-          <EmptyState
-            media={<History size={32} aria-hidden="true" />}
-            title="최근 방문한 페이지가 없습니다"
-            description="페이지를 열면 여기에 다시 시작할 수 있게 나타납니다. 아래 스페이스에서 시작해 보세요."
-          />
+          <div className="home-resume-empty">
+            <span className="home-resume-empty-icon" aria-hidden="true">
+              <History size={20} />
+            </span>
+            <span>
+              <h3>최근 방문한 페이지가 없습니다</h3>
+              <p>아래 스페이스에서 문서를 열면 다음부터 바로 이어서 작업할 수 있습니다.</p>
+            </span>
+          </div>
         ) : (
           <ul className="home-resume-grid">
             {resume.map(({ id, spaceId, title, visitedAt, space }) => (

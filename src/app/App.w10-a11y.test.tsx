@@ -214,4 +214,13 @@ describe("W10 전역 CSS 계약 (소스 검사)", () => {
     expect(block![1]).toContain("height: 100vh"); // 미지원 브라우저 폴백
     expect(block![1]).toContain("height: 100dvh");
   });
+
+  it("본문과 사이드바의 휠 관성이 서로 이어지지 않도록 스크롤 경계를 둔다", () => {
+    const content = /\.wiki-content \{([\s\S]*?)\}/.exec(css);
+    const sidebar = /\.wiki-sidebar-body \{([\s\S]*?)\}/.exec(css);
+    expect(content).not.toBeNull();
+    expect(sidebar).not.toBeNull();
+    expect(content![1]).toContain("overscroll-behavior-y: contain");
+    expect(sidebar![1]).toContain("overscroll-behavior-y: contain");
+  });
 });
