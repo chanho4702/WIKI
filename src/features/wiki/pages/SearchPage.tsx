@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Banner, Button, EmptyState, Lozenge, PageHeader, Select, Skeleton, TextField } from "@chanho/react";
+import { Banner, Button, EmptyState, Lozenge, MultiSelect, PageHeader, Select, Skeleton, TextField } from "@chanho/react";
 import { FileText, Folder, Layers, Newspaper, Paperclip, SearchX } from "lucide-react";
 import { listPagePaths, listSpaces, listUsers, searchContent, suggestLabels } from "../store/wikiStore";
 import { useReadOnly } from "../lib/readOnly";
@@ -127,11 +127,9 @@ export function SearchPage() {
   const [labelOptions, setLabelOptions] = useState<LabelCount[]>([]);
   /** 결과의 조상 경로. 검색 엔진을 타지 않는 별도 조회라 두 배포에서 같은 답이 온다. */
   const [paths, setPaths] = useState<Map<string, string[]>>(new Map());
-  /**
-   * 라벨만 입력 중인 값을 따로 들고 있다가 제출할 때 URL에 반영한다 — 날짜·작성자와 달리
-   * 자유 입력이라 키 하나마다 검색을 쏘면 "설계"를 치는 동안 요청이 두 번 더 나간다.
-   */
-  const [labelDraft, setLabelDraft] = useState(labelParam);
+  /** 라벨 후보 검색어 — 고른 라벨(URL)과 따로다. 치는 동안은 후보만 바뀌고 검색은 고를 때 나간다. */
+  const [labelQuery, setLabelQuery] = useState("");
+  const [labelOptionsLoading, setLabelOptionsLoading] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const [results, setResults] = useState<SearchResults | null>(null);
   const [error, setError] = useState<ContentSearchError | null>(null);
@@ -146,11 +144,6 @@ export function SearchPage() {
     // 스페이스 이름은 필터 선택지일 뿐이다 — 못 읽어도 검색은 막지 않는다(고른 값은 URL에 그대로 남는다)
     void listSpaces().then(setSpaces).catch(() => setSpaces([]));
   }, []);
-
-  // 뒤로 가기·필터 지우기로 URL이 바뀌면 입력칸도 따라와야 한다.
-  useEffect(() => {
-    setLabelDraft(labelParam);
-  }, [labelParam]);
 
   useEffect(() => {
     if (!query) {
@@ -197,21 +190,25 @@ export function SearchPage() {
 
   /**
    * 라벨 후보 — 자유 입력만 두면 오타를 쳤을 때 0건이 나오고 사용자는 이유를 알 수 없다.
-   * datalist라 직접 입력도 계속 가능하다(후보에 없는 라벨을 막지 않는다).
+   * 후보에 없는 라벨도 "추가"로 고를 수 있다(creatable) — 예전 자유 입력처럼 막지 않는다.
    */
   useEffect(() => {
     let cancelled = false;
-    void suggestLabels(labelDraft.split(",").pop() ?? "")
+    setLabelOptionsLoading(true);
+    void suggestLabels(labelQuery.trim())
       .then((found) => {
         if (!cancelled) setLabelOptions(found);
       })
       .catch(() => {
         if (!cancelled) setLabelOptions([]); // 후보를 못 받는다고 검색을 막지 않는다
+      })
+      .finally(() => {
+        if (!cancelled) setLabelOptionsLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [labelDraft]);
+  }, [labelQuery]);
 
   // 결과가 바뀌면 그 페이지들의 경로만 조회한다 — 목록 한 페이지분(최대 20건)이다.
   useEffect(() => {
@@ -342,32 +339,20 @@ export function SearchPage() {
             value={updatedBefore}
             onChange={(e) => setFilter("before", e.target.value)}
           />
-          <form
+          <MultiSelect
             className="search-filter"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setFilter("labels", labelDraft.trim());
-            }}
-          >
-            <TextField
-              id="search-filter-labels"
-              size="compact"
-              label="라벨"
-              type="text"
-              list="search-filter-label-options"
-              value={labelDraft}
-              placeholder="쉼표로 구분"
-              onChange={(e) => setLabelDraft(e.target.value)}
-              onBlur={() => setFilter("labels", labelDraft.trim())}
-            />
-            <datalist id="search-filter-label-options">
-              {labelOptions.map((option) => (
-                <option key={option.name} value={option.name}>
-                  {option.count}건
-                </option>
-              ))}
-            </datalist>
-          </form>
+            size="compact"
+            label="라벨"
+            placeholder="전체"
+            searchPlaceholder="라벨 찾기"
+            noOptionsMessage="일치하는 라벨이 없습니다"
+            value={labels}
+            options={labelOptions.map((option) => ({ value: option.name, label: option.name }))}
+            loading={labelOptionsLoading}
+            creatable
+            onSearchChange={setLabelQuery}
+            onValueChange={(next: string[]) => setFilter("labels", next.join(","))}
+          />
           <Select
             className="search-filter"
             size="compact"

@@ -131,23 +131,38 @@ describe("W22 검색 필터 — 화면", () => {
     expect(await screen.findByRole("heading", { name: /검색 결과가 없습니다/ })).toBeInTheDocument();
   });
 
-  it("라벨 필터는 제출할 때만 URL에 반영된다", async () => {
+  it("라벨은 후보에서 고를 때 URL에 반영되고, 치는 동안은 후보만 바뀐다", async () => {
     const user = userEvent.setup();
     await setLabels("pg3", ["설계"]);
     renderApp("/search?q=설정");
     await screen.findByRole("heading", { name: "검색" });
 
+    await user.click(screen.getByRole("combobox", { name: "라벨" }));
     // 타이핑 도중에는 검색이 나가지 않는다 — URL이 아직 그대로다.
-    await user.type(screen.getByLabelText("라벨"), "설계");
+    await user.type(screen.getByRole("combobox", { name: "라벨 검색" }), "설");
     expect(screen.getByTestId("location")).not.toHaveTextContent("labels=");
 
-    await user.keyboard("{Enter}");
+    await user.click(await screen.findByRole("option", { name: "설계" }));
 
     await waitFor(() => {
       expect(screen.getByTestId("location")).toHaveTextContent("labels=");
     });
     const results = await screen.findByRole("list", { name: /검색 결과/ });
     expect(within(results).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("후보에 없는 라벨도 추가로 고를 수 있다(예전 자유 입력과 같다)", async () => {
+    const user = userEvent.setup();
+    renderApp("/search?q=설정");
+    await screen.findByRole("heading", { name: "검색" });
+
+    await user.click(screen.getByRole("combobox", { name: "라벨" }));
+    await user.type(screen.getByRole("combobox", { name: "라벨 검색" }), "없는라벨");
+    await user.click(await screen.findByRole("option", { name: '"없는라벨" 추가' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent(`labels=${encodeURIComponent("없는라벨")}`);
+    });
   });
 
   it("정렬을 바꾸면 URL에 남는다", async () => {
@@ -220,7 +235,7 @@ describe("W22 검색 필터 — 화면", () => {
     await waitFor(() => {
       expect(screen.getByTestId("location")).not.toHaveTextContent("after=");
     });
-    expect(screen.getByLabelText("라벨")).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "라벨" })).toHaveTextContent("전체");
     const results = await screen.findByRole("list", { name: /검색 결과/ });
     expect(within(results).getAllByRole("listitem").length).toBeGreaterThan(0);
   });
