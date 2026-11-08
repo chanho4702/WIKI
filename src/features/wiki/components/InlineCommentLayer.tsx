@@ -131,7 +131,9 @@ export function InlineCommentLayer({
           })),
       ),
     );
-    return () => clearHighlights(container);
+    return () => {
+      clearHighlights(container);
+    };
     // threads/replies는 comments에서 파생된다 — 의존은 원본 하나로 충분하다.
   }, [comments, body, bodyRef, decorations]);
 

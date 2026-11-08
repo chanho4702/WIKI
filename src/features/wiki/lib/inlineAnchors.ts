@@ -147,14 +147,17 @@ export function applyHighlights(container: HTMLElement, targets: HighlightTarget
   return found;
 }
 
-export function clearHighlights(container: HTMLElement): void {
-  for (const mark of Array.from(container.querySelectorAll("mark[data-comment-id]"))) {
+/** 하이라이트를 걷는다. 걷은 mark 수를 준다(0이면 DOM을 건드리지 않았다). */
+export function clearHighlights(container: HTMLElement): number {
+  const marks = Array.from(container.querySelectorAll("mark[data-comment-id]"));
+  for (const mark of marks) {
     const parent = mark.parentNode;
     if (!parent) continue;
     while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
     parent.removeChild(mark);
     parent.normalize();
   }
+  return marks.length;
 }
 
 /**

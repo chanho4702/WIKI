@@ -4,6 +4,7 @@ import { MarkdownView } from "./MarkdownView";
 import { __resetPlatformFeaturesForTest } from "../store/platformApi";
 import { __resetAlmIssueCardsForTest } from "../lib/useAlmIssueCards";
 import { applyHighlights } from "../lib/inlineAnchors";
+import * as store from "../store/wikiStore";
 
 /**
  * 스마트 링크 × 인라인 댓글 앵커(W3 리뷰 I1·M1). 앵커는 렌더된 본문 텍스트의 n번째 등장이라,
@@ -84,5 +85,42 @@ describe("MarkdownView 스마트 링크 — 인라인 댓글 앵커", () => {
 
     await new Promise((r) => setTimeout(r, 0));
     expect(repaint).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 재리뷰 R1 — 볼 수 없는·없는 키만 있는 페이지. 조회가 끝나도 화면은 그대로(카드 없음)인데 예전엔
+   * 하이라이트를 걷고 다시 칠하라는 알림을 보내지 않아 mark가 영영 사라졌다. 화면이 안 바뀌면 걷지도 않는다.
+   */
+  it("카드가 하나도 없는 응답이면 칠해 둔 하이라이트를 그대로 둔다", async () => {
+    const spy = vi.spyOn(store, "fetchAlmIssueCards");
+    const repaint = vi.fn();
+    const { container } = render(
+      <MarkdownView markdown={"참고 [NOPE-1](/alm/browse/NOPE-1) 다음 문장."} onDecorationsChange={repaint} />,
+    );
+    const targets = [{ id: "c1", quote: "NOPE-1 다음", occurrence: 0, replyCount: 0 }];
+    expect(applyHighlights(body(container), targets)).toEqual(new Set(["c1"]));
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+    await spy.mock.results[0].value;
+    await new Promise((r) => setTimeout(r, 0));
+
+    const marks = [...body(container).querySelectorAll("mark[data-comment-id='c1']")];
+    expect(marks.map((m) => m.textContent).join("")).toBe("NOPE-1 다음");
+    expect(repaint).not.toHaveBeenCalled();
+  });
+
+  it("카드가 생기는 응답이면 걷은 하이라이트를 다시 칠하라고 알린다 — 볼 수 없는 키가 섞여도", async () => {
+    const repaint = vi.fn();
+    const { container } = render(
+      <MarkdownView
+        markdown={"[NOPE-1](/alm/browse/NOPE-1) 그리고 [ALM-1](/alm/browse/ALM-1) 끝."}
+        onDecorationsChange={repaint}
+      />,
+    );
+    applyHighlights(body(container), [{ id: "c1", quote: "NOPE-1 그리고", occurrence: 0, replyCount: 0 }]);
+
+    await screen.findByRole("link", { name: ALM_1_NAME });
+
+    await waitFor(() => expect(repaint).toHaveBeenCalledTimes(1));
   });
 });

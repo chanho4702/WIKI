@@ -500,21 +500,21 @@ export function MarkdownView({
   // 카드 반영 직전에 인라인 댓글 하이라이트를 걷는다 — `mark`가 React의 텍스트 노드를 감싸거나 쪼갠
   // 채로 React가 링크 자리를 바꾸면 "child can not be found"로 본문 전체가 내려간다(W3 리뷰 I1 실측).
   // 다시 칠하는 것은 onDecorationsChange를 받은 쪽이다.
+  // 하이라이트를 실제로 걷었는가 — 걷었으면 커밋 뒤 반드시 알린다(걷고 알리지 않는 경로를 구조로 없앤다).
+  const clearedHighlights = useRef(false);
   const almCards = useAlmIssueCards(collectAlmIssueKeys(source), {
     beforeChange: () => {
-      if (bodyRef.current) clearHighlights(bodyRef.current);
+      if (bodyRef.current && clearHighlights(bodyRef.current) > 0) clearedHighlights.current = true;
     },
   });
-  const decoratedOnce = useRef(false);
+  const lastCards = useRef(almCards);
   useEffect(() => {
-    if (!decoratedOnce.current) {
-      decoratedOnce.current = true;
-      return;
-    }
+    const changed = lastCards.current !== almCards;
+    lastCards.current = almCards;
+    if (!changed && !clearedHighlights.current) return;
+    clearedHighlights.current = false;
     onDecorationsChange?.();
-    // 알림은 카드가 바뀔 때만 — 콜백 정체성이 바뀌는 것은 사건이 아니다
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [almCards]);
+  });
 
   // 목차는 본문 전체를 봐야 만들 수 있다 — div 렌더러가 source를 알아야 해서 여기서 닫는다.
   const components = useMemo(

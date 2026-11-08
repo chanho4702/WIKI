@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchAlmIssueCards } from "../store/wikiStore";
 import { getPlatformFeatures } from "../store/platformApi";
 import type { AlmIssueCard } from "../store/types";
@@ -26,6 +26,14 @@ function fromCache(keys: readonly string[]): ReadonlyMap<string, AlmIssueCard> {
     if (card) out.set(key, card);
   }
   return out.size ? out : EMPTY;
+}
+
+/** 같은 키에 같은 카드 객체인가 — 캐시가 돌려주는 객체는 다시 받기 전까지 같은 참조다. */
+function sameCards(a: ReadonlyMap<string, AlmIssueCard>, b: ReadonlyMap<string, AlmIssueCard>): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const [key, card] of a) if (b.get(key) !== card) return false;
+  return true;
 }
 
 function load(missing: string[]): Promise<void> {
@@ -69,6 +77,9 @@ export function useAlmIssueCards(
     sig,
     cards: sig ? fromCache(sig.split(",")) : EMPTY,
   }));
+  // 조회가 끝난 시점의 "지금 화면" — effect 클로저가 낡은 state를 보지 않게
+  const shown = useRef(state);
+  shown.current = state;
 
   useEffect(() => {
     if (!sig) return;
@@ -81,8 +92,12 @@ export function useAlmIssueCards(
         const missing = wanted.filter((key) => !fresh(key, now));
         if (missing.length) await load(missing);
         if (cancelled) return;
+        const next = fromCache(wanted);
+        // 화면이 바뀌지 않으면(카드 없음 → 없음, 같은 카드) DOM도 건드리지 않는다 — 하이라이트를 걷고
+        // 다시 칠할 사건이 없으니 걷으면 그대로 사라진다(재리뷰 R1: 볼 수 없는 키만 있는 페이지).
+        if (shown.current.sig === sig && sameCards(shown.current.cards, next)) return;
         beforeChange?.();
-        setState({ sig, cards: fromCache(wanted) });
+        setState({ sig, cards: next });
       })
       .catch(() => {
         // 조용히 원래 링크로 둔다(위 주석) — 콘솔 오류도 남기지 않는다(설계 S1).

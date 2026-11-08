@@ -107,3 +107,16 @@ describe("앵커 텍스트에서 빠지는 영역(data-anchor-ignore)", () => {
     expect(anchorFromSelection(root)).toEqual({ quote: "ALM-1 다음", occurrence: 0 });
   });
 });
+
+describe("clearHighlights", () => {
+  it("걷은 mark 수를 준다 — 0이면 DOM을 건드리지 않았다", () => {
+    const root = container("<p>배포는 금요일에 한다</p>");
+    expect(clearHighlights(root)).toBe(0);
+
+    applyHighlights(root, [{ id: "c1", quote: "금요일", occurrence: 0, replyCount: 0 }]);
+
+    expect(clearHighlights(root)).toBe(1);
+    expect(root.querySelector("mark")).toBeNull();
+    expect(root.textContent).toBe("배포는 금요일에 한다");
+  });
+});
