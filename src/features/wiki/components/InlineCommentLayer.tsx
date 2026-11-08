@@ -40,12 +40,18 @@ export function InlineCommentLayer({
   body,
   users,
   bodyRef,
+  decorations = 0,
 }: {
   pageId: string;
   /** 본문이 바뀌면 하이라이트를 다시 계산하기 위한 의존값. */
   body: string;
   users: User[];
   bodyRef: RefObject<HTMLElement | null>;
+  /**
+   * 본문 비동기 장식(ALM 스마트 링크 카드)의 판 번호. 바뀌면 다시 칠한다 — 장식이 붙을 때 MarkdownView가
+   * 하이라이트를 걷어 내기 때문이다(앵커 텍스트 자체는 장식과 무관하다, `data-anchor-ignore`).
+   */
+  decorations?: number;
 }) {
   const readOnly = useReadOnly();
   const toast = useToast();
@@ -127,7 +133,7 @@ export function InlineCommentLayer({
     );
     return () => clearHighlights(container);
     // threads/replies는 comments에서 파생된다 — 의존은 원본 하나로 충분하다.
-  }, [comments, body, bodyRef]);
+  }, [comments, body, bodyRef, decorations]);
 
   /**
    * 구간의 위치를 스코프(=본문을 감싼 `.inline-comment-scope`) 기준 오프셋으로 잰다.

@@ -12,8 +12,22 @@ import type { CommentAnchor } from "../store/types";
 /** 사용자가 선택할 수 있는 최대 길이 — 문단을 통째로 앵커로 잡으면 하이라이트가 의미를 잃는다. */
 export const MAX_QUOTE_LENGTH = 300;
 
+/**
+ * 앵커 텍스트에서 빠지는 영역의 표시. **나중에 붙는 장식**(ALM 스마트 링크의 제목·상태처럼 조회가
+ * 끝나야 생기는 글자)에 단다 — 그 글자가 앵커 텍스트에 섞이면 조회 전후로 텍스트가 달라져
+ * 링크를 가로지르는 인용이 "위치 없음"이 되거나 등장 순번이 밀린다(W3 리뷰 I1).
+ */
+export const ANCHOR_IGNORE_ATTR = "data-anchor-ignore";
+
 function textNodesOf(container: HTMLElement): Text[] {
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) =>
+      node.nodeType === Node.ELEMENT_NODE
+        ? (node as Element).hasAttribute(ANCHOR_IGNORE_ATTR)
+          ? NodeFilter.FILTER_REJECT // 하위 전체를 건너뛴다
+          : NodeFilter.FILTER_SKIP // 요소 자체는 세지 않고 자식으로 내려간다
+        : NodeFilter.FILTER_ACCEPT,
+  });
   const nodes: Text[] = [];
   let current = walker.nextNode();
   while (current) {
@@ -60,19 +74,52 @@ export function anchorFromSelection(container: HTMLElement): CommentAnchor | nul
   const quote = selection.toString().trim();
   if (!quote || quote.length > MAX_QUOTE_LENGTH) return null;
 
-  const { text, nodes, starts } = flatten(container);
-  const nodeIndex = nodes.indexOf(range.startContainer as Text);
-  const absolute = nodeIndex < 0 ? text.indexOf(quote) : starts[nodeIndex] + range.startOffset;
+  const flat = flatten(container);
+  const { text } = flat;
+  const ignored = Array.from(container.querySelectorAll(`[${ANCHOR_IGNORE_ATTR}]`));
+  if (ignored.some((el) => range.intersectsNode(el))) {
+    // 선택이 앵커 밖 영역(스마트 링크 제목 등)에 걸쳤다 — 선택 문자열에는 그 글자가 있지만 앵커
+    // 텍스트에는 없으니, 앵커 텍스트 좌표로 잘라 인용을 다시 만든다.
+    const start = absoluteOffset(flat, range.startContainer, range.startOffset);
+    const end = absoluteOffset(flat, range.endContainer, range.endOffset);
+    const raw = text.slice(start, end);
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed.length > MAX_QUOTE_LENGTH) return null;
+    const from = start + (raw.length - raw.trimStart().length);
+    return { quote: trimmed, occurrence: occurrenceBefore(text, trimmed, from) };
+  }
+  const nodeIndex = flat.nodes.indexOf(range.startContainer as Text);
+  const absolute = nodeIndex < 0 ? text.indexOf(quote) : flat.starts[nodeIndex] + range.startOffset;
   if (absolute < 0) return null;
 
-  // 선택 시작 지점보다 앞에 있는 같은 텍스트의 개수 = 이 선택의 등장 순번
+  return { quote, occurrence: occurrenceBefore(text, quote, absolute) };
+}
+
+/** 선택 시작 지점보다 앞에 있는 같은 텍스트의 개수 = 이 선택의 등장 순번. */
+function occurrenceBefore(text: string, quote: string, absolute: number): number {
   let occurrence = 0;
   let cursor = text.indexOf(quote);
   while (cursor >= 0 && cursor < absolute) {
     occurrence += 1;
     cursor = text.indexOf(quote, cursor + 1);
   }
-  return { quote, occurrence };
+  return occurrence;
+}
+
+/**
+ * DOM 경계 지점(node, offset) → 앵커 텍스트의 절대 오프셋. 앵커에 들어가는 텍스트 노드 안이면 그대로,
+ * 아니면(앵커 밖 영역 안·요소 경계) 그 지점 **뒤에 오는** 첫 앵커 텍스트 노드의 시작으로 접는다.
+ */
+function absoluteOffset(flat: { text: string; nodes: Text[]; starts: number[] }, node: Node, offset: number): number {
+  const index = flat.nodes.indexOf(node as Text);
+  if (index >= 0) return flat.starts[index] + offset;
+  const point = document.createRange();
+  point.setStart(node, offset);
+  point.collapse(true);
+  for (let i = 0; i < flat.nodes.length; i++) {
+    if (point.comparePoint(flat.nodes[i], 0) >= 0) return flat.starts[i];
+  }
+  return flat.text.length;
 }
 
 export interface HighlightTarget {

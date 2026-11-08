@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { applyHighlights, clearHighlights, offsetOfOccurrence } from "./inlineAnchors";
+import { anchorFromSelection, applyHighlights, clearHighlights, offsetOfOccurrence } from "./inlineAnchors";
 
 function container(html: string): HTMLElement {
   const div = document.createElement("div");
@@ -69,5 +69,41 @@ describe("W21-4 인라인 앵커", () => {
 
     expect(root.querySelectorAll("mark")).toHaveLength(0);
     expect(root.innerHTML).toBe("<p>배포는 금요일에 한다</p>");
+  });
+});
+
+/** 나중에 붙는 장식(ALM 스마트 링크 제목·상태)은 앵커 텍스트가 아니다(W3 리뷰 I1). */
+describe("앵커 텍스트에서 빠지는 영역(data-anchor-ignore)", () => {
+  const PLAIN = '<p>참고 <a href="/alm/browse/ALM-1">ALM-1</a> 다음 문장</p>';
+  const SMART =
+    '<p>참고 <a href="/alm/browse/ALM-1"><span>ALM-1</span><span data-anchor-ignore=""> 다음 <span>진행 중</span></span></a> 다음 문장</p>';
+
+  it.each([
+    ["원래 링크", PLAIN],
+    ["스마트 링크", SMART],
+  ])("%s에서 링크를 가로지르는 인용을 같은 텍스트로 찾는다", (_name, html) => {
+    const root = container(html);
+
+    const found = applyHighlights(root, [{ id: "c1", quote: "ALM-1 다음", occurrence: 0, replyCount: 0 }]);
+
+    expect(found).toEqual(new Set(["c1"]));
+    const marks = [...root.querySelectorAll("mark[data-comment-id='c1']")];
+    expect(marks.map((m) => m.textContent).join("")).toBe("ALM-1 다음");
+    // 장식 안(제목에 같은 낱말 "다음")은 칠하지 않는다 — 등장 순번이 밀리지 않는다
+    expect(root.querySelector("[data-anchor-ignore] mark")).toBeNull();
+  });
+
+  it("장식에 걸친 선택은 장식 글자를 뺀 앵커 텍스트로 인용을 만든다", () => {
+    const root = container(SMART);
+    const key = root.querySelector("a span")!.firstChild as Text;
+    const tail = root.querySelector("p")!.lastChild as Text; // " 다음 문장"
+    const range = document.createRange();
+    range.setStart(key, 0);
+    range.setEnd(tail, 3); // " 다음"까지
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    expect(anchorFromSelection(root)).toEqual({ quote: "ALM-1 다음", occurrence: 0 });
   });
 });

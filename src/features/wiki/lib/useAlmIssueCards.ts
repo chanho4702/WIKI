@@ -53,7 +53,17 @@ function load(missing: string[]): Promise<void> {
  *   원래 링크로 이미 정해져 있다. 실패는 캐시하지 않는다(다음 보기에서 다시 시도).
  * - 로딩 중에도 빈 결과다 — 인라인 텍스트가 흔들리지 않게 스켈레톤을 두지 않는다(설계 §5).
  */
-export function useAlmIssueCards(keys: readonly string[]): ReadonlyMap<string, AlmIssueCard> {
+export function useAlmIssueCards(
+  keys: readonly string[],
+  options: {
+    /**
+     * 카드가 화면에 반영되기 **직전**(React가 DOM을 바꾸기 전)에 부른다. 본문 DOM에 남이 심은 노드
+     * (인라인 댓글 하이라이트 `mark`)를 이때 걷어 내야 React가 자기 텍스트 노드를 찾을 수 있다.
+     */
+    beforeChange?: () => void;
+  } = {},
+): ReadonlyMap<string, AlmIssueCard> {
+  const { beforeChange } = options;
   const sig = [...new Set(keys)].sort().join(",");
   const [state, setState] = useState<{ sig: string; cards: ReadonlyMap<string, AlmIssueCard> }>(() => ({
     sig,
@@ -70,7 +80,9 @@ export function useAlmIssueCards(keys: readonly string[]): ReadonlyMap<string, A
         const now = Date.now();
         const missing = wanted.filter((key) => !fresh(key, now));
         if (missing.length) await load(missing);
-        if (!cancelled) setState({ sig, cards: fromCache(wanted) });
+        if (cancelled) return;
+        beforeChange?.();
+        setState({ sig, cards: fromCache(wanted) });
       })
       .catch(() => {
         // 조용히 원래 링크로 둔다(위 주석) — 콘솔 오류도 남기지 않는다(설계 S1).
@@ -78,6 +90,8 @@ export function useAlmIssueCards(keys: readonly string[]): ReadonlyMap<string, A
     return () => {
       cancelled = true;
     };
+    // beforeChange는 매 렌더 새 함수일 수 있다 — 키 묶음이 바뀔 때만 다시 묻는다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
 
   // 키 묶음이 바뀐 직후 한 렌더 동안 이전 본문의 카드를 내지 않는다

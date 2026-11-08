@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate, useNavigate, useOutletContext, useParams, useLocation } from "react-router";
 import { Avatar, Banner, Button, Dropdown, Lozenge, PageHeader, Tooltip, useToast } from "@chanho/react";
 import { parseTasks } from "../lib/tasks";
@@ -197,6 +197,9 @@ export function PageViewPage() {
     }
   };
   const bodyRef = useRef<HTMLDivElement>(null);
+  // 본문의 비동기 장식(스마트 링크 카드)이 바뀐 횟수 — 인라인 댓글이 이 값이 바뀌면 다시 칠한다
+  const [decorations, setDecorations] = useState(0);
+  const bumpDecorations = useCallback(() => setDecorations((n) => n + 1), []);
   /**
    * `#slug`로 들어오면 그 헤딩까지 내린다(W23). 본문은 비동기로 오므로 브라우저의 기본 앵커
    * 점프는 대상이 아직 없을 때 일어나 빈손으로 끝난다 — 본문이 그려진 뒤 다시 한 번 찾는다.
@@ -732,9 +735,16 @@ export function PageViewPage() {
             spaceId={space.id}
             // 보관 중엔 편집이 막힌다 — 체크박스도 읽기 전용으로 둔다(읽기 전용 인스턴스도 같다)
             onTaskToggle={page.archivedAt || readOnly ? undefined : handleTaskToggle}
+            onDecorationsChange={bumpDecorations}
           />
         </div>
-        <InlineCommentLayer pageId={page.id} body={page.body} users={users} bodyRef={bodyRef} />
+        <InlineCommentLayer
+          pageId={page.id}
+          body={page.body}
+          users={users}
+          bodyRef={bodyRef}
+          decorations={decorations}
+        />
       </div>
       {/* 본문 바로 아래 — 다 읽고 나서 누르는 자리다(W23). 리액션은 곧 쓰기라 읽기 전용에선 없다 */}
       {readOnly ? null : <PageReactions pageId={page.id} />}

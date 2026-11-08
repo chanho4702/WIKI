@@ -50,6 +50,7 @@ import { PersonLink } from "./PersonLink";
 import { almIssueLink, collectAlmIssueKeys } from "../lib/almIssueLink";
 import { useAlmIssueCards } from "../lib/useAlmIssueCards";
 import { almTypeIcon } from "../lib/almTypeIcons";
+import { clearHighlights } from "../lib/inlineAnchors";
 import type { AlmIssueCard } from "../store/types";
 
 export interface MarkdownViewProps {
@@ -76,6 +77,11 @@ export interface MarkdownViewProps {
    * 경로가 쓴다 — 넘기면 서버 조회를 하지 않는다.
    */
   linkTargets?: ReadonlyMap<string, string>;
+  /**
+   * 본문이 그려진 **뒤에** 비동기로 붙는 장식(ALM 스마트 링크 카드, W3)이 반영된 직후 부른다.
+   * 렌더된 텍스트에 기대는 쪽(인라인 댓글 하이라이트)이 다시 칠할 시점이다.
+   */
+  onDecorationsChange?: () => void;
 }
 
 /**
@@ -137,8 +143,13 @@ function AlmSmartLink({ card, href }: { card: AlmIssueCard; href: string }) {
         </span>
       ) : null}
       <span className={card.resolved ? "alm-smart-link__key is-resolved" : "alm-smart-link__key"}>{card.key}</span>
-      <span className="alm-smart-link__title">{card.title}</span>
-      <Lozenge appearance={statusAppearance(card.status.color)}>{card.status.name}</Lozenge>
+      {/* 제목·상태는 조회가 끝나야 생기는 글자다 — 인라인 댓글 앵커 텍스트에서 뺀다(`lib/inlineAnchors` ANCHOR_IGNORE_ATTR, 앵커는 카드 전후로
+        * 똑같이 "KEY"). 사이 공백은 진짜 텍스트라 복사·찾기 결과가 붙어 나오지 않는다. */}
+      <span className="alm-smart-link__extra" data-anchor-ignore="">
+        {" "}
+        <span className="alm-smart-link__title">{card.title}</span>{" "}
+        <Lozenge appearance={statusAppearance(card.status.color)}>{card.status.name}</Lozenge>
+      </span>
     </a>
   );
 }
@@ -469,7 +480,15 @@ function AnchorHeading({
  * rehype-slug가 heading에 id를 부여해 TableOfContents의 `#slug` 링크가 실제로 스크롤된다 —
  * TableOfContents는 같은 github-slugger 버전으로 별도 계산하므로 slug 값이 서로 일치한다.
  */
-export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTaskToggle }: MarkdownViewProps) {
+export function MarkdownView({
+  markdown,
+  spaceId,
+  linkTargets,
+  depth = 0,
+  onTaskToggle,
+  onDecorationsChange,
+}: MarkdownViewProps) {
+  const bodyRef = useRef<HTMLDivElement>(null);
   // spaceId가 있어야 [[제목]]을 어느 스페이스에서 찾을지 정해진다 — 없으면 위키 링크 모드가 아니다.
   const wikiMode = spaceId !== undefined;
   const fetched = useWikiLinkTargets(linkTargets ? "" : markdown, spaceId);
@@ -478,7 +497,24 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTask
   const normalized = normalizeDirectiveEscapes(markdown);
   const source = wikiMode ? resolveWikiLinks(normalized, targets, spaceId) : normalized;
   // ALM 이슈 키는 본문 전체에서 한 번 모아 한 번에 조회한다 — 링크 렌더러는 결과만 읽는다.
-  const almCards = useAlmIssueCards(collectAlmIssueKeys(source));
+  // 카드 반영 직전에 인라인 댓글 하이라이트를 걷는다 — `mark`가 React의 텍스트 노드를 감싸거나 쪼갠
+  // 채로 React가 링크 자리를 바꾸면 "child can not be found"로 본문 전체가 내려간다(W3 리뷰 I1 실측).
+  // 다시 칠하는 것은 onDecorationsChange를 받은 쪽이다.
+  const almCards = useAlmIssueCards(collectAlmIssueKeys(source), {
+    beforeChange: () => {
+      if (bodyRef.current) clearHighlights(bodyRef.current);
+    },
+  });
+  const decoratedOnce = useRef(false);
+  useEffect(() => {
+    if (!decoratedOnce.current) {
+      decoratedOnce.current = true;
+      return;
+    }
+    onDecorationsChange?.();
+    // 알림은 카드가 바뀔 때만 — 콜백 정체성이 바뀌는 것은 사건이 아니다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [almCards]);
 
   // 목차는 본문 전체를 봐야 만들 수 있다 — div 렌더러가 source를 알아야 해서 여기서 닫는다.
   const components = useMemo(
@@ -535,7 +571,7 @@ export function MarkdownView({ markdown, spaceId, linkTargets, depth = 0, onTask
 
   return (
     <AlmCardsContext.Provider value={almCards}>
-      <div className="markdown-body">
+      <div className="markdown-body" ref={bodyRef}>
         {/* remarkDirective가 `:::`·`::` 문법을 노드로 만들고 remarkColumns/remarkToc가 그걸 div로
           * 매핑한다 — 순서가 뒤바뀌면 매핑할 노드가 아직 없다. */}
         <ReactMarkdown
