@@ -52,7 +52,7 @@ lint 스크립트는 없다 — `pnpm typecheck` + `pnpm test`가 게이트다.
   정해지기 때문). 데이터 라우터라서 `useBlocker`(편집 화면 이탈 가드)를 쓸 수 있다 — `BrowserRouter`로
   되돌리면 가드가 터진다.
 - 라우트: 글로벌 셸 `AppShell`(헤더·`GlobalSidebar`)이 전부 감싼다. `/home`, `/spaces`(디렉토리),
-  `/search`, `/tasks`, `/settings/notifications`, `/admin/*`(검색 색인·조직·감사·이관 — 서버가 권한 판정),
+  `/search`, `/tasks`, `/settings/general`, `/settings/notifications`, `/admin/*`(검색 색인·조직·감사·이관 — 서버가 권한 판정),
   `/spaces/:spaceId` 아래 개요·`pages/new`·`pages/:pageId`(`/edit`, `/history/*`)·`folder/:folderId`·
   `blog`·`labels`·`trash`·`archive`·`settings/:section`. 그 외는 첫 스페이스로 redirect.
   공개 문서(읽기 전용) 인스턴스는 쓰기 화면 라우트를 리다이렉트로 바꾸고 편집기 청크를 번들에서 뺀다.

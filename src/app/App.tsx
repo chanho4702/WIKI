@@ -25,6 +25,7 @@ const WatchesPage = lazy(() => import("../features/wiki/pages/WatchesPage").then
 const MyItemsPage = lazy(() => import("../features/wiki/pages/MyItemsPage").then((m) => ({ default: m.MyItemsPage })));
 const TasksPage = lazy(() => import("../features/wiki/pages/TasksPage").then((m) => ({ default: m.TasksPage })));
 const NotificationSettingsPage = lazy(() => import("../features/wiki/pages/NotificationSettingsPage").then((m) => ({ default: m.NotificationSettingsPage })));
+const GeneralSettingsPage = lazy(() => import("../features/wiki/pages/GeneralSettingsPage").then((m) => ({ default: m.GeneralSettingsPage })));
 const SearchAdminPage = lazy(() => import("../features/wiki/pages/SearchAdminPage").then((m) => ({ default: m.SearchAdminPage })));
 const OrgAdminPage = lazy(() => import("../features/wiki/pages/OrgAdminPage").then((m) => ({ default: m.OrgAdminPage })));
 const SpaceAuditAdminPage = lazy(() => import("../features/wiki/pages/SpaceAuditAdminPage").then((m) => ({ default: m.SpaceAuditAdminPage })));
@@ -137,7 +138,8 @@ export function App() {
             {/* 내 항목(F-04) — 최근 방문·별표·내 초안 전체 목록. 사이드바 플라이아웃의 "전체 보기"가 온다 */}
             <Route path="/my" element={<Navigate to="/my/recent" replace />} />
             <Route path="/my/:tab" element={<MyItemsPage spaces={spaces} />} />
-            {/* 알림 설정(W23) — 이메일 채널 스위치. 사용자 메뉴·알림함 하단에서 온다 */}
+            <Route path="/settings/general" element={<GeneralSettingsPage />} />
+            {/* 알림 설정(W23) — 이메일 채널 스위치. 설정 메뉴·알림함 하단에서 온다 */}
             <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
             {/* 전체 알림(F-05) — 벨의 "모두 보기". 쪽 넘김·종류 필터 */}
             <Route path="/notifications" element={<NotificationsPage />} />

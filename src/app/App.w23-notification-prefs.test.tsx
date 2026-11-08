@@ -11,9 +11,17 @@ beforeEach(() => {
 
 /** 알림 설정(W23) — 이메일 채널 스위치. 목업은 발송 구성이 없다. */
 describe("W23 알림 설정", () => {
-  it("발송 구성이 없으면 배너로 먼저 말한다", async () => {
-    renderApp("/settings/notifications");
+  it("설정 메뉴에서 일반·알림 설정으로 이동하고 발송 구성을 안내한다", async () => {
+    const user = userEvent.setup();
+    renderApp("/spaces/sp1");
 
+    await user.click(await screen.findByRole("button", { name: "설정" }));
+    await user.click(await screen.findByRole("menuitem", { name: /일반 설정/ }));
+    expect(await screen.findByRole("heading", { name: "일반 설정" })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "다크 모드" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "설정" }));
+    await user.click(await screen.findByRole("menuitem", { name: /알림 설정/ }));
     expect(await screen.findByRole("heading", { name: "알림 설정" })).toBeInTheDocument();
     expect(await screen.findByText(/이메일 발송이 구성되어 있지 않습니다/)).toBeInTheDocument();
   });

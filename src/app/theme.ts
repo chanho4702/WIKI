@@ -1,8 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "wiki.theme";
+const THEME_CHANGED_EVENT = "wiki:theme-changed";
 
 /** 저장된 테마를 읽는다. 없으면 시스템 선호도, 그마저 없으면 light. */
 export function readStoredTheme(): Theme {
@@ -19,6 +20,12 @@ export function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
 }
 
+export function setStoredTheme(theme: Theme): void {
+  applyTheme(theme);
+  localStorage.setItem(STORAGE_KEY, theme);
+  window.dispatchEvent(new CustomEvent<Theme>(THEME_CHANGED_EVENT, { detail: theme }));
+}
+
 /** 초기 로드 시 한 번 호출 — 저장된 테마를 즉시 적용해 깜빡임을 막는다. */
 export function initTheme(): void {
   applyTheme(readStoredTheme());
@@ -28,14 +35,15 @@ export function initTheme(): void {
 export function useTheme(): { theme: Theme; toggle: () => void } {
   const [theme, setTheme] = useState<Theme>(() => readStoredTheme());
 
-  const toggle = useCallback(() => {
-    setTheme((prev) => {
-      const next: Theme = prev === "dark" ? "light" : "dark";
-      applyTheme(next);
-      localStorage.setItem(STORAGE_KEY, next);
-      return next;
-    });
+  useEffect(() => {
+    const sync = (event: Event) => setTheme((event as CustomEvent<Theme>).detail);
+    window.addEventListener(THEME_CHANGED_EVENT, sync);
+    return () => window.removeEventListener(THEME_CHANGED_EVENT, sync);
   }, []);
+
+  const toggle = useCallback(() => {
+    setStoredTheme(theme === "dark" ? "light" : "dark");
+  }, [theme]);
 
   return { theme, toggle };
 }

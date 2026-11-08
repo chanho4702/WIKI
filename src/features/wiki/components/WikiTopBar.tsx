@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { Avatar, Badge, Button, Dropdown, Modal, TopBar } from "@chanho/react";
-import { Bell, Database, DatabaseBackup, Keyboard, KeyRound, LogOut, Moon, PanelLeft, ScrollText, Settings, Sun, UserRound, Users } from "lucide-react";
+import { Bell, Database, DatabaseBackup, Keyboard, KeyRound, LogOut, Moon, PanelLeft, ScrollText, Settings, SlidersHorizontal, Sun, UserRound, Users } from "lucide-react";
 import { personPath } from "../lib/people";
 import type { User } from "../store/types";
 import { getCurrentUser, getOrgMe } from "../store/wikiStore";
@@ -139,6 +139,14 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
               },
               ...(readOnly
                 ? []
+                : [{
+                    label: "일반 설정",
+                    description: "화면 환경과 개인 기본 설정을 관리합니다",
+                    icon: <SlidersHorizontal size={16} aria-hidden="true" />,
+                    onSelect: () => navigate("/settings/general"),
+                  }]),
+              ...(readOnly
+                ? []
                 : [
                     {
                       label: "알림 설정",
@@ -213,12 +221,6 @@ export function WikiTopBar({ onSidebarToggle, sidebarExpanded, create }: WikiTop
                   description: "내 프로필 보기",
                   icon: <UserRound size={16} aria-hidden="true" />,
                   onSelect: () => navigate(personPath(me.id)),
-                },
-                {
-                  label: "알림 설정",
-                  description: "어떤 알림을 이메일로도 받을지 고릅니다",
-                  icon: <Bell size={16} aria-hidden="true" />,
-                  onSelect: () => navigate("/settings/notifications"),
                 },
                 /* 토큰 관리 화면은 계정 포털(myFront `/app`)에 있다 — 같은 오리진이지만 다른
                  * SPA라 라우터가 아니라 전체 이동이다. 이 메뉴는 아바타(=로그인 사용자)가 있을
